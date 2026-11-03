@@ -3,104 +3,190 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>கிளை பதிவுத் திரை</title>
+  <title>வாடிக்கையாளர் வருகை & KYC மேலாண்மை</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl shadow-lg w-full max-w-md p-6 border border-slate-200">
-    <div class="flex items-center space-x-3 mb-6">
-      <div class="bg-amber-500 text-white p-2.5 rounded-xl text-xl font-bold">🪙</div>
+<body class="bg-slate-50 min-h-screen p-4 md:p-6 text-slate-800">
+  <div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- தலைப்பு & கிளை தேர்வு -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <span class="text-3xl">🏛️</span>
+        <div>
+          <h1 class="text-lg font-bold text-slate-800">வாடிக்கையாளர் வரவேற்பு & வருகை மேலாண்மை</h1>
+          <p class="text-xs text-slate-500">கிளைப் பரிவர்த்தனைகளுக்கான தொடக்க நிலை</p>
+        </div>
+      </div>
       <div>
-        <h1 class="text-xl font-bold text-slate-800">பாக்கெட் புதிய பதிவு</h1>
-        <p class="text-xs text-slate-500">கிளைப் பணியாளர் உள்ளீட்டுத் திரை</p>
+        <label class="block text-xs font-semibold text-slate-500 mb-1">நடப்பு கிளை</label>
+        <input type="text" id="active_branch" value="Thingalnagar" class="px-3 py-1.5 border rounded-lg text-sm font-medium bg-amber-50 text-amber-900 border-amber-200">
       </div>
     </div>
 
-    <form id="entryForm" class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">கிளை பெயர்</label>
-        <input type="text" id="branch_name" required placeholder="எ.கா: Thingalnagar" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 text-sm">
+    <!-- தேடல் பகுதி -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div class="flex flex-col sm:flex-row gap-3">
+        <div class="relative flex-1">
+          <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயரை உள்ளிடவும்..." class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <span class="absolute left-3 top-3.5 text-slate-400">🔍</span>
+        </div>
+        <button onclick="handleSearch()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl text-sm font-medium transition">தேடு</button>
+        <button onclick="openNewKycModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-3 rounded-xl text-sm font-medium transition">+ புதிய வாடிக்கையாளர் (KYC)</button>
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <!-- தேடல் முடிவுகள் -->
+      <div id="searchResults" class="mt-4 space-y-2 hidden"></div>
+    </div>
+
+    <!-- வாடிக்கையாளர் சுயவிவரத் திரை (தேர்வு செய்த பின்) -->
+    <div id="customerCard" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden space-y-5">
+      <div class="flex justify-between items-start border-b pb-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">பாக்கெட் எண்</label>
-          <input type="text" id="packet_id" required placeholder="PK-101" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 text-sm">
+          <h2 class="text-lg font-bold text-slate-800" id="cardName">-</h2>
+          <p class="text-xs text-slate-500">மொபைல்: <span id="cardPhone" class="font-medium text-slate-700">-</span> | ID: <span id="cardId">-</span></p>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">எடை (Grams)</label>
-          <input type="number" step="0.01" id="weight_grams" required placeholder="8.50" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 text-sm">
+        <span id="cardStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">சரிபார்க்கப்பட்டது</span>
+      </div>
+
+      <!-- விபர சரிபார்ப்பு கேள்வி -->
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <p class="text-sm font-medium text-amber-900">வாடிக்கையாளர் தகவல்களில் ஏதேனும் மாற்றம் உள்ளதா?</p>
+        <div class="flex gap-2">
+          <button onclick="showUpdateForm()" class="px-4 py-2 bg-white border border-amber-300 rounded-lg text-xs font-semibold text-amber-800 hover:bg-amber-100">ஆம், மாற்றம் உள்ளது</button>
+          <button onclick="proceedToTransactions()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold text-white">மாற்றம் இல்லை (பரிவர்த்தனைக்குச் செல்)</button>
         </div>
       </div>
 
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">வாடிக்கையாளர் பெயர்</label>
-        <input type="text" id="customer_name" required placeholder="பெயர்" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 text-sm">
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">மொபைல் எண்</label>
-          <input type="tel" id="phone" required placeholder="9876543210" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 text-sm">
+      <!-- மாற்றம் உள்ளதா என கோரும் பகுதி -->
+      <div id="updateFormSection" class="hidden border-t pt-4 space-y-3">
+        <h3 class="text-xs font-bold text-slate-700 uppercase">புதிய திருத்தங்களை உள்ளிடவும்</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input type="text" id="upd_phone" placeholder="புதிய மொபைல் எண்" class="border p-2 rounded text-xs">
+          <input type="text" id="upd_address" placeholder="புதிய முகவரி" class="border p-2 rounded text-xs">
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">முன்பணம் (₹)</label>
-          <input type="number" id="advance_amount" value="0" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 text-sm">
+        <button onclick="submitUpdateReq()" class="bg-slate-700 text-white px-4 py-2 rounded text-xs font-medium">ஒப்புதலுக்கு அனுப்பு</button>
+      </div>
+    </div>
+
+    <!-- புதிய KYC மாடல் (Modal) -->
+    <div id="kycModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
+        <h3 class="text-base font-bold text-slate-800">புதிய வாடிக்கையாளர் KYC உள்ளீடு</h3>
+        <div class="space-y-3">
+          <input type="text" id="kyc_name" placeholder="பெயர் *" class="w-full border p-2.5 rounded-lg text-xs">
+          <input type="tel" id="kyc_phone" placeholder="மொபைல் எண் *" class="w-full border p-2.5 rounded-lg text-xs">
+          <input type="text" id="kyc_aadhaar" placeholder="ஆதார் எண்" class="w-full border p-2.5 rounded-lg text-xs">
+          <input type="text" id="kyc_pan" placeholder="பான் எண்" class="w-full border p-2.5 rounded-lg text-xs">
+          <textarea id="kyc_address" placeholder="முழு முகவரி" class="w-full border p-2.5 rounded-lg text-xs" rows="2"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeNewKycModal()" class="px-4 py-2 border rounded-lg text-xs font-medium">ரத்து</button>
+          <button onclick="submitNewKyc()" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-medium">KYC சமர்ப்பி</button>
         </div>
       </div>
+    </div>
 
-      <button type="submit" id="submitBtn" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-lg text-sm transition duration-200 mt-2">
-        பதிவு செய்
-      </button>
-    </form>
-
-    <div id="statusMsg" class="mt-4 text-center text-xs font-medium hidden"></div>
   </div>
 
   <script>
-    const form = document.getElementById('entryForm');
-    const msg = document.getElementById('statusMsg');
-    const btn = document.getElementById('submitBtn');
+    let activeCustomer = null;
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      btn.disabled = true;
-      btn.innerText = "பதிவாகிறது...";
-      msg.classList.add('hidden');
+    async function handleSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      if (!q) return;
+
+      const res = await fetch(`/api/customer/search?query=${q}`);
+      const data = await res.json();
+      const container = document.getElementById('searchResults');
+      container.innerHTML = '';
+
+      if (data.data.length === 0) {
+        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">வாடிக்கையாளர் கிடைக்கவில்லை. 'புதிய வாடிக்கையாளர்' மூலம் பதிவு செய்யவும்.</div>`;
+      } else {
+        data.data.forEach(cust => {
+          const div = document.createElement('div');
+          div.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center hover:bg-amber-50 cursor-pointer transition";
+          div.innerHTML = `<div><div class="font-bold text-sm text-slate-800">${cust.name}</div><div class="text-xs text-slate-500">${cust.phone} | கிளை: ${cust.branch || '-'}</div></div><button class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">தேர்ந்தெடு</button>`;
+          div.onclick = () => selectCustomer(cust);
+          container.appendChild(div);
+        });
+      }
+      container.classList.remove('hidden');
+    }
+
+    function selectCustomer(cust) {
+      activeCustomer = cust;
+      document.getElementById('cardName').innerText = cust.name;
+      document.getElementById('cardPhone').innerText = cust.phone;
+      document.getElementById('cardId').innerText = cust.id;
+      document.getElementById('searchResults').classList.add('hidden');
+      document.getElementById('customerCard').classList.remove('hidden');
+    }
+
+    function showUpdateForm() {
+      document.getElementById('updateFormSection').classList.remove('hidden');
+    }
+
+    async function proceedToTransactions() {
+      const branch = document.getElementById('active_branch').value;
+      const res = await fetch('/api/customer/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: activeCustomer.id, branch_name: branch })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("வருகை வெற்றிகரமாகப் பதிவானது! அடுத்த கட்ட பரிவர்த்தனை (கார்ட்) திரைக்குச் செல்லலாம்.");
+      }
+    }
+
+    async function submitUpdateReq() {
+      const branch = document.getElementById('active_branch').value;
+      const newPhone = document.getElementById('upd_phone').value;
+      const newAddress = document.getElementById('upd_address').value;
 
       const payload = {
-        branch_name: document.getElementById('branch_name').value,
-        packet_id: document.getElementById('packet_id').value,
-        weight_grams: parseFloat(document.getElementById('weight_grams').value),
-        customer_name: document.getElementById('customer_name').value,
-        phone: document.getElementById('phone').value,
-        advance_amount: parseFloat(document.getElementById('advance_amount').value) || 0
+        customer_id: activeCustomer.id,
+        branch_name: branch,
+        requested_changes: { phone: newPhone, address: newAddress }
       };
 
-      try {
-        const res = await fetch('/api/packet/add', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
+      const res = await fetch('/api/customer/request-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) alert(data.message);
+    }
 
-        if (res.ok) {
-          msg.textContent = "✅ " + data.message;
-          msg.className = "mt-4 text-center text-xs font-medium text-emerald-600";
-          form.reset();
-        } else {
-          throw new Error(data.detail || "பதிவு தோல்வியடைந்தது");
-        }
-      } catch (err) {
-        msg.textContent = "❌ " + err.message;
-        msg.className = "mt-4 text-center text-xs font-medium text-rose-600";
-      } finally {
-        msg.classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = "பதிவு செய்";
+    function openNewKycModal() { document.getElementById('kycModal').classList.remove('hidden'); }
+    function closeNewKycModal() { document.getElementById('kycModal').classList.add('hidden'); }
+
+    async function submitNewKyc() {
+      const payload = {
+        name: document.getElementById('kyc_name').value,
+        phone: document.getElementById('kyc_phone').value,
+        aadhaar_no: document.getElementById('kyc_aadhaar').value,
+        pan_no: document.getElementById('kyc_pan').value,
+        address: document.getElementById('kyc_address').value,
+        branch_name: document.getElementById('active_branch').value
+      };
+
+      const res = await fetch('/api/customer/new-kyc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        closeNewKycModal();
+      } else {
+        alert("பிழை: " + data.detail);
       }
-    });
+    }
   </script>
 </body>
 </html>

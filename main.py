@@ -148,3 +148,75 @@ def request_customer_update(data: CustomerUpdateRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"சோதனை மாற்றக் கோரிக்கை பிழை: {str(e)}")
+
+from pydantic import BaseModel, Field
+from typing import List, Optional
+
+# நகைப் பட்டியலுக்கான ஸ்கீமா
+class OrnamentItem(BaseModel):
+    item_type: str = Field(..., description="நகை வகை (செயின், ஆரம் போன்றவை)")
+    item_count: int = Field(..., description="எண்ணிக்கை")
+    gross_weight: float = Field(..., description="மொத்த எடை")
+    net_weight: float = Field(..., description="நிகர எடை")
+    purity: str = Field(..., description="நகைத் தரம்")
+
+# நகைக்கடன் புதிய அடகு ஸ்கீமா
+class NewGoldLoanEntry(BaseModel):
+    customer_id: int
+    branch_id: int = 1
+    loan_no: str
+    scheme_name: str
+    loan_amount: float
+    charges_amount: float = 0.0
+    photo_url: Optional[str] = None
+    items: List[OrnamentItem]
+
+# API Endpoint
+@app.post("/api/loan/new-pawn")
+def create_new_pawn(data: NewGoldLoanEntry):
+    try:
+        if not data.items:
+            raise HTTPException(status_code=400, detail="குறைந்தது ஒரு நகையாவது பட்டியலில் சேர்க்கப்பட வேண்டும்.")
+
+        total_gross = sum(i.gross_weight for i in data.items)
+        total_net = sum(i.net_weight for i in data.items)
+        net_payable = data.loan_amount - data.charges_amount
+
+        # 1. தலைப்பு அட்டவணையில் சேமித்தல்
+        loan_record = {
+            "loan_no": data.loan_no,
+            "customer_id": data.customer_id,
+            "scheme_name": data.scheme_name,
+            "total_gross_weight": round(total_gross, 3),
+            "total_net_weight": round(total_net, 3),
+            "loan_amount": data.loan_amount,
+            "charges_amount": data.charges_amount,
+            "net_payable_amount": net_payable,
+            "photo_url": data.photo_url,
+            "branch_id": data.branch_id,
+            "status": "ACTIVE"
+        }
+        res_loan = supabase.table("test_gold_loans").insert(loan_record).execute()
+        new_loan_id = res_loan.data[0]["id"]
+
+        # 2. நகைகளின் விபரங்களை சப்-லிஸ்ட்டாக சேர்த்தல்
+        items_payload = []
+        for i in data.items:
+            items_payload.append({
+                "loan_id": new_loan_id,
+                "item_type": i.item_type,
+                "item_count": i.item_count,
+                "gross_weight": i.gross_weight,
+                "net_weight": i.net_weight,
+                "purity": i.purity
+            })
+        supabase.table("test_gold_loan_items").insert(items_payload).execute()
+
+        return {
+            "status": "success",
+            "message": "நகைக்கடன் வெற்றிகரமாக கார்ட்டில் சேர்க்கப்பட்டது.",
+            "loan_id": new_loan_id,
+            "net_payable": net_payable
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"அடகுப் பதிவு பிழை: {str(e)}")

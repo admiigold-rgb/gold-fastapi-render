@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>கிளைப் பரிவர்த்தனைகள் & பணப் பகுப்பாய்வு</title>
+  <title>கிளைப் பரிவர்த்தனைகள் & OTP உறுதிப்படுத்தல்</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800">
@@ -14,8 +14,8 @@
       <div class="flex items-center space-x-3">
         <span class="text-3xl">⚖️</span>
         <div>
-          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளைக் கவுண்ட்டர் & பரிவர்த்தனை தீர்வு</h1>
-          <p class="text-xs text-amber-600 font-semibold">சோதனை தளம் (Sandbox Mode)</p>
+          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளைக் கவுண்ட்டர் & பரிவர்த்தனை மேலாண்மை</h1>
+          <p class="text-xs text-amber-600 font-semibold">Fast2SMS DLT OTP பாதுகாப்புடன்</p>
         </div>
       </div>
       <div class="flex items-center space-x-2">
@@ -34,10 +34,9 @@
       <div id="searchResults" class="space-y-2 hidden"></div>
     </div>
 
-    <!-- நிலை 2: தேர்வு செய்யப்பட்ட வாடிக்கையாளர் & கார்ட் பகுதி -->
+    <!-- நிலை 2: தேர்வு செய்யப்பட்ட வாடிக்கையாளர் & கார்ட் பணித்தளம் -->
     <div id="activeCustomerSection" class="hidden space-y-4">
 
-      <!-- வாடிக்கையாளர் சுருக்க அட்டை -->
       <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
         <div>
           <span class="text-xs text-slate-400 font-semibold uppercase">நடப்பு வாடிக்கையாளர்</span>
@@ -46,11 +45,11 @@
         </div>
         <div class="flex gap-2">
           <button onclick="showUpdateForm()" class="text-xs text-amber-700 border border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg">விவர மாற்றம்</button>
-          <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg">முடி / மாற்று</button>
+          <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg">முடித்து வெளியேறு</button>
         </div>
       </div>
 
-      <!-- விபர மாற்றப் படிவம் (தேவைப்பட்டால் மட்டும்) -->
+      <!-- விபர மாற்றப் படிவம் -->
       <div id="updateFormSection" class="hidden bg-white p-4 rounded-xl border border-amber-200 space-y-3">
         <h3 class="text-xs font-bold text-amber-900 uppercase">வாடிக்கையாளர் புதிய விபர மாற்றம்:</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -63,10 +62,10 @@
         </div>
       </div>
 
-      <!-- பிரதான பணித்தளம்: கார்ட் & புதிய அடகுப் படிவம் -->
+      <!-- பணித்தளம் -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        <!-- இடதுபுறம்: புதிய நகைக்கடன் அடகுப் படிவம் (2 Columns) -->
+        <!-- இடதுபுறம்: புதிய நகைக்கடன் அடகுப் படிவம் -->
         <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
           <div class="border-b pb-2 flex justify-between items-center">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
@@ -90,7 +89,7 @@
             </div>
           </div>
 
-          <!-- நகைகள் விபரங்கள் உள்ளீடு (Item Addition Row) -->
+          <!-- நகைகள் சேர்க்கும் பகுதி -->
           <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
             <h4 class="text-xs font-bold text-slate-700">நகை விபரங்களைச் சேர்க்கவும்:</h4>
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -110,7 +109,7 @@
             </div>
           </div>
 
-          <!-- நகைகள் பட்டியல் அட்டவணை -->
+          <!-- அட்டவணை -->
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 text-slate-600 border-b">
@@ -138,7 +137,7 @@
             </table>
           </div>
 
-          <!-- கடன் தொகை & கட்டணங்கள் -->
+          <!-- கடன் & கட்டணங்கள் -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">கடன் தொகை (₹) * [நாம் தர வேண்டியது (-)]</label>
@@ -150,7 +149,6 @@
             </div>
           </div>
 
-          <!-- கார்ட்டில் சேர்க்கும் பொத்தான் -->
           <div class="flex justify-end pt-2">
             <button onclick="submitPawnToDatabase()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition">
               கூடையில் சேர் (Add to Cart)
@@ -158,20 +156,18 @@
           </div>
         </div>
 
-        <!-- வலதுபுறம்: கார்ட் & தீர்வு சுருக்கம் (1 Column) -->
+        <!-- வலதுபுறம்: கார்ட் & சுருக்கம் -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
           <div>
             <div class="border-b pb-2 flex justify-between items-center">
               <h3 class="text-sm font-bold text-slate-800">🛒 பரிவர்த்தனை கூடை (Cart)</h3>
               <span id="cartCountBadge" class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">0 உருப்படிகள்</span>
             </div>
-
             <div id="cartItemsList" class="mt-3 space-y-2 max-h-60 overflow-y-auto">
               <p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>
             </div>
           </div>
 
-          <!-- நிகர கணக்கீட்டு சுருக்கம் -->
           <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
             <div class="flex justify-between text-xs text-slate-600">
               <span>வாடிக்கையாளர் தர வேண்டியது (+):</span>
@@ -196,7 +192,7 @@
       </div>
     </div>
 
-    <!-- நிலை 3: பணம் / வங்கி & டினாமினேசன் Checkout Pop-up Modal -->
+    <!-- நிலை 3: பணம்/வங்கி & தாள்கள் Checkout Modal -->
     <div id="checkoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-2xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b pb-3">
@@ -207,7 +203,6 @@
           <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
 
-        <!-- செலுத்தும் முறை தேர்வு -->
         <div class="space-y-2">
           <label class="block text-xs font-bold text-slate-700">செலுத்தும் முறை தேர்வு:</label>
           <div class="grid grid-cols-3 gap-2">
@@ -217,7 +212,6 @@
           </div>
         </div>
 
-        <!-- தொகை உள்ளீடுகள் -->
         <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">ரொக்கத் தொகை (₹)</label>
@@ -229,7 +223,6 @@
           </div>
         </div>
 
-        <!-- வங்கி விவரம் -->
         <div id="bankDetailsSection" class="hidden space-y-2 border-t pt-3">
           <h4 class="text-xs font-bold text-slate-700">வங்கி பரிவர்த்தனை விபரம்:</h4>
           <div class="grid grid-cols-2 gap-2">
@@ -238,7 +231,6 @@
           </div>
         </div>
 
-        <!-- ரூபாய் தாள்கள் டினாமினேசன் -->
         <div id="denomSection" class="space-y-2 border-t pt-3">
           <div class="flex justify-between items-center">
             <h4 class="text-xs font-bold text-slate-700">ரூபாய் தாள்கள் டினாமினேசன் (Denomination):</h4>
@@ -261,8 +253,30 @@
 
         <div class="flex justify-end gap-2 pt-3 border-t">
           <button onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
-          <button onclick="submitFinalSettlement()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">
-            உறுதி செய்து சேமி (Confirm Settlement)
+          <button onclick="requestOtpFromCustomer()" id="btn_send_otp" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow">
+            SMS OTP அனுப்பு 📲
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- நிலை 4: OTP சரிபார்ப்பு Pop-up Modal -->
+    <div id="otpVerifyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
+        <div class="text-4xl">🔐</div>
+        <h3 class="text-base font-bold text-slate-800">வாடிக்கையாளர் OTP சரிபார்ப்பு</h3>
+        <p class="text-xs text-slate-500">
+          <span id="otpRecipientMobile" class="font-bold text-slate-700">-</span> என்ற எண்ணிற்கு SMS அனுப்பப்பட்டுள்ளது.
+        </p>
+
+        <div>
+          <input type="text" id="input_otp" maxlength="6" placeholder="000000" class="w-full text-center text-2xl font-mono tracking-widest border-2 border-amber-500 rounded-xl py-2 focus:outline-none">
+        </div>
+
+        <div class="flex justify-center gap-2 pt-2">
+          <button onclick="closeOtpModal()" class="px-4 py-2 border rounded-xl text-xs font-medium">ரத்து</button>
+          <button onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">
+            சரிபார்த்து முடி (Verify & Close)
           </button>
         </div>
       </div>
@@ -275,7 +289,6 @@
         <div class="space-y-3">
           <input type="text" id="kyc_name" placeholder="பெயர் *" class="w-full border p-2 rounded-lg text-xs">
           <input type="tel" id="kyc_mobile" placeholder="மொபைல் எண் *" class="w-full border p-2 rounded-lg text-xs">
-          <input type="tel" id="kyc_mobile2" placeholder="இரண்டாவது மொபைல் எண்" class="w-full border p-2 rounded-lg text-xs">
           <input type="text" id="kyc_guardian" placeholder="தந்தை / கணவர் பெயர்" class="w-full border p-2 rounded-lg text-xs">
           <textarea id="kyc_address" placeholder="முழு முகவரி" class="w-full border p-2 rounded-lg text-xs" rows="2"></textarea>
         </div>
@@ -306,7 +319,7 @@
       container.innerHTML = '';
 
       if (!result.data || result.data.length === 0) {
-        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">சோதனைத் தரவு கிடைக்கவில்லை. '+ புதிய KYC' மூலம் பதிவு செய்யவும்.</div>`;
+        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">வாடிக்கையாளர் இல்லை. '+ புதிய KYC' மூலம் பதிவு செய்யவும்.</div>`;
       } else {
         result.data.forEach(cust => {
           const div = document.createElement('div');
@@ -670,43 +683,103 @@
       }
     }
 
-    async function submitFinalSettlement() {
+    // OTP கோரிக்கை அனுப்புதல்
+    async function requestOtpFromCustomer() {
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
 
       if (bVal > 0) {
         const ref = document.getElementById('bank_ref').value.trim();
         if (!ref) {
-          alert("வங்கி பரிவர்த்தனை குறிப்பு எண்ணை (UTR/Ref No) உள்ளிடவும்.");
+          alert("வங்கி பரிவர்த்தனை குறிப்பு எண் (UTR/Ref No) உள்ளிடவும்.");
           return;
         }
       }
 
-      let denomPayload = null;
       if (cVal > 0) {
-        const d500 = parseInt(document.getElementById('d500').value) || 0;
-        const d200 = parseInt(document.getElementById('d200').value) || 0;
-        const d100 = parseInt(document.getElementById('d100').value) || 0;
-        const d50 = parseInt(document.getElementById('d50').value) || 0;
-        const d20 = parseInt(document.getElementById('d20').value) || 0;
-        const d10 = parseInt(document.getElementById('d10').value) || 0;
+        const d500 = (parseInt(document.getElementById('d500').value) || 0) * 500;
+        const d200 = (parseInt(document.getElementById('d200').value) || 0) * 200;
+        const d100 = (parseInt(document.getElementById('d100').value) || 0) * 100;
+        const d50 = (parseInt(document.getElementById('d50').value) || 0) * 50;
+        const d20 = (parseInt(document.getElementById('d20').value) || 0) * 20;
+        const d10 = (parseInt(document.getElementById('d10').value) || 0) * 10;
         const dcoins = parseInt(document.getElementById('dcoins').value) || 0;
+        const tot = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
 
-        const tot = (d500*500) + (d200*200) + (d100*100) + (d50*50) + (d20*20) + (d10*10) + dcoins;
         if (Math.round(tot) !== Math.round(cVal)) {
           alert(`தாள்களின் மொத்தம் (₹${tot}) ரொக்கத் தொகையுடன் (₹${cVal}) சரியாகப் பொருந்த வேண்டும்.`);
           return;
         }
+      }
 
+      const btn = document.getElementById('btn_send_otp');
+      btn.innerText = "SMS அனுப்பப்படுகிறது...";
+      btn.disabled = true;
+
+      const payload = {
+        customer_id: activeCustomer.id,
+        mobile: activeCustomer.mobile,
+        customer_name: activeCustomer.name,
+        net_amount: currentNetAbs,
+        direction: currentDirection
+      };
+
+      try {
+        const res = await fetch('/api/otp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          document.getElementById('otpRecipientMobile').innerText = activeCustomer.mobile;
+          document.getElementById('input_otp').value = '';
+          closeCheckoutModal();
+          document.getElementById('otpVerifyModal').classList.remove('hidden');
+        } else {
+          alert("❌ SMS பிழை: " + data.detail);
+        }
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      } finally {
+        btn.innerText = "SMS OTP அனுப்பு 📲";
+        btn.disabled = false;
+      }
+    }
+
+    function closeOtpModal() {
+      document.getElementById('otpVerifyModal').classList.add('hidden');
+    }
+
+    // OTP உறுதிசெய்து செட்டில்மென்ட் முடித்தல்
+    async function confirmSettleWithOtp() {
+      const enteredOtp = document.getElementById('input_otp').value.trim();
+      if (!enteredOtp || enteredOtp.length !== 6) {
+        alert("6 இலக்க OTP எண்ணைச் சரியாக உள்ளிடவும்.");
+        return;
+      }
+
+      const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
+      const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+
+      let denomPayload = null;
+      if (cVal > 0) {
         denomPayload = {
-          c_500: d500, c_200: d200, c_100: d100, c_50: d50, c_20: d20, c_10: d10, c_coins: dcoins
+          c_500: parseInt(document.getElementById('d500').value) || 0,
+          c_200: parseInt(document.getElementById('d200').value) || 0,
+          c_100: parseInt(document.getElementById('d100').value) || 0,
+          c_50: parseInt(document.getElementById('d50').value) || 0,
+          c_20: parseInt(document.getElementById('d20').value) || 0,
+          c_10: parseInt(document.getElementById('d10').value) || 0,
+          c_coins: parseInt(document.getElementById('dcoins').value) || 0
         };
       }
 
       const payload = {
         customer_id: activeCustomer.id,
         branch_id: branchId,
+        otp_code: enteredOtp,
         net_amount: currentNetAbs,
         direction: currentDirection,
         settlement_type: selectedMode,
@@ -717,22 +790,29 @@
         denominations: denomPayload
       };
 
+      const btn = document.getElementById('btn_confirm_settle');
+      btn.innerText = "சரிபார்க்கப்படுகிறது...";
+      btn.disabled = true;
+
       try {
-        const res = await fetch('/api/transaction/settle', {
+        const res = await fetch('/api/transaction/settle-with-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (res.ok) {
-          alert("✅ " + data.message);
-          closeCheckoutModal();
+          alert(data.message);
+          closeOtpModal();
           resetCustomer();
         } else {
-          alert("❌ பிழை: " + data.detail);
+          alert("❌ OTP பிழை: " + data.detail);
         }
       } catch (err) {
         alert("பிழை: " + err.message);
+      } finally {
+        btn.innerText = "சரிபார்த்து முடி (Verify & Close)";
+        btn.disabled = false;
       }
     }
 
@@ -744,7 +824,6 @@
       const payload = {
         name: document.getElementById('kyc_name').value.trim(),
         mobile: document.getElementById('kyc_mobile').value.trim(),
-        mobile2: document.getElementById('kyc_mobile2').value.trim() || null,
         guardian_name: document.getElementById('kyc_guardian').value.trim() || null,
         address: document.getElementById('kyc_address').value.trim() || null,
         branch_id: branchId

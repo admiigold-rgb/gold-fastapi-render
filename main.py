@@ -76,7 +76,7 @@ def search_customer(query: str = Query(..., min_length=1, description="மொப
         clean_query = query.strip()
         if clean_query.isdigit():
             res = (
-                supabase.table("customers")
+                supabase.table("test_customers")
                 .select("id, customer_code, name, mobile, mobile2, guardian_name, address, branch_id, kyc_status, is_active")
                 .ilike("mobile", f"%{clean_query}%")
                 .limit(10)
@@ -84,7 +84,7 @@ def search_customer(query: str = Query(..., min_length=1, description="மொப
             )
         else:
             res = (
-                supabase.table("customers")
+                supabase.table("test_customers")
                 .select("id, customer_code, name, mobile, mobile2, guardian_name, address, branch_id, kyc_status, is_active")
                 .ilike("name", f"%{clean_query}%")
                 .limit(10)
@@ -100,14 +100,14 @@ def search_customer(query: str = Query(..., min_length=1, description="மொப
 def create_kyc(data: NewCustomerKYC):
     """
     2. புதிய வாடிக்கையாளர் KYC பதிவு:
-       'customers' அட்டவணையில் புதிய பதிவைச் சேர்க்கும்.
+       'test_customers' அட்டவணையில் புதிய பதிவைச் சேர்க்கும்.
     """
     try:
         clean_mobile = data.mobile.strip()
         
         # ஏற்கனவே இந்த மொபைல் எண் உள்ளதா எனச் சரிபார்த்தல்
         existing = (
-            supabase.table("customers")
+            supabase.table("test_customers")
             .select("id, name")
             .eq("mobile", clean_mobile)
             .execute()
@@ -130,7 +130,7 @@ def create_kyc(data: NewCustomerKYC):
             "is_active": True
         }
 
-        res = supabase.table("customers").insert(record).execute()
+        res = supabase.table("test_customers").insert(record).execute()
 
         return {
             "status": "success",

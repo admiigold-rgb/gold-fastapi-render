@@ -46,7 +46,7 @@ def health_check():
 @app.post("/api/packet/add")
 def add_packet(data: PacketRecord):
     try:
-        # Supabase-ல் உள்ள 'packets' அல்லது 'test_packets' டேபிளில் சேர்த்தல்
+        # test_packets அட்டவணையின் காலம்களுக்கு ஏற்றவாறு அமைத்தல்
         record = {
             "packet_id": data.packet_id,
             "customer_name": data.customer_name,
@@ -56,7 +56,8 @@ def add_packet(data: PacketRecord):
             "branch": data.branch_name
         }
         
-        response = supabase.table("packets").insert(record).execute()
+        # முக்கிய மாற்றம்: இங்கே "test_packets" என்று சரியாக இருக்க வேண்டும்
+        response = supabase.table("test_packets").insert(record).execute()
         
         return {
             "status": "success",

@@ -3,69 +3,186 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>வாடிக்கையாளர் வருகை & KYC மேலாண்மை (சோதனை முறை)</title>
+  <title>கிளைப் பரிவர்த்தனைகள் & கார்ட் மேலாண்மை</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 md:p-6 text-slate-800">
-  <div class="max-w-4xl mx-auto space-y-6">
+<body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800">
+  <div class="max-w-5xl mx-auto space-y-5">
 
-    <!-- தலைப்பு & கிளை தேர்வு -->
-    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <!-- Header -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
       <div class="flex items-center space-x-3">
-        <span class="text-3xl">🧪</span>
+        <span class="text-3xl">⚖️</span>
         <div>
-          <h1 class="text-lg font-bold text-slate-800">வாடிக்கையாளர் வரவேற்பு (பாதுகாப்பான சோதனை தளம்)</h1>
-          <p class="text-xs text-amber-600 font-medium">அசல் தரவுத்தளம் துண்டிக்கப்பட்டுள்ளது; சோதனை முறையில் இயங்குகிறது</p>
+          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளைக் கவுண்ட்டர் & கார்ட் மேலாண்மை</h1>
+          <p class="text-xs text-amber-600 font-semibold">சோதனை தளம் (Sandbox Mode)</p>
         </div>
       </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-500 mb-1">கிளை ஐடி (Branch ID)</label>
-        <input type="number" id="active_branch_id" value="1" class="w-24 px-3 py-1.5 border rounded-lg text-sm font-medium bg-amber-50 text-amber-900 border-amber-200">
+      <div class="flex items-center space-x-2">
+        <span class="text-xs text-slate-500 font-medium">கிளை ஐடி:</span>
+        <input type="number" id="active_branch_id" value="1" class="w-16 px-2 py-1 border rounded text-xs font-bold bg-amber-50 text-amber-900 border-amber-300">
       </div>
     </div>
 
-    <!-- தேடல் பகுதி -->
-    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-      <div class="flex flex-col sm:flex-row gap-3">
-        <div class="relative flex-1">
-          <input type="text" id="searchInput" placeholder="சோதனை மொபைல் எண் அல்லது பெயரை உள்ளிடவும் (எ.கா: 9876543210 அல்லது டெஸ்ட்)..." class="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
-          <span class="absolute left-3 top-3.5 text-slate-400">🔍</span>
-        </div>
-        <button onclick="handleSearch()" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-3 rounded-xl text-sm font-medium transition">தேடு</button>
-        <button onclick="openNewKycModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-5 py-3 rounded-xl text-sm font-medium transition">+ புதிய வாடிக்கையாளர் (KYC)</button>
+    <!-- நிலை 1: வாடிக்கையாளர் தேடல் பகுதி -->
+    <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+      <div class="flex flex-col sm:flex-row gap-2">
+        <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+        <button onclick="handleSearch()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold">தேடு</button>
+        <button onclick="openNewKycModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold">+ புதிய KYC</button>
       </div>
-
-      <!-- தேடல் முடிவுகள் -->
-      <div id="searchResults" class="mt-4 space-y-2 hidden"></div>
+      <div id="searchResults" class="space-y-2 hidden"></div>
     </div>
 
-    <!-- வாடிக்கையாளர் விபர அட்டை -->
-    <div id="customerCard" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hidden space-y-5">
-      <div class="flex justify-between items-start border-b pb-4">
+    <!-- நிலை 2: தேர்வு செய்யப்பட்ட வாடிக்கையாளர் & கார்ட் பகுதி -->
+    <div id="activeCustomerSection" class="hidden space-y-4">
+
+      <!-- வாடிக்கையாளர் சுருக்க அட்டை -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
         <div>
-          <h2 class="text-lg font-bold text-slate-800" id="cardName">-</h2>
-          <p class="text-xs text-slate-500">மொபைல்: <span id="cardMobile" class="font-medium text-slate-700">-</span> | ID: <span id="cardId">-</span> | முகவரி: <span id="cardAddress">-</span></p>
+          <span class="text-xs text-slate-400 font-semibold uppercase">நடப்பு வாடிக்கையாளர்</span>
+          <h2 class="text-base font-bold text-slate-800" id="cardName">-</h2>
+          <p class="text-xs text-slate-500">மொபைல்: <span id="cardMobile" class="font-semibold text-slate-700">-</span> | ID: <span id="cardId">-</span></p>
         </div>
-        <span id="cardStatus" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">சோதனை நிலை</span>
+        <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg">வேறு வாடிக்கையாளர்</button>
       </div>
 
-      <!-- விபர சரிபார்ப்பு கேள்வி -->
-      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-        <p class="text-sm font-medium text-amber-900">வாடிக்கையாளர் தகவல்களில் ஏதேனும் மாற்றம் உள்ளதா?</p>
-        <div class="flex gap-2">
-          <button onclick="showUpdateForm()" class="px-4 py-2 bg-white border border-amber-300 rounded-lg text-xs font-semibold text-amber-800 hover:bg-amber-100">ஆம், மாற்றம் உள்ளது</button>
-          <button onclick="proceedToTransactions()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg text-xs font-semibold text-white">மாற்றம் இல்லை (வருகைப் பதிவு செய்)</button>
-        </div>
-      </div>
+      <!-- பிரதான பணித்தளம்: கார்ட் & புதிய அடகுப் படிவம் -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-      <!-- விபர மாற்றப் படிவம் -->
-      <div id="updateFormSection" class="hidden border-t pt-4 space-y-3">
-        <h3 class="text-xs font-bold text-slate-700 uppercase">புதிய விபரங்களை உள்ளிடவும்</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input type="text" id="upd_mobile" placeholder="புதிய மொபைல் எண்" class="border p-2 rounded text-xs">
-          <input type="text" id="upd_address" placeholder="புதிய முகவரி" class="border p-2 rounded text-xs">
+        <!-- இடதுபுறம்: புதிய நகைக்கடன் அடகுப் படிவம் (2 Columns) -->
+        <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+          <div class="border-b pb-2 flex justify-between items-center">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              <span>🪙</span> புதிய நகைக்கடன் அடகு (New Loan Entry)
+            </h3>
+            <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">படிவம்</span>
+          </div>
+
+          <!-- கடன் தலைப்பு விபரங்கள் -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">நகைக்கடன் எண் *</label>
+              <input type="text" id="loan_no" placeholder="GL-2026-001" class="w-full border p-2 rounded-lg text-xs font-medium">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">நகைக்கடன் திட்டம் *</label>
+              <select id="scheme_name" class="w-full border p-2 rounded-lg text-xs bg-white">
+                <option value="Scheme A - 12%">மாதாந்திர திட்டம் (Scheme A - 12%)</option>
+                <option value="Scheme B - 15%">காலாண்டு திட்டம் (Scheme B - 15%)</option>
+                <option value="Special Scheme - 18%">சிறப்பு திட்டம் (Special Scheme - 18%)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- நகைகள் விபரங்கள் உள்ளீடு (Item Addition Row) -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <h4 class="text-xs font-bold text-slate-700">நகை விபரங்களைச் சேர்க்கவும்:</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <input type="text" id="item_type" placeholder="வகை (எ.கா: செயின்)" class="border p-1.5 rounded text-xs col-span-2 sm:col-span-1">
+              <input type="number" id="item_count" placeholder="எண்ணிக்கை" min="1" value="1" class="border p-1.5 rounded text-xs">
+              <input type="number" id="item_gross" step="0.001" placeholder="மொத்த எடை" class="border p-1.5 rounded text-xs">
+              <input type="number" id="item_net" step="0.001" placeholder="நிகர எடை" class="border p-1.5 rounded text-xs">
+              <select id="item_purity" class="border p-1.5 rounded text-xs bg-white">
+                <option value="916 KDM">916 KDM</option>
+                <option value="22CT">22CT</option>
+                <option value="18CT">18CT</option>
+                <option value="999">999 தூய தங்கம்</option>
+              </select>
+            </div>
+            <div class="flex justify-end pt-1">
+              <button onclick="addOrnamentToTable()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg font-semibold">+ நகையை பட்டியலில் சேர்</button>
+            </div>
+          </div>
+
+          <!-- நகைகள் பட்டியல் அட்டவணை -->
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-100 text-slate-600 border-b">
+                <tr>
+                  <th class="p-2">வகை</th>
+                  <th class="p-2 text-center">எண்ணிக்கை</th>
+                  <th class="p-2 text-right">மொத்த எடை (g)</th>
+                  <th class="p-2 text-right">நிகர எடை (g)</th>
+                  <th class="p-2 text-center">தரம்</th>
+                  <th class="p-2 text-center">நீக்கு</th>
+                </tr>
+              </thead>
+              <tbody id="ornamentsTableBody" class="divide-y text-slate-700">
+                <tr id="emptyRow"><td colspan="6" class="p-3 text-center text-slate-400">நகைகள் இன்னும் சேர்க்கப்படவில்லை</td></tr>
+              </tbody>
+              <tfoot class="bg-slate-50 font-bold border-t">
+                <tr>
+                  <td class="p-2">மொத்தம்</td>
+                  <td class="p-2 text-center" id="sumCount">0</td>
+                  <td class="p-2 text-right" id="sumGross">0.000</td>
+                  <td class="p-2 text-right" id="sumNet">0.000</td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <!-- கடன் தொகை & கட்டணங்கள் -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">கடன் தொகை (₹) * [நாம் தர வேண்டியது (-)]</label>
+              <input type="number" id="loan_amount" oninput="calculateNetPayable()" placeholder="50000" class="w-full border p-2 rounded-lg text-xs font-bold text-rose-600">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">கட்டணங்கள் (₹) [வாடிக்கையாளர் தர வேண்டியது (+)]</label>
+              <input type="number" id="charges_amount" oninput="calculateNetPayable()" value="0" class="w-full border p-2 rounded-lg text-xs font-bold text-emerald-600">
+            </div>
+          </div>
+
+          <!-- படம் & கார்ட்டில் சேர்க்கும் பொத்தான் -->
+          <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+            <div class="w-full sm:w-auto">
+              <label class="block text-xs text-slate-500 mb-1">நகையின் படம் (Camera / File)</label>
+              <input type="file" accept="image/*" capture="environment" id="loan_photo" class="text-xs text-slate-500">
+            </div>
+            <button onclick="submitPawnToDatabase()" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition">
+              கூடையில் சேர் (Add to Cart)
+            </button>
+          </div>
         </div>
-        <button onclick="submitUpdateReq()" class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded text-xs font-medium">ஒப்புதலுக்கு அனுப்பு</button>
+
+        <!-- வலதுபுறம்: கார்ட் & இறுதி கணக்கீடு சுருக்கம் (1 Column) -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="border-b pb-2 flex justify-between items-center">
+              <h3 class="text-sm font-bold text-slate-800">🛒 பரிவர்த்தனை கூடை (Cart)</h3>
+              <span id="cartCountBadge" class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">0 உருப்படிகள்</span>
+            </div>
+
+            <!-- கார்ட் உருப்படிகள் பட்டியல் -->
+            <div id="cartItemsList" class="mt-3 space-y-2 max-h-60 overflow-y-auto">
+              <p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>
+            </div>
+          </div>
+
+          <!-- நிகர கணக்கீட்டு சுருக்கம் -->
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex justify-between text-xs text-slate-600">
+              <span>வாடிக்கையாளர் தர வேண்டியது (+):</span>
+              <span class="font-bold text-emerald-600" id="cartCredit">₹ 0.00</span>
+            </div>
+            <div class="flex justify-between text-xs text-slate-600">
+              <span>நாம் கொடுக்க வேண்டியது (-):</span>
+              <span class="font-bold text-rose-600" id="cartDebit">₹ 0.00</span>
+            </div>
+            <div class="border-t pt-2 flex justify-between text-sm font-extrabold text-slate-800">
+              <span>நிகர தீர்வு (Net Payable):</span>
+              <span id="cartNetTotal">₹ 0.00</span>
+            </div>
+            <p class="text-[10px] text-slate-500 text-right" id="cartStatusText">-</p>
+
+            <button onclick="alert('அடுத்த கட்டம்: டினாமினேசன் & OTP உறுதிப்படுத்தல் திரை விரைவில்!')" class="w-full mt-2 bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 rounded-xl transition">
+              பணம் செலுத்துதல் / நிறைவு (Checkout)
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -74,15 +191,14 @@
       <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
         <h3 class="text-base font-bold text-slate-800">புதிய சோதனை வாடிக்கையாளர் KYC</h3>
         <div class="space-y-3">
-          <input type="text" id="kyc_name" placeholder="பெயர் *" class="w-full border p-2.5 rounded-lg text-xs">
-          <input type="tel" id="kyc_mobile" placeholder="மொபைல் எண் *" class="w-full border p-2.5 rounded-lg text-xs">
-          <input type="tel" id="kyc_mobile2" placeholder="இரண்டாவது மொபைல் எண்" class="w-full border p-2.5 rounded-lg text-xs">
-          <input type="text" id="kyc_guardian" placeholder="தந்தை / கணவர் பெயர்" class="w-full border p-2.5 rounded-lg text-xs">
-          <textarea id="kyc_address" placeholder="முழு முகவரி" class="w-full border p-2.5 rounded-lg text-xs" rows="2"></textarea>
+          <input type="text" id="kyc_name" placeholder="பெயர் *" class="w-full border p-2 rounded-lg text-xs">
+          <input type="tel" id="kyc_mobile" placeholder="மொபைல் எண் *" class="w-full border p-2 rounded-lg text-xs">
+          <input type="text" id="kyc_guardian" placeholder="தந்தை / கணவர் பெயர்" class="w-full border p-2 rounded-lg text-xs">
+          <textarea id="kyc_address" placeholder="முழு முகவரி" class="w-full border p-2 rounded-lg text-xs" rows="2"></textarea>
         </div>
         <div class="flex justify-end gap-2 pt-2">
-          <button onclick="closeNewKycModal()" class="px-4 py-2 border rounded-lg text-xs font-medium">ரத்து</button>
-          <button onclick="submitNewKyc()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium">சேமி</button>
+          <button onclick="closeNewKycModal()" class="px-4 py-2 border rounded-lg text-xs">ரத்து</button>
+          <button onclick="submitNewKyc()" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-bold">சேமி</button>
         </div>
       </div>
     </div>
@@ -91,39 +207,31 @@
 
   <script>
     let activeCustomer = null;
+    let ornamentList = [];
+    let cartItems = [];
 
+    // தேடல்
     async function handleSearch() {
       const q = document.getElementById('searchInput').value.trim();
       if (!q) return;
 
-      try {
-        const res = await fetch(`/api/customer/search?query=${encodeURIComponent(q)}`);
-        const result = await res.json();
-        const container = document.getElementById('searchResults');
-        container.innerHTML = '';
+      const res = await fetch(`/api/customer/search?query=${encodeURIComponent(q)}`);
+      const result = await res.json();
+      const container = document.getElementById('searchResults');
+      container.innerHTML = '';
 
-        if (!result.data || result.data.length === 0) {
-          container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">சோதனைத் தரவு கிடைக்கவில்லை. '+ புதிய வாடிக்கையாளர்' மூலம் உருவாக்கவும்.</div>`;
-        } else {
-          result.data.forEach(cust => {
-            const div = document.createElement('div');
-            div.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center hover:bg-amber-50 cursor-pointer transition";
-            // cust.mobile மூலம் undefined சிக்கல் நீக்கப்பட்டது
-            div.innerHTML = `
-              <div>
-                <div class="font-bold text-sm text-slate-800">${cust.name}</div>
-                <div class="text-xs text-slate-500">மொபைல்: ${cust.mobile} | கிளை ஐடி: ${cust.branch_id || '-'}</div>
-              </div>
-              <button class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-medium">தேர்ந்தெடு</button>
-            `;
-            div.onclick = () => selectCustomer(cust);
-            container.appendChild(div);
-          });
-        }
-        container.classList.remove('hidden');
-      } catch (err) {
-        alert("தேடலில் பிழை: " + err.message);
+      if (!result.data || result.data.length === 0) {
+        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">வாடிக்கையாளர் இல்லை. '+ புதிய KYC' மூலம் பதிவு செய்யவும்.</div>`;
+      } else {
+        result.data.forEach(cust => {
+          const div = document.createElement('div');
+          div.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center hover:bg-amber-50 cursor-pointer";
+          div.innerHTML = `<div><div class="font-bold text-sm text-slate-800">${cust.name}</div><div class="text-xs text-slate-500">மொபைல்: ${cust.mobile}</div></div><button class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold">தேர்ந்தெடு</button>`;
+          div.onclick = () => selectCustomer(cust);
+          container.appendChild(div);
+        });
       }
+      container.classList.remove('hidden');
     }
 
     function selectCustomer(cust) {
@@ -131,29 +239,151 @@
       document.getElementById('cardName').innerText = cust.name;
       document.getElementById('cardMobile').innerText = cust.mobile;
       document.getElementById('cardId').innerText = cust.id;
-      document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
-      document.getElementById('searchResults').classList.add('hidden');
-      document.getElementById('customerCard').classList.remove('hidden');
-      document.getElementById('updateFormSection').classList.add('hidden');
-    }
+      document.getElementById('searchSection').classList.add('hidden');
+      document.getElementById('activeCustomerSection').classList.remove('hidden');
 
-    function showUpdateForm() {
-      document.getElementById('updateFormSection').classList.remove('hidden');
-    }
-
-    async function proceedToTransactions() {
-      if (!activeCustomer) return;
+      // வருகைப் பதிவு செய்தல்
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      
+      fetch('/api/customer/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: cust.id, branch_id: branchId })
+      });
+    }
+
+    function resetCustomer() {
+      activeCustomer = null;
+      ornamentList = [];
+      cartItems = [];
+      renderOrnamentsTable();
+      renderCart();
+      document.getElementById('activeCustomerSection').classList.add('hidden');
+      document.getElementById('searchSection').classList.remove('hidden');
+    }
+
+    // நகைப் பட்டியல் சேர்த்தல்
+    function addOrnamentToTable() {
+      const type = document.getElementById('item_type').value.trim();
+      const count = parseInt(document.getElementById('item_count').value) || 1;
+      const gross = parseFloat(document.getElementById('item_gross').value) || 0;
+      const net = parseFloat(document.getElementById('item_net').value) || 0;
+      const purity = document.getElementById('item_purity').value;
+
+      if (!type || gross <= 0 || net <= 0) {
+        alert("நகை வகை, மொத்த எடை மற்றும் நிகர எடையைச் சரியாக உள்ளிடவும்.");
+        return;
+      }
+
+      ornamentList.push({ item_type: type, item_count: count, gross_weight: gross, net_weight: net, purity: purity });
+      renderOrnamentsTable();
+
+      // உள்ளீட்டுப் பெட்டிகளை மீட்டமைத்தல்
+      document.getElementById('item_type').value = '';
+      document.getElementById('item_count').value = '1';
+      document.getElementById('item_gross').value = '';
+      document.getElementById('item_net').value = '';
+    }
+
+    function removeOrnament(index) {
+      ornamentList.splice(index, 1);
+      renderOrnamentsTable();
+    }
+
+    function renderOrnamentsTable() {
+      const tbody = document.getElementById('ornamentsTableBody');
+      tbody.innerHTML = '';
+
+      if (ornamentList.length === 0) {
+        tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-3 text-center text-slate-400">நகைகள் இன்னும் சேர்க்கப்படவில்லை</td></tr>`;
+        document.getElementById('sumCount').innerText = '0';
+        document.getElementById('sumGross').innerText = '0.000';
+        document.getElementById('sumNet').innerText = '0.000';
+        return;
+      }
+
+      let totCount = 0, totGross = 0, totNet = 0;
+      ornamentList.forEach((item, idx) => {
+        totCount += item.item_count;
+        totGross += item.gross_weight;
+        totNet += item.net_weight;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2 font-medium">${item.item_type}</td>
+          <td class="p-2 text-center">${item.item_count}</td>
+          <td class="p-2 text-right">${item.gross_weight.toFixed(3)}</td>
+          <td class="p-2 text-right">${item.net_weight.toFixed(3)}</td>
+          <td class="p-2 text-center">${item.purity}</td>
+          <td class="p-2 text-center"><button onclick="removeOrnament(${idx})" class="text-rose-500 font-bold">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('sumCount').innerText = totCount;
+      document.getElementById('sumGross').innerText = totGross.toFixed(3);
+      document.getElementById('sumNet').innerText = totNet.toFixed(3);
+    }
+
+    function calculateNetPayable() {
+      const loan = parseFloat(document.getElementById('loan_amount').value) || 0;
+      const chg = parseFloat(document.getElementById('charges_amount').value) || 0;
+      return loan - chg;
+    }
+
+    // அடகுப் பதிவை கார்ட்டில் மற்றும் டேட்டாபேஸில் சேர்த்தல்
+    async function submitPawnToDatabase() {
+      if (!activeCustomer) return;
+      const loanNo = document.getElementById('loan_no').value.trim();
+      const scheme = document.getElementById('scheme_name').value;
+      const loanAmt = parseFloat(document.getElementById('loan_amount').value) || 0;
+      const chgAmt = parseFloat(document.getElementById('charges_amount').value) || 0;
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+
+      if (!loanNo || loanAmt <= 0) {
+        alert("நகைக்கடன் எண் மற்றும் கடன் தொகையை உள்ளிடவும்.");
+        return;
+      }
+      if (ornamentList.length === 0) {
+        alert("குறைந்தது ஒரு நகையாவது பட்டியலில் இருக்க வேண்டும்.");
+        return;
+      }
+
+      const payload = {
+        customer_id: activeCustomer.id,
+        branch_id: branchId,
+        loan_no: loanNo,
+        scheme_name: scheme,
+        loan_amount: loanAmt,
+        charges_amount: chgAmt,
+        photo_url: null,
+        items: ornamentList
+      };
+
       try {
-        const res = await fetch('/api/customer/visit', {
+        const res = await fetch('/api/loan/new-pawn', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer_id: activeCustomer.id, branch_id: branchId })
+          body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (res.ok) {
-          alert("✅ " + data.message + " (சோதனை வருகை ID: " + (data.data[0]?.id || '') + ")");
+          // கார்ட்டில் சேர்த்தல்
+          cartItems.push({
+            title: `புதிய அடகு (${loanNo})`,
+            details: `${ornamentList.length} நகைகள் | நிகர எடை: ${document.getElementById('sumNet').innerText}g`,
+            debit: loanAmt,   // நாம் கொடுப்பது
+            credit: chgAmt    // வாடிக்கையாளர் தருவது
+          });
+
+          renderCart();
+          alert("✅ " + data.message);
+
+          // படிவத்தை காலி செய்தல்
+          document.getElementById('loan_no').value = '';
+          document.getElementById('loan_amount').value = '';
+          document.getElementById('charges_amount').value = '0';
+          ornamentList = [];
+          renderOrnamentsTable();
         } else {
           alert("❌ பிழை: " + data.detail);
         }
@@ -162,33 +392,59 @@
       }
     }
 
-    async function submitUpdateReq() {
-      if (!activeCustomer) return;
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      const newMobile = document.getElementById('upd_mobile').value.trim();
-      const newAddress = document.getElementById('upd_address').value.trim();
+    // கார்ட் ரெண்டரிங் & நிகர கணக்கீடு
+    function renderCart() {
+      const container = document.getElementById('cartItemsList');
+      container.innerHTML = '';
 
-      const payload = {
-        customer_id: activeCustomer.id,
-        branch_id: branchId,
-        requested_changes: { mobile: newMobile, address: newAddress }
-      };
+      if (cartItems.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>`;
+        document.getElementById('cartCredit').innerText = '₹ 0.00';
+        document.getElementById('cartDebit').innerText = '₹ 0.00';
+        document.getElementById('cartNetTotal').innerText = '₹ 0.00';
+        document.getElementById('cartStatusText').innerText = '-';
+        document.getElementById('cartCountBadge').innerText = '0 உருப்படிகள்';
+        return;
+      }
 
-      try {
-        const res = await fetch('/api/customer/request-update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          alert("✅ " + data.message);
-          document.getElementById('updateFormSection').classList.add('hidden');
-        } else {
-          alert("❌ பிழை: " + data.detail);
-        }
-      } catch (err) {
-        alert("பிழை: " + err.message);
+      let totCredit = 0, totDebit = 0;
+      cartItems.forEach((item, i) => {
+        totCredit += item.credit;
+        totDebit += item.debit;
+
+        const div = document.createElement('div');
+        div.className = "p-2.5 bg-slate-50 border rounded-lg text-xs space-y-1";
+        div.innerHTML = `
+          <div class="font-bold text-slate-800">${item.title}</div>
+          <div class="text-[11px] text-slate-500">${item.details}</div>
+          <div class="flex justify-between pt-1 font-semibold">
+            <span class="text-rose-600">கடன்: -₹${item.debit.toFixed(2)}</span>
+            <span class="text-emerald-600">கட்டணம்: +₹${item.credit.toFixed(2)}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      document.getElementById('cartCountBadge').innerText = `${cartItems.length} உருப்படிகள்`;
+      document.getElementById('cartCredit').innerText = `₹ ${totCredit.toFixed(2)}`;
+      document.getElementById('cartDebit').innerText = `₹ ${totDebit.toFixed(2)}`;
+
+      const net = totDebit - totCredit;
+      const netElem = document.getElementById('cartNetTotal');
+      const statusElem = document.getElementById('cartStatusText');
+
+      if (net > 0) {
+        netElem.innerText = `₹ ${net.toFixed(2)}`;
+        netElem.className = "text-sm font-extrabold text-rose-600";
+        statusElem.innerText = "(நிறுவனம் வாடிக்கையாளருக்கு வழங்க வேண்டிய நிகர தொகை)";
+      } else if (net < 0) {
+        netElem.innerText = `₹ ${Math.abs(net).toFixed(2)}`;
+        netElem.className = "text-sm font-extrabold text-emerald-600";
+        statusElem.innerText = "(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய நிகர தொகை)";
+      } else {
+        netElem.innerText = "₹ 0.00";
+        netElem.className = "text-sm font-extrabold text-slate-800";
+        statusElem.innerText = "(பரிவர்த்தனை சரிசமமாக உள்ளது)";
       }
     }
 
@@ -200,7 +456,6 @@
       const payload = {
         name: document.getElementById('kyc_name').value.trim(),
         mobile: document.getElementById('kyc_mobile').value.trim(),
-        mobile2: document.getElementById('kyc_mobile2').value.trim() || null,
         guardian_name: document.getElementById('kyc_guardian').value.trim() || null,
         address: document.getElementById('kyc_address').value.trim() || null,
         branch_id: branchId
@@ -211,23 +466,19 @@
         return;
       }
 
-      try {
-        const res = await fetch('/api/customer/new-kyc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          alert("✅ " + data.message);
-          closeNewKycModal();
-          document.getElementById('searchInput').value = payload.mobile;
-          handleSearch();
-        } else {
-          alert("❌ பிழை: " + (data.detail || "பதிவு தோல்வியடைந்தது"));
-        }
-      } catch (err) {
-        alert("பிழை: " + err.message);
+      const res = await fetch('/api/customer/new-kyc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        closeNewKycModal();
+        document.getElementById('searchInput').value = payload.mobile;
+        handleSearch();
+      } else {
+        alert("❌ பிழை: " + (data.detail || "பதிவு தோல்வியடைந்தது"));
       }
     }
   </script>

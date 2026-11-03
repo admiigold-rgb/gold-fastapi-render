@@ -9,9 +9,11 @@ from database import supabase
 
 app = FastAPI(
     title="Gold Branch Management - Safe Test Environment",
-    version="1.1.0"
+    version="1.2.0",
+    description="Branch Customer Visit, Gold Loan Cart, Split Settlement & Denomination System"
 )
 
+# CORS அனுமதி
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,51 +22,85 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static கோப்புறை இணைப்பு (Frontend UI)
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Schemas
+
+# --- Pydantic Data Models ---
+
 class NewCustomerKYC(BaseModel):
-    name: str = Field(...)
-    mobile: str = Field(...)
-    mobile2: Optional[str] = None
-    guardian_name: Optional[str] = None
-    address: Optional[str] = None
-    branch_id: int = 1
+    name: str = Field(..., description="வாடிக்கையாளர் பெயர்")
+    mobile: str = Field(..., description="முதன்மை மொபைல் எண்")
+    mobile2: Optional[str] = Field(None, description="இரண்டாவது மொபைல் எண்")
+    guardian_name: Optional[str] = Field(None, description="தந்தை / கணவர் பெயர்")
+    address: Optional[str] = Field(None, description="முழு முகவரி")
+    branch_id: int = Field(default=1, description="கிளை அடையாள எண்")
 
 class CustomerVisitEntry(BaseModel):
-    customer_id: int
-    branch_id: int = 1
-    purpose: Optional[str] = "REGULAR_TRANSACTION"
+    customer_id: int = Field(..., description="வாடிக்கையாளர் ஐடி")
+    branch_id: int = Field(default=1, description="கிளை ஐடி")
+    purpose: Optional[str] = Field(default="REGULAR_TRANSACTION", description="வருகையின் நோக்கம்")
+
+class CustomerUpdateRequest(BaseModel):
+    customer_id: int = Field(..., description="வாடிக்கையாளர் ஐடி")
+    branch_id: int = Field(default=1, description="கிளை ஐடி")
+    requested_changes: Dict[str, Any] = Field(..., description="மாற்றப்பட வேண்டிய விபரங்கள்")
 
 class OrnamentItem(BaseModel):
-    item_type: str
-    item_count: int
-    gross_weight: float
-    net_weight: float
-    purity: str
+    item_type: str = Field(..., description="நகை வகை (செயின், வளையல்)")
+    item_count: int = Field(..., description="எண்ணிக்கை")
+    gross_weight: float = Field(..., description="மொத்த எடை")
+    net_weight: float = Field(..., description="நிகர எடை")
+    purity: str = Field(..., description="தரம் (916 KDM, 22CT)")
 
 class NewGoldLoanEntry(BaseModel):
-    customer_id: int
-    branch_id: int = 1
-    loan_no: str
-    scheme_name: str
-    loan_amount: float
-    charges_amount: float = 0.0
+    customer_id: int = Field(..., description="வாடிக்கையாளர் ஐடி")
+    branch_id: int = Field(default=1, description="கிளை ஐடி")
+    loan_no: str = Field(..., description="நகைக்கடன் எண்")
+    scheme_name: str = Field(..., description="திட்டத்தின் பெயர்")
+    loan_amount: float = Field(..., description="கடன் தொகை (நாம் கொடுப்பது)")
+    charges_amount: float = Field(default=0.0, description="கட்டணங்கள் (நாம் வாங்குவது)")
     photo_url: Optional[str] = None
-    items: List[OrnamentItem]
+    items: List[OrnamentItem] = Field(..., description="நகைகளின் பட்டியல்")
+
+class DenominationCounts(BaseModel):
+    c_500: int = 0
+    c_200: int = 0
+    c_100: int = 0
+    c_50: int = 0
+    c_20: int = 0
+    c_10: int = 0
+    c_coins: int = 0
+
+class FinalSettlementPayload(BaseModel):
+    customer_id: int = Field(..., description="வாடிக்கையாளர் ஐடி")
+    branch_id: int = Field(default=1, description="கிளை ஐடி")
+    net_amount: float = Field(..., description="இறுதி நிகர தொகை")
+    direction: str = Field(..., description="COMPANY_PAYABLE அல்லது CUSTOMER_PAYABLE")
+    settlement_type: str = Field(..., description="FULL_CASH / FULL_BANK / SPLIT")
+    cash_amount: float = Field(default=0.0, description="ரொக்கத் தொகை")
+    bank_amount: float = Field(default=0.0, description="வங்கித் தொகை")
+    bank_ref_no: Optional[str] = Field(None, description="UTR / குறிப்பு எண்")
+    bank_name: Optional[str] = Field(None, description="வங்கிப் பெயர்")
+    denominations: Optional[DenominationCounts] = None
+
+
+# --- Endpoints ---
 
 @app.get("/")
 def serve_ui():
+    """முகப்புத் திரை"""
     if os.path.exists("static/index.html"):
         return FileResponse("static/index.html")
-    return {"message": "FastAPI சர்வர் இயங்குகிறது."}
+    return {"message": "FastAPI சோதனை சர்வர் இயங்குகிறது. static/index.html கோப்பு இணைக்கப்படவில்லை."}
 
 @app.get("/health")
 def health_check():
+    """UptimeRobot கண்காணிப்புக்கான ஹெல்த் செக்"""
     return {"status": "active", "service": "Gold Branch API"}
 
-# வாடிக்கையாளர் தேடல்
+# 1. வாடிக்கையாளர் தேடல் (test_customers)
 @app.get("/api/customer/search")
 def search_customer(query: str = Query(..., min_length=1)):
     try:
@@ -89,7 +125,7 @@ def search_customer(query: str = Query(..., min_length=1)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தேடல் பிழை: {str(e)}")
 
-# வருகைப் பதிவு
+# 2. வருகைப் பதிவு (test_customer_visits)
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     try:
@@ -99,18 +135,26 @@ def log_customer_visit(data: CustomerVisitEntry):
             "purpose": data.purpose
         }
         res = supabase.table("test_customer_visits").insert(record).execute()
-        return {"status": "success", "message": "வருகை பதிவானது", "data": res.data}
+        return {"status": "success", "message": "வருகை வெற்றிகரமாகப் பதிவானது", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"வருகைப் பதிவு பிழை: {str(e)}")
 
-# புதிய KYC பதிவு
+# 3. புதிய வாடிக்கையாளர் KYC பதிவு (test_customers)
 @app.post("/api/customer/new-kyc")
 def create_kyc(data: NewCustomerKYC):
     try:
         clean_mobile = data.mobile.strip()
-        existing = supabase.table("test_customers").select("id, name").eq("mobile", clean_mobile).execute()
+        existing = (
+            supabase.table("test_customers")
+            .select("id, name")
+            .eq("mobile", clean_mobile)
+            .execute()
+        )
         if existing.data:
-            raise HTTPException(status_code=400, detail=f"இந்த மொபைல் எண் ஏற்கனவே உள்ளது ({existing.data[0]['name']}).")
+            raise HTTPException(
+                status_code=400,
+                detail=f"இந்த மொபைல் எண் ஏற்கனவே சோதனைப் பதிவில் உள்ளது ({existing.data[0]['name']})."
+            )
 
         record = {
             "name": data.name.strip(),
@@ -123,13 +167,28 @@ def create_kyc(data: NewCustomerKYC):
             "is_active": True
         }
         res = supabase.table("test_customers").insert(record).execute()
-        return {"status": "success", "message": "KYC வெற்றிகரமாகச் சேமிக்கப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "சோதனை KYC வெற்றிகரமாகச் சேமிக்கப்பட்டது.", "data": res.data}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"KYC பதிவு பிழை: {str(e)}")
 
-# நகைக்கடன் புதிய அடகு பதிவு API
+# 4. விபர மாற்றக் கோரிக்கை (test_customer_update_requests)
+@app.post("/api/customer/request-update")
+def request_customer_update(data: CustomerUpdateRequest):
+    try:
+        record = {
+            "customer_id": data.customer_id,
+            "branch_id": data.branch_id,
+            "requested_changes": data.requested_changes,
+            "status": "PENDING"
+        }
+        res = supabase.table("test_customer_update_requests").insert(record).execute()
+        return {"status": "success", "message": "சோதனை மாற்றக் கோரிக்கை சேமிக்கப்பட்டது.", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"மாற்றக் கோரிக்கை பிழை: {str(e)}")
+
+# 5. புதிய நகைக்கடன் அடகு பதிவு (test_gold_loans & test_gold_loan_items)
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
     try:
@@ -141,7 +200,7 @@ def create_new_pawn(data: NewGoldLoanEntry):
         net_payable = data.loan_amount - data.charges_amount
 
         loan_record = {
-            "loan_no": data.loan_no,
+            "loan_no": data.loan_no.strip(),
             "customer_id": data.customer_id,
             "scheme_name": data.scheme_name,
             "total_gross_weight": round(total_gross, 3),
@@ -160,7 +219,7 @@ def create_new_pawn(data: NewGoldLoanEntry):
         for i in data.items:
             items_payload.append({
                 "loan_id": new_loan_id,
-                "item_type": i.item_type,
+                "item_type": i.item_type.strip(),
                 "item_count": i.item_count,
                 "gross_weight": i.gross_weight,
                 "net_weight": i.net_weight,
@@ -178,32 +237,12 @@ def create_new_pawn(data: NewGoldLoanEntry):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அடகுப் பதிவு பிழை: {str(e)}")
-# Pydantic Schemas for Phase 3
-class DenominationCounts(BaseModel):
-    c_500: int = 0
-    c_200: int = 0
-    c_100: int = 0
-    c_50: int = 0
-    c_20: int = 0
-    c_10: int = 0
-    c_coins: int = 0
 
-class FinalSettlementPayload(BaseModel):
-    customer_id: int
-    branch_id: int = 1
-    net_amount: float
-    direction: str  # COMPANY_PAYABLE / CUSTOMER_PAYABLE
-    settlement_type: str  # FULL_CASH / FULL_BANK / SPLIT
-    cash_amount: float = 0.0
-    bank_amount: float = 0.0
-    bank_ref_no: Optional[str] = None
-    bank_name: Optional[str] = None
-    denominations: Optional[DenominationCounts] = None
-
+# 6. இறுதி செட்டில்மென்ட் & பணப் பகுப்பாய்வு (test_transaction_settlements & test_cash_denominations)
 @app.post("/api/transaction/settle")
 def settle_transaction(data: FinalSettlementPayload):
     try:
-        # 1. ரொக்க சரிபார்ப்பு (Denomination verification)
+        # தாள்கள் கூட்டுத்தொகை சரிபார்ப்பு
         if data.cash_amount > 0 and data.denominations:
             calc_cash = (
                 data.denominations.c_500 * 500 +
@@ -220,7 +259,6 @@ def settle_transaction(data: FinalSettlementPayload):
                     detail=f"தாள்களின் கூட்டுத்தொகை (₹{calc_cash}) ரொக்கத் தொகையுடன் (₹{data.cash_amount}) பொருந்தவில்லை."
                 )
 
-        # 2. செட்டில்மென்ட் சேமித்தல்
         settle_record = {
             "customer_id": data.customer_id,
             "branch_id": data.branch_id,
@@ -235,7 +273,6 @@ def settle_transaction(data: FinalSettlementPayload):
         res_settle = supabase.table("test_transaction_settlements").insert(settle_record).execute()
         new_settle_id = res_settle.data[0]["id"]
 
-        # 3. டினாமினேசன் விவரங்களை சேமித்தல்
         if data.cash_amount > 0 and data.denominations:
             denom_record = {
                 "settlement_id": new_settle_id,
@@ -252,7 +289,7 @@ def settle_transaction(data: FinalSettlementPayload):
 
         return {
             "status": "success",
-            "message": "பணம் & வங்கிப் பகுப்பாய்வு வெற்றிகரமாகச் சேமிக்கப்பட்டது.",
+            "message": "பரிவர்த்தனை தீர்வு மற்றும் பணப் பகுப்பாய்வு வெற்றிகரமாகச் சேமிக்கப்பட்டது.",
             "settlement_id": new_settle_id
         }
     except HTTPException:

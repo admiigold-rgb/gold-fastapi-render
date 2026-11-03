@@ -178,3 +178,84 @@ def create_new_pawn(data: NewGoldLoanEntry):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அடகுப் பதிவு பிழை: {str(e)}")
+# Pydantic Schemas for Phase 3
+class DenominationCounts(BaseModel):
+    c_500: int = 0
+    c_200: int = 0
+    c_100: int = 0
+    c_50: int = 0
+    c_20: int = 0
+    c_10: int = 0
+    c_coins: int = 0
+
+class FinalSettlementPayload(BaseModel):
+    customer_id: int
+    branch_id: int = 1
+    net_amount: float
+    direction: str  # COMPANY_PAYABLE / CUSTOMER_PAYABLE
+    settlement_type: str  # FULL_CASH / FULL_BANK / SPLIT
+    cash_amount: float = 0.0
+    bank_amount: float = 0.0
+    bank_ref_no: Optional[str] = None
+    bank_name: Optional[str] = None
+    denominations: Optional[DenominationCounts] = None
+
+@app.post("/api/transaction/settle")
+def settle_transaction(data: FinalSettlementPayload):
+    try:
+        # 1. ரொக்க சரிபார்ப்பு (Denomination verification)
+        if data.cash_amount > 0 and data.denominations:
+            calc_cash = (
+                data.denominations.c_500 * 500 +
+                data.denominations.c_200 * 200 +
+                data.denominations.c_100 * 100 +
+                data.denominations.c_50 * 50 +
+                data.denominations.c_20 * 20 +
+                data.denominations.c_10 * 10 +
+                data.denominations.c_coins
+            )
+            if round(calc_cash, 2) != round(data.cash_amount, 2):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"தாள்களின் கூட்டுத்தொகை (₹{calc_cash}) ரொக்கத் தொகையுடன் (₹{data.cash_amount}) பொருந்தவில்லை."
+                )
+
+        # 2. செட்டில்மென்ட் சேமித்தல்
+        settle_record = {
+            "customer_id": data.customer_id,
+            "branch_id": data.branch_id,
+            "net_amount": data.net_amount,
+            "settlement_type": data.settlement_type,
+            "cash_amount": data.cash_amount,
+            "bank_amount": data.bank_amount,
+            "bank_ref_no": data.bank_ref_no,
+            "bank_name": data.bank_name,
+            "direction": data.direction
+        }
+        res_settle = supabase.table("test_transaction_settlements").insert(settle_record).execute()
+        new_settle_id = res_settle.data[0]["id"]
+
+        # 3. டினாமினேசன் விவரங்களை சேமித்தல்
+        if data.cash_amount > 0 and data.denominations:
+            denom_record = {
+                "settlement_id": new_settle_id,
+                "c_500": data.denominations.c_500,
+                "c_200": data.denominations.c_200,
+                "c_100": data.denominations.c_100,
+                "c_50": data.denominations.c_50,
+                "c_20": data.denominations.c_20,
+                "c_10": data.denominations.c_10,
+                "c_coins": data.denominations.c_coins,
+                "total_calculated_cash": data.cash_amount
+            }
+            supabase.table("test_cash_denominations").insert(denom_record).execute()
+
+        return {
+            "status": "success",
+            "message": "பணம் & வங்கிப் பகுப்பாய்வு வெற்றிகரமாகச் சேமிக்கப்பட்டது.",
+            "settlement_id": new_settle_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"செட்டில்மென்ட் பிழை: {str(e)}")

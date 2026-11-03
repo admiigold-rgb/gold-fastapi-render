@@ -481,6 +481,78 @@
         alert("❌ பிழை: " + (data.detail || "பதிவு தோல்வியடைந்தது"));
       }
     }
+  <!-- பணம் / வங்கி & டினாமினேசன் Checkout Modal -->
+<div id="checkoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+  <div class="bg-white rounded-2xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex justify-between items-center border-b pb-3">
+      <div>
+        <h3 class="text-base font-bold text-slate-800">பரிவர்த்தனை தீர்வு & பணப் பகுப்பாய்வு</h3>
+        <p class="text-xs text-slate-500" id="modalDirectionSummary">நிகர தொகை: ₹0.00</p>
+      </div>
+      <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+    </div>
+
+    <!-- செலுத்தும் முறை (Full Cash / Full Bank / Split) -->
+    <div class="space-y-2">
+      <label class="block text-xs font-bold text-slate-700">செலுத்தும் முறை தேர்வு:</label>
+      <div class="grid grid-cols-3 gap-2">
+        <button type="button" onclick="setPaymentMode('FULL_CASH')" id="btn_cash" class="py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900">முழு ரொக்கம்</button>
+        <button type="button" onclick="setPaymentMode('FULL_BANK')" id="btn_bank" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">முழு வங்கி</button>
+        <button type="button" onclick="setPaymentMode('SPLIT')" id="btn_split" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">பகுதி பணம் + வங்கி</button>
+      </div>
+    </div>
+
+    <!-- தொகை உள்ளீடுகள் -->
+    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border">
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">ரொக்கத் தொகை (₹)</label>
+        <input type="number" id="pay_cash" oninput="onAmountChanged('cash')" class="w-full border p-2 rounded text-xs font-bold">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">வங்கித் தொகை (₹)</label>
+        <input type="number" id="pay_bank" oninput="onAmountChanged('bank')" class="w-full border p-2 rounded text-xs font-bold">
+      </div>
+    </div>
+
+    <!-- வங்கி விவரம் (வங்கித் தொகை இருந்தால் மட்டும்) -->
+    <div id="bankDetailsSection" class="hidden space-y-2 border-t pt-3">
+      <h4 class="text-xs font-bold text-slate-700">வங்கி பரிவர்த்தனை விபரம்:</h4>
+      <div class="grid grid-cols-2 gap-2">
+        <input type="text" id="bank_ref" placeholder="UTR / Ref No *" class="border p-2 rounded text-xs">
+        <input type="text" id="bank_name" placeholder="வங்கிப் பெயர் (எ.கா: HDFC, SBI)" class="border p-2 rounded text-xs">
+      </div>
+    </div>
+
+    <!-- ரொக்கத் தாள்கள் டினாமினேசன் (ரொக்கத் தொகை இருந்தால் மட்டும்) -->
+    <div id="denomSection" class="space-y-2 border-t pt-3">
+      <div class="flex justify-between items-center">
+        <h4 class="text-xs font-bold text-slate-700">ரூபாய் தாள்கள் டினாமினேசன் (Denomination):</h4>
+        <span id="denomMatchBadge" class="text-[11px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span>
+      </div>
+
+      <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs">
+        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹500:</span><input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹200:</span><input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹100:</span><input type="number" min="0" value="0" id="d100" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹50:</span><input type="number" min="0" value="0" id="d50" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹20:</span><input type="number" min="0" value="0" id="d20" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹10:</span><input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">நாணயம்:</span><input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+      </div>
+      <div class="text-right text-xs text-slate-600 font-semibold pt-1">
+        தாள்கள் மொத்தம்: <span id="denomSumDisplay" class="font-bold text-slate-800">₹ 0.00</span>
+      </div>
+    </div>
+
+    <!-- உறுதி செய்யும் பொத்தான் -->
+    <div class="flex justify-end gap-2 pt-3 border-t">
+      <button onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
+      <button onclick="submitFinalSettlement()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">
+        உறுதி செய்து சேமி (Confirm Settlement)
+      </button>
+    </div>
+  </div>
+</div>
   </script>
 </body>
 </html>

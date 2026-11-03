@@ -167,13 +167,12 @@
     async function submitNewKyc() {
       const payload = {
         name: document.getElementById('kyc_name').value,
-        phone: document.getElementById('kyc_phone').value,
-        aadhaar_no: document.getElementById('kyc_aadhaar').value,
-        pan_no: document.getElementById('kyc_pan').value,
-        address: document.getElementById('kyc_address').value,
-        branch_name: document.getElementById('active_branch').value
+        mobile: document.getElementById('kyc_phone').value, // இங்கே mobile என அனுப்ப வேண்டும்
+        guardian_name: document.getElementById('kyc_aadhaar').value || null, // அல்லது பாதுகாவலர் பெயர்
+        address: document.getElementById('kyc_address').value || null,
+        branch_id: 1 // உங்கள் நடப்பு கிளையின் ஐடி
       };
-
+    
       const res = await fetch('/api/customer/new-kyc', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,10 +180,10 @@
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.message);
+        alert("✅ " + data.message);
         closeNewKycModal();
       } else {
-        alert("பிழை: " + data.detail);
+        alert("❌ பிழை: " + (data.detail || "பதிவு தோல்வியடைந்தது"));
       }
     }
   </script>

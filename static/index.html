@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>கிளைப் பரிவர்த்தனைகள் & கார்ட் மேலாண்மை</title>
+  <title>கிளைப் பரிவர்த்தனைகள் & பணப் பகுப்பாய்வு</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-3 md:p-6 text-slate-800">
@@ -14,7 +14,7 @@
       <div class="flex items-center space-x-3">
         <span class="text-3xl">⚖️</span>
         <div>
-          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளைக் கவுண்ட்டர் & கார்ட் மேலாண்மை</h1>
+          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளைக் கவுண்ட்டர் & பரிவர்த்தனை தீர்வு</h1>
           <p class="text-xs text-amber-600 font-semibold">சோதனை தளம் (Sandbox Mode)</p>
         </div>
       </div>
@@ -27,7 +27,7 @@
     <!-- நிலை 1: வாடிக்கையாளர் தேடல் பகுதி -->
     <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
       <div class="flex flex-col sm:flex-row gap-2">
-        <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+        <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
         <button onclick="handleSearch()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold">தேடு</button>
         <button onclick="openNewKycModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold">+ புதிய KYC</button>
       </div>
@@ -42,9 +42,25 @@
         <div>
           <span class="text-xs text-slate-400 font-semibold uppercase">நடப்பு வாடிக்கையாளர்</span>
           <h2 class="text-base font-bold text-slate-800" id="cardName">-</h2>
-          <p class="text-xs text-slate-500">மொபைல்: <span id="cardMobile" class="font-semibold text-slate-700">-</span> | ID: <span id="cardId">-</span></p>
+          <p class="text-xs text-slate-500">மொபைல்: <span id="cardMobile" class="font-semibold text-slate-700">-</span> | ID: <span id="cardId">-</span> | முகவரி: <span id="cardAddress">-</span></p>
         </div>
-        <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg">வேறு வாடிக்கையாளர்</button>
+        <div class="flex gap-2">
+          <button onclick="showUpdateForm()" class="text-xs text-amber-700 border border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg">விவர மாற்றம்</button>
+          <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg">முடி / மாற்று</button>
+        </div>
+      </div>
+
+      <!-- விபர மாற்றப் படிவம் (தேவைப்பட்டால் மட்டும்) -->
+      <div id="updateFormSection" class="hidden bg-white p-4 rounded-xl border border-amber-200 space-y-3">
+        <h3 class="text-xs font-bold text-amber-900 uppercase">வாடிக்கையாளர் புதிய விபர மாற்றம்:</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input type="text" id="upd_mobile" placeholder="புதிய மொபைல் எண்" class="border p-2 rounded text-xs">
+          <input type="text" id="upd_address" placeholder="புதிய முகவரி" class="border p-2 rounded text-xs">
+        </div>
+        <div class="flex justify-end gap-2">
+          <button onclick="document.getElementById('updateFormSection').classList.add('hidden')" class="px-3 py-1.5 border rounded text-xs">ரத்து</button>
+          <button onclick="submitUpdateReq()" class="bg-amber-600 text-white px-4 py-1.5 rounded text-xs font-bold">ஒப்புதலுக்கு அனுப்பு</button>
+        </div>
       </div>
 
       <!-- பிரதான பணித்தளம்: கார்ட் & புதிய அடகுப் படிவம் -->
@@ -59,7 +75,6 @@
             <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">படிவம்</span>
           </div>
 
-          <!-- கடன் தலைப்பு விபரங்கள் -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">நகைக்கடன் எண் *</label>
@@ -81,8 +96,8 @@
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <input type="text" id="item_type" placeholder="வகை (எ.கா: செயின்)" class="border p-1.5 rounded text-xs col-span-2 sm:col-span-1">
               <input type="number" id="item_count" placeholder="எண்ணிக்கை" min="1" value="1" class="border p-1.5 rounded text-xs">
-              <input type="number" id="item_gross" step="0.001" placeholder="மொத்த எடை" class="border p-1.5 rounded text-xs">
-              <input type="number" id="item_net" step="0.001" placeholder="நிகர எடை" class="border p-1.5 rounded text-xs">
+              <input type="number" id="item_gross" step="0.001" placeholder="மொத்த எடை (g)" class="border p-1.5 rounded text-xs">
+              <input type="number" id="item_net" step="0.001" placeholder="நிகர எடை (g)" class="border p-1.5 rounded text-xs">
               <select id="item_purity" class="border p-1.5 rounded text-xs bg-white">
                 <option value="916 KDM">916 KDM</option>
                 <option value="22CT">22CT</option>
@@ -127,27 +142,23 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">கடன் தொகை (₹) * [நாம் தர வேண்டியது (-)]</label>
-              <input type="number" id="loan_amount" oninput="calculateNetPayable()" placeholder="50000" class="w-full border p-2 rounded-lg text-xs font-bold text-rose-600">
+              <input type="number" id="loan_amount" placeholder="50000" class="w-full border p-2 rounded-lg text-xs font-bold text-rose-600">
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">கட்டணங்கள் (₹) [வாடிக்கையாளர் தர வேண்டியது (+)]</label>
-              <input type="number" id="charges_amount" oninput="calculateNetPayable()" value="0" class="w-full border p-2 rounded-lg text-xs font-bold text-emerald-600">
+              <input type="number" id="charges_amount" value="0" class="w-full border p-2 rounded-lg text-xs font-bold text-emerald-600">
             </div>
           </div>
 
-          <!-- படம் & கார்ட்டில் சேர்க்கும் பொத்தான் -->
-          <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
-            <div class="w-full sm:w-auto">
-              <label class="block text-xs text-slate-500 mb-1">நகையின் படம் (Camera / File)</label>
-              <input type="file" accept="image/*" capture="environment" id="loan_photo" class="text-xs text-slate-500">
-            </div>
-            <button onclick="submitPawnToDatabase()" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition">
+          <!-- கார்ட்டில் சேர்க்கும் பொத்தான் -->
+          <div class="flex justify-end pt-2">
+            <button onclick="submitPawnToDatabase()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition">
               கூடையில் சேர் (Add to Cart)
             </button>
           </div>
         </div>
 
-        <!-- வலதுபுறம்: கார்ட் & இறுதி கணக்கீடு சுருக்கம் (1 Column) -->
+        <!-- வலதுபுறம்: கார்ட் & தீர்வு சுருக்கம் (1 Column) -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
           <div>
             <div class="border-b pb-2 flex justify-between items-center">
@@ -155,7 +166,6 @@
               <span id="cartCountBadge" class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">0 உருப்படிகள்</span>
             </div>
 
-            <!-- கார்ட் உருப்படிகள் பட்டியல் -->
             <div id="cartItemsList" class="mt-3 space-y-2 max-h-60 overflow-y-auto">
               <p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>
             </div>
@@ -172,17 +182,89 @@
               <span class="font-bold text-rose-600" id="cartDebit">₹ 0.00</span>
             </div>
             <div class="border-t pt-2 flex justify-between text-sm font-extrabold text-slate-800">
-              <span>நிகர தீர்வு (Net Payable):</span>
+              <span>நிகர தீர்வு (Net):</span>
               <span id="cartNetTotal">₹ 0.00</span>
             </div>
             <p class="text-[10px] text-slate-500 text-right" id="cartStatusText">-</p>
 
-            <button onclick="alert('அடுத்த கட்டம்: டினாமினேசன் & OTP உறுதிப்படுத்தல் திரை விரைவில்!')" class="w-full mt-2 bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 rounded-xl transition">
+            <button onclick="openCheckoutModal()" class="w-full mt-2 bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 rounded-xl transition">
               பணம் செலுத்துதல் / நிறைவு (Checkout)
             </button>
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- நிலை 3: பணம் / வங்கி & டினாமினேசன் Checkout Pop-up Modal -->
+    <div id="checkoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-2xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b pb-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-800">பரிவர்த்தனை தீர்வு & பணப் பகுப்பாய்வு</h3>
+            <p class="text-xs text-amber-600 font-semibold" id="modalDirectionSummary">நிகர தொகை: ₹0.00</p>
+          </div>
+          <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <!-- செலுத்தும் முறை தேர்வு -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold text-slate-700">செலுத்தும் முறை தேர்வு:</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="setPaymentMode('FULL_CASH')" id="btn_cash" class="py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900">முழு ரொக்கம்</button>
+            <button type="button" onclick="setPaymentMode('FULL_BANK')" id="btn_bank" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">முழு வங்கி</button>
+            <button type="button" onclick="setPaymentMode('SPLIT')" id="btn_split" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">பகுதி பணம் + வங்கி</button>
+          </div>
+        </div>
+
+        <!-- தொகை உள்ளீடுகள் -->
+        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">ரொக்கத் தொகை (₹)</label>
+            <input type="number" id="pay_cash" oninput="onAmountChanged('cash')" class="w-full border p-2 rounded text-xs font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">வங்கித் தொகை (₹)</label>
+            <input type="number" id="pay_bank" oninput="onAmountChanged('bank')" class="w-full border p-2 rounded text-xs font-bold">
+          </div>
+        </div>
+
+        <!-- வங்கி விவரம் -->
+        <div id="bankDetailsSection" class="hidden space-y-2 border-t pt-3">
+          <h4 class="text-xs font-bold text-slate-700">வங்கி பரிவர்த்தனை விபரம்:</h4>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="bank_ref" placeholder="UTR / Ref No *" class="border p-2 rounded text-xs">
+            <input type="text" id="bank_name" placeholder="வங்கிப் பெயர் (எ.கா: HDFC, SBI)" class="border p-2 rounded text-xs">
+          </div>
+        </div>
+
+        <!-- ரூபாய் தாள்கள் டினாமினேசன் -->
+        <div id="denomSection" class="space-y-2 border-t pt-3">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-bold text-slate-700">ரூபாய் தாள்கள் டினாமினேசன் (Denomination):</h4>
+            <span id="denomMatchBadge" class="text-[11px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span>
+          </div>
+
+          <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs">
+            <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹500:</span><input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+            <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹200:</span><input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+            <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹100:</span><input type="number" min="0" value="0" id="d100" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+            <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹50:</span><input type="number" min="0" value="0" id="d50" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+            <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹20:</span><input type="number" min="0" value="0" id="d20" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+            <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹10:</span><input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+            <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">நாணயம்:</span><input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
+          </div>
+          <div class="text-right text-xs text-slate-600 font-semibold pt-1">
+            தாள்கள் மொத்தம்: <span id="denomSumDisplay" class="font-bold text-slate-800">₹ 0.00</span>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
+          <button onclick="submitFinalSettlement()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">
+            உறுதி செய்து சேமி (Confirm Settlement)
+          </button>
+        </div>
       </div>
     </div>
 
@@ -193,6 +275,7 @@
         <div class="space-y-3">
           <input type="text" id="kyc_name" placeholder="பெயர் *" class="w-full border p-2 rounded-lg text-xs">
           <input type="tel" id="kyc_mobile" placeholder="மொபைல் எண் *" class="w-full border p-2 rounded-lg text-xs">
+          <input type="tel" id="kyc_mobile2" placeholder="இரண்டாவது மொபைல் எண்" class="w-full border p-2 rounded-lg text-xs">
           <input type="text" id="kyc_guardian" placeholder="தந்தை / கணவர் பெயர்" class="w-full border p-2 rounded-lg text-xs">
           <textarea id="kyc_address" placeholder="முழு முகவரி" class="w-full border p-2 rounded-lg text-xs" rows="2"></textarea>
         </div>
@@ -209,8 +292,10 @@
     let activeCustomer = null;
     let ornamentList = [];
     let cartItems = [];
+    let currentNetAbs = 0;
+    let currentDirection = "COMPANY_PAYABLE";
+    let selectedMode = "FULL_CASH";
 
-    // தேடல்
     async function handleSearch() {
       const q = document.getElementById('searchInput').value.trim();
       if (!q) return;
@@ -221,12 +306,18 @@
       container.innerHTML = '';
 
       if (!result.data || result.data.length === 0) {
-        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">வாடிக்கையாளர் இல்லை. '+ புதிய KYC' மூலம் பதிவு செய்யவும்.</div>`;
+        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">சோதனைத் தரவு கிடைக்கவில்லை. '+ புதிய KYC' மூலம் பதிவு செய்யவும்.</div>`;
       } else {
         result.data.forEach(cust => {
           const div = document.createElement('div');
-          div.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center hover:bg-amber-50 cursor-pointer";
-          div.innerHTML = `<div><div class="font-bold text-sm text-slate-800">${cust.name}</div><div class="text-xs text-slate-500">மொபைல்: ${cust.mobile}</div></div><button class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold">தேர்ந்தெடு</button>`;
+          div.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center hover:bg-amber-50 cursor-pointer transition";
+          div.innerHTML = `
+            <div>
+              <div class="font-bold text-sm text-slate-800">${cust.name}</div>
+              <div class="text-xs text-slate-500">மொபைல்: ${cust.mobile} | கிளை ஐடி: ${cust.branch_id || '-'}</div>
+            </div>
+            <button class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold">தேர்ந்தெடு</button>
+          `;
           div.onclick = () => selectCustomer(cust);
           container.appendChild(div);
         });
@@ -239,10 +330,10 @@
       document.getElementById('cardName').innerText = cust.name;
       document.getElementById('cardMobile').innerText = cust.mobile;
       document.getElementById('cardId').innerText = cust.id;
+      document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
       document.getElementById('searchSection').classList.add('hidden');
       document.getElementById('activeCustomerSection').classList.remove('hidden');
 
-      // வருகைப் பதிவு செய்தல்
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
       fetch('/api/customer/visit', {
         method: 'POST',
@@ -261,7 +352,36 @@
       document.getElementById('searchSection').classList.remove('hidden');
     }
 
-    // நகைப் பட்டியல் சேர்த்தல்
+    function showUpdateForm() {
+      document.getElementById('updateFormSection').classList.remove('hidden');
+    }
+
+    async function submitUpdateReq() {
+      if (!activeCustomer) return;
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+      const newMobile = document.getElementById('upd_mobile').value.trim();
+      const newAddress = document.getElementById('upd_address').value.trim();
+
+      const payload = {
+        customer_id: activeCustomer.id,
+        branch_id: branchId,
+        requested_changes: { mobile: newMobile, address: newAddress }
+      };
+
+      const res = await fetch('/api/customer/request-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        document.getElementById('updateFormSection').classList.add('hidden');
+      } else {
+        alert("❌ பிழை: " + data.detail);
+      }
+    }
+
     function addOrnamentToTable() {
       const type = document.getElementById('item_type').value.trim();
       const count = parseInt(document.getElementById('item_count').value) || 1;
@@ -277,7 +397,6 @@
       ornamentList.push({ item_type: type, item_count: count, gross_weight: gross, net_weight: net, purity: purity });
       renderOrnamentsTable();
 
-      // உள்ளீட்டுப் பெட்டிகளை மீட்டமைத்தல்
       document.getElementById('item_type').value = '';
       document.getElementById('item_count').value = '1';
       document.getElementById('item_gross').value = '';
@@ -324,13 +443,6 @@
       document.getElementById('sumNet').innerText = totNet.toFixed(3);
     }
 
-    function calculateNetPayable() {
-      const loan = parseFloat(document.getElementById('loan_amount').value) || 0;
-      const chg = parseFloat(document.getElementById('charges_amount').value) || 0;
-      return loan - chg;
-    }
-
-    // அடகுப் பதிவை கார்ட்டில் மற்றும் டேட்டாபேஸில் சேர்த்தல்
     async function submitPawnToDatabase() {
       if (!activeCustomer) return;
       const loanNo = document.getElementById('loan_no').value.trim();
@@ -367,18 +479,16 @@
         });
         const data = await res.json();
         if (res.ok) {
-          // கார்ட்டில் சேர்த்தல்
           cartItems.push({
             title: `புதிய அடகு (${loanNo})`,
             details: `${ornamentList.length} நகைகள் | நிகர எடை: ${document.getElementById('sumNet').innerText}g`,
-            debit: loanAmt,   // நாம் கொடுப்பது
-            credit: chgAmt    // வாடிக்கையாளர் தருவது
+            debit: loanAmt,
+            credit: chgAmt
           });
 
           renderCart();
           alert("✅ " + data.message);
 
-          // படிவத்தை காலி செய்தல்
           document.getElementById('loan_no').value = '';
           document.getElementById('loan_amount').value = '';
           document.getElementById('charges_amount').value = '0';
@@ -392,7 +502,6 @@
       }
     }
 
-    // கார்ட் ரெண்டரிங் & நிகர கணக்கீடு
     function renderCart() {
       const container = document.getElementById('cartItemsList');
       container.innerHTML = '';
@@ -404,11 +513,12 @@
         document.getElementById('cartNetTotal').innerText = '₹ 0.00';
         document.getElementById('cartStatusText').innerText = '-';
         document.getElementById('cartCountBadge').innerText = '0 உருப்படிகள்';
+        currentNetAbs = 0;
         return;
       }
 
       let totCredit = 0, totDebit = 0;
-      cartItems.forEach((item, i) => {
+      cartItems.forEach((item) => {
         totCredit += item.credit;
         totDebit += item.debit;
 
@@ -432,19 +542,197 @@
       const net = totDebit - totCredit;
       const netElem = document.getElementById('cartNetTotal');
       const statusElem = document.getElementById('cartStatusText');
+      currentNetAbs = Math.abs(net);
 
       if (net > 0) {
-        netElem.innerText = `₹ ${net.toFixed(2)}`;
+        currentDirection = "COMPANY_PAYABLE";
+        netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
         netElem.className = "text-sm font-extrabold text-rose-600";
         statusElem.innerText = "(நிறுவனம் வாடிக்கையாளருக்கு வழங்க வேண்டிய நிகர தொகை)";
       } else if (net < 0) {
-        netElem.innerText = `₹ ${Math.abs(net).toFixed(2)}`;
+        currentDirection = "CUSTOMER_PAYABLE";
+        netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
         netElem.className = "text-sm font-extrabold text-emerald-600";
         statusElem.innerText = "(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய நிகர தொகை)";
       } else {
+        currentDirection = "EQUAL";
         netElem.innerText = "₹ 0.00";
         netElem.className = "text-sm font-extrabold text-slate-800";
         statusElem.innerText = "(பரிவர்த்தனை சரிசமமாக உள்ளது)";
+      }
+    }
+
+    function openCheckoutModal() {
+      if (cartItems.length === 0 || currentNetAbs <= 0) {
+        alert("கார்ட்டில் பரிவர்த்தனைகள் இல்லை அல்லது நிகர தொகை பூஜ்ஜியமாக உள்ளது.");
+        return;
+      }
+      const dirText = currentDirection === "COMPANY_PAYABLE" ? "நாம் வாடிக்கையாளருக்குத் தர வேண்டியது" : "வாடிக்கையாளர் நமக்குத் தர வேண்டியது";
+      document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${dirText})`;
+      
+      setPaymentMode('FULL_CASH');
+      document.getElementById('checkoutModal').classList.remove('hidden');
+    }
+
+    function closeCheckoutModal() {
+      document.getElementById('checkoutModal').classList.add('hidden');
+    }
+
+    function setPaymentMode(mode) {
+      selectedMode = mode;
+      const bCash = document.getElementById('btn_cash');
+      const bBank = document.getElementById('btn_bank');
+      const bSplit = document.getElementById('btn_split');
+
+      bCash.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
+      bBank.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
+      bSplit.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
+
+      const activeClass = "py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900";
+      if (mode === 'FULL_CASH') bCash.className = activeClass;
+      if (mode === 'FULL_BANK') bBank.className = activeClass;
+      if (mode === 'SPLIT') bSplit.className = activeClass;
+
+      const pCash = document.getElementById('pay_cash');
+      const pBank = document.getElementById('pay_bank');
+
+      if (mode === 'FULL_CASH') {
+        pCash.value = currentNetAbs;
+        pBank.value = 0;
+        pCash.readOnly = true;
+        pBank.readOnly = true;
+      } else if (mode === 'FULL_BANK') {
+        pCash.value = 0;
+        pBank.value = currentNetAbs;
+        pCash.readOnly = true;
+        pBank.readOnly = true;
+      } else {
+        pCash.value = (currentNetAbs / 2).toFixed(2);
+        pBank.value = (currentNetAbs / 2).toFixed(2);
+        pCash.readOnly = false;
+        pBank.readOnly = false;
+      }
+
+      toggleSectionVisibility();
+      calcDenom();
+    }
+
+    function onAmountChanged(source) {
+      if (selectedMode !== 'SPLIT') return;
+      const pCash = document.getElementById('pay_cash');
+      const pBank = document.getElementById('pay_bank');
+
+      if (source === 'cash') {
+        const cVal = parseFloat(pCash.value) || 0;
+        pBank.value = Math.max(0, currentNetAbs - cVal).toFixed(2);
+      } else {
+        const bVal = parseFloat(pBank.value) || 0;
+        pCash.value = Math.max(0, currentNetAbs - bVal).toFixed(2);
+      }
+      toggleSectionVisibility();
+      calcDenom();
+    }
+
+    function toggleSectionVisibility() {
+      const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
+      const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
+
+      const bankSec = document.getElementById('bankDetailsSection');
+      const denomSec = document.getElementById('denomSection');
+
+      bankSec.className = bVal > 0 ? "space-y-2 border-t pt-3" : "hidden";
+      denomSec.className = cVal > 0 ? "space-y-2 border-t pt-3" : "hidden";
+    }
+
+    function calcDenom() {
+      const d500 = (parseInt(document.getElementById('d500').value) || 0) * 500;
+      const d200 = (parseInt(document.getElementById('d200').value) || 0) * 200;
+      const d100 = (parseInt(document.getElementById('d100').value) || 0) * 100;
+      const d50 = (parseInt(document.getElementById('d50').value) || 0) * 50;
+      const d20 = (parseInt(document.getElementById('d20').value) || 0) * 20;
+      const d10 = (parseInt(document.getElementById('d10').value) || 0) * 10;
+      const dcoins = parseInt(document.getElementById('dcoins').value) || 0;
+
+      const totalDenom = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
+      document.getElementById('denomSumDisplay').innerText = `₹ ${totalDenom.toFixed(2)}`;
+
+      const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
+      const badge = document.getElementById('denomMatchBadge');
+
+      if (cVal > 0) {
+        if (Math.round(totalDenom) === Math.round(cVal)) {
+          badge.innerText = "பொருந்தியது (Match)";
+          badge.className = "text-[11px] px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800";
+        } else {
+          badge.innerText = `வேறுபாடு: ₹${Math.abs(cVal - totalDenom).toFixed(2)}`;
+          badge.className = "text-[11px] px-2 py-0.5 rounded font-bold bg-rose-100 text-rose-800";
+        }
+      }
+    }
+
+    async function submitFinalSettlement() {
+      const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
+      const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+
+      if (bVal > 0) {
+        const ref = document.getElementById('bank_ref').value.trim();
+        if (!ref) {
+          alert("வங்கி பரிவர்த்தனை குறிப்பு எண்ணை (UTR/Ref No) உள்ளிடவும்.");
+          return;
+        }
+      }
+
+      let denomPayload = null;
+      if (cVal > 0) {
+        const d500 = parseInt(document.getElementById('d500').value) || 0;
+        const d200 = parseInt(document.getElementById('d200').value) || 0;
+        const d100 = parseInt(document.getElementById('d100').value) || 0;
+        const d50 = parseInt(document.getElementById('d50').value) || 0;
+        const d20 = parseInt(document.getElementById('d20').value) || 0;
+        const d10 = parseInt(document.getElementById('d10').value) || 0;
+        const dcoins = parseInt(document.getElementById('dcoins').value) || 0;
+
+        const tot = (d500*500) + (d200*200) + (d100*100) + (d50*50) + (d20*20) + (d10*10) + dcoins;
+        if (Math.round(tot) !== Math.round(cVal)) {
+          alert(`தாள்களின் மொத்தம் (₹${tot}) ரொக்கத் தொகையுடன் (₹${cVal}) சரியாகப் பொருந்த வேண்டும்.`);
+          return;
+        }
+
+        denomPayload = {
+          c_500: d500, c_200: d200, c_100: d100, c_50: d50, c_20: d20, c_10: d10, c_coins: dcoins
+        };
+      }
+
+      const payload = {
+        customer_id: activeCustomer.id,
+        branch_id: branchId,
+        net_amount: currentNetAbs,
+        direction: currentDirection,
+        settlement_type: selectedMode,
+        cash_amount: cVal,
+        bank_amount: bVal,
+        bank_ref_no: document.getElementById('bank_ref').value.trim() || null,
+        bank_name: document.getElementById('bank_name').value.trim() || null,
+        denominations: denomPayload
+      };
+
+      try {
+        const res = await fetch('/api/transaction/settle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ " + data.message);
+          closeCheckoutModal();
+          resetCustomer();
+        } else {
+          alert("❌ பிழை: " + data.detail);
+        }
+      } catch (err) {
+        alert("பிழை: " + err.message);
       }
     }
 
@@ -456,6 +744,7 @@
       const payload = {
         name: document.getElementById('kyc_name').value.trim(),
         mobile: document.getElementById('kyc_mobile').value.trim(),
+        mobile2: document.getElementById('kyc_mobile2').value.trim() || null,
         guardian_name: document.getElementById('kyc_guardian').value.trim() || null,
         address: document.getElementById('kyc_address').value.trim() || null,
         branch_id: branchId
@@ -481,78 +770,6 @@
         alert("❌ பிழை: " + (data.detail || "பதிவு தோல்வியடைந்தது"));
       }
     }
-  <!-- பணம் / வங்கி & டினாமினேசன் Checkout Modal -->
-<div id="checkoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-  <div class="bg-white rounded-2xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-    <div class="flex justify-between items-center border-b pb-3">
-      <div>
-        <h3 class="text-base font-bold text-slate-800">பரிவர்த்தனை தீர்வு & பணப் பகுப்பாய்வு</h3>
-        <p class="text-xs text-slate-500" id="modalDirectionSummary">நிகர தொகை: ₹0.00</p>
-      </div>
-      <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
-    </div>
-
-    <!-- செலுத்தும் முறை (Full Cash / Full Bank / Split) -->
-    <div class="space-y-2">
-      <label class="block text-xs font-bold text-slate-700">செலுத்தும் முறை தேர்வு:</label>
-      <div class="grid grid-cols-3 gap-2">
-        <button type="button" onclick="setPaymentMode('FULL_CASH')" id="btn_cash" class="py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900">முழு ரொக்கம்</button>
-        <button type="button" onclick="setPaymentMode('FULL_BANK')" id="btn_bank" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">முழு வங்கி</button>
-        <button type="button" onclick="setPaymentMode('SPLIT')" id="btn_split" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">பகுதி பணம் + வங்கி</button>
-      </div>
-    </div>
-
-    <!-- தொகை உள்ளீடுகள் -->
-    <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border">
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">ரொக்கத் தொகை (₹)</label>
-        <input type="number" id="pay_cash" oninput="onAmountChanged('cash')" class="w-full border p-2 rounded text-xs font-bold">
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">வங்கித் தொகை (₹)</label>
-        <input type="number" id="pay_bank" oninput="onAmountChanged('bank')" class="w-full border p-2 rounded text-xs font-bold">
-      </div>
-    </div>
-
-    <!-- வங்கி விவரம் (வங்கித் தொகை இருந்தால் மட்டும்) -->
-    <div id="bankDetailsSection" class="hidden space-y-2 border-t pt-3">
-      <h4 class="text-xs font-bold text-slate-700">வங்கி பரிவர்த்தனை விபரம்:</h4>
-      <div class="grid grid-cols-2 gap-2">
-        <input type="text" id="bank_ref" placeholder="UTR / Ref No *" class="border p-2 rounded text-xs">
-        <input type="text" id="bank_name" placeholder="வங்கிப் பெயர் (எ.கா: HDFC, SBI)" class="border p-2 rounded text-xs">
-      </div>
-    </div>
-
-    <!-- ரொக்கத் தாள்கள் டினாமினேசன் (ரொக்கத் தொகை இருந்தால் மட்டும்) -->
-    <div id="denomSection" class="space-y-2 border-t pt-3">
-      <div class="flex justify-between items-center">
-        <h4 class="text-xs font-bold text-slate-700">ரூபாய் தாள்கள் டினாமினேசன் (Denomination):</h4>
-        <span id="denomMatchBadge" class="text-[11px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span>
-      </div>
-
-      <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs">
-        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹500:</span><input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
-        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹200:</span><input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
-        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹100:</span><input type="number" min="0" value="0" id="d100" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
-        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹50:</span><input type="number" min="0" value="0" id="d50" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
-        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹20:</span><input type="number" min="0" value="0" id="d20" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
-        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">₹10:</span><input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
-        <div class="flex items-center space-x-1"><span class="w-10 font-bold text-slate-600">நாணயம்:</span><input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-full border p-1 rounded text-center"></div>
-      </div>
-      <div class="text-right text-xs text-slate-600 font-semibold pt-1">
-        தாள்கள் மொத்தம்: <span id="denomSumDisplay" class="font-bold text-slate-800">₹ 0.00</span>
-      </div>
-    </div>
-
-    <!-- உறுதி செய்யும் பொத்தான் -->
-    <div class="flex justify-end gap-2 pt-3 border-t">
-      <button onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
-      <button onclick="submitFinalSettlement()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">
-        உறுதி செய்து சேமி (Confirm Settlement)
-      </button>
-    </div>
-  </div>
-</div>
   </script>
 </body>
 </html>

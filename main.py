@@ -10,10 +10,12 @@ from pydantic import BaseModel, Field
 from database import supabase
 
 app = FastAPI(
-    title="Gold Branch Management - Safe Test Environment with OTP",
-    version="1.3.0"
+    title="Gold Branch Management - Safe Test Environment with Auth & OTP",
+    version="1.4.0",
+    description="Branch Management System with Staff Auth, Pawn Cart, Denominations and Fast2SMS DLT OTP"
 )
 
+# CORS அனுமதி
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,11 +24,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static கோப்புறை இணைப்பு (Frontend UI)
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# --- Fast2SMS SMS Function (உங்கள் பழைய லாஜிக்) ---
+# --- Fast2SMS DLT SMS Function ---
 
 def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount: float, txn_type: str = "receive"):
     """
@@ -69,42 +72,46 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
 
 
-# --- Data Models ---
+# --- Pydantic Data Models ---
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., description="பயனர் பெயர்")
+    password: str = Field(..., description="கடவுச்சொல்")
 
 class NewCustomerKYC(BaseModel):
-    name: str = Field(...)
-    mobile: str = Field(...)
-    mobile2: Optional[str] = None
-    guardian_name: Optional[str] = None
-    address: Optional[str] = None
-    branch_id: int = 1
+    name: str = Field(..., description="வாடிக்கையாளர் பெயர்")
+    mobile: str = Field(..., description="முதன்மை மொபைல் எண்")
+    mobile2: Optional[str] = Field(None, description="இரண்டாவது மொபைல் எண்")
+    guardian_name: Optional[str] = Field(None, description="தந்தை / கணவர் பெயர்")
+    address: Optional[str] = Field(None, description="முழு முகவரி")
+    branch_id: int = Field(default=1, description="கிளை அடையாள எண்")
 
 class CustomerVisitEntry(BaseModel):
-    customer_id: int
-    branch_id: int = 1
-    purpose: Optional[str] = "REGULAR_TRANSACTION"
+    customer_id: int = Field(..., description="வாடிக்கையாளர் ஐடி")
+    branch_id: int = Field(default=1, description="கிளை ஐடி")
+    purpose: Optional[str] = Field(default="REGULAR_TRANSACTION", description="வருகையின் நோக்கம்")
 
 class CustomerUpdateRequest(BaseModel):
-    customer_id: int
-    branch_id: int = 1
-    requested_changes: Dict[str, Any]
+    customer_id: int = Field(..., description="வாடிக்கையாளர் ஐடி")
+    branch_id: int = Field(default=1, description="கிளை ஐடி")
+    requested_changes: Dict[str, Any] = Field(..., description="மாற்றப்பட வேண்டிய விபரங்கள்")
 
 class OrnamentItem(BaseModel):
-    item_type: str
-    item_count: int
-    gross_weight: float
-    net_weight: float
-    purity: str
+    item_type: str = Field(..., description="நகை வகை (செயின், வளையல்)")
+    item_count: int = Field(..., description="எண்ணிக்கை")
+    gross_weight: float = Field(..., description="மொத்த எடை")
+    net_weight: float = Field(..., description="நிகர எடை")
+    purity: str = Field(..., description="தரம் (916 KDM, 22CT)")
 
 class NewGoldLoanEntry(BaseModel):
-    customer_id: int
-    branch_id: int = 1
-    loan_no: str
-    scheme_name: str
-    loan_amount: float
-    charges_amount: float = 0.0
+    customer_id: int = Field(..., description="வாடிக்கையாளர் ஐடி")
+    branch_id: int = Field(default=1, description="கிளை ஐடி")
+    loan_no: str = Field(..., description="நகைக்கடன் எண்")
+    scheme_name: str = Field(..., description="திட்டத்தின் பெயர்")
+    loan_amount: float = Field(..., description="கடன் தொகை (நாம் கொடுப்பது)")
+    charges_amount: float = Field(default=0.0, description="கட்டணங்கள் (நாம் வாங்குவது)")
     photo_url: Optional[str] = None
-    items: List[OrnamentItem]
+    items: List[OrnamentItem] = Field(..., description="நகைகளின் பட்டியல்")
 
 class DenominationCounts(BaseModel):
     c_500: int = 0
@@ -135,19 +142,66 @@ class SettleWithOtpPayload(BaseModel):
     bank_name: Optional[str] = None
     denominations: Optional[DenominationCounts] = None
 
+class DirectSettlementPayload(BaseModel):
+    customer_id: int
+    branch_id: int = 1
+    net_amount: float
+    direction: str
+    settlement_type: str
+    cash_amount: float = 0.0
+    bank_amount: float = 0.0
+    bank_ref_no: Optional[str] = None
+    bank_name: Optional[str] = None
+    denominations: Optional[DenominationCounts] = None
+
 
 # --- Endpoints ---
 
 @app.get("/")
 def serve_ui():
+    """முகப்புத் திரை"""
     if os.path.exists("static/index.html"):
         return FileResponse("static/index.html")
-    return {"message": "FastAPI சர்வர் இயங்குகிறது."}
+    return {"message": "FastAPI சர்வர் இயங்குகிறது. static/index.html கோப்பு இணைக்கப்படவில்லை."}
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Gold Branch API with OTP"}
+    """UptimeRobot கண்காணிப்புக்கான ஹெல்த் செக்"""
+    return {"status": "active", "service": "Gold Branch API"}
 
+# 1. பணியாளர் உள்நுழைவு (Staff Login) API
+@app.post("/api/auth/login")
+def staff_login(data: LoginRequest):
+    try:
+        clean_user = data.username.strip()
+        clean_pass = data.password.strip()
+
+        res = (
+            supabase.table("test_users")
+            .select("id, username, full_name, role, branch_id, branch_name, is_active")
+            .eq("username", clean_user)
+            .eq("password", clean_pass)
+            .execute()
+        )
+
+        if not res.data:
+            raise HTTPException(status_code=401, detail="பயனர் பெயர் அல்லது கடவுச்சொல் தவறானது!")
+
+        user = res.data[0]
+        if not user.get("is_active"):
+            raise HTTPException(status_code=403, detail="இந்தக் கணக்கு முடக்கப்பட்டுள்ளது. தலைமை நிர்வாகியை அணுகவும்.")
+
+        return {
+            "status": "success",
+            "message": "உள்நுழைவு வெற்றிகரமாக முடிந்தது!",
+            "user": user
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"லாகின் பிழை: {str(e)}")
+
+# 2. வாடிக்கையாளர் தேடல் (test_customers)
 @app.get("/api/customer/search")
 def search_customer(query: str = Query(..., min_length=1)):
     try:
@@ -172,22 +226,36 @@ def search_customer(query: str = Query(..., min_length=1)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தேடல் பிழை: {str(e)}")
 
+# 3. வருகைப் பதிவு (test_customer_visits)
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     try:
-        record = {"customer_id": data.customer_id, "branch_id": data.branch_id, "purpose": data.purpose}
+        record = {
+            "customer_id": data.customer_id,
+            "branch_id": data.branch_id,
+            "purpose": data.purpose
+        }
         res = supabase.table("test_customer_visits").insert(record).execute()
-        return {"status": "success", "message": "வருகை பதிவானது", "data": res.data}
+        return {"status": "success", "message": "வருகை வெற்றிகரமாகப் பதிவானது", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"வருகைப் பதிவு பிழை: {str(e)}")
 
+# 4. புதிய வாடிக்கையாளர் KYC பதிவு (test_customers)
 @app.post("/api/customer/new-kyc")
 def create_kyc(data: NewCustomerKYC):
     try:
         clean_mobile = data.mobile.strip()
-        existing = supabase.table("test_customers").select("id, name").eq("mobile", clean_mobile).execute()
+        existing = (
+            supabase.table("test_customers")
+            .select("id, name")
+            .eq("mobile", clean_mobile)
+            .execute()
+        )
         if existing.data:
-            raise HTTPException(status_code=400, detail=f"இந்த மொபைல் எண் ஏற்கனவே உள்ளது ({existing.data[0]['name']}).")
+            raise HTTPException(
+                status_code=400,
+                detail=f"இந்த மொபைல் எண் ஏற்கனவே சோதனைப் பதிவில் உள்ளது ({existing.data[0]['name']})."
+            )
 
         record = {
             "name": data.name.strip(),
@@ -200,12 +268,13 @@ def create_kyc(data: NewCustomerKYC):
             "is_active": True
         }
         res = supabase.table("test_customers").insert(record).execute()
-        return {"status": "success", "message": "KYC வெற்றிகரமாகச் சேமிக்கப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "சோதனை KYC வெற்றிகரமாகச் சேமிக்கப்பட்டது.", "data": res.data}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"KYC பதிவு பிழை: {str(e)}")
 
+# 5. விபர மாற்றக் கோரிக்கை (test_customer_update_requests)
 @app.post("/api/customer/request-update")
 def request_customer_update(data: CustomerUpdateRequest):
     try:
@@ -216,10 +285,11 @@ def request_customer_update(data: CustomerUpdateRequest):
             "status": "PENDING"
         }
         res = supabase.table("test_customer_update_requests").insert(record).execute()
-        return {"status": "success", "message": "மாற்றக் கோரிக்கை சேமிக்கப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "சோதனை மாற்றக் கோரிக்கை சேமிக்கப்பட்டது.", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"மாற்றக் கோரிக்கை பிழை: {str(e)}")
 
+# 6. புதிய நகைக்கடன் அடகு பதிவு (test_gold_loans & test_gold_loan_items)
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
     try:
@@ -258,14 +328,18 @@ def create_new_pawn(data: NewGoldLoanEntry):
             })
         supabase.table("test_gold_loan_items").insert(items_payload).execute()
 
-        return {"status": "success", "message": "நகைக்கடன் வெற்றிகரமாகச் சேமிக்கப்பட்டது.", "loan_id": new_loan_id, "net_payable": net_payable}
+        return {
+            "status": "success",
+            "message": "நகைக்கடன் புதிய அடகு வெற்றிகரமாகச் சேமிக்கப்பட்டது.",
+            "loan_id": new_loan_id,
+            "net_payable": net_payable
+        }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அடகுப் பதிவு பிழை: {str(e)}")
 
-
-# 1. OTP உருவாக்கம் மற்றும் SMS அனுப்புதல் API
+# 7. SMS OTP உருவாக்கம் & அனுப்புதல்
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     try:
@@ -283,7 +357,6 @@ def trigger_otp_sms(payload: SendOtpPayload):
         if not success:
             raise HTTPException(status_code=502, detail=f"SMS அனுப்புவதில் தோல்வி: {msg}")
 
-        # Supabase-ல் OTP சேமித்தல்
         supabase.table("test_transaction_otps").insert({
             "customer_id": payload.customer_id,
             "mobile": payload.mobile,
@@ -299,12 +372,11 @@ def trigger_otp_sms(payload: SendOtpPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OTP பிழை: {str(e)}")
 
-
-# 2. OTP சரிபார்த்து செட்டில்மென்ட்டை இறுதி செய்தல் API
+# 8. OTP சரிபார்த்து செட்டில்மென்ட்டை முடித்தல் API
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
     try:
-        # A. OTP சரிபார்த்தல்
+        # A. OTP சரிபார்ப்பு
         otp_query = (
             supabase.table("test_transaction_otps")
             .select("id, otp_code, is_verified")
@@ -322,7 +394,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
         if latest_otp["otp_code"] != data.otp_code.strip():
             raise HTTPException(status_code=400, detail="உள்ளிட்ட OTP தவறானது. மீண்டும் முயற்சிக்கவும்.")
 
-        # B. ரொக்க தாள்கள் சரிபார்ப்பு
+        # B. ரொக்கத் தாள்கள் சரிபார்ப்பு
         if data.cash_amount > 0 and data.denominations:
             calc_cash = (
                 data.denominations.c_500 * 500 +
@@ -368,12 +440,69 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 "total_calculated_cash": data.cash_amount
             }).execute()
 
-        # E. OTP-ஐ சரிபார்க்கப்பட்டதாக மாற்றுதல்
+        # E. OTP சரிபார்க்கப்பட்டதாக மாற்றுதல்
         supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", latest_otp["id"]).execute()
 
         return {
             "status": "success",
             "message": "🎉 பரிவர்த்தனை வெற்றிகரமாக முடிவடைந்தது! வருகை நிறைவு செய்யப்பட்டது.",
+            "settlement_id": new_settle_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"செட்டில்மென்ட் பிழை: {str(e)}")
+
+# 9. நேரடி செட்டில்மென்ட் API (OTP இல்லாத நேரடி முடிவு / Fail-safe)
+@app.post("/api/transaction/settle")
+def direct_settle_transaction(data: DirectSettlementPayload):
+    try:
+        if data.cash_amount > 0 and data.denominations:
+            calc_cash = (
+                data.denominations.c_500 * 500 +
+                data.denominations.c_200 * 200 +
+                data.denominations.c_100 * 100 +
+                data.denominations.c_50 * 50 +
+                data.denominations.c_20 * 20 +
+                data.denominations.c_10 * 10 +
+                data.denominations.c_coins
+            )
+            if round(calc_cash, 2) != round(data.cash_amount, 2):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"தாள்களின் கூட்டுத்தொகை (₹{calc_cash}) ரொக்கத் தொகையுடன் (₹{data.cash_amount}) பொருந்தவில்லை."
+                )
+
+        settle_record = {
+            "customer_id": data.customer_id,
+            "branch_id": data.branch_id,
+            "net_amount": data.net_amount,
+            "settlement_type": data.settlement_type,
+            "cash_amount": data.cash_amount,
+            "bank_amount": data.bank_amount,
+            "bank_ref_no": data.bank_ref_no,
+            "bank_name": data.bank_name,
+            "direction": data.direction
+        }
+        res_settle = supabase.table("test_transaction_settlements").insert(settle_record).execute()
+        new_settle_id = res_settle.data[0]["id"]
+
+        if data.cash_amount > 0 and data.denominations:
+            supabase.table("test_cash_denominations").insert({
+                "settlement_id": new_settle_id,
+                "c_500": data.denominations.c_500,
+                "c_200": data.denominations.c_200,
+                "c_100": data.denominations.c_100,
+                "c_50": data.denominations.c_50,
+                "c_20": data.denominations.c_20,
+                "c_10": data.denominations.c_10,
+                "c_coins": data.denominations.c_coins,
+                "total_calculated_cash": data.cash_amount
+            }).execute()
+
+        return {
+            "status": "success",
+            "message": "✅ பரிவர்த்தனை தீர்வு வெற்றிகரமாகச் சேமிக்கப்பட்டது!",
             "settlement_id": new_settle_id
         }
     except HTTPException:

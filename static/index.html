@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>கிளைப் பரிவர்த்தனை & தலைமையக மேலாண்மை</title>
+  <title>கிளைப் பரிவர்த்தனை & நிர்வாக மேலாண்மை</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
 
-  <!-- ==================== 1. லாகின் திரை (LOGIN SCREEN) ==================== -->
+  <!-- ==================== 1. லாகின் திரை ==================== -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 max-w-md w-full space-y-6">
       <div class="text-center space-y-2">
         <div class="text-5xl">🏛️</div>
-        <h1 class="text-xl font-bold text-slate-800">கிளை & தலைமையக அமைப்பு</h1>
-        <p class="text-xs text-amber-600 font-semibold">பணியாளர் உள்நுழைவு (Staff / Admin Login)</p>
+        <h1 class="text-xl font-bold text-slate-800">கிளை & நிர்வாக அமைப்பு</h1>
+        <p class="text-xs text-amber-600 font-semibold">பணியாளர் உள்நுழைவு (Staff Login)</p>
       </div>
 
       <div class="space-y-4">
@@ -33,18 +33,18 @@
       </div>
 
       <div class="bg-slate-50 p-3 rounded-xl border text-[11px] text-slate-500 space-y-1">
-        <p class="font-bold text-slate-700">மாதிரி உள்நுழைவு விபரங்கள்:</p>
-        <p>• Staff: <code class="bg-white px-1 border rounded text-amber-700">staff_thg</code> | பாஸ்: <code class="bg-white px-1 border rounded text-amber-700">gold123</code></p>
-        <p>• HQ Admin: <code class="bg-white px-1 border rounded text-amber-700">admin_hq</code> | பாஸ்: <code class="bg-white px-1 border rounded text-amber-700">admin123</code></p>
+        <p class="font-bold text-slate-700">சோதனை லாகின்:</p>
+        <p>• Admin: <code class="bg-white px-1 border rounded text-amber-700">admin_hq</code> / <code class="bg-white px-1 border rounded text-amber-700">admin123</code></p>
+        <p>• Staff: <code class="bg-white px-1 border rounded text-amber-700">staff_thg</code> / <code class="bg-white px-1 border rounded text-amber-700">gold123</code></p>
       </div>
     </div>
   </div>
 
 
-  <!-- ==================== 2. முதன்மை திரை (MAIN INTERFACE) ==================== -->
-  <div id="mainDashboard" class="hidden p-3 md:p-6 space-y-5 max-w-5xl mx-auto">
+  <!-- ==================== 2. பிரதான டேஷ்போர்டு ==================== -->
+  <div id="mainDashboard" class="hidden p-3 md:p-6 space-y-5 max-w-6xl mx-auto">
 
-    <!-- Header (பணியாளர் விபரம் & தத்தல்கள்) -->
+    <!-- Header -->
     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-3">
       <div class="flex items-center space-x-3 w-full md:w-auto">
         <span class="text-3xl">⚖️</span>
@@ -58,7 +58,7 @@
         </div>
       </div>
 
-      <!-- Navigation Tabs (RBAC அடிப்படையில் காட்டப்படும்) -->
+      <!-- Navigation Tabs (அனுமதிகள் அடிப்படையில் தோன்றும்) -->
       <div class="flex items-center gap-2 w-full md:w-auto justify-end">
         <button onclick="switchTab('counterTab')" id="tabBtnCounter" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white">கவுண்ட்டர்</button>
         <button onclick="switchTab('hqApprovalTab')" id="tabBtnHqApproval" class="hidden px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">தலைமையக ஒப்புதல்கள் 🔔</button>
@@ -72,7 +72,6 @@
     <!-- ==================== TAB A: கவுண்ட்டர் & கார்ட் பிரிவு ==================== -->
     <div id="counterTab" class="space-y-4">
       
-      <!-- வாடிக்கையாளர் தேடல் -->
       <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex flex-col sm:flex-row gap-2">
           <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -82,7 +81,6 @@
         <div id="searchResults" class="space-y-2 hidden"></div>
       </div>
 
-      <!-- தேர்வு செய்யப்பட்ட வாடிக்கையாளர் & கார்ட் பகுதி -->
       <div id="activeCustomerSection" class="hidden space-y-4">
         
         <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
@@ -100,7 +98,6 @@
           </div>
         </div>
 
-        <!-- விபர மாற்றப் படிவம் -->
         <div id="updateFormSection" class="hidden bg-white p-4 rounded-xl border border-amber-200 space-y-3">
           <h3 class="text-xs font-bold text-amber-900 uppercase">வாடிக்கையாளர் புதிய விபர மாற்றம்:</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -113,7 +110,7 @@
           </div>
         </div>
 
-        <!-- பணித்தளம் (Loan Form & Cart) -->
+        <!-- Loan Form & Cart -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
@@ -139,7 +136,6 @@
               </div>
             </div>
 
-            <!-- நகைகள் சேர்க்கும் வரிசை -->
             <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
               <h4 class="text-xs font-bold text-slate-700">நகை விபரங்களைச் சேர்க்கவும்:</h4>
               <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -159,7 +155,6 @@
               </div>
             </div>
 
-            <!-- அட்டவணை -->
             <div class="overflow-x-auto border rounded-lg">
               <table class="w-full text-xs text-left">
                 <thead class="bg-slate-100 text-slate-600 border-b">
@@ -243,7 +238,7 @@
     </div>
 
 
-    <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் (HQ APPROVALS) ==================== -->
+    <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் ==================== -->
     <div id="hqApprovalTab" class="hidden space-y-5">
       <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
         <div class="flex justify-between items-center border-b pb-3">
@@ -253,7 +248,6 @@
           <button onclick="loadPendingApprovals()" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-bold">புதுப்பி (Refresh)</button>
         </div>
 
-        <!-- 1. புதிய KYC ஒப்புதல்கள் -->
         <div class="space-y-2">
           <h3 class="text-xs font-bold text-amber-900 uppercase">1. புதிய வாடிக்கையாளர் KYC கோரிக்கைகள்:</h3>
           <div class="overflow-x-auto border rounded-lg">
@@ -274,7 +268,6 @@
           </div>
         </div>
 
-        <!-- 2. சுயவிவர மாற்ற ஒப்புதல்கள் -->
         <div class="space-y-2 pt-4 border-t">
           <h3 class="text-xs font-bold text-amber-900 uppercase">2. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள்:</h3>
           <div class="overflow-x-auto border rounded-lg">
@@ -298,56 +291,142 @@
     </div>
 
 
-    <!-- ==================== TAB C: கிளை & பணியாளர் நிர்வாகம் (ADMIN PANEL) ==================== -->
-    <div id="adminPanelTab" class="hidden space-y-5">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <!-- ==================== TAB C: கிளை & பணியாளர் நிர்வாகம் (புதிய விரிவான அமைப்பு) ==================== -->
+    <div id="adminPanelTab" class="hidden space-y-6">
 
-        <!-- புதிய கிளை உருவாக்கம் -->
+      <!-- பகுதி 1: கிளை மேலாண்மை -->
+      <div class="space-y-4">
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-2">
             <span>🏢</span> புதிய கிளை உருவாக்கம்
           </h3>
-          <div class="space-y-3">
-            <input type="text" id="new_branch_code" placeholder="கிளை குறியீடு (எ.கா: BR003) *" class="w-full border p-2 rounded text-xs">
-            <input type="text" id="new_branch_name" placeholder="கிளை பெயர் (எ.கா: Marthandam) *" class="w-full border p-2 rounded text-xs">
-            <input type="text" id="new_branch_city" placeholder="நகரம் (City) *" class="w-full border p-2 rounded text-xs">
-            <input type="text" id="new_branch_phone" placeholder="தொடர்பு எண்" class="w-full border p-2 rounded text-xs">
-            <button onclick="submitCreateBranch()" class="w-full bg-slate-800 hover:bg-black text-white text-xs font-bold py-2.5 rounded-xl">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <input type="text" id="new_branch_code" placeholder="கிளை குறியீடு (எ.கா: BR003) *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_name" placeholder="கிளை பெயர் (எ.கா: Marthandam) *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_city" placeholder="நகரம் (City) *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_phone" placeholder="தொடர்பு எண்" class="border p-2 rounded text-xs">
+          </div>
+          <div class="flex justify-end">
+            <button onclick="submitCreateBranch()" class="bg-slate-800 hover:bg-black text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow">
               + கிளையைச் சேர்
             </button>
           </div>
         </div>
 
-        <!-- புதிய பணியாளர் கணக்கு உருவாக்கம் -->
+        <!-- கிளை படிவத்திற்குக் கீழே உள்ள உருவாக்கப்பட்ட கிளைகள் பட்டியல் -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-bold text-slate-700 uppercase">உருவாக்கப்பட்ட கிளைகளின் பட்டியல்:</h4>
+            <button onclick="loadBranchesList()" class="text-xs text-amber-600 font-bold hover:underline">புதுப்பி</button>
+          </div>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-100 text-slate-600 border-b">
+                <tr>
+                  <th class="p-2.5">ID</th>
+                  <th class="p-2.5">குறியீடு</th>
+                  <th class="p-2.5">கிளை பெயர்</th>
+                  <th class="p-2.5">நகரம்</th>
+                  <th class="p-2.5">தொலைபேசி</th>
+                  <th class="p-2.5 text-center">நிலை</th>
+                </tr>
+              </thead>
+              <tbody id="branchesTableBody" class="divide-y text-slate-700">
+                <tr><td colspan="6" class="p-3 text-center text-slate-400">கிளைகள் ஏற்றப்படுகின்றன...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- பகுதி 2: பணியாளர் மேலாண்மை (அனுமதிகள் & பட்டியல்) -->
+      <div class="space-y-4 pt-4 border-t">
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-2">
-            <span>👤</span> புதிய பணியாளர் கணக்கு உருவாக்கம்
+            <span>👤</span> புதிய பணியாளர் கணக்கு & அணுகல் உரிமைகள் உருவாக்கம்
           </h3>
-          <div class="space-y-3">
-            <input type="text" id="new_staff_user" placeholder="பயனர் பெயர் (Username) *" class="w-full border p-2 rounded text-xs">
-            <input type="password" id="new_staff_pass" placeholder="கடவுச்சொல் (Password) *" class="w-full border p-2 rounded text-xs">
-            <input type="text" id="new_staff_name" placeholder="முழு பெயர் *" class="w-full border p-2 rounded text-xs">
-            <input type="tel" id="new_staff_mobile" placeholder="மொபைல் எண் *" class="w-full border p-2 rounded text-xs">
-            
-            <div class="grid grid-cols-2 gap-2">
-              <select id="new_staff_role" class="border p-2 rounded text-xs bg-white">
-                <option value="BRANCH_STAFF">BRANCH_STAFF (பணியாளர்)</option>
-                <option value="BRANCH_MANAGER">BRANCH_MANAGER (மேலாளர்)</option>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <input type="text" id="new_staff_user" placeholder="பயனர் பெயர் (Username) *" class="border p-2 rounded text-xs">
+            <input type="password" id="new_staff_pass" placeholder="கடவுச்சொல் (Password) *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_staff_name" placeholder="முழு பெயர் *" class="border p-2 rounded text-xs">
+            <input type="tel" id="new_staff_mobile" placeholder="மொபைல் எண் *" class="border p-2 rounded text-xs">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">பணியாளர் பதவி / வகை:</label>
+              <select id="new_staff_role" class="w-full border p-2 rounded text-xs bg-white">
+                <option value="BRANCH_STAFF">BRANCH_STAFF (கிளை பணியாளர்)</option>
+                <option value="BRANCH_MANAGER">BRANCH_MANAGER (கிளை மேலாளர்)</option>
                 <option value="HQ_ADMIN">HQ_ADMIN (தலைமை நிர்வாகி)</option>
               </select>
-              <select id="new_staff_branch" class="border p-2 rounded text-xs bg-white">
-                <option value="1">Thingalnagar (ID: 1)</option>
-                <option value="2">Nagercoil (ID: 2)</option>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">ஒதுக்கப்படும் கிளை (டைனமிக் கிளைகள்):</label>
+              <select id="new_staff_branch" class="w-full border p-2 rounded text-xs bg-white font-medium text-amber-900">
+                <option value="">கிளைகள் ஏற்றப்படுகின்றன...</option>
               </select>
             </div>
+          </div>
 
-            <button onclick="submitCreateStaff()" class="w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 rounded-xl">
-              + பணியாளரைச் சேர்
+          <!-- அட்மின் வழங்கும் அணுகல் உரிமைகள் (Granular Permissions Checkboxes) -->
+          <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-2">
+            <label class="block text-xs font-bold text-amber-900">இந்தப் பணியாளருக்கு வழங்கும் அணுகல் உரிமைகள் (Permissions):</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="perm_counter" checked class="rounded text-amber-600 focus:ring-amber-500">
+                <span class="text-slate-700 font-semibold">1. கவுண்ட்டர் & அடகு கார்ட் அணுகல் (Counter Access)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="perm_kyc" class="rounded text-amber-600 focus:ring-amber-500">
+                <span class="text-slate-700 font-semibold">2. புதிய வாடிக்கையாளர் KYC ஒப்புதல் உரிமை (KYC Approver)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="perm_updates" class="rounded text-amber-600 focus:ring-amber-500">
+                <span class="text-slate-700 font-semibold">3. வாடிக்கையாளர் சுயவிவர மாற்ற ஒப்புதல் உரிமை (Update Approver)</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" id="perm_admin" class="rounded text-amber-600 focus:ring-amber-500">
+                <span class="text-slate-700 font-semibold">4. கிளை & பணியாளர் மேலாண்மை அணுகல் (Admin Rights)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <button onclick="submitCreateStaff()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">
+              + பணியாளரை உருவாக்கு
             </button>
           </div>
         </div>
 
+        <!-- பணியாளர் படிவத்திற்குக் கீழே உள்ள பணியாளர்கள் விபர அட்டவணை -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+          <div class="flex justify-between items-center">
+            <h4 class="text-xs font-bold text-slate-700 uppercase">உருவாக்கப்பட்ட பணியாளர்களின் விபரங்கள்:</h4>
+            <button onclick="loadStaffList()" class="text-xs text-amber-600 font-bold hover:underline">புதுப்பி</button>
+          </div>
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-100 text-slate-600 border-b">
+                <tr>
+                  <th class="p-2.5">பயனர் பெயர்</th>
+                  <th class="p-2.5">முழு பெயர்</th>
+                  <th class="p-2.5">மொபைல்</th>
+                  <th class="p-2.5">கிளை</th>
+                  <th class="p-2.5">பதவி</th>
+                  <th class="p-2.5">வழங்கப்பட்ட உரிமைகள் (Permissions)</th>
+                </tr>
+              </thead>
+              <tbody id="staffTableBody" class="divide-y text-slate-700">
+                <tr><td colspan="6" class="p-3 text-center text-slate-400">பணியாளர்கள் ஏற்றப்படுகின்றனர்...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
+
     </div>
 
     <!-- ==================== MODALS ==================== -->
@@ -467,8 +546,9 @@
     let currentNetAbs = 0;
     let currentDirection = "COMPANY_PAYABLE";
     let selectedMode = "FULL_CASH";
+    let branchesCache = [];
 
-    // 1. Auth & Tabs Logic
+    // 1. Auth & Dashboard Tabs
     async function handleLogin() {
       const u = document.getElementById('login_username').value.trim();
       const p = document.getElementById('login_password').value.trim();
@@ -510,16 +590,23 @@
       document.getElementById('loggedBranchName').innerText = user.branch_name;
       document.getElementById('active_branch_id').value = user.branch_id;
 
-      // Role அனுமதிகள் அடிப்படையில் தத்தல்களைக் காட்டுதல்
+      // அணுகல் உரிமைகள் அடிப்படையில் தத்தல்கள் தெரிவு
       if (user.permissions.can_approve_kyc || user.permissions.can_approve_updates) {
         document.getElementById('tabBtnHqApproval').classList.remove('hidden');
       }
       if (user.permissions.can_manage_users) {
         document.getElementById('tabBtnAdminPanel').classList.remove('hidden');
       }
+      if (!user.permissions.can_access_counter) {
+        document.getElementById('tabBtnCounter').classList.add('hidden');
+        if (user.permissions.can_approve_kyc) switchTab('hqApprovalTab');
+        else if (user.permissions.can_manage_users) switchTab('adminPanelTab');
+      }
 
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainDashboard').classList.remove('hidden');
+
+      loadBranchesList(); // கிளைகளை பின்னணியில் ஏற்றுகிறது
     }
 
     function handleLogout() {
@@ -542,35 +629,181 @@
       });
       document.getElementById(tabId).classList.remove('hidden');
 
-      const tabs = {
-        counterTab: 'tabBtnCounter',
-        hqApprovalTab: 'tabBtnHqApproval',
-        adminPanelTab: 'tabBtnAdminPanel'
-      };
-
+      const tabs = { counterTab: 'tabBtnCounter', hqApprovalTab: 'tabBtnHqApproval', adminPanelTab: 'tabBtnAdminPanel' };
       Object.entries(tabs).forEach(([tId, btnId]) => {
         const btn = document.getElementById(btnId);
-        if (tId === tabId) {
-          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white";
-        } else {
-          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
-        }
+        if (tId === tabId) btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white";
+        else btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
       });
 
       if (tabId === 'hqApprovalTab') loadPendingApprovals();
+      if (tabId === 'adminPanelTab') {
+        loadBranchesList();
+        loadStaffList();
+      }
     }
 
-    // 2. HQ Approvals Logic
+    // 2. Admin Panel: கிளைகள் பட்டியல் & படிவம்
+    async function loadBranchesList() {
+      try {
+        const res = await fetch('/api/admin/branches');
+        const data = await res.json();
+        branchesCache = data.data || [];
+
+        // A. அட்டவணையில் நிரப்புதல்
+        const tbody = document.getElementById('branchesTableBody');
+        tbody.innerHTML = '';
+        if (branchesCache.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">கிளைகள் எதுவும் இல்லை</td></tr>`;
+        } else {
+          branchesCache.forEach(b => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="p-2.5 font-bold">${b.id}</td>
+              <td class="p-2.5 font-semibold text-amber-800">${b.branch_code}</td>
+              <td class="p-2.5 font-bold text-slate-800">${b.branch_name}</td>
+              <td class="p-2.5">${b.city}</td>
+              <td class="p-2.5">${b.phone || '-'}</td>
+              <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">ACTIVE</span></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+
+        // B. பணியாளர் உருவாக்க படிவத்தில் Dropdown-ல் ஏற்றுதல்
+        const bSelect = document.getElementById('new_staff_branch');
+        bSelect.innerHTML = '';
+        branchesCache.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.id;
+          opt.innerText = `${b.branch_name} (${b.branch_code} - ${b.city})`;
+          bSelect.appendChild(opt);
+        });
+
+      } catch (err) {
+        console.error("கிளைகள் ஏற்றுவதில் பிழை:", err);
+      }
+    }
+
+    async function submitCreateBranch() {
+      const payload = {
+        branch_code: document.getElementById('new_branch_code').value.trim(),
+        branch_name: document.getElementById('new_branch_name').value.trim(),
+        city: document.getElementById('new_branch_city').value.trim(),
+        phone: document.getElementById('new_branch_phone').value.trim() || null
+      };
+      if (!payload.branch_code || !payload.branch_name || !payload.city) {
+        alert("அனைத்து முக்கிய விபரங்களையும் உள்ளிடவும்.");
+        return;
+      }
+      const res = await fetch('/api/admin/branch/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        document.getElementById('new_branch_code').value = '';
+        document.getElementById('new_branch_name').value = '';
+        document.getElementById('new_branch_city').value = '';
+        document.getElementById('new_branch_phone').value = '';
+        loadBranchesList(); // அட்டவணை மற்றும் Dropdown புதுப்பிக்கும்
+      } else {
+        alert("❌ பிழை: " + data.detail);
+      }
+    }
+
+    // 3. Admin Panel: பணியாளர் பட்டியல் & அனுமதிகளுடன் உருவாக்கம்
+    async function loadStaffList() {
+      try {
+        const res = await fetch('/api/admin/staff');
+        const data = await res.json();
+        const tbody = document.getElementById('staffTableBody');
+        tbody.innerHTML = '';
+
+        if (!data.data || data.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">பணியாளர்கள் எதுவும் இல்லை</td></tr>`;
+        } else {
+          data.data.forEach(s => {
+            const tr = document.createElement('tr');
+            
+            // அனுமதிகள் பேட்ஜ்
+            let perms = [];
+            if (s.can_access_counter) perms.push('<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">கவுண்ட்டர்</span>');
+            if (s.can_approve_kyc) perms.push('<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-bold">KYC ஒப்புதல்</span>');
+            if (s.can_approve_updates) perms.push('<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">விபர மாற்றம்</span>');
+            if (s.can_manage_users) perms.push('<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold">அட்மின் உரிமை</span>');
+
+            tr.innerHTML = `
+              <td class="p-2.5 font-bold text-slate-800">${s.username}</td>
+              <td class="p-2.5 font-medium">${s.full_name}</td>
+              <td class="p-2.5 text-slate-500">${s.mobile}</td>
+              <td class="p-2.5 font-semibold text-amber-900">${s.test_branches?.branch_name || 'Branch #' + s.branch_id}</td>
+              <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold text-[10px]">${s.role_key}</span></td>
+              <td class="p-2.5 flex flex-wrap gap-1">${perms.join('') || '<span class="text-slate-400">உரிமைகள் இல்லை</span>'}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        console.error("பணியாளர் பட்டியல் பிழை:", err);
+      }
+    }
+
+    async function submitCreateStaff() {
+      const branchId = parseInt(document.getElementById('new_staff_branch').value);
+      if (!branchId) {
+        alert("முதலில் ஒரு கிளையைத் தேர்வு செய்யவும் (அல்லது கிளையை உருவாக்கவும்).");
+        return;
+      }
+
+      const payload = {
+        username: document.getElementById('new_staff_user').value.trim(),
+        password: document.getElementById('new_staff_pass').value.trim(),
+        full_name: document.getElementById('new_staff_name').value.trim(),
+        mobile: document.getElementById('new_staff_mobile').value.trim(),
+        role_key: document.getElementById('new_staff_role').value,
+        branch_id: branchId,
+        can_access_counter: document.getElementById('perm_counter').checked,
+        can_approve_kyc: document.getElementById('perm_kyc').checked,
+        can_approve_updates: document.getElementById('perm_updates').checked,
+        can_manage_users: document.getElementById('perm_admin').checked
+      };
+
+      if (!payload.username || !payload.password || !payload.full_name) {
+        alert("அனைத்து விபரங்களையும் உள்ளிடவும்.");
+        return;
+      }
+
+      const res = await fetch('/api/admin/staff/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        document.getElementById('new_staff_user').value = '';
+        document.getElementById('new_staff_pass').value = '';
+        document.getElementById('new_staff_name').value = '';
+        document.getElementById('new_staff_mobile').value = '';
+        loadStaffList(); // பணியாளர் அட்டவணையைப் புதுப்பிக்கும்
+      } else {
+        alert("❌ பிழை: " + data.detail);
+      }
+    }
+
+    // 4. HQ Approvals
     async function loadPendingApprovals() {
       try {
         const res = await fetch('/api/hq/pending-approvals');
         const data = await res.json();
         
-        // KYC Table
         const kycBody = document.getElementById('pendingKycTableBody');
         kycBody.innerHTML = '';
         if (!data.pending_kyc || data.pending_kyc.length === 0) {
-          kycBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">நிலுவையில் உள்ள புதிய KYC எதுவும் இல்லை</td></tr>`;
+          kycBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">நிலுவைகள் இல்லை</td></tr>`;
         } else {
           data.pending_kyc.forEach(c => {
             const tr = document.createElement('tr');
@@ -580,7 +813,7 @@
               <td class="p-2.5">${c.guardian_name || '-'}</td>
               <td class="p-2.5">${c.address || '-'}</td>
               <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionKyc(${c.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல் (Approve)</button>
+                <button onclick="actionKyc(${c.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
                 <button onclick="actionKyc(${c.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
               </td>
             `;
@@ -588,16 +821,15 @@
           });
         }
 
-        // Profile Updates Table
         const upBody = document.getElementById('pendingUpdatesTableBody');
         upBody.innerHTML = '';
         if (!data.pending_updates || data.pending_updates.length === 0) {
-          upBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்றக் கோரிக்கைகள் எதுவும் இல்லை</td></tr>`;
+          upBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்றக் கோரிக்கைகள் இல்லை</td></tr>`;
         } else {
           data.pending_updates.forEach(u => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-              <td class="p-2.5 font-bold">${u.test_customers?.name || 'Customer #' + u.customer_id}</td>
+              <td class="p-2.5 font-bold">${u.test_customers?.name || 'ID: ' + u.customer_id}</td>
               <td class="p-2.5">${u.branch_id}</td>
               <td class="p-2.5"><code class="text-[10px] bg-slate-100 p-1 rounded">${JSON.stringify(u.requested_changes)}</code></td>
               <td class="p-2.5 text-center space-x-1">
@@ -635,64 +867,7 @@
       loadPendingApprovals();
     }
 
-    // 3. Admin Branch & Staff Creation
-    async function submitCreateBranch() {
-      const payload = {
-        branch_code: document.getElementById('new_branch_code').value.trim(),
-        branch_name: document.getElementById('new_branch_name').value.trim(),
-        city: document.getElementById('new_branch_city').value.trim(),
-        phone: document.getElementById('new_branch_phone').value.trim() || null
-      };
-      if (!payload.branch_code || !payload.branch_name || !payload.city) {
-        alert("அனைத்து முக்கிய விபரங்களையும் உள்ளிடவும்.");
-        return;
-      }
-      const res = await fetch('/api/admin/branch/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        document.getElementById('new_branch_code').value = '';
-        document.getElementById('new_branch_name').value = '';
-        document.getElementById('new_branch_city').value = '';
-      } else {
-        alert("❌ பிழை: " + data.detail);
-      }
-    }
-
-    async function submitCreateStaff() {
-      const payload = {
-        username: document.getElementById('new_staff_user').value.trim(),
-        password: document.getElementById('new_staff_pass').value.trim(),
-        full_name: document.getElementById('new_staff_name').value.trim(),
-        mobile: document.getElementById('new_staff_mobile').value.trim(),
-        role_key: document.getElementById('new_staff_role').value,
-        branch_id: parseInt(document.getElementById('new_staff_branch').value) || 1
-      };
-      if (!payload.username || !payload.password || !payload.full_name) {
-        alert("அனைத்து விபரங்களையும் உள்ளிடவும்.");
-        return;
-      }
-      const res = await fetch('/api/admin/staff/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        document.getElementById('new_staff_user').value = '';
-        document.getElementById('new_staff_pass').value = '';
-        document.getElementById('new_staff_name').value = '';
-      } else {
-        alert("❌ பிழை: " + data.detail);
-      }
-    }
-
-    // 4. Counter: Search & Customer Flow
+    // 5. Counter & Pawn Cart Functions
     async function handleSearch() {
       const q = document.getElementById('searchInput').value.trim();
       if (!q) return;
@@ -780,7 +955,6 @@
       }
     }
 
-    // 5. Ornaments Sub-list & Loan Entry
     function addOrnamentToTable() {
       const type = document.getElementById('item_type').value.trim();
       const count = parseInt(document.getElementById('item_count').value) || 1;
@@ -961,7 +1135,7 @@
       }
     }
 
-    // 6. Checkout & Settlement
+    // 6. Checkout & Denomination Modal
     function openCheckoutModal() {
       if (cartItems.length === 0 || currentNetAbs <= 0) {
         alert("கார்ட்டில் பரிவர்த்தனைகள் இல்லை அல்லது நிகர தொகை பூஜ்ஜியமாக உள்ளது.");
@@ -1058,7 +1232,7 @@
       }
     }
 
-    // 7. SMS OTP & Verification
+    // 7. SMS OTP & Final Settlement
     async function requestOtpFromCustomer() {
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;

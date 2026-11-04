@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from database import supabase
 
 app = FastAPI(
-    title="Gold Branch Management - Strict RBAC & CRUD",
-    version="2.2.0"
+    title="Gold Branch Management - Strict Dynamic RBAC & CRUD",
+    version="2.3.0"
 )
 
 app.add_middleware(
@@ -25,6 +25,7 @@ app.add_middleware(
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Fast2SMS OTP Helper
 def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount: float, txn_type: str = "receive"):
     try:
         api_key = os.getenv("FAST2SMS_API_KEY", "eBGQYanRZNKVCpMSg3KB5kUxY2QhDnOjxesh3Hqr7FOG792XV9wut4TPhQia")
@@ -184,7 +185,6 @@ def staff_unified_login(data: LoginRequest):
         )
 
         if not res.data:
-            # Fallback for older demo accounts
             f_res = supabase.table("test_users").select("*").eq("username", data.username.strip()).eq("password", data.password.strip()).execute()
             if not f_res.data:
                 raise HTTPException(status_code=401, detail="பயனர் பெயர் அல்லது கடவுச்சொல் தவறானது!")
@@ -233,7 +233,7 @@ def staff_unified_login(data: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"உள்நுழைவு பிழை: {str(e)}")
 
-# 2. கிளைகள் மேலாண்மை (CRUD: Read, Create, Update, Delete)
+# 2. கிளைகள் CRUD
 @app.get("/api/admin/branches")
 def get_branches():
     try:
@@ -253,7 +253,7 @@ def create_branch(data: BranchPayload):
 @app.put("/api/admin/branch/{branch_id}")
 def update_branch(branch_id: int, data: BranchPayload):
     try:
-        res = supabase.table("test_branches").update(data.model_dump()).eq("id", branch_id).execute()
+        supabase.table("test_branches").update(data.model_dump()).eq("id", branch_id).execute()
         return {"status": "success", "message": "கிளை விபரங்கள் புதுப்பிக்கப்பட்டன."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கிளை திருத்தம் பிழை: {str(e)}")
@@ -266,7 +266,7 @@ def delete_branch(branch_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கிளை நீக்கல் பிழை: {str(e)}")
 
-# 3. பணியாளர் மேலாண்மை (CRUD: Read, Create, Update, Delete)
+# 3. பணியாளர்கள் CRUD
 @app.get("/api/admin/staff")
 def get_staff_list():
     try:
@@ -436,7 +436,7 @@ def request_customer_update(data: CustomerUpdateRequest):
 def create_new_pawn(data: NewGoldLoanEntry):
     try:
         if not data.items:
-            raise HTTPException(status_code=400, detail="குறைந்தது ஒரு நகையாவது சேர்க்கப்பட வேண்டும்.")
+            raise HTTPException(status_code=400, detail="குறைந்தது ஒரு நகையாவது பட்டியலில் சேர்க்கப்பட வேண்டும்.")
 
         total_gross = sum(i.gross_weight for i in data.items)
         total_net = sum(i.net_weight for i in data.items)

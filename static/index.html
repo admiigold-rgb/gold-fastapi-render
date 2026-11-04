@@ -59,7 +59,6 @@
 
     <!-- ==================== TAB A: கவுண்ட்டர் பிரிவு ==================== -->
     <div id="counterTab" class="hidden space-y-4">
-      <!-- கிளை வங்கி பரிவர்த்தனை நிலை அறிவிப்பு பட்டை -->
       <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl flex justify-between items-center text-xs">
         <div>
           <span class="font-bold text-amber-900">🔔 வங்கி பட்டுவாடா & வரவு நிலவரம்:</span>
@@ -221,7 +220,7 @@
       </div>
     </div>
 
-    <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் (HQ Approvals) ==================== -->
+    <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் மையம் ==================== -->
     <div id="hqApprovalTab" class="hidden space-y-5">
       <div class="bg-white p-5 rounded-xl shadow-sm border space-y-5">
         <div class="flex justify-between items-center border-b pb-3">
@@ -231,7 +230,7 @@
           <button onclick="loadAllHqApprovals()" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-bold">புதுப்பி</button>
         </div>
 
-        <!-- 1. வங்கி பட்டுவாடா வேண்டுகோள்கள் (Company Payout via Bank/UPI) -->
+        <!-- 1. வங்கி பட்டுவாடா வேண்டுகோள்கள் -->
         <div class="space-y-2">
           <h3 class="text-xs font-bold text-rose-800 uppercase flex items-center gap-1.5">
             <span>💸</span> 1. கிளைகளுக்கு வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள் (Bank Payout Requests):
@@ -255,7 +254,7 @@
           </div>
         </div>
 
-        <!-- 2. வாடிக்கையாளர் வங்கி மூலம் செலுத்திய வரவு சரிபார்ப்பு (Bank Receipts) -->
+        <!-- 2. வங்கி வரவு சரிபார்ப்புகள் -->
         <div class="space-y-2 pt-4 border-t">
           <h3 class="text-xs font-bold text-emerald-800 uppercase flex items-center gap-1.5">
             <span>📥</span> 2. வாடிக்கையாளர் வங்கி மூலம் செலுத்திய வரவு சரிபார்ப்புகள் (Bank Receipts Verification):
@@ -302,7 +301,7 @@
           </div>
         </div>
 
-        <!-- 4. புதிய KYC & சுயவிவர மாற்றங்கள் -->
+        <!-- 4. புதிய KYC கோரிக்கைகள் -->
         <div class="space-y-2 pt-4 border-t">
           <h3 class="text-xs font-bold text-amber-900 uppercase">4. புதிய வாடிக்கையாளர் KYC கோரிக்கைகள்:</h3>
           <div class="overflow-x-auto border rounded-lg">
@@ -317,11 +316,14 @@
                   <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
-              <tbody id="pendingKycTableBody" class="divide-y text-slate-700"></tbody>
+              <tbody id="pendingKycTableBody" class="divide-y text-slate-700">
+                <tr><td colspan="6" class="p-4 text-center text-slate-400">KYC நிலுவைகள் இல்லை</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
 
+        <!-- 5. சுயவிவர மாற்றக் கோரிக்கைகள் -->
         <div class="space-y-2 pt-4 border-t">
           <h3 class="text-xs font-bold text-amber-900 uppercase">5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் (படம், முகவரி, ஒப்பம்):</h3>
           <div class="overflow-x-auto border rounded-lg">
@@ -334,7 +336,9 @@
                   <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
-              <tbody id="pendingUpdatesTableBody" class="divide-y text-slate-700"></tbody>
+              <tbody id="pendingUpdatesTableBody" class="divide-y text-slate-700">
+                <tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்ற நிலுவைகள் இல்லை</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -342,9 +346,8 @@
       </div>
     </div>
 
-    <!-- TAB C: கிளை & பணியாளர் நிர்வாகம் -->
+    <!-- TAB C: நிர்வாகம் -->
     <div id="adminPanelTab" class="hidden space-y-6">
-      <!-- கிளை மேலாண்மை -->
       <div class="space-y-4">
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <div class="flex justify-between items-center border-b pb-2">
@@ -375,7 +378,6 @@
         </div>
       </div>
 
-      <!-- பணியாளர் மேலாண்மை -->
       <div class="space-y-4 pt-4 border-t">
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <div class="flex justify-between items-center border-b pb-2">
@@ -395,7 +397,7 @@
               <option value="BRANCH_MANAGER">BRANCH_MANAGER</option>
               <option value="HQ_ADMIN">HQ_ADMIN</option>
             </select>
-            <select id="new_staff_branch" class="border p-2 rounded text-xs bg-white"></select>
+            <select id="new_staff_branch" class="border p-2 rounded text-xs bg-white font-medium text-amber-900"></select>
           </div>
           <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
             <label class="flex items-center space-x-2"><input type="checkbox" id="perm_counter" checked><span>1. கவுண்ட்டர் & அடகு அணுகல்</span></label>
@@ -422,11 +424,12 @@
       </div>
     </div>
 
-    <!-- ==================== 3. புதிய விரிவான KYC MODAL ==================== -->
+    <!-- Modals -->
+    <!-- 1. புதிய முழு KYC Modal -->
     <div id="fullKycModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-2xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-base font-bold text-slate-800">📋 புதிய வாடிக்கையாளர் முழுமையான KYC</h3>
+          <h3 class="text-base font-bold text-slate-800">📋 புதிய வாடிக்கையாளர் முழுமையான KYC படிவம்</h3>
           <button onclick="closeNewKycModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
         <div class="space-y-3">
@@ -465,11 +468,10 @@
               <input type="tel" id="fkyc_ref2_mob" placeholder="மொபைல்" class="w-full border p-1 rounded bg-white">
             </div>
           </div>
-          <!-- Uploads -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t pt-2">
-            <div><label class="block text-[11px] font-bold">1. வாடிக்கையாளர் படம் 📷</label><input type="file" id="fkyc_file_photo" accept="image/*" class="text-[10px]"></div>
+            <div><label class="block text-[11px] font-bold">1. படம் 📷</label><input type="file" id="fkyc_file_photo" accept="image/*" class="text-[10px]"></div>
             <div><label class="block text-[11px] font-bold">2. கையொப்பம் ✍️</label><input type="file" id="fkyc_file_sign" accept="image/*" class="text-[10px]"></div>
-            <div><label class="block text-[11px] font-bold">3. அடையாள அட்டை படம் 🪪</label><input type="file" id="fkyc_file_proof" accept="image/*" class="text-[10px]"></div>
+            <div><label class="block text-[11px] font-bold">3. ஆவணப் படம் 🪪</label><input type="file" id="fkyc_file_proof" accept="image/*" class="text-[10px]"></div>
           </div>
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t">
@@ -479,14 +481,11 @@
       </div>
     </div>
 
-    <!-- ==================== 4. வாடிக்கையாளர் சுயவிவர மாற்ற MODAL (படம்/ஒப்பம்/முகவரி உடன்) ==================== -->
+    <!-- 2. சுயவிவர மாற்ற Modal -->
     <div id="fullUpdateModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-2xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <h3 class="text-base font-bold text-slate-800">சுயவிவர மாற்றம் (Edit Customer Profile)</h3>
-            <p class="text-xs text-amber-700">ஏற்கனவே உள்ள விபரங்கள் காட்டப்பட்டுள்ளன. மாற்ற வேண்டியவற்றை மாற்றவும்.</p>
-          </div>
+          <h3 class="text-base font-bold text-slate-800">சுயவிவர மாற்றம் (Edit Customer Profile)</h3>
           <button onclick="closeFullUpdateModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
         <div class="space-y-3">
@@ -498,134 +497,103 @@
           <div><label class="text-[11px] font-semibold">முழு முகவரி</label><textarea id="upd_address" rows="2" class="w-full border p-2 rounded text-xs"></textarea></div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label class="text-[11px] font-semibold">சான்று எண்</label><input type="text" id="upd_proof_no" class="w-full border p-2 rounded text-xs"></div>
-            <div><label class="text-[11px] font-semibold">நாமினி பெயர் & மொபைல்</label><input type="text" id="upd_nominee_name" class="w-full border p-2 rounded text-xs"></div>
+            <div><label class="text-[11px] font-semibold">நாமினி பெயர்</label><input type="text" id="upd_nominee_name" class="w-full border p-2 rounded text-xs"></div>
           </div>
-          <!-- படம், ஒப்பம், ஆவணங்களை புதிதாக மாற்றும் வசதி -->
-          <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-2">
-            <span class="text-xs font-bold text-amber-900">புகைப்படம் & ஆவணங்களை மாற்ற விரும்பினால் மட்டும் பதிவேற்றவும்:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
-              <div><span>புதிய வாடிக்கையாளர் படம்:</span><input type="file" id="upd_file_photo" accept="image/*" class="w-full mt-1 text-[10px]"></div>
-              <div><span>புதிய கையொப்பம்:</span><input type="file" id="upd_file_sign" accept="image/*" class="w-full mt-1 text-[10px]"></div>
-              <div><span>புதிய முகவரிச் சான்று:</span><input type="file" id="upd_file_proof" accept="image/*" class="w-full mt-1 text-[10px]"></div>
-            </div>
+          <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
+            <div><span>புதிய படம்:</span><input type="file" id="upd_file_photo" accept="image/*" class="w-full mt-1 text-[10px]"></div>
+            <div><span>புதிய கையொப்பம்:</span><input type="file" id="upd_file_sign" accept="image/*" class="w-full mt-1 text-[10px]"></div>
+            <div><span>புதிய சான்றுப் படம்:</span><input type="file" id="upd_file_proof" accept="image/*" class="w-full mt-1 text-[10px]"></div>
           </div>
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t">
           <button onclick="closeFullUpdateModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
-          <button onclick="submitFullUpdateReq()" id="btnSubmitFullUpdate" class="px-5 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">மாற்றங்களை ஒப்புதலுக்கு அனுப்பு</button>
+          <button onclick="submitFullUpdateReq()" id="btnSubmitFullUpdate" class="px-5 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">ஒப்புதலுக்கு அனுப்பு</button>
         </div>
       </div>
     </div>
 
-    <!-- ==================== 5. புதிய மேம்படுத்தப்பட்ட Checkout & வங்கி பரிவர்த்தனை MODAL ==================== -->
+    <!-- 3. Checkout Modal -->
     <div id="checkoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-2xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <h3 class="text-base font-bold text-slate-800">பரிவர்த்தனை தீர்வு (Checkout)</h3>
-            <p class="text-xs text-amber-600 font-semibold" id="modalDirectionSummary">நிகர தொகை: ₹0.00</p>
-          </div>
+          <h3 class="text-base font-bold text-slate-800">பரிவர்த்தனை தீர்வு (Checkout)</h3>
           <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
-
-        <div class="space-y-2">
-          <label class="block text-xs font-bold text-slate-700">செலுத்தும் முறை தேர்வு:</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button type="button" onclick="setPaymentMode('FULL_CASH')" id="btn_cash" class="py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900">முழு ரொக்கம்</button>
-            <button type="button" onclick="setPaymentMode('FULL_BANK')" id="btn_bank" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">முழு வங்கி</button>
-            <button type="button" onclick="setPaymentMode('SPLIT')" id="btn_split" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">பகுதி ரொக்கம் + வங்கி</button>
-          </div>
+        <p class="text-xs text-amber-600 font-semibold" id="modalDirectionSummary">நிகர தொகை: ₹0.00</p>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" onclick="setPaymentMode('FULL_CASH')" id="btn_cash" class="py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900">முழு ரொக்கம்</button>
+          <button type="button" onclick="setPaymentMode('FULL_BANK')" id="btn_bank" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">முழு வங்கி</button>
+          <button type="button" onclick="setPaymentMode('SPLIT')" id="btn_split" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">பகுதி ரொக்கம் + வங்கி</button>
         </div>
-
         <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border">
           <div><label class="block text-xs font-semibold mb-1">ரொக்கத் தொகை (₹)</label><input type="number" id="pay_cash" oninput="onAmountChanged('cash')" class="w-full border p-2 rounded text-xs font-bold"></div>
           <div><label class="block text-xs font-semibold mb-1">வங்கித் தொகை (₹)</label><input type="number" id="pay_bank" oninput="onAmountChanged('bank')" class="w-full border p-2 rounded text-xs font-bold"></div>
         </div>
 
-        <!-- வழக்கு 1: நாம் வாடிக்கையாளருக்கு வங்கி மூலம் பணம் தர வேண்டியிருந்தால் (PAYOUT) -->
-        <div id="bankPayoutSection" class="hidden space-y-3 bg-rose-50 p-3 rounded-xl border border-rose-200">
-          <span class="text-xs font-bold text-rose-900 uppercase">வாடிக்கையாளருக்கு வங்கி/UPI மூலம் நாம் பணம் செலுத்த வேண்டிய விபரம்:</span>
-          <div class="grid grid-cols-2 gap-2 text-xs">
+        <!-- நாம் தரும் போது Payout -->
+        <div id="bankPayoutSection" class="hidden space-y-2.5 bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
+          <span class="font-bold text-rose-900 uppercase">வங்கி மூலம் நாம் பணம் வழங்கும் விபரம்:</span>
+          <div class="grid grid-cols-2 gap-2">
             <select id="payout_mode" onchange="togglePayoutFields()" class="border p-1.5 rounded bg-white">
-              <option value="BANK_TRANSFER">வங்கி கணக்கு பரிவர்த்தனை (IMPS/NEFT)</option>
-              <option value="UPI">UPI ஐடி மூலம்</option>
+              <option value="BANK_TRANSFER">வங்கி பரிவர்த்தனை (IMPS/NEFT)</option><option value="UPI">UPI ஐடி மூலம்</option>
             </select>
-            <input type="text" id="payout_beneficiary" placeholder="கணக்கு வைத்திருப்பவர் பெயர் *" class="border p-1.5 rounded bg-white">
+            <input type="text" id="payout_beneficiary" placeholder="கணக்கு பெயர் *" class="border p-1.5 rounded bg-white">
           </div>
-          <!-- வங்கி விபரம் -->
-          <div id="payout_bank_fields" class="grid grid-cols-3 gap-2 text-xs">
+          <div id="payout_bank_fields" class="grid grid-cols-3 gap-2">
             <input type="text" id="payout_acc_no" placeholder="கணக்கு எண் *" class="border p-1.5 rounded bg-white">
-            <input type="text" id="payout_ifsc" placeholder="IFSC Code *" class="border p-1.5 rounded bg-white">
-            <input type="text" id="payout_bank_name" placeholder="வங்கிப் பெயர்" class="border p-1.5 rounded bg-white">
+            <input type="text" id="payout_ifsc" placeholder="IFSC *" class="border p-1.5 rounded bg-white">
+            <input type="text" id="payout_bank_name" placeholder="வங்கி" class="border p-1.5 rounded bg-white">
           </div>
-          <!-- UPI விபரம் -->
-          <div id="payout_upi_fields" class="hidden text-xs">
-            <input type="text" id="payout_upi_id" placeholder="வாடிக்கையாளர் UPI ஐடி (எ.கா: mobile@upi) *" class="w-full border p-1.5 rounded bg-white">
+          <div id="payout_upi_fields" class="hidden">
+            <input type="text" id="payout_upi_id" placeholder="UPI ID (mobile@upi) *" class="w-full border p-1.5 rounded bg-white">
           </div>
-          <!-- மூன்றாம் நபர் & ஆவணங்கள் -->
-          <div class="space-y-1.5 pt-1 text-xs border-t border-rose-200">
-            <label class="flex items-center space-x-2 font-bold text-rose-950 cursor-pointer">
-              <input type="checkbox" id="payout_is_third_party" onchange="toggleThirdPartyConsent()">
-              <span>மூன்றாம் நபர் கணக்கில் செலுத்துதல் (Third Party Transfer)</span>
+          <div class="pt-1 border-t border-rose-200 space-y-1">
+            <label class="flex items-center space-x-2 font-bold cursor-pointer">
+              <input type="checkbox" id="payout_is_third_party" onchange="toggleThirdPartyConsent()"><span>மூன்றாம் நபர் கணக்கு</span>
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-              <div><span class="text-[11px] font-bold">வங்கி பாஸ்புக் முதல் பக்கம் 📖 *</span><input type="file" id="payout_file_passbook" accept="image/*" class="text-[10px] w-full"></div>
-              <div id="thirdPartyConsentDiv" class="hidden"><span class="text-[11px] font-bold text-rose-800">வாடிக்கையாளர் ஒப்புதல் ஆவணம் 📄 *</span><input type="file" id="payout_file_consent" accept="image/*" class="text-[10px] w-full"></div>
+              <div><span class="font-bold">பாஸ்புக் படம் 📖 *</span><input type="file" id="payout_file_passbook" accept="image/*" class="w-full text-[10px]"></div>
+              <div id="thirdPartyConsentDiv" class="hidden"><span class="font-bold text-rose-800">ஒப்புதல் ஆவணம் 📄 *</span><input type="file" id="payout_file_consent" accept="image/*" class="w-full text-[10px]"></div>
             </div>
           </div>
         </div>
 
-        <!-- வழக்கு 2: வாடிக்கையாளர் நமக்கு வங்கி மூலம் தந்திருந்தால் (RECEIPT) -->
-        <div id="bankReceiptSection" class="hidden space-y-3 bg-emerald-50 p-3 rounded-xl border border-emerald-200">
-          <span class="text-xs font-bold text-emerald-900 uppercase">வாடிக்கையாளர் நமக்கு வங்கி மூலம் செலுத்திய விபரம்:</span>
-          <div class="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">பணம் பெற்ற நிறுவனம் வங்கி *</label>
-              <select id="receipt_company_bank" class="w-full border p-1.5 rounded bg-white font-medium">
-                <option value="HDFC Bank - Muthusise">HDFC Bank - Muthusise</option>
-                <option value="SBI - Muthusise">State Bank of India - Muthusise</option>
-                <option value="ICICI Bank - Muthusise">ICICI Bank - Muthusise</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">UTR / குறிப்பு எண் (Ref No) *</label>
-              <input type="text" id="receipt_ref_no" placeholder="12 இலக்க UTR எண்" class="w-full border p-1.5 rounded bg-white">
-            </div>
+        <!-- நாம் பெறும் போது Receipt -->
+        <div id="bankReceiptSection" class="hidden space-y-2 bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-xs">
+          <span class="font-bold text-emerald-900 uppercase">வங்கி வரவு சரிபார்ப்பு விபரம்:</span>
+          <div class="grid grid-cols-2 gap-2">
+            <select id="receipt_company_bank" class="border p-1.5 rounded bg-white font-medium">
+              <option value="HDFC Bank - Muthusise">HDFC Bank - Muthusise</option>
+              <option value="SBI - Muthusise">State Bank of India - Muthusise</option>
+            </select>
+            <input type="text" id="receipt_ref_no" placeholder="UTR / Ref No *" class="border p-1.5 rounded bg-white">
           </div>
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-600 mb-1">பரிவர்த்தனை ஸ்கிரீன்ஷாட் (Payment Screenshot) *</label>
-            <input type="file" id="receipt_file_screenshot" accept="image/*" class="w-full text-xs">
-          </div>
+          <div><span class="block font-semibold mb-1">ஸ்கிரீன்ஷாட் *</span><input type="file" id="receipt_file_screenshot" accept="image/*" class="w-full text-xs"></div>
         </div>
 
-        <!-- ரொக்க தாள்கள் டினாமினேசன் (ரொக்கத் தொகை இருந்தால்) -->
-        <div id="denomSection" class="space-y-2 border-t pt-2">
-          <div class="flex justify-between items-center text-xs">
-            <span class="font-bold text-slate-700">ரூபாய் தாள்கள் டினாமினேசன்:</span>
-            <span id="denomMatchBadge" class="text-[11px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span>
+        <!-- ரொக்கத் தாள்கள் -->
+        <div id="denomSection" class="space-y-1.5 border-t pt-2 text-xs">
+          <div class="flex justify-between items-center"><span class="font-bold">ரூபாய் தாள்கள்:</span><span id="denomMatchBadge" class="px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span></div>
+          <div class="grid grid-cols-4 gap-1.5 text-center">
+            <div>500: <input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
+            <div>200: <input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
+            <div>100: <input type="number" min="0" value="0" id="d100" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
+            <div>50: <input type="number" min="0" value="0" id="d50" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
+            <div>20: <input type="number" min="0" value="0" id="d20" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
+            <div>10: <input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
+            <div>சில்: <input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
           </div>
-          <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 text-xs">
-            <div class="flex items-center space-x-1"><span class="w-8 font-bold">500:</span><input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-full border p-1 text-center rounded"></div>
-            <div class="flex items-center space-x-1"><span class="w-8 font-bold">200:</span><input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-full border p-1 text-center rounded"></div>
-            <div class="flex items-center space-x-1"><span class="w-8 font-bold">100:</span><input type="number" min="0" value="0" id="d100" oninput="calcDenom()" class="w-full border p-1 text-center rounded"></div>
-            <div class="flex items-center space-x-1"><span class="w-8 font-bold">50:</span><input type="number" min="0" value="0" id="d50" oninput="calcDenom()" class="w-full border p-1 text-center rounded"></div>
-            <div class="flex items-center space-x-1"><span class="w-8 font-bold">20:</span><input type="number" min="0" value="0" id="d20" oninput="calcDenom()" class="w-full border p-1 text-center rounded"></div>
-            <div class="flex items-center space-x-1"><span class="w-8 font-bold">10:</span><input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-full border p-1 text-center rounded"></div>
-            <div class="flex items-center space-x-1"><span class="w-8 font-bold">சில்:</span><input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-full border p-1 text-center rounded"></div>
-          </div>
-          <div class="text-right text-xs font-bold text-slate-800 pt-1">மொத்தம்: <span id="denomSumDisplay">₹ 0.00</span></div>
+          <div class="text-right font-bold pt-1">மொத்தம்: <span id="denomSumDisplay">₹ 0.00</span></div>
         </div>
 
         <div class="flex justify-end gap-2 pt-2 border-t">
           <button onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
-          <button onclick="requestOtpFromCustomer()" id="btn_send_otp" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow">
-            SMS OTP அனுப்பு 📲
-          </button>
+          <button onclick="requestOtpFromCustomer()" id="btn_send_otp" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow">SMS OTP அனுப்பு 📲</button>
         </div>
       </div>
     </div>
 
-    <!-- OTP Modal -->
+    <!-- 4. OTP Modal -->
     <div id="otpVerifyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
         <div class="text-4xl">🔐</div>
@@ -634,9 +602,7 @@
         <input type="text" id="input_otp" maxlength="6" placeholder="000000" class="w-full text-center text-2xl font-mono tracking-widest border-2 border-amber-500 rounded-xl py-2 focus:outline-none">
         <div class="flex justify-center gap-2 pt-2">
           <button onclick="closeOtpModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
-          <button onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">
-            சரிபார்த்து முடி
-          </button>
+          <button onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">சரிபார்த்து முடி</button>
         </div>
       </div>
     </div>
@@ -654,10 +620,9 @@
     let branchesCache = [];
     let staffCache = [];
 
-    // Helper: File to Base64
     function readFileAsBase64(fileInput) {
       return new Promise((resolve) => {
-        if (!fileInput.files || !fileInput.files[0]) return resolve(null);
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) return resolve(null);
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = () => resolve(null);
@@ -665,7 +630,7 @@
       });
     }
 
-    // 1. Auth & Navigation
+    // 1. Auth & Dynamic Navigation
     async function handleLogin() {
       const u = document.getElementById('login_username').value.trim();
       const p = document.getElementById('login_password').value.trim();
@@ -690,7 +655,7 @@
       const activeTabs = [];
 
       if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
-      if (p.can_approve_kyc === true || p.can_approve_updates === true) activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல் மையம் 🔔' });
+      if (p.can_approve_kyc === true || p.can_approve_updates === true) activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
       if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
 
       activeTabs.forEach((tab, index) => {
@@ -749,7 +714,7 @@
       if (tabId === 'adminPanelTab') { loadBranchesList(); loadStaffList(); }
     }
 
-    // கிளை வங்கி நிலை பரிசோதனை
+    // 2. வங்கி நிலவரம் & தேடல்
     async function checkBranchBankStatus() {
       const bId = parseInt(document.getElementById('active_branch_id').value) || 1;
       try {
@@ -768,7 +733,6 @@
       }
     }
 
-    // 2. வாடிக்கையாளர் தேடல் & படம்
     async function handleSearch() {
       const q = document.getElementById('searchInput').value.trim();
       if (!q) return;
@@ -841,16 +805,13 @@
       document.getElementById('searchSection').classList.remove('hidden');
     }
 
-    // 3. முழு விபர மாற்றம் (படம்/ஒப்பம்/முகவரி Pre-filled Edit)
+    // 3. முழு சுயவிவர மாற்றம்
     function openFullUpdateModal() {
       if (!activeCustomer) return;
       document.getElementById('upd_name').value = activeCustomer.name || '';
       document.getElementById('upd_mobile').value = activeCustomer.mobile || '';
       document.getElementById('upd_alt_mobile').value = activeCustomer.alt_mobile || '';
-      document.getElementById('upd_rel_type').value = activeCustomer.relation_type || 'தந்தை';
-      document.getElementById('upd_guardian').value = activeCustomer.guardian_name || '';
       document.getElementById('upd_address').value = activeCustomer.address || '';
-      document.getElementById('upd_proof_type').value = activeCustomer.id_proof_type || 'Aadhaar Card';
       document.getElementById('upd_proof_no').value = activeCustomer.id_proof_no || '';
       document.getElementById('upd_nominee_name').value = activeCustomer.nominee_name || '';
       document.getElementById('fullUpdateModal').classList.remove('hidden');
@@ -873,10 +834,7 @@
         name: document.getElementById('upd_name').value.trim(),
         mobile: document.getElementById('upd_mobile').value.trim(),
         alt_mobile: document.getElementById('upd_alt_mobile').value.trim() || null,
-        relation_type: document.getElementById('upd_rel_type').value,
-        guardian_name: document.getElementById('upd_guardian').value.trim() || null,
         address: document.getElementById('upd_address').value.trim() || null,
-        id_proof_type: document.getElementById('upd_proof_type').value,
         id_proof_no: document.getElementById('upd_proof_no').value.trim() || null,
         nominee_name: document.getElementById('upd_nominee_name').value.trim() || null
       };
@@ -891,16 +849,13 @@
         body: JSON.stringify({ customer_id: activeCustomer.id, branch_id: branchId, requested_changes: changes })
       });
       const data = await res.json();
-      btn.innerText = "மாற்றங்களை ஒப்புதலுக்கு அனுப்பு";
+      btn.innerText = "ஒப்புதலுக்கு அனுப்பு";
       btn.disabled = false;
-
-      if (res.ok) {
-        alert("✅ " + data.message);
-        closeFullUpdateModal();
-      } else alert("❌ பிழை: " + data.detail);
+      if (res.ok) { alert("✅ " + data.message); closeFullUpdateModal(); }
+      else alert("❌ பிழை: " + data.detail);
     }
 
-    // 4. புதிய KYC சமர்ப்பிப்பு
+    // 4. புதிய KYC
     function openNewKycModal() { document.getElementById('fullKycModal').classList.remove('hidden'); }
     function closeNewKycModal() { document.getElementById('fullKycModal').classList.add('hidden'); }
 
@@ -911,7 +866,7 @@
       const proofNo = document.getElementById('fkyc_proof_no').value.trim();
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
 
-      if (!name || !mobile || !address || !proofNo) return alert("பெயர், முதன்மை மொபைல், முகவரி மற்றும் சான்று எண் கட்டாயம் தேவை.");
+      if (!name || !mobile || !address || !proofNo) return alert("முக்கிய விபரங்களை உள்ளிடவும்.");
 
       const btn = document.getElementById('btnSubmitFullKyc');
       btn.innerText = "சமர்ப்பிக்கப்படுகிறது...";
@@ -946,7 +901,6 @@
       const data = await res.json();
       btn.innerText = "சமர்ப்பி (Submit KYC)";
       btn.disabled = false;
-
       if (res.ok) {
         alert("✅ " + data.message);
         closeNewKycModal();
@@ -1060,7 +1014,7 @@
       }
     }
 
-    // 6. Checkout & Bank Flow Logics
+    // 6. Checkout
     function openCheckoutModal() {
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
       document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
@@ -1126,13 +1080,10 @@
       receiptSec.classList.add('hidden');
 
       if (bVal > 0) {
-        if (currentDirection === "COMPANY_PAYABLE") {
-          payoutSec.classList.remove('hidden');
-        } else {
-          receiptSec.classList.remove('hidden');
-        }
+        if (currentDirection === "COMPANY_PAYABLE") payoutSec.classList.remove('hidden');
+        else receiptSec.classList.remove('hidden');
       }
-      denomSec.className = cVal > 0 ? "space-y-2 border-t pt-2" : "hidden";
+      denomSec.className = cVal > 0 ? "space-y-1.5 border-t pt-2 text-xs" : "hidden";
     }
 
     function togglePayoutFields() {
@@ -1171,12 +1122,11 @@
       }
     }
 
-    // 7. OTP & Final Settlement
+    // 7. OTP & Settlement
     async function requestOtpFromCustomer() {
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
 
-      // வங்கி பட்டுவாடா சரிபார்ப்பு
       if (bVal > 0 && currentDirection === "COMPANY_PAYABLE") {
         const pMode = document.getElementById('payout_mode').value;
         const bName = document.getElementById('payout_beneficiary').value.trim();
@@ -1189,10 +1139,9 @@
         }
       }
 
-      // வங்கி வரவு சரிபார்ப்பு
       if (bVal > 0 && currentDirection === "CUSTOMER_PAYABLE") {
         if (!document.getElementById('receipt_ref_no').value.trim()) {
-          return alert("வங்கி பரிவர்த்தனை குறிப்பு எண் (UTR/Ref No) உள்ளிடவும்.");
+          return alert("UTR/Ref No உள்ளிடவும்.");
         }
       }
 
@@ -1246,7 +1195,6 @@
       btn.innerText = "சரிபார்க்கப்படுகிறது...";
       btn.disabled = true;
 
-      // 1. செட்டில்மென்ட் செய்தல்
       const settlePayload = {
         customer_id: activeCustomer.id, branch_id: branchId, otp_code: enteredOtp,
         net_amount: currentNetAbs, direction: currentDirection, settlement_type: selectedMode,
@@ -1269,7 +1217,6 @@
         return alert("❌ பிழை: " + settleData.detail);
       }
 
-      // 2. வங்கி பரிவர்த்தனை வேண்டுகோள் தலைமையகத்திற்கு அனுப்புதல்
       if (bVal > 0) {
         if (currentDirection === "COMPANY_PAYABLE") {
           const passbookBase64 = await readFileAsBase64(document.getElementById('payout_file_passbook'));
@@ -1313,17 +1260,18 @@
       checkBranchBankStatus();
     }
 
-    // 8. தலைமையக ஒருங்கிணைந்த ஒப்புதல்கள் மையம் (HQ Hub)
+    // 8. தலைமையக ஒப்புதல்கள் மையம் (HQ Hub)
     async function loadAllHqApprovals() {
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
+        if (!res.ok) return alert("❌ சர்வர் பிழை: " + (data.detail || "தரவு எடுக்க முடியவில்லை"));
 
-        // A. Payouts (நாம் தர வேண்டியது)
+        // A. Payouts Table
         const payoutBody = document.getElementById('pendingPayoutsTableBody');
         payoutBody.innerHTML = '';
         if (!data.pending_payouts || data.pending_payouts.length === 0) {
-          payoutBody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">பட்டுவாடா நிலுவைகள் இல்லை</td></tr>`;
+          payoutBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">பட்டுவாடா நிலுவைகள் இல்லை</td></tr>`;
         } else {
           data.pending_payouts.forEach(p => {
             const tr = document.createElement('tr');
@@ -1335,7 +1283,7 @@
               <td class="p-2.5 font-bold">${p.test_customers?.name}</td>
               <td class="p-2.5 font-bold text-rose-600">₹${p.amount}</td>
               <td class="p-2.5">${p.pay_mode}</td>
-              <td class="p-2.5 text-[11px]">${p.pay_mode === 'UPI' ? p.upi_id : `${p.beneficiary_name}<br>${p.account_no} (${p.ifsc_code})`}</td>
+              <td class="p-2.5 text-[11px]">${p.pay_mode === 'UPI' ? p.upi_id : `${p.beneficiary_name || '-'}<br>${p.account_no || ''} (${p.ifsc_code || ''})`}</td>
               <td class="p-2.5 text-[11px]">${docs || 'இல்லை'}</td>
               <td class="p-2.5 text-center space-x-1">
                 <button onclick="actionBankTransfer(${p.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">பணம் செலுத்தினேன் (Approve)</button>
@@ -1346,22 +1294,22 @@
           });
         }
 
-        // B. Receipts (நாம் பெற்றது)
+        // B. Receipts Table
         const receiptBody = document.getElementById('pendingReceiptsTableBody');
         receiptBody.innerHTML = '';
         if (!data.pending_receipts || data.pending_receipts.length === 0) {
-          receiptBody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">வரவு நிலுவைகள் இல்லை</td></tr>`;
+          receiptBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">வரவு நிலுவைகள் இல்லை</td></tr>`;
         } else {
           data.pending_receipts.forEach(r => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
               <td class="p-2.5 font-bold">${r.test_customers?.name}</td>
               <td class="p-2.5 font-bold text-emerald-600">₹${r.amount}</td>
-              <td class="p-2.5">${r.company_bank_name}</td>
+              <td class="p-2.5">${r.company_bank_name || '-'}</td>
               <td class="p-2.5 font-mono font-bold">${r.receipt_ref_no || '-'}</td>
               <td class="p-2.5">${r.receipt_screenshot ? `<a href="${r.receipt_screenshot}" target="_blank" class="text-blue-600 underline font-bold">ஸ்கிரீன்ஷாட்</a>` : 'இல்லை'}</td>
               <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionBankTransfer(${r.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">வரவு சரிபார்த்தேன் (Approve)</button>
+                <button onclick="actionBankTransfer(${r.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">வரவு சரிபார்த்தேன்</button>
                 <button onclick="actionBankTransfer(${r.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
               </td>
             `;
@@ -1369,11 +1317,11 @@
           });
         }
 
-        // C. வருகை ஒப்புதல்கள்
+        // C. Visits Table
         const visitBody = document.getElementById('pendingVisitsTableBody');
         visitBody.innerHTML = '';
         if (!data.pending_visits || data.pending_visits.length === 0) {
-          visitBody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400">வருகை நிலுவைகள் இல்லை</td></tr>`;
+          visitBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">வருகை நிலுவைகள் இல்லை</td></tr>`;
         } else {
           data.pending_visits.forEach(v => {
             const tr = document.createElement('tr');
@@ -1391,49 +1339,56 @@
           });
         }
 
-        // D. KYC
+        // D. KYC Table
         const kycBody = document.getElementById('pendingKycTableBody');
         kycBody.innerHTML = '';
-        data.pending_kyc.forEach(c => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="p-2.5 text-center">${c.customer_photo ? `<img src="${c.customer_photo}" class="w-8 h-8 rounded-full object-cover">` : '👤'}</td>
-            <td class="p-2.5 font-bold">${c.name}</td>
-            <td class="p-2.5">${c.mobile}</td>
-            <td class="p-2.5">${c.id_proof_no || '-'}</td>
-            <td class="p-2.5">${c.nominee_name || '-'}</td>
-            <td class="p-2.5 text-center space-x-1">
-              <button onclick="actionKyc(${c.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
-              <button onclick="actionKyc(${c.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-            </td>
-          `;
-          kycBody.appendChild(tr);
-        });
+        if (!data.pending_kyc || data.pending_kyc.length === 0) {
+          kycBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">KYC நிலுவைகள் இல்லை</td></tr>`;
+        } else {
+          data.pending_kyc.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="p-2.5 text-center">${c.customer_photo ? `<img src="${c.customer_photo}" class="w-8 h-8 rounded-full object-cover mx-auto">` : '👤'}</td>
+              <td class="p-2.5 font-bold">${c.name}</td>
+              <td class="p-2.5">${c.mobile}</td>
+              <td class="p-2.5">${c.id_proof_no || '-'}</td>
+              <td class="p-2.5">${c.nominee_name || '-'}</td>
+              <td class="p-2.5 text-center space-x-1">
+                <button onclick="actionKyc(${c.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
+                <button onclick="actionKyc(${c.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
+              </td>
+            `;
+            kycBody.appendChild(tr);
+          });
+        }
 
-        // E. சுயவிவர மாற்றங்கள்
+        // E. Profile Updates Table
         const upBody = document.getElementById('pendingUpdatesTableBody');
         upBody.innerHTML = '';
-        data.pending_updates.forEach(u => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="p-2.5 font-bold">${u.test_customers?.name}</td>
-            <td class="p-2.5">Branch #${u.branch_id}</td>
-            <td class="p-2.5 text-[11px]"><code class="bg-slate-100 p-1 rounded block max-w-xs overflow-x-auto">${JSON.stringify(u.requested_changes)}</code></td>
-            <td class="p-2.5 text-center space-x-1">
-              <button onclick="actionUpdate(${u.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
-              <button onclick="actionUpdate(${u.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-            </td>
-          `;
-          upBody.appendChild(tr);
-        });
-
-      } catch (e) {
-        console.error(e);
+        if (!data.pending_updates || data.pending_updates.length === 0) {
+          upBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்ற நிலுவைகள் இல்லை</td></tr>`;
+        } else {
+          data.pending_updates.forEach(u => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="p-2.5 font-bold">${u.test_customers?.name}</td>
+              <td class="p-2.5">Branch #${u.branch_id}</td>
+              <td class="p-2.5 text-[11px]"><code class="bg-slate-100 p-1 rounded block max-w-xs overflow-x-auto">${JSON.stringify(u.requested_changes)}</code></td>
+              <td class="p-2.5 text-center space-x-1">
+                <button onclick="actionUpdate(${u.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
+                <button onclick="actionUpdate(${u.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
+              </td>
+            `;
+            upBody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        alert("❌ கோரிக்கை எடுப்பதில் பிழை: " + err.message);
       }
     }
 
     async function actionBankTransfer(id, action) {
-      const notes = prompt("குறிப்புகள் (Optional):") || "";
+      const notes = prompt("குறிப்புகள் (விருப்பப்பட்டால்):") || "";
       const res = await fetch('/api/hq/process-bank-transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1589,18 +1544,22 @@
 
     async function submitStaffForm() {
       const editId = document.getElementById('edit_staff_id').value;
+      const branchId = parseInt(document.getElementById('new_staff_branch').value);
+      if (!branchId) return alert("கிளையைத் தேர்வு செய்யவும்.");
+
       const payload = {
         username: document.getElementById('new_staff_user').value.trim(),
         password: document.getElementById('new_staff_pass').value.trim() || (editId ? null : "gold123"),
         full_name: document.getElementById('new_staff_name').value.trim(),
         mobile: document.getElementById('new_staff_mobile').value.trim(),
         role_key: document.getElementById('new_staff_role').value,
-        branch_id: parseInt(document.getElementById('new_staff_branch').value),
+        branch_id: branchId,
         can_access_counter: document.getElementById('perm_counter').checked,
         can_approve_kyc: document.getElementById('perm_kyc').checked,
         can_approve_updates: document.getElementById('perm_updates').checked,
         can_manage_users: document.getElementById('perm_admin').checked
       };
+
       const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
         method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },

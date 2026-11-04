@@ -8,7 +8,7 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
 
-  <!-- 1. லாகின் திரை -->
+  <!-- ==================== 1. லாகின் திரை ==================== -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 max-w-md w-full space-y-6">
       <div class="text-center space-y-2">
@@ -35,10 +35,10 @@
   </div>
 
 
-  <!-- 2. பிரதான இடைமுகம் -->
+  <!-- ==================== 2. பிரதான இடைமுகம் ==================== -->
   <div id="mainDashboard" class="hidden p-3 md:p-6 space-y-5 max-w-6xl mx-auto">
 
-    <!-- Header (மெனு பட்டன்கள் பாதுகாப்புடன்) -->
+    <!-- Header (மெனு பட்டன்கள் அனுமதி உள்ளவர்களுக்கு மட்டும் டைனமிக்காக உருவாகும்) -->
     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-3">
       <div class="flex items-center space-x-3 w-full md:w-auto">
         <span class="text-3xl">⚖️</span>
@@ -52,19 +52,21 @@
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
+      <!-- Navigation Tabs Container (Dynamic RBAC) -->
       <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-        <button onclick="switchTab('counterTab')" id="tabBtnCounter" class="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white">கவுண்ட்டர்</button>
-        <button onclick="switchTab('hqApprovalTab')" id="tabBtnHqApproval" class="hidden px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">தலைமையக ஒப்புதல்கள் 🔔</button>
-        <button onclick="switchTab('adminPanelTab')" id="tabBtnAdminPanel" class="hidden px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200">கிளை & பணியாளர் நிர்வாகம் ⚙️</button>
-        <button onclick="handleLogout()" class="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg">வெளியேறு 🚪</button>
+        <div id="navButtonsContainer" class="flex items-center gap-2">
+          <!-- அனுமதி உள்ள பட்டன்கள் மட்டுமே JavaScript மூலம் உருவாகும் -->
+        </div>
+        <button onclick="handleLogout()" class="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg transition">
+          வெளியேறு 🚪
+        </button>
       </div>
     </div>
 
     <input type="hidden" id="active_branch_id" value="1">
 
-    <!-- TAB A: கவுண்ட்டர் & அடகு கார்ட் -->
-    <div id="counterTab" class="space-y-4">
+    <!-- ==================== TAB A: கவுண்ட்டர் & அடகு கார்ட் ==================== -->
+    <div id="counterTab" class="hidden space-y-4">
       <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
         <div class="flex flex-col sm:flex-row gap-2">
           <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -227,7 +229,7 @@
     </div>
 
 
-    <!-- TAB B: தலைமையக ஒப்புதல்கள் -->
+    <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் ==================== -->
     <div id="hqApprovalTab" class="hidden space-y-5">
       <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
         <div class="flex justify-between items-center border-b pb-3">
@@ -279,7 +281,7 @@
     </div>
 
 
-    <!-- TAB C: கிளை & பணியாளர் நிர்வாகம் (EDIT & DELETE உடன்) -->
+    <!-- ==================== TAB C: கிளை & பணியாளர் நிர்வாகம் ==================== -->
     <div id="adminPanelTab" class="hidden space-y-6">
 
       <!-- கிளை மேலாண்மை -->
@@ -305,7 +307,6 @@
           </div>
         </div>
 
-        <!-- உருவாக்கப்பட்ட கிளைகள் அட்டவணை (Edit / Delete உடன்) -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center">
             <h4 class="text-xs font-bold text-slate-700 uppercase">உருவாக்கப்பட்ட கிளைகளின் பட்டியல்:</h4>
@@ -320,7 +321,7 @@
                   <th class="p-2.5">கிளை பெயர்</th>
                   <th class="p-2.5">நகரம்</th>
                   <th class="p-2.5">தொலைபேசி</th>
-                  <th class="p-2.5 text-center">நடவடிக்கை (Actions)</th>
+                  <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
               <tbody id="branchesTableBody" class="divide-y text-slate-700">
@@ -366,7 +367,6 @@
             </div>
           </div>
 
-          <!-- உரிமைகள் தேர்வு -->
           <div class="bg-amber-50 p-4 rounded-xl border border-amber-200 space-y-2">
             <label class="block text-xs font-bold text-amber-900">அணுகல் உரிமைகள் (Permissions):</label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -396,7 +396,6 @@
           </div>
         </div>
 
-        <!-- பணியாளர் அட்டவணை (Edit / Delete உடன்) -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
           <div class="flex justify-between items-center">
             <h4 class="text-xs font-bold text-slate-700 uppercase">உருவாக்கப்பட்ட பணியாளர்களின் விபரங்கள்:</h4>
@@ -411,7 +410,7 @@
                   <th class="p-2.5">கிளை</th>
                   <th class="p-2.5">பதவி</th>
                   <th class="p-2.5">உரிமைகள்</th>
-                  <th class="p-2.5 text-center">நடவடிக்கை (Actions)</th>
+                  <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
               <tbody id="staffTableBody" class="divide-y text-slate-700">
@@ -540,7 +539,7 @@
     let branchesCache = [];
     let staffCache = [];
 
-    // 1. Auth & Strict Menu Visibility
+    // 1. Auth & Dynamic Navigation Rendering (முக்கிய மாற்றம்)
     async function handleLogin() {
       const u = document.getElementById('login_username').value.trim();
       const p = document.getElementById('login_password').value.trim();
@@ -576,40 +575,54 @@
       }
     }
 
+    // அனுமதி உள்ள பட்டன்களை மட்டும் DOM-ல் உருவாக்கும் செயல்பாடு
+    function renderNavMenu(user) {
+      const container = document.getElementById('navButtonsContainer');
+      container.innerHTML = '';
+
+      const p = user.permissions || {};
+      const activeTabs = [];
+
+      if (p.can_access_counter === true) {
+        activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
+      }
+      if (p.can_approve_kyc === true || p.can_approve_updates === true) {
+        activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
+      }
+      if (p.can_manage_users === true) {
+        activeTabs.push({ id: 'adminPanelTab', label: 'கிளை & பணியாளர் நிர்வாகம் ⚙️' });
+      }
+
+      activeTabs.forEach((tab, index) => {
+        const btn = document.createElement('button');
+        btn.id = `btn_${tab.id}`;
+        btn.innerText = tab.label;
+        btn.onclick = () => switchTab(tab.id);
+        btn.className = index === 0 
+          ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white" 
+          : "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+        container.appendChild(btn);
+      });
+
+      if (activeTabs.length > 0) {
+        switchTab(activeTabs[0].id);
+      }
+    }
+
     function showDashboard(user) {
       document.getElementById('loggedStaffName').innerText = user.full_name;
       document.getElementById('loggedStaffRole').innerText = user.role_key;
       document.getElementById('loggedBranchName').innerText = user.branch_name;
       document.getElementById('active_branch_id').value = user.branch_id;
 
-      // கடுமையான பாதுகாப்பு: முதலில் அனைத்து மெனுக்களையும் மறைத்துவிட்டு உரியவற்றை மட்டும் திறக்கும்
-      const btnCounter = document.getElementById('tabBtnCounter');
-      const btnHq = document.getElementById('tabBtnHqApproval');
-      const btnAdmin = document.getElementById('tabBtnAdminPanel');
-
-      btnCounter.classList.add('hidden');
-      btnHq.classList.add('hidden');
-      btnAdmin.classList.add('hidden');
-
-      const p = user.permissions || {};
-
-      if (p.can_access_counter === true) btnCounter.classList.remove('hidden');
-      if (p.can_approve_kyc === true || p.can_approve_updates === true) btnHq.classList.remove('hidden');
-      if (p.can_manage_users === true) btnAdmin.classList.remove('hidden');
-
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainDashboard').classList.remove('hidden');
 
-      // தொடக்க தாவல் (Default Tab) தேர்வு
-      if (p.can_access_counter === true) {
-        switchTab('counterTab');
-      } else if (p.can_approve_kyc === true || p.can_approve_updates === true) {
-        switchTab('hqApprovalTab');
-      } else if (p.can_manage_users === true) {
-        switchTab('adminPanelTab');
-      }
+      renderNavMenu(user);
 
-      loadBranchesList();
+      if (user.permissions?.can_manage_users === true) {
+        loadBranchesList();
+      }
     }
 
     function handleLogout() {
@@ -627,31 +640,22 @@
     };
 
     function switchTab(tabId) {
-      // பாதுகாப்பு சோதனை: அனுமதி இல்லாத பக்கத்திற்கு சுவிட்ச் செய்ய முடியாது
-      const p = currentUser ? currentUser.permissions || {} : {};
-      if (tabId === 'hqApprovalTab' && !p.can_approve_kyc && !p.can_approve_updates) {
-        alert("உங்களுக்கு தலைமையக ஒப்புதல்களுக்கான அனுமதி இல்லை.");
-        return;
-      }
-      if (tabId === 'adminPanelTab' && !p.can_manage_users) {
-        alert("உங்களுக்கு கிளை/பணியாளர் நிர்வாகத்திற்கான அனுமதி இல்லை.");
-        return;
-      }
-      if (tabId === 'counterTab' && !p.can_access_counter) {
-        alert("உங்களுக்கு கவுண்ட்டர் அணுகல் அனுமதி இல்லை.");
-        return;
-      }
-
       ['counterTab', 'hqApprovalTab', 'adminPanelTab'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
       });
-      document.getElementById(tabId).classList.remove('hidden');
 
-      const tabs = { counterTab: 'tabBtnCounter', hqApprovalTab: 'tabBtnHqApproval', adminPanelTab: 'tabBtnAdminPanel' };
-      Object.entries(tabs).forEach(([tId, btnId]) => {
-        const btn = document.getElementById(btnId);
-        if (tId === tabId) btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white";
-        else btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+      const target = document.getElementById(tabId);
+      if (target) target.classList.remove('hidden');
+
+      const container = document.getElementById('navButtonsContainer');
+      const buttons = container.querySelectorAll('button');
+      buttons.forEach(btn => {
+        if (btn.id === `btn_${tabId}`) {
+          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white";
+        } else {
+          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+        }
       });
 
       if (tabId === 'hqApprovalTab') loadPendingApprovals();
@@ -661,7 +665,7 @@
       }
     }
 
-    // 2. Admin Panel: கிளைகள் CRUD (Edit / Delete)
+    // 2. Admin: Branches CRUD
     async function loadBranchesList() {
       try {
         const res = await fetch('/api/admin/branches');
@@ -775,7 +779,7 @@
       }
     }
 
-    // 3. Admin Panel: பணியாளர்கள் CRUD (Edit / Delete)
+    // 3. Admin: Staff CRUD
     async function loadStaffList() {
       try {
         const res = await fetch('/api/admin/staff');
@@ -820,7 +824,7 @@
 
       document.getElementById('edit_staff_id').value = s.id;
       document.getElementById('new_staff_user').value = s.username;
-      document.getElementById('new_staff_user').disabled = true; // username மாற்ற முடியாது
+      document.getElementById('new_staff_user').disabled = true;
       document.getElementById('new_staff_pass').value = '';
       document.getElementById('new_staff_name').value = s.full_name;
       document.getElementById('new_staff_mobile').value = s.mobile;

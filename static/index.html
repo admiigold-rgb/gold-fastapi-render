@@ -56,6 +56,7 @@
     </div>
 
     <input type="hidden" id="active_branch_id" value="1">
+    <input type="hidden" id="active_branch_code" value="BR">
 
     <!-- ==================== TAB A: கவுண்ட்டர் பிரிவு ==================== -->
     <div id="counterTab" class="hidden space-y-4">
@@ -67,6 +68,7 @@
         <button onclick="checkBranchBankStatus()" class="text-amber-800 font-bold hover:underline">புதுப்பி</button>
       </div>
 
+      <!-- வாடிக்கையாளர் தேடல் -->
       <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
         <div class="flex flex-col sm:flex-row gap-2">
           <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
@@ -119,14 +121,12 @@
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">நகைக்கடன் எண் *</label>
-                <input type="text" id="loan_no" placeholder="GL-2026-001" class="w-full border p-2 rounded-lg text-xs font-medium">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">தொடர் நகைக்கடன் எண் (Auto-generated) *</label>
+                <input type="text" id="loan_no" readonly class="w-full border p-2 rounded-lg text-xs font-mono font-bold bg-slate-50 text-amber-900 cursor-not-allowed">
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">நகைக்கடன் திட்டம் (Schemes) *</label>
-                <select id="scheme_name" class="w-full border p-2 rounded-lg text-xs bg-white font-medium text-amber-900">
-                  <option value="">திட்டங்கள் ஏற்றப்படுகின்றன...</option>
-                </select>
+                <select id="scheme_name" class="w-full border p-2 rounded-lg text-xs bg-white font-medium text-amber-900"></select>
               </div>
             </div>
 
@@ -173,7 +173,7 @@
                 <input type="number" id="loan_amount" placeholder="50000" class="w-full border p-2 rounded-lg text-xs font-bold text-rose-600">
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">கட்டணங்கள் (₹) [+]</label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Processing கட்டணம் (₹) [+]</label>
                 <input type="number" id="charges_amount" value="0" class="w-full border p-2 rounded-lg text-xs font-bold text-emerald-600">
               </div>
             </div>
@@ -185,12 +185,17 @@
             </div>
           </div>
 
-          <!-- கார்ட் சுருக்கம் -->
+          <!-- கார்ட் சுருக்கம் & Undo வசதி -->
           <div class="bg-white p-5 rounded-xl shadow-sm border flex flex-col justify-between space-y-4">
             <div>
               <div class="border-b pb-2 flex justify-between items-center">
                 <h3 class="text-sm font-bold text-slate-800">🛒 பரிவர்த்தனை கூடை</h3>
-                <span id="cartCountBadge" class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">0 உருப்படிகள்</span>
+                <div class="flex items-center gap-1.5">
+                  <span id="cartCountBadge" class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">0 கடன்கள்</span>
+                  <button onclick="removeLastCartItem()" id="btnUndoCart" class="hidden text-[10px] bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded font-bold hover:bg-rose-100">
+                    ↩ கடைசியை நீக்கு
+                  </button>
+                </div>
               </div>
               <div id="cartItemsList" class="mt-3 space-y-2 max-h-60 overflow-y-auto">
                 <p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>
@@ -234,7 +239,7 @@
         <!-- 1. வங்கி பட்டுவாடா வேண்டுகோள்கள் -->
         <div class="space-y-2">
           <h3 class="text-xs font-bold text-rose-800 uppercase flex items-center gap-1.5">
-            <span>💸</span> 1. கிளைகளுக்கு வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள்:
+            <span>💸</span> 1. வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள்:
           </h3>
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-xs text-left">
@@ -245,7 +250,7 @@
                   <th class="p-2.5">முறை</th>
                   <th class="p-2.5">வங்கி / UPI விபரம்</th>
                   <th class="p-2.5">பாஸ்புக் / ஒப்புதல் ஆவணம்</th>
-                  <th class="p-2.5 text-center">நடவடிக்கை (HQ Action)</th>
+                  <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
               <tbody id="pendingPayoutsTableBody" class="divide-y text-slate-700">
@@ -269,7 +274,7 @@
                   <th class="p-2.5">பெற்ற நிறுவனம் வங்கி</th>
                   <th class="p-2.5">UTR / Ref No</th>
                   <th class="p-2.5">ஸ்கிரீன்ஷாட்</th>
-                  <th class="p-2.5 text-center">நடவடிக்கை (HQ Action)</th>
+                  <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
               <tbody id="pendingReceiptsTableBody" class="divide-y text-slate-700">
@@ -326,7 +331,7 @@
 
         <!-- 5. சுயவிவர மாற்றக் கோரிக்கைகள் -->
         <div class="space-y-2 pt-4 border-t">
-          <h3 class="text-xs font-bold text-amber-900 uppercase">5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் (படம், முகவரி, ஒப்பம்):</h3>
+          <h3 class="text-xs font-bold text-amber-900 uppercase">5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள்:</h3>
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 border-b">
@@ -346,36 +351,22 @@
       </div>
     </div>
 
-    <!-- ==================== TAB C: நிர்வாகம் (புதிய திட்டங்கள் & வங்கிகள் சேர்க்கப்பட்டது) ==================== -->
+    <!-- ==================== TAB C: நிர்வாகம் ==================== -->
     <div id="adminPanelTab" class="hidden space-y-8">
-
-      <!-- பகுதி 1: அன்றைய தங்க விலை நிர்ணயம் (Daily Gold Rate) -->
+      <!-- 1. தங்க விலை -->
       <div class="bg-amber-50 p-5 rounded-2xl border border-amber-200 shadow-sm space-y-3">
         <h3 class="text-sm font-bold text-amber-900 flex items-center gap-2">
           <span>💰</span> அன்றைய தங்க விலை நிர்ணயம் (Today's Gold Rate per Gram)
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-600 mb-1">24K தூய தங்கம் (₹/g) *</label>
-            <input type="number" id="gr_24k" placeholder="7800" class="w-full border p-2 rounded text-xs font-bold bg-white">
-          </div>
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-600 mb-1">22K / 916 தங்கம் (₹/g) *</label>
-            <input type="number" id="gr_22k" placeholder="7150" class="w-full border p-2 rounded text-xs font-bold bg-white text-amber-900">
-          </div>
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-600 mb-1">18K தங்கம் (₹/g) *</label>
-            <input type="number" id="gr_18k" placeholder="5850" class="w-full border p-2 rounded text-xs font-bold bg-white">
-          </div>
-          <div class="flex items-end">
-            <button onclick="submitTodayGoldRate()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded text-xs shadow">
-              விலையை சேமி 💾
-            </button>
-          </div>
+          <div><label class="block text-[11px] font-semibold mb-1">24K தூய தங்கம் (₹/g) *</label><input type="number" id="gr_24k" placeholder="7800" class="w-full border p-2 rounded text-xs font-bold bg-white"></div>
+          <div><label class="block text-[11px] font-semibold mb-1">22K / 916 தங்கம் (₹/g) *</label><input type="number" id="gr_22k" placeholder="7150" class="w-full border p-2 rounded text-xs font-bold bg-white text-amber-900"></div>
+          <div><label class="block text-[11px] font-semibold mb-1">18K தங்கம் (₹/g) *</label><input type="number" id="gr_18k" placeholder="5850" class="w-full border p-2 rounded text-xs font-bold bg-white"></div>
+          <div class="flex items-end"><button onclick="submitTodayGoldRate()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded text-xs shadow">விலையை சேமி 💾</button></div>
         </div>
       </div>
 
-      <!-- பகுதி 2: நகைக்கடன் திட்டங்கள் மேலாண்மை (Gold Loan Schemes) -->
+      <!-- 2. திட்டங்கள் -->
       <div class="space-y-4">
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-2">
@@ -392,14 +383,13 @@
             <input type="number" id="sch_min_days" placeholder="Min Interest Days" class="border p-2 rounded text-xs" value="7">
             <input type="number" id="sch_ltv" placeholder="அதிகபட்ச Loan % (LTV)" class="border p-2 rounded text-xs" value="75">
           </div>
-          <!-- ஏலக் கட்டணம் & Processing Charges -->
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border text-xs">
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">ஏலக் கட்டணம் (Auction Charge ₹)</label>
               <input type="number" id="sch_auction_charge" class="w-full border p-1.5 rounded bg-white" value="500">
             </div>
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Processing Charge வசூலிக்கும் நேரம்</label>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Processing Charge நேரம்</label>
               <select id="sch_proc_type" class="w-full border p-1.5 rounded bg-white">
                 <option value="PLEDGE">அடகு வைக்கும் போது (Pledge)</option>
                 <option value="RELEASE">திருப்பும் போது (Release)</option>
@@ -408,7 +398,7 @@
             <div>
               <label class="block text-[11px] font-semibold text-slate-600 mb-1">கட்டண கணக்கீடு முறை</label>
               <select id="sch_proc_calc" class="w-full border p-1.5 rounded bg-white">
-                <option value="AMOUNT">நிலையான தொகை (Amount ₹)</option>
+                <option value="AMOUNT">நிலையான தொகை (₹)</option>
                 <option value="PERCENTAGE">சதவீதம் (%)</option>
               </select>
             </div>
@@ -417,53 +407,35 @@
               <input type="number" id="sch_proc_val" class="w-full border p-1.5 rounded bg-white" value="100">
             </div>
           </div>
-
-          <!-- வட்டி ஸ்லேப் விபரம் (Interest Slabs) -->
           <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-200 space-y-2">
             <div class="flex justify-between items-center">
               <span class="text-xs font-bold text-amber-900">வட்டி அடுக்குகள் (Interest Slabs):</span>
               <button onclick="addInterestSlabRow()" class="text-xs text-amber-800 font-bold hover:underline">+ அடுக்கு சேர்</button>
             </div>
             <div id="slabsContainer" class="space-y-1.5">
-              <!-- Default Slabs -->
               <div class="grid grid-cols-3 gap-2 slab-row">
                 <input type="number" placeholder="From Day (1)" value="1" class="border p-1.5 rounded text-xs bg-white slab-from">
                 <input type="number" placeholder="To Day (30)" value="30" class="border p-1.5 rounded text-xs bg-white slab-to">
-                <input type="number" placeholder="வட்டி விகிதம் % (12)" value="12" class="border p-1.5 rounded text-xs bg-white slab-rate">
+                <input type="number" placeholder="வட்டி % (12)" value="12" class="border p-1.5 rounded text-xs bg-white slab-rate">
               </div>
               <div class="grid grid-cols-3 gap-2 slab-row">
                 <input type="number" placeholder="From Day (31)" value="31" class="border p-1.5 rounded text-xs bg-white slab-from">
                 <input type="number" placeholder="To Day (90)" value="90" class="border p-1.5 rounded text-xs bg-white slab-to">
-                <input type="number" placeholder="வட்டி விகிதம் % (15)" value="15" class="border p-1.5 rounded text-xs bg-white slab-rate">
+                <input type="number" placeholder="வட்டி % (15)" value="15" class="border p-1.5 rounded text-xs bg-white slab-rate">
               </div>
             </div>
           </div>
-
           <div class="flex justify-end">
-            <button onclick="submitLoanSchemeForm()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">
-              + திட்டத்தை உருவாக்கு (Save Scheme)
-            </button>
+            <button onclick="submitLoanSchemeForm()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ திட்டத்தை உருவாக்கு</button>
           </div>
         </div>
 
-        <!-- உருவாக்கப்பட்ட திட்டங்கள் அட்டவணை -->
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
-          <div class="flex justify-between items-center">
-            <h4 class="text-xs font-bold text-slate-700 uppercase">நகைக்கடன் திட்டங்களின் பட்டியல்:</h4>
-            <button onclick="loadSchemesList()" class="text-xs text-amber-600 font-bold hover:underline">புதுப்பி</button>
-          </div>
+          <h4 class="text-xs font-bold text-slate-700 uppercase">திட்டங்களின் பட்டியல்:</h4>
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 border-b">
-                <tr>
-                  <th class="p-2.5">குறியீடு</th>
-                  <th class="p-2.5">பெயர்</th>
-                  <th class="p-2.5">காலம்</th>
-                  <th class="p-2.5">வரம்பு (₹)</th>
-                  <th class="p-2.5">ஏலக் கட்டணம்</th>
-                  <th class="p-2.5">வட்டி ஸ்லேப்</th>
-                  <th class="p-2.5 text-center">செயல்</th>
-                </tr>
+                <tr><th class="p-2.5">குறியீடு</th><th class="p-2.5">பெயர்</th><th class="p-2.5">காலம்</th><th class="p-2.5">வரம்பு (₹)</th><th class="p-2.5">ஏலக் கட்டணம்</th><th class="p-2.5">வட்டி ஸ்லேப்</th><th class="p-2.5 text-center">செயல்</th></tr>
               </thead>
               <tbody id="schemesTableBody" class="divide-y text-slate-700"></tbody>
             </table>
@@ -471,51 +443,36 @@
         </div>
       </div>
 
-      <!-- பகுதி 3: நிறுவன வங்கி கணக்குகள் மேலாண்மை (Company Banks) -->
+      <!-- 3. வங்கிகள் -->
       <div class="space-y-4 pt-4 border-t">
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-2">
-            <span>🏦</span> நிறுவன வங்கி கணக்கு சேர்க்கை (Company Bank Accounts)
+            <span>🏦</span> நிறுவன வங்கி கணக்கு சேர்க்கை (Company Banks)
           </h3>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input type="text" id="bank_acc_name" placeholder="வங்கிப் பெயர் (HDFC Bank) *" class="border p-2 rounded text-xs">
+            <input type="text" id="bank_acc_name" placeholder="வங்கிப் பெயர் *" class="border p-2 rounded text-xs">
             <input type="text" id="bank_acc_branch" placeholder="கிளை பெயர் *" class="border p-2 rounded text-xs">
             <select id="bank_acc_type" class="border p-2 rounded text-xs bg-white font-medium">
-              <option value="CURRENT">CURRENT ACCOUNT (நடப்புக் கணக்கு)</option>
-              <option value="SAVINGS">SAVINGS (சேமிப்புக் கணக்கு)</option>
-              <option value="OD">OVERDRAFT (OD/CC)</option>
+              <option value="CURRENT">CURRENT ACCOUNT</option>
+              <option value="SAVINGS">SAVINGS</option>
+              <option value="OD">OVERDRAFT</option>
             </select>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input type="text" id="bank_acc_no" placeholder="கணக்கு எண் (Account No) *" class="border p-2 rounded text-xs">
-            <input type="text" id="bank_acc_ifsc" placeholder="IFSC குறியீடு *" class="border p-2 rounded text-xs">
-            <input type="text" id="bank_acc_upi" placeholder="நிறுவன UPI ID (Optional)" class="border p-2 rounded text-xs">
+            <input type="text" id="bank_acc_no" placeholder="கணக்கு எண் *" class="border p-2 rounded text-xs">
+            <input type="text" id="bank_acc_ifsc" placeholder="IFSC *" class="border p-2 rounded text-xs">
+            <input type="text" id="bank_acc_upi" placeholder="நிறுவன UPI ID" class="border p-2 rounded text-xs">
           </div>
           <div class="flex justify-end">
-            <button onclick="submitCompanyBankForm()" class="bg-slate-800 hover:bg-black text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">
-              + வங்கி கணக்கைச் சேர்
-            </button>
+            <button onclick="submitCompanyBankForm()" class="bg-slate-800 hover:bg-black text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ வங்கி கணக்கைச் சேர்</button>
           </div>
         </div>
-
-        <!-- வங்கி கணக்குகள் பட்டியல் -->
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
-          <div class="flex justify-between items-center">
-            <h4 class="text-xs font-bold text-slate-700 uppercase">நிறுவன வங்கி கணக்குகள்:</h4>
-            <button onclick="loadCompanyBanksList()" class="text-xs text-amber-600 font-bold hover:underline">புதுப்பி</button>
-          </div>
+          <h4 class="text-xs font-bold text-slate-700 uppercase">நிறுவன வங்கி கணக்குகள்:</h4>
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 border-b">
-                <tr>
-                  <th class="p-2.5">வங்கி</th>
-                  <th class="p-2.5">கிளை</th>
-                  <th class="p-2.5">கணக்கு வகை</th>
-                  <th class="p-2.5">கணக்கு எண்</th>
-                  <th class="p-2.5">IFSC</th>
-                  <th class="p-2.5">UPI ID</th>
-                  <th class="p-2.5 text-center">செயல்</th>
-                </tr>
+                <tr><th class="p-2.5">வங்கி</th><th class="p-2.5">கிளை</th><th class="p-2.5">வகை</th><th class="p-2.5">கணக்கு எண்</th><th class="p-2.5">IFSC</th><th class="p-2.5 text-center">செயல்</th></tr>
               </thead>
               <tbody id="companyBanksTableBody" class="divide-y text-slate-700"></tbody>
             </table>
@@ -523,7 +480,7 @@
         </div>
       </div>
 
-      <!-- பகுதி 4: கிளைகள் மேலாண்மை -->
+      <!-- 4. கிளைகள் மேலாண்மை -->
       <div class="space-y-4 pt-4 border-t">
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <div class="flex justify-between items-center border-b pb-2">
@@ -532,7 +489,7 @@
           </div>
           <input type="hidden" id="edit_branch_id" value="">
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="text" id="new_branch_code" placeholder="குறியீடு (BR003) *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_code" placeholder="குறியீடு (NGL/THG) *" class="border p-2 rounded text-xs">
             <input type="text" id="new_branch_name" placeholder="கிளை பெயர் *" class="border p-2 rounded text-xs">
             <input type="text" id="new_branch_city" placeholder="நகரம் *" class="border p-2 rounded text-xs">
             <input type="text" id="new_branch_phone" placeholder="தொலைபேசி" class="border p-2 rounded text-xs">
@@ -554,7 +511,7 @@
         </div>
       </div>
 
-      <!-- பகுதி 5: பணியாளர்கள் மேலாண்மை -->
+      <!-- 5. பணியாளர்கள் மேலாண்மை -->
       <div class="space-y-4 pt-4 border-t">
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <div class="flex justify-between items-center border-b pb-2">
@@ -586,7 +543,6 @@
             <button onclick="submitStaffForm()" id="btnSubmitStaff" class="bg-amber-600 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ பணியாளரை உருவாக்கு</button>
           </div>
         </div>
-
         <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
           <h4 class="text-xs font-bold text-slate-700 uppercase">பணியாளர்கள் பட்டியல்:</h4>
           <div class="overflow-x-auto border rounded-lg">
@@ -599,7 +555,6 @@
           </div>
         </div>
       </div>
-
     </div>
 
     <!-- Modals -->
@@ -796,6 +751,7 @@
     let staffCache = [];
     let schemesCache = [];
     let companyBanksCache = [];
+    let currentSelectedScheme = null;
 
     function readFileAsBase64(fileInput) {
       return new Promise((resolve) => {
@@ -807,7 +763,7 @@
       });
     }
 
-    // 1. Auth & Navigation
+    // 1. Auth & Dynamic Navigation
     async function handleLogin() {
       const u = document.getElementById('login_username').value.trim();
       const p = document.getElementById('login_password').value.trim();
@@ -851,6 +807,7 @@
       document.getElementById('loggedStaffRole').innerText = user.role_key;
       document.getElementById('loggedBranchName').innerText = user.branch_name;
       document.getElementById('active_branch_id').value = user.branch_id;
+      document.getElementById('active_branch_code').value = user.branch_code || 'BR';
 
       document.getElementById('loginScreen').classList.add('hidden');
       document.getElementById('mainDashboard').classList.remove('hidden');
@@ -905,243 +862,68 @@
       }
     }
 
-    // 2. நிர்வாகம்: நகைக்கடன் திட்டங்கள் மேலாண்மை
-    function addInterestSlabRow() {
-      const container = document.getElementById('slabsContainer');
-      const div = document.createElement('div');
-      div.className = "grid grid-cols-3 gap-2 slab-row";
-      div.innerHTML = `
-        <input type="number" placeholder="From Day" class="border p-1.5 rounded text-xs bg-white slab-from">
-        <input type="number" placeholder="To Day" class="border p-1.5 rounded text-xs bg-white slab-to">
-        <input type="number" placeholder="வட்டி %" class="border p-1.5 rounded text-xs bg-white slab-rate">
-      `;
-      container.appendChild(div);
-    }
-
-    async function submitLoanSchemeForm() {
-      const code = document.getElementById('sch_code').value.trim();
-      const name = document.getElementById('sch_name').value.trim();
-      const tenure = parseInt(document.getElementById('sch_tenure').value);
-      if (!code || !name || !tenure) return alert("திட்டக் குறியீடு, பெயர் மற்றும் கடன் காலம் கட்டாயம் தேவை.");
-
-      const slabRows = document.querySelectorAll('.slab-row');
-      const slabs = [];
-      slabRows.forEach(row => {
-        const f = parseInt(row.querySelector('.slab-from').value);
-        const t = parseInt(row.querySelector('.slab-to').value);
-        const r = parseFloat(row.querySelector('.slab-rate').value);
-        if (!isNaN(f) && !isNaN(t) && !isNaN(r)) slabs.push({ from_days: f, to_days: t, rate_percent: r });
-      });
-
-      if (slabs.length === 0) return alert("குறைந்தது ஒரு வட்டி அடுக்காவது (Slab) அமைக்கப்பட வேண்டும்.");
-
-      const payload = {
-        scheme_code: code,
-        scheme_name: name,
-        tenure_months: tenure,
-        min_loan_amount: parseFloat(document.getElementById('sch_min_loan').value) || 1000,
-        max_loan_amount: parseFloat(document.getElementById('sch_max_loan').value) || 1500000,
-        min_interest_days: parseInt(document.getElementById('sch_min_days').value) || 7,
-        auction_grace_days: 30,
-        auction_charge_amount: parseFloat(document.getElementById('sch_auction_charge').value) || 500,
-        processing_charge_type: document.getElementById('sch_proc_type').value,
-        processing_charge_calc: document.getElementById('sch_proc_calc').value,
-        processing_charge_value: parseFloat(document.getElementById('sch_proc_val').value) || 0,
-        max_ltv_percentage: parseFloat(document.getElementById('sch_ltv').value) || 75,
-        interest_slabs: slabs,
-        purity_rate_multipliers: { "916": 0.75, "22CT": 0.75, "18CT": 0.60, "999": 0.85 }
-      };
-
-      const res = await fetch('/api/admin/scheme/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        document.getElementById('sch_code').value = '';
-        document.getElementById('sch_name').value = '';
-        loadSchemesList();
-        loadSchemesDropdown();
-      } else alert("❌ பிழை: " + data.detail);
-    }
-
-    async function loadSchemesList() {
-      const res = await fetch('/api/admin/schemes');
-      const data = await res.json();
-      schemesCache = data.data || [];
-      const tbody = document.getElementById('schemesTableBody');
-      tbody.innerHTML = '';
-      if (schemesCache.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-3 text-center text-slate-400">திட்டங்கள் எதுவும் இல்லை</td></tr>`;
-      } else {
-        schemesCache.forEach(s => {
-          const slabsStr = (s.interest_slabs || []).map(x => `${x.from_days}-${x.to_days} நாள்: ${x.rate_percent}%`).join('<br>');
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="p-2.5 font-mono font-bold text-amber-900">${s.scheme_code}</td>
-            <td class="p-2.5 font-bold">${s.scheme_name}</td>
-            <td class="p-2.5">${s.tenure_months} மாதம்</td>
-            <td class="p-2.5">₹${s.min_loan_amount} - ₹${s.max_loan_amount}</td>
-            <td class="p-2.5 font-bold text-rose-600">₹${s.auction_charge_amount}</td>
-            <td class="p-2.5 text-[11px]">${slabsStr}</td>
-            <td class="p-2.5 text-center"><button onclick="deleteScheme(${s.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட்</button></td>
-          `;
-          tbody.appendChild(tr);
-        });
-      }
-    }
-
-    async function deleteScheme(id) {
-      if (!confirm("திட்டத்தை நீக்க விரும்புகிறீர்களா?")) return;
-      const res = await fetch(`/api/admin/scheme/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (res.ok) { alert("✅ " + data.message); loadSchemesList(); loadSchemesDropdown(); }
-      else alert("❌ பிழை: " + data.detail);
-    }
-
-    async function loadSchemesDropdown() {
-      const res = await fetch('/api/admin/schemes');
-      const data = await res.json();
-      const sSelect = document.getElementById('scheme_name');
-      sSelect.innerHTML = '';
-      (data.data || []).forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.scheme_name;
-        opt.innerText = `${s.scheme_name} (${s.scheme_code} - Max ${s.max_ltv_percentage}%)`;
-        sSelect.appendChild(opt);
-      });
-    }
-
-    // 3. நிர்வாகம்: நிறுவன வங்கி கணக்குகள் மேலாண்மை
-    async function submitCompanyBankForm() {
-      const bName = document.getElementById('bank_acc_name').value.trim();
-      const bBranch = document.getElementById('bank_acc_branch').value.trim();
-      const bNo = document.getElementById('bank_acc_no').value.trim();
-      const bIfsc = document.getElementById('bank_acc_ifsc').value.trim();
-      if (!bName || !bNo || !bIfsc) return alert("வங்கி பெயர், கணக்கு எண் மற்றும் IFSC குறியீடு தேவை.");
-
-      const payload = {
-        bank_name: bName, branch_name: bBranch,
-        account_type: document.getElementById('bank_acc_type').value,
-        account_no: bNo, ifsc_code: bIfsc,
-        upi_id: document.getElementById('bank_acc_upi').value.trim() || null
-      };
-
-      const res = await fetch('/api/admin/company-bank/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        document.getElementById('bank_acc_name').value = '';
-        document.getElementById('bank_acc_no').value = '';
-        document.getElementById('bank_acc_ifsc').value = '';
-        loadCompanyBanksList();
-        loadCompanyBanksDropdown();
-      } else alert("❌ பிழை: " + data.detail);
-    }
-
-    async function loadCompanyBanksList() {
-      const res = await fetch('/api/admin/company-banks');
-      const data = await res.json();
-      companyBanksCache = data.data || [];
-      const tbody = document.getElementById('companyBanksTableBody');
-      tbody.innerHTML = '';
-      companyBanksCache.forEach(b => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="p-2.5 font-bold">${b.bank_name}</td>
-          <td class="p-2.5">${b.branch_name}</td>
-          <td class="p-2.5"><span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold">${b.account_type}</span></td>
-          <td class="p-2.5 font-mono font-bold">${b.account_no}</td>
-          <td class="p-2.5">${b.ifsc_code}</td>
-          <td class="p-2.5">${b.upi_id || '-'}</td>
-          <td class="p-2.5 text-center"><button onclick="deleteCompanyBank(${b.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட்</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    async function deleteCompanyBank(id) {
-      if (!confirm("வங்கி கணக்கை நீக்கவா?")) return;
-      const res = await fetch(`/api/admin/company-bank/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (res.ok) { alert("✅ " + data.message); loadCompanyBanksList(); loadCompanyBanksDropdown(); }
-      else alert("❌ பிழை: " + data.detail);
-    }
-
-    async function loadCompanyBanksDropdown() {
-      const res = await fetch('/api/admin/company-banks');
-      const data = await res.json();
-      const bSelect = document.getElementById('receipt_company_bank');
-      bSelect.innerHTML = '';
-      (data.data || []).forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = `${b.bank_name} - ${b.account_no}`;
-        opt.innerText = `${b.bank_name} (${b.account_no.slice(-4)}) - ${b.branch_name}`;
-        bSelect.appendChild(opt);
-      });
-    }
-
-    // 4. நிர்வாகம்: அன்றைய தங்க விலை
-    async function submitTodayGoldRate() {
-      const r24 = parseFloat(document.getElementById('gr_24k').value);
-      const r22 = parseFloat(document.getElementById('gr_22k').value);
-      const r18 = parseFloat(document.getElementById('gr_18k').value);
-      if (!r24 || !r22) return alert("24K மற்றும் 22K தங்க விலையை உள்ளிடவும்.");
-
-      const res = await fetch('/api/admin/gold-rate/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rate_24k_per_gram: r24, rate_22k_per_gram: r22, rate_18k_per_gram: r18 || (r22 * 0.82) })
-      });
-      const data = await res.json();
-      if (res.ok) alert("✅ " + data.message);
-      else alert("❌ பிழை: " + data.detail);
-    }
-
-    async function loadTodayGoldRate() {
-      const res = await fetch('/api/admin/gold-rate/today');
-      const data = await res.json();
-      if (data.data) {
-        document.getElementById('gr_24k').value = data.data.rate_24k_per_gram;
-        document.getElementById('gr_22k').value = data.data.rate_22k_per_gram;
-        document.getElementById('gr_18k').value = data.data.rate_18k_per_gram;
-      }
-    }
-
-    // 5. வாடிக்கையாளர் தேடல் & படம்
-    async function checkBranchBankStatus() {
-      const bId = parseInt(document.getElementById('active_branch_id').value) || 1;
+    // 2. தொடர் ஆட்டோ நகைக்கடன் எண் பெறும் செயல்பாடு
+    async function fetchAutoLoanNumber() {
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
       try {
-        const res = await fetch(`/api/bank/branch-status?branch_id=${bId}`);
+        const res = await fetch(`/api/loan/next-loan-no?branch_id=${branchId}`);
         const data = await res.json();
-        const elem = document.getElementById('branchBankLiveStatus');
-        if (data.data && data.data.length > 0) {
-          const last = data.data[0];
-          const badge = last.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : (last.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800');
-          elem.innerHTML = `கடைசி கோரிக்கை: <b>${last.test_customers?.name}</b> (₹${last.amount}) - <span class="px-1.5 py-0.5 rounded font-bold text-[10px] ${badge}">${last.status}</span>`;
-        } else {
-          elem.innerText = "நிலுவைகள் இல்லை.";
+        if (res.ok) {
+          const loanNoInput = document.getElementById('loan_no');
+          loanNoInput.value = data.next_loan_no;
         }
       } catch (e) {
-        console.error(e);
+        console.error("கடன் எண் பிழை:", e);
       }
     }
 
+    // 3. திட்டத்தின்படி தானியங்கி கட்டணம் மற்றும் கடன் வரம்புகள் அமைத்தல்
+    function onSchemeSelected() {
+      const schemeName = document.getElementById('scheme_name').value;
+      currentSelectedScheme = schemesCache.find(s => s.scheme_name === schemeName);
+
+      if (!currentSelectedScheme) return;
+
+      const loanAmtInput = document.getElementById('loan_amount');
+      const chargesInput = document.getElementById('charges_amount');
+
+      loanAmtInput.placeholder = `வரம்பு: ₹${currentSelectedScheme.min_loan_amount} - ₹${currentSelectedScheme.max_loan_amount}`;
+
+      if (currentSelectedScheme.processing_charge_type === 'PLEDGE') {
+        if (currentSelectedScheme.processing_charge_calc === 'AMOUNT') {
+          chargesInput.value = currentSelectedScheme.processing_charge_value || 0;
+        } else {
+          const enteredAmt = parseFloat(loanAmtInput.value) || 0;
+          chargesInput.value = ((enteredAmt * currentSelectedScheme.processing_charge_value) / 100).toFixed(2);
+        }
+      } else {
+        chargesInput.value = 0;
+      }
+    }
+
+    document.getElementById('loan_amount').addEventListener('input', function() {
+      if (currentSelectedScheme && currentSelectedScheme.processing_charge_type === 'PLEDGE') {
+        if (currentSelectedScheme.processing_charge_calc === 'PERCENTAGE') {
+          const amt = parseFloat(this.value) || 0;
+          document.getElementById('charges_amount').value = ((amt * currentSelectedScheme.processing_charge_value) / 100).toFixed(2);
+        }
+      }
+    });
+
+    document.getElementById('scheme_name').addEventListener('change', onSchemeSelected);
+
+    // 4. கிளை வாரியான வாடிக்கையாளர் தேடல்
     async function handleSearch() {
       const q = document.getElementById('searchInput').value.trim();
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
       if (!q) return;
-      const res = await fetch(`/api/customer/search?query=${encodeURIComponent(q)}`);
+
+      const res = await fetch(`/api/customer/search?query=${encodeURIComponent(q)}&branch_id=${branchId}`);
       const result = await res.json();
       const container = document.getElementById('searchResults');
       container.innerHTML = '';
       if (!result.data || result.data.length === 0) {
-        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border">வாடிக்கையாளர் இல்லை. '+ புதிய முழு KYC' மூலம் பதிவு செய்யவும்.</div>`;
+        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border">இந்தக் கிளையில் (${document.getElementById('loggedBranchName').innerText}) வாடிக்கையாளர் இல்லை. '+ புதிய முழு KYC' மூலம் பதிவு செய்யவும்.</div>`;
       } else {
         result.data.forEach(cust => {
           const div = document.createElement('div');
@@ -1193,6 +975,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ customer_id: cust.id, branch_id: branchId })
       });
+
+      fetchAutoLoanNumber();
+      onSchemeSelected();
     }
 
     function resetCustomer() {
@@ -1205,111 +990,132 @@
       document.getElementById('searchSection').classList.remove('hidden');
     }
 
-    // 6. முழு சுயவிவர மாற்றம்
-    function openFullUpdateModal() {
+    // 5. அடகு முடித்து கார்ட்டில் சேர்த்தல் & கடைசியை நீக்கும் Undo வசதி
+    async function submitPawnToDatabase() {
       if (!activeCustomer) return;
-      document.getElementById('upd_name').value = activeCustomer.name || '';
-      document.getElementById('upd_mobile').value = activeCustomer.mobile || '';
-      document.getElementById('upd_alt_mobile').value = activeCustomer.alt_mobile || '';
-      document.getElementById('upd_address').value = activeCustomer.address || '';
-      document.getElementById('upd_proof_no').value = activeCustomer.id_proof_no || '';
-      document.getElementById('upd_nominee_name').value = activeCustomer.nominee_name || '';
-      document.getElementById('fullUpdateModal').classList.remove('hidden');
-    }
-
-    function closeFullUpdateModal() { document.getElementById('fullUpdateModal').classList.add('hidden'); }
-
-    async function submitFullUpdateReq() {
-      if (!activeCustomer) return;
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      const btn = document.getElementById('btnSubmitFullUpdate');
-      btn.innerText = "பதிவேற்றப்படுகிறது...";
-      btn.disabled = true;
-
-      const newPhoto = await readFileAsBase64(document.getElementById('upd_file_photo'));
-      const newSign = await readFileAsBase64(document.getElementById('upd_file_sign'));
-      const newProof = await readFileAsBase64(document.getElementById('upd_file_proof'));
-
-      const changes = {
-        name: document.getElementById('upd_name').value.trim(),
-        mobile: document.getElementById('upd_mobile').value.trim(),
-        alt_mobile: document.getElementById('upd_alt_mobile').value.trim() || null,
-        address: document.getElementById('upd_address').value.trim() || null,
-        id_proof_no: document.getElementById('upd_proof_no').value.trim() || null,
-        nominee_name: document.getElementById('upd_nominee_name').value.trim() || null
-      };
-
-      if (newPhoto) changes.customer_photo = newPhoto;
-      if (newSign) changes.signature_photo = newSign;
-      if (newProof) changes.id_proof_photo = newProof;
-
-      const res = await fetch('/api/customer/request-update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer_id: activeCustomer.id, branch_id: branchId, requested_changes: changes })
-      });
-      const data = await res.json();
-      btn.innerText = "ஒப்புதலுக்கு அனுப்பு";
-      btn.disabled = false;
-      if (res.ok) { alert("✅ " + data.message); closeFullUpdateModal(); }
-      else alert("❌ பிழை: " + data.detail);
-    }
-
-    // 7. புதிய KYC
-    function openNewKycModal() { document.getElementById('fullKycModal').classList.remove('hidden'); }
-    function closeNewKycModal() { document.getElementById('fullKycModal').classList.add('hidden'); }
-
-    async function submitFullKycForm() {
-      const name = document.getElementById('fkyc_name').value.trim();
-      const mobile = document.getElementById('fkyc_mobile').value.trim();
-      const address = document.getElementById('fkyc_address').value.trim();
-      const proofNo = document.getElementById('fkyc_proof_no').value.trim();
+      const loanNo = document.getElementById('loan_no').value.trim();
+      const scheme = document.getElementById('scheme_name').value;
+      const loanAmt = parseFloat(document.getElementById('loan_amount').value) || 0;
+      const chgAmt = parseFloat(document.getElementById('charges_amount').value) || 0;
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
 
-      if (!name || !mobile || !address || !proofNo) return alert("முக்கிய விபரங்களை உள்ளிடவும்.");
+      if (!loanNo || loanAmt <= 0) return alert("கடன் விபரம் உள்ளிடவும்.");
+      if (ornamentList.length === 0) return alert("நகைகளைச் சேர்க்கவும்.");
 
-      const btn = document.getElementById('btnSubmitFullKyc');
-      btn.innerText = "சமர்ப்பிக்கப்படுகிறது...";
-      btn.disabled = true;
-
-      const photoBase64 = await readFileAsBase64(document.getElementById('fkyc_file_photo'));
-      const signBase64 = await readFileAsBase64(document.getElementById('fkyc_file_sign'));
-      const proofBase64 = await readFileAsBase64(document.getElementById('fkyc_file_proof'));
+      if (currentSelectedScheme) {
+        if (loanAmt < currentSelectedScheme.min_loan_amount) {
+          return alert(`திட்டத்தின் குறைந்தபட்ச கடன் தொகை ₹${currentSelectedScheme.min_loan_amount} ஆகும்.`);
+        }
+        if (loanAmt > currentSelectedScheme.max_loan_amount) {
+          return alert(`திட்டத்தின் அதிகபட்ச கடன் தொகை ₹${currentSelectedScheme.max_loan_amount} வரை மட்டுமே அனுமதிக்கப்படும்.`);
+        }
+      }
 
       const payload = {
-        name, mobile, address, branch_id: branchId,
-        alt_mobile: document.getElementById('fkyc_alt_mobile').value.trim() || null,
-        relation_type: document.getElementById('fkyc_rel_type').value,
-        guardian_name: document.getElementById('fkyc_guardian').value.trim() || null,
-        id_proof_type: document.getElementById('fkyc_proof_type').value,
-        id_proof_no: proofNo,
-        nominee_name: document.getElementById('fkyc_nominee_name').value.trim() || null,
-        nominee_relation: document.getElementById('fkyc_nominee_rel').value.trim() || null,
-        nominee_mobile: document.getElementById('fkyc_nominee_mob').value.trim() || null,
-        ref1_name: document.getElementById('fkyc_ref1_name').value.trim() || null,
-        ref1_mobile: document.getElementById('fkyc_ref1_mob').value.trim() || null,
-        ref2_name: document.getElementById('fkyc_ref2_name').value.trim() || null,
-        ref2_mobile: document.getElementById('fkyc_ref2_mob').value.trim() || null,
-        customer_photo: photoBase64, signature_photo: signBase64, id_proof_photo: proofBase64
+        customer_id: activeCustomer.id, branch_id: branchId, loan_no: loanNo, scheme_name: scheme,
+        loan_amount: loanAmt, charges_amount: chgAmt, photo_url: null, items: ornamentList
       };
 
-      const res = await fetch('/api/customer/new-full-kyc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      btn.innerText = "சமர்ப்பி (Submit KYC)";
-      btn.disabled = false;
-      if (res.ok) {
-        alert("✅ " + data.message);
-        closeNewKycModal();
-        document.getElementById('searchInput').value = mobile;
-        handleSearch();
-      } else alert("❌ பிழை: " + data.detail);
+      try {
+        const res = await fetch('/api/loan/new-pawn', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          cartItems.push({
+            loan_id: data.loan_id,
+            loan_no: loanNo,
+            title: `நகைக்கடன் (${loanNo})`,
+            details: `${ornamentList.length} நகைகள் | திட்டம்: ${scheme}`,
+            debit: loanAmt,
+            credit: chgAmt
+          });
+          renderCart();
+          alert(`✅ கடன் (${loanNo}) கூடையில் சேர்க்கப்பட்டது! அடுத்த கடனைப் பதியலாம்.`);
+
+          document.getElementById('loan_amount').value = '';
+          ornamentList = [];
+          renderOrnamentsTable();
+          fetchAutoLoanNumber();
+        } else alert("❌ பிழை: " + data.detail);
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      }
     }
 
-    // 8. அடகு & கார்ட்
+    async function removeLastCartItem() {
+      if (cartItems.length === 0) return;
+      const lastItem = cartItems[cartItems.length - 1];
+      if (confirm(`கடைசியாகச் சேர்த்த கடன் '${lastItem.loan_no}' ஐ கூடையில் இருந்து நீக்க விரும்புகிறீர்களா?`)) {
+        try {
+          await fetch(`/api/loan/${lastItem.loan_id}`, { method: 'DELETE' });
+        } catch(e) {}
+        cartItems.pop();
+        renderCart();
+        fetchAutoLoanNumber();
+      }
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cartItemsList');
+      const undoBtn = document.getElementById('btnUndoCart');
+      container.innerHTML = '';
+
+      if (cartItems.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>`;
+        document.getElementById('cartCredit').innerText = '₹ 0.00';
+        document.getElementById('cartDebit').innerText = '₹ 0.00';
+        document.getElementById('cartNetTotal').innerText = '₹ 0.00';
+        document.getElementById('cartCountBadge').innerText = '0 கடன்கள்';
+        currentNetAbs = 0;
+        undoBtn.classList.add('hidden');
+        return;
+      }
+
+      undoBtn.classList.remove('hidden');
+      let totCredit = 0, totDebit = 0;
+      cartItems.forEach((item, index) => {
+        totCredit += item.credit; totDebit += item.debit;
+        const div = document.createElement('div');
+        div.className = "p-2.5 bg-slate-50 border rounded-lg text-xs flex justify-between items-center";
+        div.innerHTML = `
+          <div>
+            <span class="font-bold text-slate-800">${index + 1}. ${item.title}</span>
+            <p class="text-[11px] text-slate-500">${item.details}</p>
+          </div>
+          <div class="text-right">
+            <span class="text-rose-600 font-bold block">-₹${item.debit.toFixed(2)}</span>
+            <span class="text-emerald-600 font-semibold block text-[10px]">+₹${item.credit.toFixed(2)}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+
+      document.getElementById('cartCountBadge').innerText = `${cartItems.length} கடன்கள்`;
+      document.getElementById('cartCredit').innerText = `₹ ${totCredit.toFixed(2)}`;
+      document.getElementById('cartDebit').innerText = `₹ ${totDebit.toFixed(2)}`;
+
+      const net = totDebit - totCredit;
+      currentNetAbs = Math.abs(net);
+      const netElem = document.getElementById('cartNetTotal');
+      const statusElem = document.getElementById('cartStatusText');
+
+      if (net > 0) {
+        currentDirection = "COMPANY_PAYABLE";
+        netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
+        netElem.className = "text-sm font-extrabold text-rose-600";
+        statusElem.innerText = "(நிறுவனம் வாடிக்கையாளருக்கு வழங்க வேண்டிய தொகை)";
+      } else {
+        currentDirection = "CUSTOMER_PAYABLE";
+        netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
+        netElem.className = "text-sm font-extrabold text-emerald-600";
+        statusElem.innerText = "(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய தொகை)";
+      }
+    }
+
+    // 6. நகைப் பட்டியல்
     function addOrnamentToTable() {
       const type = document.getElementById('item_type').value.trim();
       const count = parseInt(document.getElementById('item_count').value) || 1;
@@ -1341,80 +1147,7 @@
       });
     }
 
-    async function submitPawnToDatabase() {
-      if (!activeCustomer) return;
-      const loanNo = document.getElementById('loan_no').value.trim();
-      const scheme = document.getElementById('scheme_name').value;
-      const loanAmt = parseFloat(document.getElementById('loan_amount').value) || 0;
-      const chgAmt = parseFloat(document.getElementById('charges_amount').value) || 0;
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      if (!loanNo || loanAmt <= 0) return alert("கடன் விபரம் உள்ளிடவும்.");
-      if (ornamentList.length === 0) return alert("நகைகளைச் சேர்க்கவும்.");
-
-      const payload = {
-        customer_id: activeCustomer.id, branch_id: branchId, loan_no: loanNo, scheme_name: scheme,
-        loan_amount: loanAmt, charges_amount: chgAmt, photo_url: null, items: ornamentList
-      };
-      const res = await fetch('/api/loan/new-pawn', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        cartItems.push({ title: `புதிய அடகு (${loanNo})`, details: `${ornamentList.length} நகைகள்`, debit: loanAmt, credit: chgAmt });
-        renderCart();
-        alert("✅ " + data.message);
-        document.getElementById('loan_no').value = '';
-        document.getElementById('loan_amount').value = '';
-        ornamentList = [];
-        renderOrnamentsTable();
-      } else alert("❌ பிழை: " + data.detail);
-    }
-
-    function renderCart() {
-      const container = document.getElementById('cartItemsList');
-      container.innerHTML = '';
-      if (cartItems.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>`;
-        document.getElementById('cartCredit').innerText = '₹ 0.00';
-        document.getElementById('cartDebit').innerText = '₹ 0.00';
-        document.getElementById('cartNetTotal').innerText = '₹ 0.00';
-        document.getElementById('cartCountBadge').innerText = '0 உருப்படிகள்';
-        currentNetAbs = 0;
-        return;
-      }
-      let totCredit = 0, totDebit = 0;
-      cartItems.forEach(item => {
-        totCredit += item.credit; totDebit += item.debit;
-        const div = document.createElement('div');
-        div.className = "p-2 bg-slate-50 border rounded-lg text-xs flex justify-between";
-        div.innerHTML = `<div><b>${item.title}</b><p class="text-[11px] text-slate-500">${item.details}</p></div><div><span class="text-rose-600">-₹${item.debit}</span> / <span class="text-emerald-600">+₹${item.credit}</span></div>`;
-        container.appendChild(div);
-      });
-      document.getElementById('cartCountBadge').innerText = `${cartItems.length} உருப்படிகள்`;
-      document.getElementById('cartCredit').innerText = `₹ ${totCredit.toFixed(2)}`;
-      document.getElementById('cartDebit').innerText = `₹ ${totDebit.toFixed(2)}`;
-
-      const net = totDebit - totCredit;
-      currentNetAbs = Math.abs(net);
-      const netElem = document.getElementById('cartNetTotal');
-      const statusElem = document.getElementById('cartStatusText');
-
-      if (net > 0) {
-        currentDirection = "COMPANY_PAYABLE";
-        netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
-        netElem.className = "text-sm font-extrabold text-rose-600";
-        statusElem.innerText = "(நிறுவனம் வாடிக்கையாளருக்கு வழங்க வேண்டிய தொகை)";
-      } else {
-        currentDirection = "CUSTOMER_PAYABLE";
-        netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
-        netElem.className = "text-sm font-extrabold text-emerald-600";
-        statusElem.innerText = "(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய தொகை)";
-      }
-    }
-
-    // 9. Checkout
+    // 7. Checkout & Denomination Logics
     function openCheckoutModal() {
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
       document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
@@ -1522,7 +1255,7 @@
       }
     }
 
-    // 10. OTP & Settlement
+    // 8. OTP & Settlement
     async function requestOtpFromCustomer() {
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
@@ -1530,19 +1263,17 @@
       if (bVal > 0 && currentDirection === "COMPANY_PAYABLE") {
         const pMode = document.getElementById('payout_mode').value;
         const bName = document.getElementById('payout_beneficiary').value.trim();
-        if (!bName) return alert("கணக்கு வைத்திருப்பவர் பெயரை உள்ளிடவும்.");
+        if (!bName) return alert("கணக்கு பெயர் உள்ளிடவும்.");
         if (pMode === 'BANK_TRANSFER' && (!document.getElementById('payout_acc_no').value.trim() || !document.getElementById('payout_ifsc').value.trim())) {
-          return alert("கணக்கு எண் மற்றும் IFSC குறியீடு உள்ளிடவும்.");
+          return alert("கணக்கு எண் மற்றும் IFSC தேவை.");
         }
         if (pMode === 'UPI' && !document.getElementById('payout_upi_id').value.trim()) {
-          return alert("UPI ஐடியை உள்ளிடவும்.");
+          return alert("UPI ID தேவை.");
         }
       }
 
       if (bVal > 0 && currentDirection === "CUSTOMER_PAYABLE") {
-        if (!document.getElementById('receipt_ref_no').value.trim()) {
-          return alert("UTR/Ref No உள்ளிடவும்.");
-        }
+        if (!document.getElementById('receipt_ref_no').value.trim()) return alert("UTR/Ref No தேவை.");
       }
 
       const btn = document.getElementById('btn_send_otp');
@@ -1572,7 +1303,7 @@
 
     async function confirmSettleWithOtp() {
       const enteredOtp = document.getElementById('input_otp').value.trim();
-      if (!enteredOtp || enteredOtp.length !== 6) return alert("6 இலக்க OTP-ஐ உள்ளிடவும்.");
+      if (!enteredOtp || enteredOtp.length !== 6) return alert("6 இலக்க OTP உள்ளிடவும்.");
 
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
@@ -1660,14 +1391,219 @@
       checkBranchBankStatus();
     }
 
-    // 11. தலைமையக ஒப்புதல்கள் மையம் (HQ Hub)
+    // 9. நிர்வாகம்: திட்டங்கள், வங்கிகள் & தங்கம்
+    function addInterestSlabRow() {
+      const container = document.getElementById('slabsContainer');
+      const div = document.createElement('div');
+      div.className = "grid grid-cols-3 gap-2 slab-row";
+      div.innerHTML = `
+        <input type="number" placeholder="From Day" class="border p-1.5 rounded text-xs bg-white slab-from">
+        <input type="number" placeholder="To Day" class="border p-1.5 rounded text-xs bg-white slab-to">
+        <input type="number" placeholder="வட்டி %" class="border p-1.5 rounded text-xs bg-white slab-rate">
+      `;
+      container.appendChild(div);
+    }
+
+    async function submitLoanSchemeForm() {
+      const code = document.getElementById('sch_code').value.trim();
+      const name = document.getElementById('sch_name').value.trim();
+      const tenure = parseInt(document.getElementById('sch_tenure').value);
+      if (!code || !name || !tenure) return alert("திட்டக் குறியீடு, பெயர் மற்றும் கடன் காலம் தேவை.");
+
+      const slabRows = document.querySelectorAll('.slab-row');
+      const slabs = [];
+      slabRows.forEach(row => {
+        const f = parseInt(row.querySelector('.slab-from').value);
+        const t = parseInt(row.querySelector('.slab-to').value);
+        const r = parseFloat(row.querySelector('.slab-rate').value);
+        if (!isNaN(f) && !isNaN(t) && !isNaN(r)) slabs.push({ from_days: f, to_days: t, rate_percent: r });
+      });
+
+      if (slabs.length === 0) return alert("குறைந்தது ஒரு வட்டி அடுக்காவது அமைக்கவும்.");
+
+      const payload = {
+        scheme_code: code,
+        scheme_name: name,
+        tenure_months: tenure,
+        min_loan_amount: parseFloat(document.getElementById('sch_min_loan').value) || 1000,
+        max_loan_amount: parseFloat(document.getElementById('sch_max_loan').value) || 1500000,
+        min_interest_days: parseInt(document.getElementById('sch_min_days').value) || 7,
+        auction_grace_days: 30,
+        auction_charge_amount: parseFloat(document.getElementById('sch_auction_charge').value) || 500,
+        processing_charge_type: document.getElementById('sch_proc_type').value,
+        processing_charge_calc: document.getElementById('sch_proc_calc').value,
+        processing_charge_value: parseFloat(document.getElementById('sch_proc_val').value) || 0,
+        max_ltv_percentage: parseFloat(document.getElementById('sch_ltv').value) || 75,
+        interest_slabs: slabs,
+        purity_rate_multipliers: { "916": 0.75, "22CT": 0.75, "18CT": 0.60, "999": 0.85 }
+      };
+
+      const res = await fetch('/api/admin/scheme/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        document.getElementById('sch_code').value = '';
+        document.getElementById('sch_name').value = '';
+        loadSchemesList();
+        loadSchemesDropdown();
+      } else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function loadSchemesList() {
+      const res = await fetch('/api/admin/schemes');
+      const data = await res.json();
+      schemesCache = data.data || [];
+      const tbody = document.getElementById('schemesTableBody');
+      tbody.innerHTML = '';
+      if (schemesCache.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-3 text-center text-slate-400">திட்டங்கள் எதுவும் இல்லை</td></tr>`;
+      } else {
+        schemesCache.forEach(s => {
+          const slabsStr = (s.interest_slabs || []).map(x => `${x.from_days}-${x.to_days} நாள்: ${x.rate_percent}%`).join('<br>');
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-2.5 font-mono font-bold text-amber-900">${s.scheme_code}</td>
+            <td class="p-2.5 font-bold">${s.scheme_name}</td>
+            <td class="p-2.5">${s.tenure_months} மாதம்</td>
+            <td class="p-2.5">₹${s.min_loan_amount} - ₹${s.max_loan_amount}</td>
+            <td class="p-2.5 font-bold text-rose-600">₹${s.auction_charge_amount}</td>
+            <td class="p-2.5 text-[11px]">${slabsStr}</td>
+            <td class="p-2.5 text-center"><button onclick="deleteScheme(${s.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட்</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    async function deleteScheme(id) {
+      if (!confirm("திட்டத்தை நீக்கவா?")) return;
+      const res = await fetch(`/api/admin/scheme/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) { alert("✅ " + data.message); loadSchemesList(); loadSchemesDropdown(); }
+      else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function loadSchemesDropdown() {
+      const res = await fetch('/api/admin/schemes');
+      const data = await res.json();
+      schemesCache = data.data || [];
+      const sSelect = document.getElementById('scheme_name');
+      sSelect.innerHTML = '';
+      schemesCache.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.scheme_name;
+        opt.innerText = `${s.scheme_name} (${s.scheme_code} - Max ${s.max_ltv_percentage}%)`;
+        sSelect.appendChild(opt);
+      });
+      onSchemeSelected();
+    }
+
+    async function submitCompanyBankForm() {
+      const bName = document.getElementById('bank_acc_name').value.trim();
+      const bBranch = document.getElementById('bank_acc_branch').value.trim();
+      const bNo = document.getElementById('bank_acc_no').value.trim();
+      const bIfsc = document.getElementById('bank_acc_ifsc').value.trim();
+      if (!bName || !bNo || !bIfsc) return alert("வங்கி பெயர், கணக்கு எண் மற்றும் IFSC தேவை.");
+
+      const payload = {
+        bank_name: bName, branch_name: bBranch,
+        account_type: document.getElementById('bank_acc_type').value,
+        account_no: bNo, ifsc_code: bIfsc,
+        upi_id: document.getElementById('bank_acc_upi').value.trim() || null
+      };
+
+      const res = await fetch('/api/admin/company-bank/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        document.getElementById('bank_acc_name').value = '';
+        document.getElementById('bank_acc_no').value = '';
+        document.getElementById('bank_acc_ifsc').value = '';
+        loadCompanyBanksList();
+        loadCompanyBanksDropdown();
+      } else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function loadCompanyBanksList() {
+      const res = await fetch('/api/admin/company-banks');
+      const data = await res.json();
+      companyBanksCache = data.data || [];
+      const tbody = document.getElementById('companyBanksTableBody');
+      tbody.innerHTML = '';
+      companyBanksCache.forEach(b => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold">${b.bank_name}</td>
+          <td class="p-2.5">${b.branch_name}</td>
+          <td class="p-2.5"><span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold">${b.account_type}</span></td>
+          <td class="p-2.5 font-mono font-bold">${b.account_no}</td>
+          <td class="p-2.5">${b.ifsc_code}</td>
+          <td class="p-2.5 text-center"><button onclick="deleteCompanyBank(${b.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட்</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function deleteCompanyBank(id) {
+      if (!confirm("வங்கி கணக்கை நீக்கவா?")) return;
+      const res = await fetch(`/api/admin/company-bank/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) { alert("✅ " + data.message); loadCompanyBanksList(); loadCompanyBanksDropdown(); }
+      else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function loadCompanyBanksDropdown() {
+      const res = await fetch('/api/admin/company-banks');
+      const data = await res.json();
+      const bSelect = document.getElementById('receipt_company_bank');
+      bSelect.innerHTML = '';
+      (data.data || []).forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = `${b.bank_name} - ${b.account_no}`;
+        opt.innerText = `${b.bank_name} (${b.account_no.slice(-4)}) - ${b.branch_name}`;
+        bSelect.appendChild(opt);
+      });
+    }
+
+    async function submitTodayGoldRate() {
+      const r24 = parseFloat(document.getElementById('gr_24k').value);
+      const r22 = parseFloat(document.getElementById('gr_22k').value);
+      const r18 = parseFloat(document.getElementById('gr_18k').value);
+      if (!r24 || !r22) return alert("தங்க விலையை உள்ளிடவும்.");
+      const res = await fetch('/api/admin/gold-rate/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rate_24k_per_gram: r24, rate_22k_per_gram: r22, rate_18k_per_gram: r18 || (r22 * 0.82) })
+      });
+      const data = await res.json();
+      if (res.ok) alert("✅ " + data.message); else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function loadTodayGoldRate() {
+      const res = await fetch('/api/admin/gold-rate/today');
+      const data = await res.json();
+      if (data.data) {
+        document.getElementById('gr_24k').value = data.data.rate_24k_per_gram;
+        document.getElementById('gr_22k').value = data.data.rate_22k_per_gram;
+        document.getElementById('gr_18k').value = data.data.rate_18k_per_gram;
+      }
+    }
+
+    // 10. தலைமையக ஒப்புதல்கள் Hub
     async function loadAllHqApprovals() {
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
         if (!res.ok) return alert("❌ சர்வர் பிழை: " + (data.detail || "தரவு எடுக்க முடியவில்லை"));
 
-        // A. Payouts Table
         const payoutBody = document.getElementById('pendingPayoutsTableBody');
         payoutBody.innerHTML = '';
         if (!data.pending_payouts || data.pending_payouts.length === 0) {
@@ -1694,7 +1630,6 @@
           });
         }
 
-        // B. Receipts Table
         const receiptBody = document.getElementById('pendingReceiptsTableBody');
         receiptBody.innerHTML = '';
         if (!data.pending_receipts || data.pending_receipts.length === 0) {
@@ -1717,7 +1652,6 @@
           });
         }
 
-        // C. Visits Table
         const visitBody = document.getElementById('pendingVisitsTableBody');
         visitBody.innerHTML = '';
         if (!data.pending_visits || data.pending_visits.length === 0) {
@@ -1739,7 +1673,6 @@
           });
         }
 
-        // D. KYC Table
         const kycBody = document.getElementById('pendingKycTableBody');
         kycBody.innerHTML = '';
         if (!data.pending_kyc || data.pending_kyc.length === 0) {
@@ -1762,7 +1695,6 @@
           });
         }
 
-        // E. Profile Updates Table
         const upBody = document.getElementById('pendingUpdatesTableBody');
         upBody.innerHTML = '';
         if (!data.pending_updates || data.pending_updates.length === 0) {
@@ -1788,7 +1720,7 @@
     }
 
     async function actionBankTransfer(id, action) {
-      const notes = prompt("குறிப்புகள் (விருப்பப்பட்டால்):") || "";
+      const notes = prompt("குறிப்புகள்:") || "";
       const res = await fetch('/api/hq/process-bank-transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1832,7 +1764,7 @@
       loadAllHqApprovals();
     }
 
-    // 12. கிளை & பணியாளர்கள் CRUD
+    // 11. கிளைகள் & பணியாளர்கள் CRUD
     async function loadBranchesList() {
       const res = await fetch('/api/admin/branches');
       const data = await res.json();
@@ -1974,6 +1906,109 @@
       const res = await fetch(`/api/admin/staff/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok) { alert("✅ " + data.message); loadStaffList(); } else alert("❌ பிழை: " + data.detail);
+    }
+
+    // 12. சுயவிவர மாற்றம் & KYC
+    function openFullUpdateModal() {
+      if (!activeCustomer) return;
+      document.getElementById('upd_name').value = activeCustomer.name || '';
+      document.getElementById('upd_mobile').value = activeCustomer.mobile || '';
+      document.getElementById('upd_alt_mobile').value = activeCustomer.alt_mobile || '';
+      document.getElementById('upd_address').value = activeCustomer.address || '';
+      document.getElementById('upd_proof_no').value = activeCustomer.id_proof_no || '';
+      document.getElementById('upd_nominee_name').value = activeCustomer.nominee_name || '';
+      document.getElementById('fullUpdateModal').classList.remove('hidden');
+    }
+
+    function closeFullUpdateModal() { document.getElementById('fullUpdateModal').classList.add('hidden'); }
+
+    async function submitFullUpdateReq() {
+      if (!activeCustomer) return;
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+      const btn = document.getElementById('btnSubmitFullUpdate');
+      btn.innerText = "பதிவேற்றப்படுகிறது...";
+      btn.disabled = true;
+
+      const newPhoto = await readFileAsBase64(document.getElementById('upd_file_photo'));
+      const newSign = await readFileAsBase64(document.getElementById('upd_file_sign'));
+      const newProof = await readFileAsBase64(document.getElementById('upd_file_proof'));
+
+      const changes = {
+        name: document.getElementById('upd_name').value.trim(),
+        mobile: document.getElementById('upd_mobile').value.trim(),
+        alt_mobile: document.getElementById('upd_alt_mobile').value.trim() || null,
+        address: document.getElementById('upd_address').value.trim() || null,
+        id_proof_no: document.getElementById('upd_proof_no').value.trim() || null,
+        nominee_name: document.getElementById('upd_nominee_name').value.trim() || null
+      };
+
+      if (newPhoto) changes.customer_photo = newPhoto;
+      if (newSign) changes.signature_photo = newSign;
+      if (newProof) changes.id_proof_photo = newProof;
+
+      const res = await fetch('/api/customer/request-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_id: activeCustomer.id, branch_id: branchId, requested_changes: changes })
+      });
+      const data = await res.json();
+      btn.innerText = "ஒப்புதலுக்கு அனுப்பு";
+      btn.disabled = false;
+      if (res.ok) { alert("✅ " + data.message); closeFullUpdateModal(); }
+      else alert("❌ பிழை: " + data.detail);
+    }
+
+    function openNewKycModal() { document.getElementById('fullKycModal').classList.remove('hidden'); }
+    function closeNewKycModal() { document.getElementById('fullKycModal').classList.add('hidden'); }
+
+    async function submitFullKycForm() {
+      const name = document.getElementById('fkyc_name').value.trim();
+      const mobile = document.getElementById('fkyc_mobile').value.trim();
+      const address = document.getElementById('fkyc_address').value.trim();
+      const proofNo = document.getElementById('fkyc_proof_no').value.trim();
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+
+      if (!name || !mobile || !address || !proofNo) return alert("முக்கிய விபரங்களை உள்ளிடவும்.");
+
+      const btn = document.getElementById('btnSubmitFullKyc');
+      btn.innerText = "சமர்ப்பிக்கப்படுகிறது...";
+      btn.disabled = true;
+
+      const photoBase64 = await readFileAsBase64(document.getElementById('fkyc_file_photo'));
+      const signBase64 = await readFileAsBase64(document.getElementById('fkyc_file_sign'));
+      const proofBase64 = await readFileAsBase64(document.getElementById('fkyc_file_proof'));
+
+      const payload = {
+        name, mobile, address, branch_id: branchId,
+        alt_mobile: document.getElementById('fkyc_alt_mobile').value.trim() || null,
+        relation_type: document.getElementById('fkyc_rel_type').value,
+        guardian_name: document.getElementById('fkyc_guardian').value.trim() || null,
+        id_proof_type: document.getElementById('fkyc_proof_type').value,
+        id_proof_no: proofNo,
+        nominee_name: document.getElementById('fkyc_nominee_name').value.trim() || null,
+        nominee_relation: document.getElementById('fkyc_nominee_rel').value.trim() || null,
+        nominee_mobile: document.getElementById('fkyc_nominee_mob').value.trim() || null,
+        ref1_name: document.getElementById('fkyc_ref1_name').value.trim() || null,
+        ref1_mobile: document.getElementById('fkyc_ref1_mob').value.trim() || null,
+        ref2_name: document.getElementById('fkyc_ref2_name').value.trim() || null,
+        ref2_mobile: document.getElementById('fkyc_ref2_mob').value.trim() || null,
+        customer_photo: photoBase64, signature_photo: signBase64, id_proof_photo: proofBase64
+      };
+
+      const res = await fetch('/api/customer/new-full-kyc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      btn.innerText = "சமர்ப்பி (Submit KYC)";
+      btn.disabled = false;
+      if (res.ok) {
+        alert("✅ " + data.message);
+        closeNewKycModal();
+        document.getElementById('searchInput').value = mobile;
+        handleSearch();
+      } else alert("❌ பிழை: " + data.detail);
     }
   </script>
 </body>

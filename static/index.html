@@ -831,12 +831,14 @@
       location.reload();
     }
 
+    // பக்கம் திறக்கும் போதே திட்டங்களை அழைத்தல்
     window.onload = function() {
       const saved = localStorage.getItem('gold_app_user');
       if (saved) {
         currentUser = JSON.parse(saved);
         showDashboard(currentUser);
       }
+      loadSchemesDropdown(); // பக்கம் ஏற்றப்பட்டதும் உடனே இயங்கும்
     };
 
     function switchTab(tabId) {
@@ -1487,21 +1489,34 @@
       else alert("❌ பிழை: " + data.detail);
     }
 
+    // திட்டங்களை Dropdown-ல் ஏற்றும் செயல்பாடு
     async function loadSchemesDropdown() {
-      const res = await fetch('/api/admin/schemes');
-      const data = await res.json();
-      schemesCache = data.data || [];
-      const sSelect = document.getElementById('scheme_name');
-      sSelect.innerHTML = '';
-      schemesCache.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.scheme_name;
-        opt.innerText = `${s.scheme_name} (${s.scheme_code} - Max ${s.max_ltv_percentage}%)`;
-        sSelect.appendChild(opt);
-      });
-      onSchemeSelected();
+      try {
+        const res = await fetch('/api/admin/schemes');
+        const data = await res.json();
+        schemesCache = data.data || [];
+        
+        const sSelect = document.getElementById('scheme_name');
+        sSelect.innerHTML = '';
+    
+        if (schemesCache.length === 0) {
+          sSelect.innerHTML = '<option value="">திட்டங்கள் எதுவும் இல்லை (நிர்வாகத்தில் சேர்க்கவும்)</option>';
+          return;
+        }
+    
+        schemesCache.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.scheme_name;
+          opt.innerText = `${s.scheme_name} (${s.scheme_code} - LTV ${s.max_ltv_percentage}%)`;
+          sSelect.appendChild(opt);
+        });
+    
+        // முதல் திட்டத்தின் கட்டணங்கள் மற்றும் வரம்புகளை உடனே ஏற்றுதல்
+        onSchemeSelected();
+      } catch (err) {
+        console.error("திட்டங்கள் ஏற்றுவதில் பிழை:", err);
+      }
     }
-
     async function submitCompanyBankForm() {
       const bName = document.getElementById('bank_acc_name').value.trim();
       const bBranch = document.getElementById('bank_acc_branch').value.trim();

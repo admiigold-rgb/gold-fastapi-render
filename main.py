@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from database import supabase
 
 app = FastAPI(
-    title="Gold Branch Management - Granular RBAC",
-    version="2.1.0"
+    title="Gold Branch Management - Strict RBAC & CRUD",
+    version="2.2.0"
 )
 
 app.add_middleware(
@@ -25,7 +25,6 @@ app.add_middleware(
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Fast2SMS Function
 def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount: float, txn_type: str = "receive"):
     try:
         api_key = os.getenv("FAST2SMS_API_KEY", "eBGQYanRZNKVCpMSg3KB5kUxY2QhDnOjxesh3Hqr7FOG792XV9wut4TPhQia")
@@ -56,20 +55,20 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
     except Exception as e:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
 
-# Pydantic Schemas
+# Schemas
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-class CreateBranchPayload(BaseModel):
+class BranchPayload(BaseModel):
     branch_code: str
     branch_name: str
     city: str
     phone: Optional[str] = None
 
-class CreateStaffPayload(BaseModel):
+class StaffPayload(BaseModel):
     username: str
-    password: str
+    password: Optional[str] = None
     full_name: str
     mobile: str
     role_key: str = "BRANCH_STAFF"
@@ -170,9 +169,9 @@ def serve_ui():
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Gold Branch Enterprise"}
+    return {"status": "active", "service": "Enterprise API"}
 
-# 1. பணியாளர் உள்நுழைவு (Login API with Dynamic Permissions)
+# 1. Login API (துல்லியமான பூலியன் பாதுகாப்போடு)
 @app.post("/api/auth/staff-login")
 def staff_unified_login(data: LoginRequest):
     try:
@@ -185,12 +184,12 @@ def staff_unified_login(data: LoginRequest):
         )
 
         if not res.data:
-            # Fallback for old test_users table
+            # Fallback for older demo accounts
             f_res = supabase.table("test_users").select("*").eq("username", data.username.strip()).eq("password", data.password.strip()).execute()
             if not f_res.data:
                 raise HTTPException(status_code=401, detail="பயனர் பெயர் அல்லது கடவுச்சொல் தவறானது!")
             u = f_res.data[0]
-            is_adm = u.get("role") == "ADMIN"
+            is_adm = (u.get("role") == "ADMIN")
             return {
                 "status": "success",
                 "user": {
@@ -210,7 +209,7 @@ def staff_unified_login(data: LoginRequest):
             }
 
         user = res.data[0]
-        if not user.get("is_active"):
+        if not user.get("is_active", True):
             raise HTTPException(status_code=403, detail="இந்தக் கணக்கு முடக்கப்பட்டுள்ளது.")
 
         branch_info = user.get("test_branches") or {}
@@ -220,12 +219,12 @@ def staff_unified_login(data: LoginRequest):
             "full_name": user["full_name"],
             "role_key": user.get("role_key", "BRANCH_STAFF"),
             "branch_id": user.get("branch_id") or 1,
-            "branch_name": branch_info.get("branch_name", "Head Office"),
+            "branch_name": branch_info.get("branch_name", "Branch"),
             "permissions": {
-                "can_access_counter": user.get("can_access_counter", True),
-                "can_approve_kyc": user.get("can_approve_kyc", False),
-                "can_approve_updates": user.get("can_approve_updates", False),
-                "can_manage_users": user.get("can_manage_users", False)
+                "can_access_counter": bool(user.get("can_access_counter", True)),
+                "can_approve_kyc": bool(user.get("can_approve_kyc", False)),
+                "can_approve_updates": bool(user.get("can_approve_updates", False)),
+                "can_manage_users": bool(user.get("can_manage_users", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -234,7 +233,7 @@ def staff_unified_login(data: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"உள்நுழைவு பிழை: {str(e)}")
 
-# 2. கிளைகள் நிர்வாகம்
+# 2. கிளைகள் மேலாண்மை (CRUD: Read, Create, Update, Delete)
 @app.get("/api/admin/branches")
 def get_branches():
     try:
@@ -244,14 +243,30 @@ def get_branches():
         raise HTTPException(status_code=500, detail=f"கிளைகள் பட்டியல் பிழை: {str(e)}")
 
 @app.post("/api/admin/branch/create")
-def create_branch(data: CreateBranchPayload):
+def create_branch(data: BranchPayload):
     try:
         res = supabase.table("test_branches").insert(data.model_dump()).execute()
-        return {"status": "success", "message": "புதிய கிளை வெற்றிகரமாக உருவாக்கப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "புதிய கிளை உருவாக்கப்பட்டது.", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கிளை உருவாக்கம் பிழை: {str(e)}")
 
-# 3. பணியாளர் நிர்வாகம் (Granular Permissions உடன்)
+@app.put("/api/admin/branch/{branch_id}")
+def update_branch(branch_id: int, data: BranchPayload):
+    try:
+        res = supabase.table("test_branches").update(data.model_dump()).eq("id", branch_id).execute()
+        return {"status": "success", "message": "கிளை விபரங்கள் புதுப்பிக்கப்பட்டன."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கிளை திருத்தம் பிழை: {str(e)}")
+
+@app.delete("/api/admin/branch/{branch_id}")
+def delete_branch(branch_id: int):
+    try:
+        supabase.table("test_branches").delete().eq("id", branch_id).execute()
+        return {"status": "success", "message": "கிளை நீக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கிளை நீக்கல் பிழை: {str(e)}")
+
+# 3. பணியாளர் மேலாண்மை (CRUD: Read, Create, Update, Delete)
 @app.get("/api/admin/staff")
 def get_staff_list():
     try:
@@ -261,7 +276,7 @@ def get_staff_list():
         raise HTTPException(status_code=500, detail=f"பணியாளர் பட்டியல் பிழை: {str(e)}")
 
 @app.post("/api/admin/staff/create")
-def create_staff(data: CreateStaffPayload):
+def create_staff(data: StaffPayload):
     try:
         check = supabase.table("test_staff_users").select("id").eq("username", data.username.strip()).execute()
         if check.data:
@@ -273,6 +288,35 @@ def create_staff(data: CreateStaffPayload):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"பணியாளர் உருவாக்கம் பிழை: {str(e)}")
+
+@app.put("/api/admin/staff/{staff_id}")
+def update_staff(staff_id: int, data: StaffPayload):
+    try:
+        update_dict = {
+            "full_name": data.full_name,
+            "mobile": data.mobile,
+            "role_key": data.role_key,
+            "branch_id": data.branch_id,
+            "can_access_counter": data.can_access_counter,
+            "can_approve_kyc": data.can_approve_kyc,
+            "can_approve_updates": data.can_approve_updates,
+            "can_manage_users": data.can_manage_users
+        }
+        if data.password:
+            update_dict["password"] = data.password
+
+        supabase.table("test_staff_users").update(update_dict).eq("id", staff_id).execute()
+        return {"status": "success", "message": "பணியாளர் விபரங்கள் புதுப்பிக்கப்பட்டன."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"பணியாளர் திருத்தம் பிழை: {str(e)}")
+
+@app.delete("/api/admin/staff/{staff_id}")
+def delete_staff(staff_id: int):
+    try:
+        supabase.table("test_staff_users").delete().eq("id", staff_id).execute()
+        return {"status": "success", "message": "பணியாளர் கணக்கு நீக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"பணியாளர் நீக்கல் பிழை: {str(e)}")
 
 # 4. தலைமையக ஒப்புதல்கள்
 @app.get("/api/hq/pending-approvals")
@@ -326,7 +370,7 @@ def process_update_approval(data: ApprovalActionPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"மாற்ற ஒப்புதல் பிழை: {str(e)}")
 
-# 5. வாடிக்கையாளர் தேடல்
+# 5. வாடிக்கையாளர் தேடல் & வருகை
 @app.get("/api/customer/search")
 def search_customer(query: str = Query(..., min_length=1)):
     try:
@@ -339,7 +383,6 @@ def search_customer(query: str = Query(..., min_length=1)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தேடல் பிழை: {str(e)}")
 
-# 6. வருகைப் பதிவு
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     try:
@@ -349,7 +392,6 @@ def log_customer_visit(data: CustomerVisitEntry):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"வருகைப் பதிவு பிழை: {str(e)}")
 
-# 7. புதிய KYC
 @app.post("/api/customer/new-kyc")
 def create_kyc(data: NewCustomerKYC):
     try:
@@ -375,7 +417,6 @@ def create_kyc(data: NewCustomerKYC):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"KYC பதிவு பிழை: {str(e)}")
 
-# 8. விபர மாற்றக் கோரிக்கை
 @app.post("/api/customer/request-update")
 def request_customer_update(data: CustomerUpdateRequest):
     try:
@@ -390,12 +431,12 @@ def request_customer_update(data: CustomerUpdateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"மாற்றக் கோரிக்கை பிழை: {str(e)}")
 
-# 9. நகைக்கடன் பதிவு
+# 6. நகைக்கடன் பதிவு
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
     try:
         if not data.items:
-            raise HTTPException(status_code=400, detail="குறைந்தது ஒரு நகையாவது பட்டியலில் சேர்க்கப்பட வேண்டும்.")
+            raise HTTPException(status_code=400, detail="குறைந்தது ஒரு நகையாவது சேர்க்கப்பட வேண்டும்.")
 
         total_gross = sum(i.gross_weight for i in data.items)
         total_net = sum(i.net_weight for i in data.items)
@@ -435,7 +476,7 @@ def create_new_pawn(data: NewGoldLoanEntry):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அடகுப் பதிவு பிழை: {str(e)}")
 
-# 10. SMS OTP அனுப்புதல்
+# 7. OTP & Settle
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     try:
@@ -468,7 +509,6 @@ def trigger_otp_sms(payload: SendOtpPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OTP பிழை: {str(e)}")
 
-# 11. OTP சரிபார்த்து செட்டில் செய்தல்
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
     try:
@@ -500,7 +540,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 data.denominations.c_coins
             )
             if round(calc_cash, 2) != round(data.cash_amount, 2):
-                raise HTTPException(status_code=400, detail=f"தாள்களின் கூட்டுத்தொகை (₹{calc_cash}) ரொக்கத் தொகையுடன் பொருந்தவில்லை.")
+                raise HTTPException(status_code=400, detail=f"தாள்களின் கூட்டுத்தொகை (₹{calc_cash}) பொருந்தவில்லை.")
 
         settle_record = {
             "customer_id": data.customer_id,
@@ -531,13 +571,12 @@ def settle_with_otp(data: SettleWithOtpPayload):
 
         supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", latest_otp["id"]).execute()
 
-        return {"status": "success", "message": "🎉 பரிவர்த்தனை வெற்றிகரமாக முடிவடைந்தது! வருகை நிறைவு செய்யப்பட்டது.", "settlement_id": new_settle_id}
+        return {"status": "success", "message": "🎉 பரிவர்த்தனை முடிவடைந்தது! வருகை நிறைவு செய்யப்பட்டது.", "settlement_id": new_settle_id}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"செட்டில்மென்ட் பிழை: {str(e)}")
 
-# 12. நேரடி செட்டில்மென்ட் (Fallback)
 @app.post("/api/transaction/settle")
 def direct_settle_transaction(data: DirectSettlementPayload):
     try:
@@ -552,7 +591,7 @@ def direct_settle_transaction(data: DirectSettlementPayload):
                 data.denominations.c_coins
             )
             if round(calc_cash, 2) != round(data.cash_amount, 2):
-                raise HTTPException(status_code=400, detail=f"தாள்களின் கூட்டுத்தொகை (₹{calc_cash}) ரொக்கத் தொகையுடன் பொருந்தவில்லை.")
+                raise HTTPException(status_code=400, detail=f"தாள்களின் கூட்டுத்தொகை பொருந்தவில்லை.")
 
         settle_record = {
             "customer_id": data.customer_id,
@@ -581,7 +620,7 @@ def direct_settle_transaction(data: DirectSettlementPayload):
                 "total_calculated_cash": data.cash_amount
             }).execute()
 
-        return {"status": "success", "message": "✅ பரிவர்த்தனை தீர்வு வெற்றிகரமாகச் சேமிக்கப்பட்டது!", "settlement_id": new_settle_id}
+        return {"status": "success", "message": "✅ பரிவர்த்தனை வெற்றிகரமாகச் சேமிக்கப்பட்டது!", "settlement_id": new_settle_id}
     except HTTPException:
         raise
     except Exception as e:

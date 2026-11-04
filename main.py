@@ -65,6 +65,43 @@ class BranchPayload(BaseModel):
     city: str
     phone: Optional[str] = None
 
+# --- புதிய நிர்வாக Schemas (Schemes, Banks & Gold Rates) ---
+
+class CompanyBankPayload(BaseModel):
+    bank_name: str
+    branch_name: str
+    account_type: str = "CURRENT"
+    account_no: str
+    ifsc_code: str
+    upi_id: Optional[str] = None
+
+class InterestSlab(BaseModel):
+    from_days: int
+    to_days: int
+    rate_percent: float
+
+class LoanSchemePayload(BaseModel):
+    scheme_code: str
+    scheme_name: str
+    min_loan_amount: float = 1000.00
+    max_loan_amount: float = 1500000.00
+    tenure_months: int = 12
+    min_interest_days: int = 7
+    auction_grace_days: int = 30
+    auction_charge_amount: float = 500.00
+    processing_charge_type: str = "PLEDGE"  # PLEDGE / RELEASE
+    processing_charge_calc: str = "AMOUNT"  # AMOUNT / PERCENTAGE
+    processing_charge_value: float = 0.00
+    max_ltv_percentage: float = 75.00
+    interest_slabs: List[InterestSlab]
+    purity_rate_multipliers: Optional[Dict[str, float]] = {
+        "916": 0.75, "22CT": 0.75, "18CT": 0.60, "999": 0.85
+    }
+
+class DailyGoldRatePayload(BaseModel):
+    rate_24k_per_gram: float
+    rate_22k_per_gram: float
+    rate_18k_per_gram: float
 class StaffPayload(BaseModel):
     username: str
     password: Optional[str] = None
@@ -439,6 +476,68 @@ def search_customer(query: str = Query(..., min_length=1)):
         res = supabase.table("test_customers").select("*").ilike("name", f"%{clean_query}%").limit(10).execute()
     return {"status": "success", "count": len(res.data), "data": res.data}
 
+# ==================== நிர்வாகம்: வங்கிக் கணக்குகள் & நகைக்கடன் திட்டங்கள் ====================
+
+# 1. நிறுவன வங்கி கணக்குகள் மேலாண்மை
+@app.get("/api/admin/company-banks")
+def get_company_banks():
+    res = supabase.table("test_company_banks").select("*").eq("is_active", True).order("id", desc=True).execute()
+    return {"status": "success", "data": res.data}
+
+@app.post("/api/admin/company-bank/create")
+def create_company_bank(data: CompanyBankPayload):
+    try:
+        res = supabase.table("test_company_banks").insert(data.model_dump()).execute()
+        return {"status": "success", "message": "நிறுவன வங்கி கணக்கு சேர்க்கப்பட்டது.", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"வங்கி பதிவு பிழை: {str(e)}")
+
+@app.delete("/api/admin/company-bank/{bank_id}")
+def delete_company_bank(bank_id: int):
+    supabase.table("test_company_banks").delete().eq("id", bank_id).execute()
+    return {"status": "success", "message": "வங்கி கணக்கு நீக்கப்பட்டது."}
+
+# 2. நகைக்கடன் திட்டங்கள் மேலாண்மை
+@app.get("/api/admin/schemes")
+def get_loan_schemes():
+    res = supabase.table("test_loan_schemes").select("*").eq("is_active", True).order("id", desc=True).execute()
+    return {"status": "success", "data": res.data}
+
+@app.post("/api/admin/scheme/create")
+def create_loan_scheme(data: LoanSchemePayload):
+    try:
+        check = supabase.table("test_loan_schemes").select("id").eq("scheme_code", data.scheme_code.strip()).execute()
+        if check.data:
+            raise HTTPException(status_code=400, detail="இந்த திட்டக் குறியீடு (Scheme Code) ஏற்கனவே உள்ளது.")
+
+        res = supabase.table("test_loan_schemes").insert(data.model_dump()).execute()
+        return {"status": "success", "message": "புதிய நகைக்கடன் திட்டம் வெற்றிகரமாகச் சேர்க்கப்பட்டது.", "data": res.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"திட்டம் உருவாக்கம் பிழை: {str(e)}")
+
+@app.delete("/api/admin/scheme/{scheme_id}")
+def delete_loan_scheme(scheme_id: int):
+    supabase.table("test_loan_schemes").delete().eq("id", scheme_id).execute()
+    return {"status": "success", "message": "திட்டம் நீக்கப்பட்டது."}
+
+# 3. அன்றைய தங்க விலை மேலாண்மை
+@app.get("/api/admin/gold-rate/today")
+def get_today_gold_rate():
+    res = supabase.table("test_daily_gold_rates").select("*").order("rate_date", desc=True).limit(1).execute()
+    return {"status": "success", "data": res.data[0] if res.data else None}
+
+@app.post("/api/admin/gold-rate/update")
+def update_today_gold_rate(data: DailyGoldRatePayload):
+    try:
+        record = data.model_dump()
+        record["rate_date"] = "now()"
+        res = supabase.table("test_daily_gold_rates").upsert(record, on_conflict="rate_date").execute()
+        return {"status": "success", "message": "அன்றைய தங்க விலை நிர்ணயிக்கப்பட்டது.", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"தங்க விலை பிழை: {str(e)}")
+        
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     record = {"customer_id": data.customer_id, "branch_id": data.branch_id, "purpose": data.purpose, "visit_status": "PENDING"}

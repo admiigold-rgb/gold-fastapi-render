@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from database import supabase
 
 app = FastAPI(
-    title="Gold Branch Enterprise - Complete KYC & Granular Profile Management",
-    version="3.0.0"
+    title="Gold Branch Enterprise - Banking & Approval Workflows",
+    version="4.0.0"
 )
 
 app.add_middleware(
@@ -25,6 +25,7 @@ app.add_middleware(
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# SMS Function
 def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount: float, txn_type: str = "receive"):
     try:
         api_key = os.getenv("FAST2SMS_API_KEY", "eBGQYanRZNKVCpMSg3KB5kUxY2QhDnOjxesh3Hqr7FOG792XV9wut4TPhQia")
@@ -35,8 +36,7 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
             "Content-Type": "application/x-www-form-urlencoded",
             "accept": "application/json",
         }
-        formatted_amount = f"{abs(amount):,.2f}"
-        var_values = f"{customer_name}|{formatted_amount}|{otp_code}"
+        var_values = f"{customer_name}|{abs(amount):,.2f}|{otp_code}"
         dlt_msg_id = "229683" if txn_type == "receive" else "229682"
         payload = {
             "route": "dlt",
@@ -49,14 +49,12 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
         resp = requests.post(url, headers=headers, data=payload, timeout=10)
         res_json = resp.json()
         if res_json.get("return") is True:
-            return True, "SMS வெற்றிகரமாக அனுப்பப்பட்டது!"
-        err_msg = res_json.get("message") or str(res_json)
-        return False, str(err_msg)
+            return True, "SMS அனுப்பப்பட்டது!"
+        return False, str(res_json.get("message") or res_json)
     except Exception as e:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
 
-# --- Data Models ---
-
+# Schemas
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -79,7 +77,6 @@ class StaffPayload(BaseModel):
     can_approve_updates: bool = False
     can_manage_users: bool = False
 
-# விரிவான முழு KYC மாதிரி
 class FullCustomerKYCPayload(BaseModel):
     name: str
     mobile: str
@@ -115,8 +112,33 @@ class CustomerUpdateRequest(BaseModel):
 
 class ApprovalActionPayload(BaseModel):
     request_id: int
-    action: str
+    action: str  # APPROVE / REJECT
     admin_id: int
+
+class BankTransferPayload(BaseModel):
+    customer_id: int
+    branch_id: int = 1
+    settlement_id: Optional[int] = None
+    direction: str  # PAYOUT / RECEIPT
+    amount: float
+    pay_mode: str  # BANK_TRANSFER / UPI
+    beneficiary_name: Optional[str] = None
+    account_no: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    bank_name: Optional[str] = None
+    upi_id: Optional[str] = None
+    is_third_party: bool = False
+    passbook_photo: Optional[str] = None
+    consent_doc_photo: Optional[str] = None
+    company_bank_name: Optional[str] = None
+    receipt_ref_no: Optional[str] = None
+    receipt_screenshot: Optional[str] = None
+
+class BankApprovalPayload(BaseModel):
+    transfer_id: int
+    action: str  # APPROVE / REJECT
+    admin_id: int
+    notes: Optional[str] = None
 
 class OrnamentItem(BaseModel):
     item_type: str
@@ -164,29 +186,17 @@ class SettleWithOtpPayload(BaseModel):
     bank_name: Optional[str] = None
     denominations: Optional[DenominationCounts] = None
 
-class DirectSettlementPayload(BaseModel):
-    customer_id: int
-    branch_id: int = 1
-    net_amount: float
-    direction: str
-    settlement_type: str
-    cash_amount: float = 0.0
-    bank_amount: float = 0.0
-    bank_ref_no: Optional[str] = None
-    bank_name: Optional[str] = None
-    denominations: Optional[DenominationCounts] = None
-
 # --- Endpoints ---
 
 @app.get("/")
 def serve_ui():
     if os.path.exists("static/index.html"):
         return FileResponse("static/index.html")
-    return {"message": "FastAPI சர்வர் இயங்குகிறது."}
+    return {"message": "FastAPI Server Running"}
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Gold Branch Complete KYC API"}
+    return {"status": "active", "service": "Enterprise API v4"}
 
 @app.post("/api/auth/staff-login")
 def staff_unified_login(data: LoginRequest):
@@ -198,7 +208,6 @@ def staff_unified_login(data: LoginRequest):
             .eq("password", data.password.strip())
             .execute()
         )
-
         if not res.data:
             f_res = supabase.table("test_users").select("*").eq("username", data.username.strip()).eq("password", data.password.strip()).execute()
             if not f_res.data:
@@ -248,7 +257,7 @@ def staff_unified_login(data: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"உள்நுழைவு பிழை: {str(e)}")
 
-# கிளைகள் & பணியாளர்கள் CRUD
+# கிளை & பணியாளர் நிர்வாகம்
 @app.get("/api/admin/branches")
 def get_branches():
     res = supabase.table("test_branches").select("*").order("id", desc=True).execute()
@@ -257,7 +266,7 @@ def get_branches():
 @app.post("/api/admin/branch/create")
 def create_branch(data: BranchPayload):
     res = supabase.table("test_branches").insert(data.model_dump()).execute()
-    return {"status": "success", "message": "புதிய கிளை உருவாக்கப்பட்டது.", "data": res.data}
+    return {"status": "success", "message": "கிளை உருவாக்கப்பட்டது.", "data": res.data}
 
 @app.put("/api/admin/branch/{branch_id}")
 def update_branch(branch_id: int, data: BranchPayload):
@@ -280,7 +289,7 @@ def create_staff(data: StaffPayload):
     if check.data:
         raise HTTPException(status_code=400, detail="இந்தப் பயனர் பெயர் ஏற்கனவே உள்ளது.")
     res = supabase.table("test_staff_users").insert(data.model_dump()).execute()
-    return {"status": "success", "message": "புதிய பணியாளர் கணக்கு உருவாக்கப்பட்டது.", "data": res.data}
+    return {"status": "success", "message": "பணியாளர் கணக்கு உருவாக்கப்பட்டது.", "data": res.data}
 
 @app.put("/api/admin/staff/{staff_id}")
 def update_staff(staff_id: int, data: StaffPayload):
@@ -302,15 +311,87 @@ def update_staff(staff_id: int, data: StaffPayload):
 @app.delete("/api/admin/staff/{staff_id}")
 def delete_staff(staff_id: int):
     supabase.table("test_staff_users").delete().eq("id", staff_id).execute()
-    return {"status": "success", "message": "பணியாளர் கணக்கு நீக்கப்பட்டது."}
+    return {"status": "success", "message": "பணியாளர் நீக்கப்பட்டது."}
 
-# HQ Approvals
-@app.get("/api/hq/pending-approvals")
-def get_pending_approvals():
-    kyc_pending = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").execute()
-    updates_pending = supabase.table("test_customer_update_requests").select("*, test_customers(name, mobile)").eq("status", "PENDING").execute()
-    return {"status": "success", "pending_kyc": kyc_pending.data, "pending_updates": updates_pending.data}
+# வங்கி பரிவர்த்தனை பட்டுவாடா & வரவு பதிவு (Branch Request)
+@app.post("/api/bank/request-transfer")
+def create_bank_transfer(data: BankTransferPayload):
+    try:
+        record = data.model_dump()
+        record["status"] = "PENDING"
+        res = supabase.table("test_bank_transfers").insert(record).execute()
+        return {"status": "success", "message": "வங்கி பரிவர்த்தனை வேண்டுகோள் தலைமையகத்திற்கு அனுப்பப்பட்டது.", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"வங்கிப் பதிவு பிழை: {str(e)}")
 
+# கிளைப் பணியாளர் நிலவரம் காணுதல்
+@app.get("/api/bank/branch-status")
+def get_branch_bank_status(branch_id: int = Query(...)):
+    try:
+        res = (
+            supabase.table("test_bank_transfers")
+            .select("*, test_customers(name, mobile)")
+            .eq("branch_id", branch_id)
+            .order("id", desc=True)
+            .limit(20)
+            .execute()
+        )
+        return {"status": "success", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"நிலை அறிதல் பிழை: {str(e)}")
+
+# தலைமையக வங்கி ஒப்புதல் & செயல்முறை
+@app.post("/api/hq/process-bank-transfer")
+def process_bank_transfer_hq(data: BankApprovalPayload):
+    try:
+        status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
+        update_data = {
+            "status": status,
+            "approved_by": data.admin_id,
+            "hq_notes": data.notes,
+            "approved_at": "now()"
+        }
+        res = supabase.table("test_bank_transfers").update(update_data).eq("id", data.transfer_id).execute()
+        return {"status": "success", "message": f"வங்கிப் பரிவர்த்தனை '{status}' செய்யப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"வங்கி ஒப்புதல் பிழை: {str(e)}")
+
+# கவுண்டர் வருகை ஒப்புதல்
+@app.post("/api/hq/approve-visit")
+def process_visit_approval(data: ApprovalActionPayload):
+    try:
+        status = "VERIFIED" if data.action == "APPROVE" else "REJECTED"
+        supabase.table("test_customer_visits").update({
+            "visit_status": status,
+            "approved_by": data.admin_id,
+            "approved_at": "now()"
+        }).eq("id", data.request_id).execute()
+        return {"status": "success", "message": f"வருகை நிலை '{status}' என மாற்றப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"வருகை ஒப்புதல் பிழை: {str(e)}")
+
+# தலைமையகத்திற்கான ஒருங்கிணைந்த நிலுவைகள் (HQ Central Dashboard)
+@app.get("/api/hq/all-pending-approvals")
+def get_all_pending_approvals():
+    try:
+        kyc_pending = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
+        updates_pending = supabase.table("test_customer_update_requests").select("*, test_customers(name, mobile)").eq("status", "PENDING").order("id", desc=True).execute()
+        visits_pending = supabase.table("test_customer_visits").select("*, test_customers(name, mobile)").eq("visit_status", "PENDING").order("id", desc=True).limit(20).execute()
+        bank_payouts = supabase.table("test_bank_transfers").select("*, test_customers(name, mobile)").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
+        bank_receipts = supabase.table("test_bank_transfers").select("*, test_customers(name, mobile)").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
+
+        return {
+            "status": "success",
+            "pending_kyc": kyc_pending.data,
+            "pending_updates": updates_pending.data,
+            "pending_visits": visits_pending.data,
+            "pending_payouts": bank_payouts.data,
+            "pending_receipts": bank_receipts.data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"நிலுவைகள் பிழை: {str(e)}")
+
+# தலைமையக KYC & சுயவிவர ஒப்புதல்
 @app.post("/api/hq/approve-kyc")
 def process_kyc_approval(data: ApprovalActionPayload):
     status = "VERIFIED" if data.action == "APPROVE" else "REJECTED"
@@ -328,12 +409,12 @@ def process_update_approval(data: ApprovalActionPayload):
         if changes:
             supabase.table("test_customers").update(changes).eq("id", req["customer_id"]).execute()
         supabase.table("test_customer_update_requests").update({"status": "APPROVED"}).eq("id", data.request_id).execute()
-        return {"status": "success", "message": "வாடிக்கையாளர் புதிய விபரங்கள் புதுப்பிக்கப்பட்டன."}
+        return {"status": "success", "message": "சுயவிவர மாற்றம் (படம், முகவரி, ஒப்பம்) அங்கீகரிக்கப்பட்டது."}
     else:
         supabase.table("test_customer_update_requests").update({"status": "REJECTED"}).eq("id", data.request_id).execute()
-        return {"status": "success", "message": "விபர மாற்றம் நிராகரிக்கப்பட்டது."}
+        return {"status": "success", "message": "சுயவிவர மாற்றக் கோரிக்கை நிராகரிக்கப்பட்டது."}
 
-# வாடிக்கையாளர் தேடல் & முழு விபரங்கள்
+# வாடிக்கையாளர் தேடல் & முழு KYC
 @app.get("/api/customer/search")
 def search_customer(query: str = Query(..., min_length=1)):
     clean_query = query.strip()
@@ -345,50 +426,38 @@ def search_customer(query: str = Query(..., min_length=1)):
 
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
-    record = {"customer_id": data.customer_id, "branch_id": data.branch_id, "purpose": data.purpose}
+    record = {"customer_id": data.customer_id, "branch_id": data.branch_id, "purpose": data.purpose, "visit_status": "PENDING"}
     res = supabase.table("test_customer_visits").insert(record).execute()
-    return {"status": "success", "message": "வருகை பதிவானது", "data": res.data}
+    return {"status": "success", "message": "வருகை தலைமை ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
 
-# புதிய விரிவான KYC பதிவு
 @app.post("/api/customer/new-full-kyc")
 def create_full_kyc(data: FullCustomerKYCPayload):
-    try:
-        clean_mobile = data.mobile.strip()
-        existing = supabase.table("test_customers").select("id, name").eq("mobile", clean_mobile).execute()
-        if existing.data:
-            raise HTTPException(status_code=400, detail=f"இந்த முதன்மை மொபைல் எண் ஏற்கனவே உள்ளது ({existing.data[0]['name']}).")
+    clean_mobile = data.mobile.strip()
+    existing = supabase.table("test_customers").select("id, name").eq("mobile", clean_mobile).execute()
+    if existing.data:
+        raise HTTPException(status_code=400, detail=f"இந்த மொபைல் எண் ஏற்கனவே உள்ளது ({existing.data[0]['name']}).")
+    record = data.model_dump()
+    record["kyc_status"] = "PENDING"
+    record["is_active"] = True
+    res = supabase.table("test_customers").insert(record).execute()
+    return {"status": "success", "message": "முழு KYC சமர்ப்பிக்கப்பட்டது! தலைமை ஒப்புதலுக்குக் காத்திருக்கிறது.", "data": res.data}
 
-        record = data.model_dump()
-        record["kyc_status"] = "PENDING"
-        record["is_active"] = True
-
-        res = supabase.table("test_customers").insert(record).execute()
-        return {"status": "success", "message": "முழு KYC வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டது! தலைமை ஒப்புதலுக்குக் காத்திருக்கிறது.", "data": res.data}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"KYC பதிவு பிழை: {str(e)}")
-
-# வாடிக்கையாளர் முழு விபர மாற்றக் கோரிக்கை
 @app.post("/api/customer/request-update")
 def request_customer_update(data: CustomerUpdateRequest):
-    try:
-        record = {
-            "customer_id": data.customer_id,
-            "branch_id": data.branch_id,
-            "requested_changes": data.requested_changes,
-            "status": "PENDING"
-        }
-        res = supabase.table("test_customer_update_requests").insert(record).execute()
-        return {"status": "success", "message": "வாடிக்கையாளர் விபர மாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"மாற்றக் கோரிக்கை பிழை: {str(e)}")
+    record = {
+        "customer_id": data.customer_id,
+        "branch_id": data.branch_id,
+        "requested_changes": data.requested_changes,
+        "status": "PENDING"
+    }
+    supabase.table("test_customer_update_requests").insert(record).execute()
+    return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது."}
 
-# அடகு & பணம் செலுத்துதல் & OTP API-கள்
+# நகைக்கடன் பதிவு
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
     if not data.items:
-        raise HTTPException(status_code=400, detail="குறைந்தது ஒரு நகையாவது பட்டியலில் சேர்க்கப்பட வேண்டும்.")
+        raise HTTPException(status_code=400, detail="நகைகளைச் சேர்க்கவும்.")
     total_gross = sum(i.gross_weight for i in data.items)
     total_net = sum(i.net_weight for i in data.items)
     net_payable = data.loan_amount - data.charges_amount
@@ -416,15 +485,16 @@ def create_new_pawn(data: NewGoldLoanEntry):
         "purity": i.purity
     } for i in data.items]
     supabase.table("test_gold_loan_items").insert(items_payload).execute()
-    return {"status": "success", "message": "நகைக்கடன் வெற்றிகரமாகச் சேமிக்கப்பட்டது.", "loan_id": new_loan_id, "net_payable": net_payable}
+    return {"status": "success", "message": "நகைக்கடன் கார்ட்டில் சேர்க்கப்பட்டது.", "loan_id": new_loan_id, "net_payable": net_payable}
 
+# OTP & Settlement
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     otp_code = str(random.randint(100000, 999999))
     txn_type = "receive" if payload.direction == "COMPANY_PAYABLE" else "pay"
     success, msg = send_fast2sms_otp(payload.mobile, otp_code, payload.customer_name, payload.net_amount, txn_type)
     if not success:
-        raise HTTPException(status_code=502, detail=f"SMS அனுப்புவதில் தோல்வி: {msg}")
+        raise HTTPException(status_code=502, detail=f"SMS பிழை: {msg}")
     supabase.table("test_transaction_otps").insert({
         "customer_id": payload.customer_id,
         "mobile": payload.mobile,
@@ -433,13 +503,13 @@ def trigger_otp_sms(payload: SendOtpPayload):
         "txn_type": txn_type,
         "is_verified": False
     }).execute()
-    return {"status": "success", "message": "OTP வாடிக்கையாளர் மொபைலுக்கு SMS மூலம் அனுப்பப்பட்டது."}
+    return {"status": "success", "message": "OTP SMS அனுப்பப்பட்டது."}
 
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
     otp_query = supabase.table("test_transaction_otps").select("id, otp_code, is_verified").eq("customer_id", data.customer_id).eq("is_verified", False).order("created_at", desc=True).limit(1).execute()
     if not otp_query.data or otp_query.data[0]["otp_code"] != data.otp_code.strip():
-        raise HTTPException(status_code=400, detail="உள்ளிட்ட OTP தவறானது அல்லது இல்லை.")
+        raise HTTPException(status_code=400, detail="OTP தவறானது.")
     settle_record = {
         "customer_id": data.customer_id, "branch_id": data.branch_id, "net_amount": data.net_amount,
         "settlement_type": data.settlement_type, "cash_amount": data.cash_amount, "bank_amount": data.bank_amount,
@@ -454,14 +524,4 @@ def settle_with_otp(data: SettleWithOtpPayload):
             "c_10": data.denominations.c_10, "c_coins": data.denominations.c_coins, "total_calculated_cash": data.cash_amount
         }).execute()
     supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", otp_query.data[0]["id"]).execute()
-    return {"status": "success", "message": "🎉 பரிவர்த்தனை முடிவடைந்தது! வருகை நிறைவு செய்யப்பட்டது.", "settlement_id": new_settle_id}
-
-@app.post("/api/transaction/settle")
-def direct_settle_transaction(data: DirectSettlementPayload):
-    settle_record = {
-        "customer_id": data.customer_id, "branch_id": data.branch_id, "net_amount": data.net_amount,
-        "settlement_type": data.settlement_type, "cash_amount": data.cash_amount, "bank_amount": data.bank_amount,
-        "bank_ref_no": data.bank_ref_no, "bank_name": data.bank_name, "direction": data.direction
-    }
-    res_settle = supabase.table("test_transaction_settlements").insert(settle_record).execute()
-    return {"status": "success", "message": "✅ பரிவர்த்தனை தீர்வு வெற்றிகரமாகச் சேமிக்கப்பட்டது!", "settlement_id": res_settle.data[0]["id"]}
+    return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}

@@ -166,7 +166,21 @@
                 </tbody>
               </table>
             </div>
-
+            <!-- நேரடி நகைகளின் தங்க மதிப்பு & திட்டத்தின் LTV கடன் மதிப்பீட்டுக் கார்டு -->
+            <div class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs my-2">
+              <div>
+                <span class="text-slate-500 block">மொத்த நிகர எடை:</span>
+                <span id="displayTotalNetWeight" class="text-sm font-bold text-slate-800">0.000 g</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">அன்றைய நகைகளின் சந்தை மதிப்பு:</span>
+                <span id="displayTotalGoldValue" class="text-sm font-bold text-amber-900">₹ 0.00</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">திட்டத்தின்படி அனுமதிக்கப்பட்ட அதிகபட்ச கடன் (LTV):</span>
+                <span id="displayMaxEligibleLoan" class="text-sm font-extrabold text-emerald-700">₹ 0.00</span>
+              </div>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">கடன் தொகை (₹) * [-]</label>
@@ -1118,23 +1132,78 @@
     }
 
     // 6. நகைப் பட்டியல்
+    // மாறிகள் (Variables)
+    let todayGoldRates = { "24K": 7800, "22K": 7150, "916": 7150, "18K": 5850 };
+    let totalGoldMarketValue = 0;
+    let maxEligibleLoanAmount = 0;
+  
+    // அன்றைய தங்க விலையைப் பெற்று Dropdown-ல் விலையுடன் தரத்தைக் காட்டுதல்
+    async function fetchAndSetupPurityDropdown() {
+      try {
+        const res = await fetch('/api/admin/gold-rate/today');
+        const data = await res.json();
+        if (data && data.data) {
+          todayGoldRates["24K"] = parseFloat(data.data.rate_24k_per_gram) || 7800;
+          todayGoldRates["22K"] = parseFloat(data.data.rate_22k_per_gram) || 7150;
+          todayGoldRates["916"] = parseFloat(data.data.rate_22k_per_gram) || 7150;
+          todayGoldRates["18K"] = parseFloat(data.data.rate_18k_per_gram) || 5850;
+        }
+  
+        const pSelect = document.getElementById('item_purity');
+        if (pSelect) {
+          pSelect.innerHTML = `
+            <option value="916">916 KDM (₹${todayGoldRates["916"]}/g)</option>
+            <option value="22CT">22CT தங்கம் (₹${todayGoldRates["22K"]}/g)</option>
+            <option value="18CT">18CT தங்கம் (₹${todayGoldRates["18K"]}/g)</option>
+            <option value="24K">24K தூய தங்கம் (₹${todayGoldRates["24K"]}/g)</option>
+          `;
+        }
+      } catch (err) {
+        console.error("தங்க விலை பிழை:", err);
+      }
+    }
+  
+    // நகையை அட்டவணையில் சேர்த்தல்
     function addOrnamentToTable() {
       const type = document.getElementById('item_type').value.trim();
       const count = parseInt(document.getElementById('item_count').value) || 1;
       const gross = parseFloat(document.getElementById('item_gross').value) || 0;
       const net = parseFloat(document.getElementById('item_net').value) || 0;
       const purity = document.getElementById('item_purity').value;
+  
       if (!type || gross <= 0 || net <= 0) return alert("விபரங்களைச் சரியாக உள்ளிடவும்.");
-      ornamentList.push({ item_type: type, item_count: count, gross_weight: gross, net_weight: net, purity });
+      if (net > gross) return alert("நிகர எடை மொத்த எடையை விட அதிகமாக இருக்க முடியாது.");
+  
+      let ratePerGram = todayGoldRates[purity] || todayGoldRates["916"];
+      let itemValue = net * ratePerGram;
+  
+      ornamentList.push({
+        item_type: type,
+        item_count: count,
+        gross_weight: gross,
+        net_weight: net,
+        purity: purity,
+        rate_per_gram: ratePerGram,
+        item_market_value: itemValue
+      });
+  
       renderOrnamentsTable();
+      calculateEligibleLoanAmount();
+  
       document.getElementById('item_type').value = '';
       document.getElementById('item_count').value = '1';
       document.getElementById('item_gross').value = '';
       document.getElementById('item_net').value = '';
     }
-
-    function removeOrnament(idx) { ornamentList.splice(idx, 1); renderOrnamentsTable(); }
-
+  
+    // நகையை நீக்குதல்
+    function removeOrnament(idx) {
+      ornamentList.splice(idx, 1);
+      renderOrnamentsTable();
+      calculateEligibleLoanAmount();
+    }
+  
+    // நகைப் பட்டியல் அட்டவணை
     function renderOrnamentsTable() {
       const tbody = document.getElementById('ornamentsTableBody');
       tbody.innerHTML = '';
@@ -1144,11 +1213,80 @@
       }
       ornamentList.forEach((item, idx) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="p-2">${item.item_type}</td><td class="p-2 text-center">${item.item_count}</td><td class="p-2 text-right">${item.gross_weight.toFixed(3)}</td><td class="p-2 text-right">${item.net_weight.toFixed(3)}</td><td class="p-2 text-center">${item.purity}</td><td class="p-2 text-center"><button onclick="removeOrnament(${idx})" class="text-rose-500 font-bold">✕</button></td>`;
+        tr.innerHTML = `
+          <td class="p-2 font-medium">${item.item_type}</td>
+          <td class="p-2 text-center">${item.item_count}</td>
+          <td class="p-2 text-right">${item.gross_weight.toFixed(3)}</td>
+          <td class="p-2 text-right font-bold text-slate-800">${item.net_weight.toFixed(3)}</td>
+          <td class="p-2 text-center">${item.purity}</td>
+          <td class="p-2 text-center"><button type="button" onclick="removeOrnament(${idx})" class="text-rose-500 font-bold hover:underline">✕</button></td>
+        `;
         tbody.appendChild(tr);
       });
     }
-
+  
+    // LTV & கடன் தொகை கணக்கீடு
+    function calculateEligibleLoanAmount() {
+      let totNet = 0;
+      totalGoldMarketValue = 0;
+  
+      ornamentList.forEach(item => {
+        totNet += item.net_weight;
+        totalGoldMarketValue += (item.item_market_value || (item.net_weight * (todayGoldRates[item.purity] || todayGoldRates["916"])));
+      });
+  
+      document.getElementById('displayTotalNetWeight').innerText = `${totNet.toFixed(3)} g`;
+      document.getElementById('displayTotalGoldValue').innerText = `₹ ${totalGoldMarketValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+  
+      if (!currentSelectedScheme || totalGoldMarketValue <= 0) {
+        maxEligibleLoanAmount = 0;
+        document.getElementById('displayMaxEligibleLoan').innerText = `₹ 0.00`;
+        document.getElementById('loan_amount').value = '';
+        return;
+      }
+  
+      let ltvPercent = currentSelectedScheme.max_ltv_percentage || 75.0;
+      maxEligibleLoanAmount = Math.round((totalGoldMarketValue * ltvPercent) / 100);
+  
+      if (currentSelectedScheme.max_loan_amount && maxEligibleLoanAmount > currentSelectedScheme.max_loan_amount) {
+        maxEligibleLoanAmount = currentSelectedScheme.max_loan_amount;
+      }
+  
+      document.getElementById('displayMaxEligibleLoan').innerText = `₹ ${maxEligibleLoanAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${ltvPercent}% LTV)`;
+  
+      const loanInput = document.getElementById('loan_amount');
+      if (loanInput) {
+        loanInput.value = maxEligibleLoanAmount;
+      }
+  
+      const chargesInput = document.getElementById('charges_amount');
+      if (chargesInput && currentSelectedScheme.processing_charge_type === 'PLEDGE') {
+        if (currentSelectedScheme.processing_charge_calc === 'AMOUNT') {
+          chargesInput.value = currentSelectedScheme.processing_charge_value || 0;
+        } else {
+          chargesInput.value = Math.round((maxEligibleLoanAmount * currentSelectedScheme.processing_charge_value) / 100);
+        }
+      }
+    }
+  
+    function onSchemeSelected() {
+      const schemeName = document.getElementById('scheme_name').value;
+      currentSelectedScheme = schemesCache.find(s => s.scheme_name === schemeName);
+      if (!currentSelectedScheme) return;
+      calculateEligibleLoanAmount();
+    }
+  
+    document.getElementById('loan_amount').addEventListener('change', function() {
+      let entered = parseFloat(this.value) || 0;
+      if (maxEligibleLoanAmount > 0 && entered > maxEligibleLoanAmount) {
+        alert(`அனுமதிக்கப்பட்ட கடன் தொகைக்கு மேல் வழங்க முடியாது! \nஅன்றைய தங்க மதிப்பில் அதிகபட்சமாக ₹${maxEligibleLoanAmount.toLocaleString('en-IN')} மட்டுமே வழங்க முடியும்.`);
+        this.value = maxEligibleLoanAmount;
+      }
+    });
+  
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchAndSetupPurityDropdown();
+    });
     // 7. Checkout & Denomination Logics
     function openCheckoutModal() {
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");

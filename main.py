@@ -10,12 +10,10 @@ from pydantic import BaseModel, Field
 from database import supabase
 
 app = FastAPI(
-    title="Gold Branch Management - Enterprise RBAC & Cart System",
-    version="2.0.0",
-    description="Branch Management System with Roles, HQ Approvals, Pawn Cart and DLT OTP"
+    title="Gold Branch Management - Granular RBAC",
+    version="2.1.0"
 )
 
-# CORS அனுமதி
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,33 +22,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static கோப்புறை இணைப்பு (Frontend UI)
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
-# --- Fast2SMS DLT SMS Function ---
-
+# Fast2SMS Function
 def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount: float, txn_type: str = "receive"):
-    """
-    txn_type: "receive" -> வாடிக்கையாளர் பணம் பெறும்போது (DLT ID: 229683)
-              "pay"     -> வாடிக்கையாளர் பணம் செலுத்தும்போது (DLT ID: 229682)
-    """
     try:
         api_key = os.getenv("FAST2SMS_API_KEY", "eBGQYanRZNKVCpMSg3KB5kUxY2QhDnOjxesh3Hqr7FOG792XV9wut4TPhQia")
         clean_mobile = "".join(filter(str.isdigit, str(mobile_no)))[-10:]
         url = "https://www.fast2sms.com/dev/bulkV2"
-
         headers = {
             "authorization": api_key.strip(),
             "Content-Type": "application/x-www-form-urlencoded",
             "accept": "application/json",
         }
-
         formatted_amount = f"{abs(amount):,.2f}"
         var_values = f"{customer_name}|{formatted_amount}|{otp_code}"
         dlt_msg_id = "229683" if txn_type == "receive" else "229682"
-
         payload = {
             "route": "dlt",
             "sender_id": "MUTUSI",
@@ -59,24 +47,19 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
             "numbers": clean_mobile,
             "flash": "0"
         }
-
         resp = requests.post(url, headers=headers, data=payload, timeout=10)
         res_json = resp.json()
-
         if res_json.get("return") is True:
             return True, "SMS வெற்றிகரமாக அனுப்பப்பட்டது!"
-
         err_msg = res_json.get("message") or str(res_json)
         return False, str(err_msg)
     except Exception as e:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
 
-
-# --- Pydantic Data Models ---
-
+# Pydantic Schemas
 class LoginRequest(BaseModel):
-    username: str = Field(...)
-    password: str = Field(...)
+    username: str
+    password: str
 
 class CreateBranchPayload(BaseModel):
     branch_code: str
@@ -89,12 +72,16 @@ class CreateStaffPayload(BaseModel):
     password: str
     full_name: str
     mobile: str
-    role_key: str  # BRANCH_STAFF, BRANCH_MANAGER, HQ_ADMIN
-    branch_id: Optional[int] = None
+    role_key: str = "BRANCH_STAFF"
+    branch_id: int
+    can_access_counter: bool = True
+    can_approve_kyc: bool = False
+    can_approve_updates: bool = False
+    can_manage_users: bool = False
 
 class NewCustomerKYC(BaseModel):
-    name: str = Field(...)
-    mobile: str = Field(...)
+    name: str
+    mobile: str
     mobile2: Optional[str] = None
     guardian_name: Optional[str] = None
     address: Optional[str] = None
@@ -112,7 +99,7 @@ class CustomerUpdateRequest(BaseModel):
 
 class ApprovalActionPayload(BaseModel):
     request_id: int
-    action: str  # APPROVE / REJECT
+    action: str
     admin_id: int
 
 class OrnamentItem(BaseModel):
@@ -173,7 +160,6 @@ class DirectSettlementPayload(BaseModel):
     bank_name: Optional[str] = None
     denominations: Optional[DenominationCounts] = None
 
-
 # --- Endpoints ---
 
 @app.get("/")
@@ -184,83 +170,75 @@ def serve_ui():
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Gold Branch API with RBAC & OTP"}
+    return {"status": "active", "service": "Gold Branch Enterprise"}
 
-# 1. பணியாளர் உள்நுழைவு (Unified Login with Roles)
+# 1. பணியாளர் உள்நுழைவு (Login API with Dynamic Permissions)
 @app.post("/api/auth/staff-login")
 def staff_unified_login(data: LoginRequest):
     try:
         res = (
             supabase.table("test_staff_users")
-            .select("id, username, full_name, mobile, role_key, branch_id, is_active, test_branches(branch_name), test_roles(*)")
+            .select("*, test_branches(branch_name)")
             .eq("username", data.username.strip())
             .eq("password", data.password.strip())
             .execute()
         )
 
         if not res.data:
-            # பழைய test_users அட்டவணைக்கான fallback
-            fallback_res = (
-                supabase.table("test_users")
-                .select("*")
-                .eq("username", data.username.strip())
-                .eq("password", data.password.strip())
-                .execute()
-            )
-            if not fallback_res.data:
+            # Fallback for old test_users table
+            f_res = supabase.table("test_users").select("*").eq("username", data.username.strip()).eq("password", data.password.strip()).execute()
+            if not f_res.data:
                 raise HTTPException(status_code=401, detail="பயனர் பெயர் அல்லது கடவுச்சொல் தவறானது!")
-            u = fallback_res.data[0]
+            u = f_res.data[0]
             is_adm = u.get("role") == "ADMIN"
-            user_profile = {
-                "id": u["id"],
-                "username": u["username"],
-                "full_name": u["full_name"],
-                "role_key": u.get("role", "BRANCH_STAFF"),
-                "branch_id": u.get("branch_id", 1),
-                "branch_name": u.get("branch_name", "Thingalnagar"),
-                "permissions": {
-                    "can_approve_kyc": is_adm,
-                    "can_approve_updates": is_adm,
-                    "can_create_pawn": True,
-                    "can_view_all_branches": is_adm,
-                    "can_manage_users": is_adm
+            return {
+                "status": "success",
+                "user": {
+                    "id": u["id"],
+                    "username": u["username"],
+                    "full_name": u["full_name"],
+                    "role_key": u.get("role", "BRANCH_STAFF"),
+                    "branch_id": u.get("branch_id", 1),
+                    "branch_name": u.get("branch_name", "Thingalnagar"),
+                    "permissions": {
+                        "can_access_counter": True,
+                        "can_approve_kyc": is_adm,
+                        "can_approve_updates": is_adm,
+                        "can_manage_users": is_adm
+                    }
                 }
             }
-            return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
 
         user = res.data[0]
         if not user.get("is_active"):
             raise HTTPException(status_code=403, detail="இந்தக் கணக்கு முடக்கப்பட்டுள்ளது.")
 
         branch_info = user.get("test_branches") or {}
-        role_permissions = user.get("test_roles") or {}
-
         user_profile = {
             "id": user["id"],
             "username": user["username"],
             "full_name": user["full_name"],
-            "role_key": user["role_key"],
-            "branch_id": user["branch_id"] or 1,
+            "role_key": user.get("role_key", "BRANCH_STAFF"),
+            "branch_id": user.get("branch_id") or 1,
             "branch_name": branch_info.get("branch_name", "Head Office"),
             "permissions": {
-                "can_approve_kyc": role_permissions.get("can_approve_kyc", False),
-                "can_approve_updates": role_permissions.get("can_approve_updates", False),
-                "can_create_pawn": role_permissions.get("can_create_pawn", True),
-                "can_view_all_branches": role_permissions.get("can_view_all_branches", False),
-                "can_manage_users": role_permissions.get("can_manage_users", False)
+                "can_access_counter": user.get("can_access_counter", True),
+                "can_approve_kyc": user.get("can_approve_kyc", False),
+                "can_approve_updates": user.get("can_approve_updates", False),
+                "can_manage_users": user.get("can_manage_users", False)
             }
         }
-        return {"status": "success", "message": "உள்நுழைவு வெற்றிகரமாக முடிந்தது!", "user": user_profile}
+        return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"உள்நுழைவு பிழை: {str(e)}")
 
-# 2. கிளைகள் மேலாண்மை
+# 2. கிளைகள் நிர்வாகம்
 @app.get("/api/admin/branches")
 def get_branches():
     try:
-        res = supabase.table("test_branches").select("*").eq("is_active", True).execute()
+        res = supabase.table("test_branches").select("*").order("id", desc=True).execute()
         return {"status": "success", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கிளைகள் பட்டியல் பிழை: {str(e)}")
@@ -273,11 +251,11 @@ def create_branch(data: CreateBranchPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கிளை உருவாக்கம் பிழை: {str(e)}")
 
-# 3. பணியாளர் மேலாண்மை
+# 3. பணியாளர் நிர்வாகம் (Granular Permissions உடன்)
 @app.get("/api/admin/staff")
 def get_staff_list():
     try:
-        res = supabase.table("test_staff_users").select("id, username, full_name, mobile, role_key, branch_id, is_active, test_branches(branch_name)").execute()
+        res = supabase.table("test_staff_users").select("*, test_branches(branch_name)").order("id", desc=True).execute()
         return {"status": "success", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"பணியாளர் பட்டியல் பிழை: {str(e)}")
@@ -296,7 +274,7 @@ def create_staff(data: CreateStaffPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"பணியாளர் உருவாக்கம் பிழை: {str(e)}")
 
-# 4. தலைமையக ஒப்புதல் மேலாண்மை (HQ Pending Approvals)
+# 4. தலைமையக ஒப்புதல்கள்
 @app.get("/api/hq/pending-approvals")
 def get_pending_approvals():
     try:
@@ -314,7 +292,7 @@ def get_pending_approvals():
 def process_kyc_approval(data: ApprovalActionPayload):
     try:
         status = "VERIFIED" if data.action == "APPROVE" else "REJECTED"
-        res = supabase.table("test_customers").update({"kyc_status": status}).eq("id", data.request_id).execute()
+        supabase.table("test_customers").update({"kyc_status": status}).eq("id", data.request_id).execute()
         return {"status": "success", "message": f"KYC நிலை '{status}' என மாற்றப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"KYC ஒப்புதல் பிழை: {str(e)}")
@@ -339,10 +317,10 @@ def process_update_approval(data: ApprovalActionPayload):
                 supabase.table("test_customers").update(update_data).eq("id", req["customer_id"]).execute()
 
             supabase.table("test_customer_update_requests").update({"status": "APPROVED"}).eq("id", data.request_id).execute()
-            return {"status": "success", "message": "வாடிக்கையாளர் விபர மாற்றம் அங்கீகரிக்கப்பட்டு புதுப்பிக்கப்பட்டது."}
+            return {"status": "success", "message": "விபர மாற்றம் புதுப்பிக்கப்பட்டது."}
         else:
             supabase.table("test_customer_update_requests").update({"status": "REJECTED"}).eq("id", data.request_id).execute()
-            return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை நிராகரிக்கப்பட்டது."}
+            return {"status": "success", "message": "விபர மாற்றம் நிராகரிக்கப்பட்டது."}
     except HTTPException:
         raise
     except Exception as e:
@@ -354,21 +332,9 @@ def search_customer(query: str = Query(..., min_length=1)):
     try:
         clean_query = query.strip()
         if clean_query.isdigit():
-            res = (
-                supabase.table("test_customers")
-                .select("id, name, mobile, mobile2, guardian_name, address, branch_id, kyc_status, is_active")
-                .ilike("mobile", f"%{clean_query}%")
-                .limit(10)
-                .execute()
-            )
+            res = supabase.table("test_customers").select("id, name, mobile, mobile2, guardian_name, address, branch_id, kyc_status, is_active").ilike("mobile", f"%{clean_query}%").limit(10).execute()
         else:
-            res = (
-                supabase.table("test_customers")
-                .select("id, name, mobile, mobile2, guardian_name, address, branch_id, kyc_status, is_active")
-                .ilike("name", f"%{clean_query}%")
-                .limit(10)
-                .execute()
-            )
+            res = supabase.table("test_customers").select("id, name, mobile, mobile2, guardian_name, address, branch_id, kyc_status, is_active").ilike("name", f"%{clean_query}%").limit(10).execute()
         return {"status": "success", "count": len(res.data), "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தேடல் பிழை: {str(e)}")
@@ -383,7 +349,7 @@ def log_customer_visit(data: CustomerVisitEntry):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"வருகைப் பதிவு பிழை: {str(e)}")
 
-# 7. புதிய KYC பதிவு
+# 7. புதிய KYC
 @app.post("/api/customer/new-kyc")
 def create_kyc(data: NewCustomerKYC):
     try:
@@ -420,11 +386,11 @@ def request_customer_update(data: CustomerUpdateRequest):
             "status": "PENDING"
         }
         res = supabase.table("test_customer_update_requests").insert(record).execute()
-        return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை அனுப்பப்பட்டது.", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"மாற்றக் கோரிக்கை பிழை: {str(e)}")
 
-# 9. நகைக்கடன் புதிய அடகு பதிவு
+# 9. நகைக்கடன் பதிவு
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
     try:
@@ -502,7 +468,7 @@ def trigger_otp_sms(payload: SendOtpPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OTP பிழை: {str(e)}")
 
-# 11. OTP சரிபார்த்து செட்டில்மென்ட் முடித்தல்
+# 11. OTP சரிபார்த்து செட்டில் செய்தல்
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
     try:
@@ -565,11 +531,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
 
         supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", latest_otp["id"]).execute()
 
-        return {
-            "status": "success",
-            "message": "🎉 பரிவர்த்தனை வெற்றிகரமாக முடிவடைந்தது! வருகை நிறைவு செய்யப்பட்டது.",
-            "settlement_id": new_settle_id
-        }
+        return {"status": "success", "message": "🎉 பரிவர்த்தனை வெற்றிகரமாக முடிவடைந்தது! வருகை நிறைவு செய்யப்பட்டது.", "settlement_id": new_settle_id}
     except HTTPException:
         raise
     except Exception as e:

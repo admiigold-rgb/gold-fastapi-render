@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from database import supabase
 
 app = FastAPI(
-    title="Gold Branch Enterprise - Banking & Approval Workflows",
-    version="4.0.0"
+    title="Gold Branch Management - Complete Banking, KYC & Approvals",
+    version="4.5.0"
 )
 
 app.add_middleware(
@@ -25,7 +25,7 @@ app.add_middleware(
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# SMS Function
+# Fast2SMS OTP Helper
 def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount: float, txn_type: str = "receive"):
     try:
         api_key = os.getenv("FAST2SMS_API_KEY", "eBGQYanRZNKVCpMSg3KB5kUxY2QhDnOjxesh3Hqr7FOG792XV9wut4TPhQia")
@@ -112,7 +112,7 @@ class CustomerUpdateRequest(BaseModel):
 
 class ApprovalActionPayload(BaseModel):
     request_id: int
-    action: str  # APPROVE / REJECT
+    action: str
     admin_id: int
 
 class BankTransferPayload(BaseModel):
@@ -196,8 +196,9 @@ def serve_ui():
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Enterprise API v4"}
+    return {"status": "active", "service": "Enterprise API"}
 
+# லாகின் API
 @app.post("/api/auth/staff-login")
 def staff_unified_login(data: LoginRequest):
     try:
@@ -209,28 +210,7 @@ def staff_unified_login(data: LoginRequest):
             .execute()
         )
         if not res.data:
-            f_res = supabase.table("test_users").select("*").eq("username", data.username.strip()).eq("password", data.password.strip()).execute()
-            if not f_res.data:
-                raise HTTPException(status_code=401, detail="பயனர் பெயர் அல்லது கடவுச்சொல் தவறானது!")
-            u = f_res.data[0]
-            is_adm = (u.get("role") == "ADMIN")
-            return {
-                "status": "success",
-                "user": {
-                    "id": u["id"],
-                    "username": u["username"],
-                    "full_name": u["full_name"],
-                    "role_key": u.get("role", "BRANCH_STAFF"),
-                    "branch_id": u.get("branch_id", 1),
-                    "branch_name": u.get("branch_name", "Thingalnagar"),
-                    "permissions": {
-                        "can_access_counter": True,
-                        "can_approve_kyc": is_adm,
-                        "can_approve_updates": is_adm,
-                        "can_manage_users": is_adm
-                    }
-                }
-            }
+            raise HTTPException(status_code=401, detail="பயனர் பெயர் அல்லது கடவுச்சொல் தவறானது!")
 
         user = res.data[0]
         if not user.get("is_active", True):
@@ -257,7 +237,7 @@ def staff_unified_login(data: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"உள்நுழைவு பிழை: {str(e)}")
 
-# கிளை & பணியாளர் நிர்வாகம்
+# கிளை & பணியாளர் மேலாண்மை CRUD
 @app.get("/api/admin/branches")
 def get_branches():
     res = supabase.table("test_branches").select("*").order("id", desc=True).execute()
@@ -313,7 +293,7 @@ def delete_staff(staff_id: int):
     supabase.table("test_staff_users").delete().eq("id", staff_id).execute()
     return {"status": "success", "message": "பணியாளர் நீக்கப்பட்டது."}
 
-# வங்கி பரிவர்த்தனை பட்டுவாடா & வரவு பதிவு (Branch Request)
+# வங்கி பரிவர்த்தனை பட்டுவாடா & வரவு
 @app.post("/api/bank/request-transfer")
 def create_bank_transfer(data: BankTransferPayload):
     try:
@@ -324,23 +304,28 @@ def create_bank_transfer(data: BankTransferPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"வங்கிப் பதிவு பிழை: {str(e)}")
 
-# கிளைப் பணியாளர் நிலவரம் காணுதல்
 @app.get("/api/bank/branch-status")
 def get_branch_bank_status(branch_id: int = Query(...)):
     try:
-        res = (
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        cust_map = {c["id"]: c for c in (cust_res.data or [])}
+
+        trans_res = (
             supabase.table("test_bank_transfers")
-            .select("*, test_customers(name, mobile)")
+            .select("*")
             .eq("branch_id", branch_id)
             .order("id", desc=True)
             .limit(20)
             .execute()
         )
-        return {"status": "success", "data": res.data}
+        data = trans_res.data or []
+        for t in data:
+            c = cust_map.get(t.get("customer_id"), {})
+            t["test_customers"] = {"name": c.get("name", "வாடிக்கையாளர்"), "mobile": c.get("mobile", "-")}
+        return {"status": "success", "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"நிலை அறிதல் பிழை: {str(e)}")
 
-# தலைமையக வங்கி ஒப்புதல் & செயல்முறை
 @app.post("/api/hq/process-bank-transfer")
 def process_bank_transfer_hq(data: BankApprovalPayload):
     try:
@@ -351,12 +336,60 @@ def process_bank_transfer_hq(data: BankApprovalPayload):
             "hq_notes": data.notes,
             "approved_at": "now()"
         }
-        res = supabase.table("test_bank_transfers").update(update_data).eq("id", data.transfer_id).execute()
+        supabase.table("test_bank_transfers").update(update_data).eq("id", data.transfer_id).execute()
         return {"status": "success", "message": f"வங்கிப் பரிவர்த்தனை '{status}' செய்யப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"வங்கி ஒப்புதல் பிழை: {str(e)}")
 
-# கவுண்டர் வருகை ஒப்புதல்
+# தலைமையக ஒருங்கிணைந்த நிலுவைகள் (Foreign Key பிழையின்றி இயங்கும் முறை)
+@app.get("/api/hq/all-pending-approvals")
+def get_all_pending_approvals():
+    try:
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        cust_map = {c["id"]: c for c in (cust_res.data or [])}
+
+        # 1. Payouts
+        payouts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
+        payouts_data = payouts_res.data or []
+        for p in payouts_data:
+            c = cust_map.get(p.get("customer_id"), {})
+            p["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{p.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+
+        # 2. Receipts
+        receipts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
+        receipts_data = receipts_res.data or []
+        for r in receipts_data:
+            c = cust_map.get(r.get("customer_id"), {})
+            r["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+
+        # 3. Visits
+        visits_res = supabase.table("test_customer_visits").select("*").eq("visit_status", "PENDING").order("id", desc=True).limit(20).execute()
+        visits_data = visits_res.data or []
+        for v in visits_data:
+            c = cust_map.get(v.get("customer_id"), {})
+            v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+
+        # 4. KYC
+        kyc_res = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
+
+        # 5. Profile Updates
+        updates_res = supabase.table("test_customer_update_requests").select("*").eq("status", "PENDING").order("id", desc=True).execute()
+        updates_data = updates_res.data or []
+        for u in updates_data:
+            c = cust_map.get(u.get("customer_id"), {})
+            u["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{u.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+
+        return {
+            "status": "success",
+            "pending_kyc": kyc_res.data or [],
+            "pending_updates": updates_data,
+            "pending_visits": visits_data,
+            "pending_payouts": payouts_data,
+            "pending_receipts": receipts_data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"நிலுவைகள் பிழை: {str(e)}")
+
 @app.post("/api/hq/approve-visit")
 def process_visit_approval(data: ApprovalActionPayload):
     try:
@@ -370,28 +403,6 @@ def process_visit_approval(data: ApprovalActionPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"வருகை ஒப்புதல் பிழை: {str(e)}")
 
-# தலைமையகத்திற்கான ஒருங்கிணைந்த நிலுவைகள் (HQ Central Dashboard)
-@app.get("/api/hq/all-pending-approvals")
-def get_all_pending_approvals():
-    try:
-        kyc_pending = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
-        updates_pending = supabase.table("test_customer_update_requests").select("*, test_customers(name, mobile)").eq("status", "PENDING").order("id", desc=True).execute()
-        visits_pending = supabase.table("test_customer_visits").select("*, test_customers(name, mobile)").eq("visit_status", "PENDING").order("id", desc=True).limit(20).execute()
-        bank_payouts = supabase.table("test_bank_transfers").select("*, test_customers(name, mobile)").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
-        bank_receipts = supabase.table("test_bank_transfers").select("*, test_customers(name, mobile)").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
-
-        return {
-            "status": "success",
-            "pending_kyc": kyc_pending.data,
-            "pending_updates": updates_pending.data,
-            "pending_visits": visits_pending.data,
-            "pending_payouts": bank_payouts.data,
-            "pending_receipts": bank_receipts.data
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"நிலுவைகள் பிழை: {str(e)}")
-
-# தலைமையக KYC & சுயவிவர ஒப்புதல்
 @app.post("/api/hq/approve-kyc")
 def process_kyc_approval(data: ApprovalActionPayload):
     status = "VERIFIED" if data.action == "APPROVE" else "REJECTED"
@@ -409,7 +420,7 @@ def process_update_approval(data: ApprovalActionPayload):
         if changes:
             supabase.table("test_customers").update(changes).eq("id", req["customer_id"]).execute()
         supabase.table("test_customer_update_requests").update({"status": "APPROVED"}).eq("id", data.request_id).execute()
-        return {"status": "success", "message": "சுயவிவர மாற்றம் (படம், முகவரி, ஒப்பம்) அங்கீகரிக்கப்பட்டது."}
+        return {"status": "success", "message": "சுயவிவர மாற்றம் அங்கீகரிக்கப்பட்டது."}
     else:
         supabase.table("test_customer_update_requests").update({"status": "REJECTED"}).eq("id", data.request_id).execute()
         return {"status": "success", "message": "சுயவிவர மாற்றக் கோரிக்கை நிராகரிக்கப்பட்டது."}
@@ -507,21 +518,44 @@ def trigger_otp_sms(payload: SendOtpPayload):
 
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
-    otp_query = supabase.table("test_transaction_otps").select("id, otp_code, is_verified").eq("customer_id", data.customer_id).eq("is_verified", False).order("created_at", desc=True).limit(1).execute()
+    otp_query = (
+        supabase.table("test_transaction_otps")
+        .select("id, otp_code, is_verified")
+        .eq("customer_id", data.customer_id)
+        .eq("is_verified", False)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
     if not otp_query.data or otp_query.data[0]["otp_code"] != data.otp_code.strip():
-        raise HTTPException(status_code=400, detail="OTP தவறானது.")
+        raise HTTPException(status_code=400, detail="OTP தவறானது அல்லது காலாவதியானது.")
+
     settle_record = {
-        "customer_id": data.customer_id, "branch_id": data.branch_id, "net_amount": data.net_amount,
-        "settlement_type": data.settlement_type, "cash_amount": data.cash_amount, "bank_amount": data.bank_amount,
-        "bank_ref_no": data.bank_ref_no, "bank_name": data.bank_name, "direction": data.direction
+        "customer_id": data.customer_id,
+        "branch_id": data.branch_id,
+        "net_amount": data.net_amount,
+        "settlement_type": data.settlement_type,
+        "cash_amount": data.cash_amount,
+        "bank_amount": data.bank_amount,
+        "bank_ref_no": data.bank_ref_no,
+        "bank_name": data.bank_name,
+        "direction": data.direction
     }
     res_settle = supabase.table("test_transaction_settlements").insert(settle_record).execute()
     new_settle_id = res_settle.data[0]["id"]
+
     if data.cash_amount > 0 and data.denominations:
         supabase.table("test_cash_denominations").insert({
-            "settlement_id": new_settle_id, "c_500": data.denominations.c_500, "c_200": data.denominations.c_200,
-            "c_100": data.denominations.c_100, "c_50": data.denominations.c_50, "c_20": data.denominations.c_20,
-            "c_10": data.denominations.c_10, "c_coins": data.denominations.c_coins, "total_calculated_cash": data.cash_amount
+            "settlement_id": new_settle_id,
+            "c_500": data.denominations.c_500,
+            "c_200": data.denominations.c_200,
+            "c_100": data.denominations.c_100,
+            "c_50": data.denominations.c_50,
+            "c_20": data.denominations.c_20,
+            "c_10": data.denominations.c_10,
+            "c_coins": data.denominations.c_coins,
+            "total_calculated_cash": data.cash_amount
         }).execute()
+
     supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", otp_query.data[0]["id"]).execute()
     return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}

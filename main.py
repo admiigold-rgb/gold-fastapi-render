@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 from database import supabase
 
 app = FastAPI(
-    title="Gold Branch Management - Complete Banking, KYC & Approvals",
-    version="4.5.0"
+    title="Gold Branch Management - Complete System with Auto Loan No & Cart Controls",
+    version="5.0.0"
 )
 
 app.add_middleware(
@@ -65,7 +65,17 @@ class BranchPayload(BaseModel):
     city: str
     phone: Optional[str] = None
 
-# --- புதிய நிர்வாக Schemas (Schemes, Banks & Gold Rates) ---
+class StaffPayload(BaseModel):
+    username: str
+    password: Optional[str] = None
+    full_name: str
+    mobile: str
+    role_key: str = "BRANCH_STAFF"
+    branch_id: int
+    can_access_counter: bool = True
+    can_approve_kyc: bool = False
+    can_approve_updates: bool = False
+    can_manage_users: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -102,17 +112,6 @@ class DailyGoldRatePayload(BaseModel):
     rate_24k_per_gram: float
     rate_22k_per_gram: float
     rate_18k_per_gram: float
-class StaffPayload(BaseModel):
-    username: str
-    password: Optional[str] = None
-    full_name: str
-    mobile: str
-    role_key: str = "BRANCH_STAFF"
-    branch_id: int
-    can_access_counter: bool = True
-    can_approve_kyc: bool = False
-    can_approve_updates: bool = False
-    can_manage_users: bool = False
 
 class FullCustomerKYCPayload(BaseModel):
     name: str
@@ -223,7 +222,7 @@ class SettleWithOtpPayload(BaseModel):
     bank_name: Optional[str] = None
     denominations: Optional[DenominationCounts] = None
 
-# --- Endpoints ---
+# --- API Endpoints ---
 
 @app.get("/")
 def serve_ui():
@@ -233,15 +232,15 @@ def serve_ui():
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Enterprise API"}
+    return {"status": "active", "service": "Enterprise API v5"}
 
-# லாகின் API
+# 1. பணியாளர் உள்நுழைவு (Login API with Role-Based Access Override)
 @app.post("/api/auth/staff-login")
 def staff_unified_login(data: LoginRequest):
     try:
         res = (
             supabase.table("test_staff_users")
-            .select("*, test_branches(branch_name)")
+            .select("*, test_branches(branch_name, branch_code)")
             .eq("username", data.username.strip())
             .eq("password", data.password.strip())
             .execute()
@@ -257,14 +256,14 @@ def staff_unified_login(data: LoginRequest):
         role = user.get("role_key", "BRANCH_STAFF")
         is_admin_role = (role in ["HQ_ADMIN", "ADMIN"])
 
-        # HQ_ADMIN ஆக இருந்தால் கட்டாயமாக அனைத்து உரிமைகளும் True ஆக்கப்படும்
         user_profile = {
             "id": user["id"],
             "username": user["username"],
             "full_name": user["full_name"],
             "role_key": role,
             "branch_id": user.get("branch_id") or 1,
-            "branch_name": branch_info.get("branch_name", "Head Office"),
+            "branch_code": branch_info.get("branch_code", "BR"),
+            "branch_name": branch_info.get("branch_name", "Branch"),
             "permissions": {
                 "can_access_counter": True if is_admin_role else bool(user.get("can_access_counter", True)),
                 "can_approve_kyc": True if is_admin_role else bool(user.get("can_approve_kyc", False)),
@@ -278,7 +277,129 @@ def staff_unified_login(data: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"உள்நுழைவு பிழை: {str(e)}")
 
-# கிளை & பணியாளர் மேலாண்மை CRUD
+# 2. கிளை வாரியான வாடிக்கையாளர் தேடல் API
+@app.get("/api/customer/search")
+def search_customer(query: str = Query(..., min_length=1), branch_id: int = Query(...)):
+    try:
+        clean_query = query.strip()
+        db_query = supabase.table("test_customers").select("*").eq("branch_id", branch_id)
+        if clean_query.isdigit():
+            res = db_query.ilike("mobile", f"%{clean_query}%").limit(10).execute()
+        else:
+            res = db_query.ilike("name", f"%{clean_query}%").limit(10).execute()
+        return {"status": "success", "count": len(res.data), "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"தேடல் பிழை: {str(e)}")
+
+# 3. தொடர் ஆட்டோமேட்டிக் நகைக்கடன் எண் வழங்கும் API (Auto Loan No)
+@app.get("/api/loan/next-loan-no")
+def get_next_loan_no(branch_id: int = Query(...)):
+    try:
+        branch_res = supabase.table("test_branches").select("branch_code").eq("id", branch_id).execute()
+        if not branch_res.data:
+            raise HTTPException(status_code=404, detail="கிளை விபரம் கிடைக்கவில்லை.")
+        branch_code = branch_res.data[0]["branch_code"].strip().upper()
+        count_res = supabase.table("test_gold_loans").select("id", count="exact").eq("branch_id", branch_id).execute()
+        next_count = (count_res.count or 0) + 1
+        formatted_loan_no = f"{branch_code}/{next_count:04d}"
+        return {
+            "status": "success",
+            "branch_code": branch_code,
+            "next_loan_no": formatted_loan_no,
+            "count": next_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கடன் எண் பிழை: {str(e)}")
+
+# 4. நகைக்கடன் பதிவு & நீக்கம்
+@app.post("/api/loan/new-pawn")
+def create_new_pawn(data: NewGoldLoanEntry):
+    if not data.items:
+        raise HTTPException(status_code=400, detail="நகைகளைச் சேர்க்கவும்.")
+    total_gross = sum(i.gross_weight for i in data.items)
+    total_net = sum(i.net_weight for i in data.items)
+    net_payable = data.loan_amount - data.charges_amount
+    loan_record = {
+        "loan_no": data.loan_no.strip(),
+        "customer_id": data.customer_id,
+        "scheme_name": data.scheme_name,
+        "total_gross_weight": round(total_gross, 3),
+        "total_net_weight": round(total_net, 3),
+        "loan_amount": data.loan_amount,
+        "charges_amount": data.charges_amount,
+        "net_payable_amount": net_payable,
+        "photo_url": data.photo_url,
+        "branch_id": data.branch_id,
+        "status": "ACTIVE"
+    }
+    res_loan = supabase.table("test_gold_loans").insert(loan_record).execute()
+    new_loan_id = res_loan.data[0]["id"]
+    items_payload = [{
+        "loan_id": new_loan_id,
+        "item_type": i.item_type.strip(),
+        "item_count": i.item_count,
+        "gross_weight": i.gross_weight,
+        "net_weight": i.net_weight,
+        "purity": i.purity
+    } for i in data.items]
+    supabase.table("test_gold_loan_items").insert(items_payload).execute()
+    return {"status": "success", "message": "நகைக்கடன் கார்ட்டில் சேர்க்கப்பட்டது.", "loan_id": new_loan_id, "net_payable": net_payable}
+
+@app.delete("/api/loan/{loan_id}")
+def delete_cart_loan(loan_id: int):
+    try:
+        supabase.table("test_gold_loans").delete().eq("id", loan_id).execute()
+        return {"status": "success", "message": "கடன் கார்ட்டில் இருந்து நீக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கடன் நீக்கல் பிழை: {str(e)}")
+
+# 5. திட்டங்கள், வங்கிக் கணக்குகள் & தங்க விலை மேலாண்மை
+@app.get("/api/admin/schemes")
+def get_loan_schemes():
+    res = supabase.table("test_loan_schemes").select("*").eq("is_active", True).order("id", desc=True).execute()
+    return {"status": "success", "data": res.data}
+
+@app.post("/api/admin/scheme/create")
+def create_loan_scheme(data: LoanSchemePayload):
+    check = supabase.table("test_loan_schemes").select("id").eq("scheme_code", data.scheme_code.strip()).execute()
+    if check.data:
+        raise HTTPException(status_code=400, detail="திட்டக் குறியீடு ஏற்கனவே உள்ளது.")
+    res = supabase.table("test_loan_schemes").insert(data.model_dump()).execute()
+    return {"status": "success", "message": "புதிய நகைக்கடன் திட்டம் உருவாக்கப்பட்டது.", "data": res.data}
+
+@app.delete("/api/admin/scheme/{scheme_id}")
+def delete_loan_scheme(scheme_id: int):
+    supabase.table("test_loan_schemes").delete().eq("id", scheme_id).execute()
+    return {"status": "success", "message": "திட்டம் நீக்கப்பட்டது."}
+
+@app.get("/api/admin/company-banks")
+def get_company_banks():
+    res = supabase.table("test_company_banks").select("*").eq("is_active", True).order("id", desc=True).execute()
+    return {"status": "success", "data": res.data}
+
+@app.post("/api/admin/company-bank/create")
+def create_company_bank(data: CompanyBankPayload):
+    res = supabase.table("test_company_banks").insert(data.model_dump()).execute()
+    return {"status": "success", "message": "நிறுவன வங்கி கணக்கு சேர்க்கப்பட்டது.", "data": res.data}
+
+@app.delete("/api/admin/company-bank/{bank_id}")
+def delete_company_bank(bank_id: int):
+    supabase.table("test_company_banks").delete().eq("id", bank_id).execute()
+    return {"status": "success", "message": "வங்கி கணக்கு நீக்கப்பட்டது."}
+
+@app.get("/api/admin/gold-rate/today")
+def get_today_gold_rate():
+    res = supabase.table("test_daily_gold_rates").select("*").order("rate_date", desc=True).limit(1).execute()
+    return {"status": "success", "data": res.data[0] if res.data else None}
+
+@app.post("/api/admin/gold-rate/update")
+def update_today_gold_rate(data: DailyGoldRatePayload):
+    record = data.model_dump()
+    record["rate_date"] = "now()"
+    res = supabase.table("test_daily_gold_rates").upsert(record, on_conflict="rate_date").execute()
+    return {"status": "success", "message": "அன்றைய தங்க விலை நிர்ணயிக்கப்பட்டது.", "data": res.data}
+
+# 6. கிளைகள் & பணியாளர்கள் மேலாண்மை
 @app.get("/api/admin/branches")
 def get_branches():
     res = supabase.table("test_branches").select("*").order("id", desc=True).execute()
@@ -334,115 +455,85 @@ def delete_staff(staff_id: int):
     supabase.table("test_staff_users").delete().eq("id", staff_id).execute()
     return {"status": "success", "message": "பணியாளர் நீக்கப்பட்டது."}
 
-# வங்கி பரிவர்த்தனை பட்டுவாடா & வரவு
+# 7. வங்கி பரிவர்த்தனை வேண்டுகோள் & நிலை
 @app.post("/api/bank/request-transfer")
 def create_bank_transfer(data: BankTransferPayload):
-    try:
-        record = data.model_dump()
-        record["status"] = "PENDING"
-        res = supabase.table("test_bank_transfers").insert(record).execute()
-        return {"status": "success", "message": "வங்கி பரிவர்த்தனை வேண்டுகோள் தலைமையகத்திற்கு அனுப்பப்பட்டது.", "data": res.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"வங்கிப் பதிவு பிழை: {str(e)}")
+    record = data.model_dump()
+    record["status"] = "PENDING"
+    res = supabase.table("test_bank_transfers").insert(record).execute()
+    return {"status": "success", "message": "வங்கி பரிவர்த்தனை வேண்டுகோள் தலைமையகத்திற்கு அனுப்பப்பட்டது.", "data": res.data}
 
 @app.get("/api/bank/branch-status")
 def get_branch_bank_status(branch_id: int = Query(...)):
-    try:
-        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
-        cust_map = {c["id"]: c for c in (cust_res.data or [])}
-
-        trans_res = (
-            supabase.table("test_bank_transfers")
-            .select("*")
-            .eq("branch_id", branch_id)
-            .order("id", desc=True)
-            .limit(20)
-            .execute()
-        )
-        data = trans_res.data or []
-        for t in data:
-            c = cust_map.get(t.get("customer_id"), {})
-            t["test_customers"] = {"name": c.get("name", "வாடிக்கையாளர்"), "mobile": c.get("mobile", "-")}
-        return {"status": "success", "data": data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"நிலை அறிதல் பிழை: {str(e)}")
+    cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+    cust_map = {c["id"]: c for c in (cust_res.data or [])}
+    trans_res = supabase.table("test_bank_transfers").select("*").eq("branch_id", branch_id).order("id", desc=True).limit(20).execute()
+    data = trans_res.data or []
+    for t in data:
+        c = cust_map.get(t.get("customer_id"), {})
+        t["test_customers"] = {"name": c.get("name", "வாடிக்கையாளர்"), "mobile": c.get("mobile", "-")}
+    return {"status": "success", "data": data}
 
 @app.post("/api/hq/process-bank-transfer")
 def process_bank_transfer_hq(data: BankApprovalPayload):
-    try:
-        status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
-        update_data = {
-            "status": status,
-            "approved_by": data.admin_id,
-            "hq_notes": data.notes,
-            "approved_at": "now()"
-        }
-        supabase.table("test_bank_transfers").update(update_data).eq("id", data.transfer_id).execute()
-        return {"status": "success", "message": f"வங்கிப் பரிவர்த்தனை '{status}' செய்யப்பட்டது."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"வங்கி ஒப்புதல் பிழை: {str(e)}")
+    status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
+    supabase.table("test_bank_transfers").update({
+        "status": status,
+        "approved_by": data.admin_id,
+        "hq_notes": data.notes,
+        "approved_at": "now()"
+    }).eq("id", data.transfer_id).execute()
+    return {"status": "success", "message": f"வங்கிப் பரிவர்த்தனை '{status}' செய்யப்பட்டது."}
 
-# தலைமையக ஒருங்கிணைந்த நிலுவைகள் (Foreign Key பிழையின்றி இயங்கும் முறை)
+# 8. தலைமையக ஒருங்கிணைந்த நிலுவைகள்
 @app.get("/api/hq/all-pending-approvals")
 def get_all_pending_approvals():
-    try:
-        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
-        cust_map = {c["id"]: c for c in (cust_res.data or [])}
+    cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+    cust_map = {c["id"]: c for c in (cust_res.data or [])}
 
-        # 1. Payouts
-        payouts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
-        payouts_data = payouts_res.data or []
-        for p in payouts_data:
-            c = cust_map.get(p.get("customer_id"), {})
-            p["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{p.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+    payouts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
+    payouts_data = payouts_res.data or []
+    for p in payouts_data:
+        c = cust_map.get(p.get("customer_id"), {})
+        p["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{p.get('customer_id')}"), "mobile": c.get("mobile", "-")}
 
-        # 2. Receipts
-        receipts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
-        receipts_data = receipts_res.data or []
-        for r in receipts_data:
-            c = cust_map.get(r.get("customer_id"), {})
-            r["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+    receipts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
+    receipts_data = receipts_res.data or []
+    for r in receipts_data:
+        c = cust_map.get(r.get("customer_id"), {})
+        r["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}"), "mobile": c.get("mobile", "-")}
 
-        # 3. Visits
-        visits_res = supabase.table("test_customer_visits").select("*").eq("visit_status", "PENDING").order("id", desc=True).limit(20).execute()
-        visits_data = visits_res.data or []
-        for v in visits_data:
-            c = cust_map.get(v.get("customer_id"), {})
-            v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+    visits_res = supabase.table("test_customer_visits").select("*").eq("visit_status", "PENDING").order("id", desc=True).limit(20).execute()
+    visits_data = visits_res.data or []
+    for v in visits_data:
+        c = cust_map.get(v.get("customer_id"), {})
+        v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
 
-        # 4. KYC
-        kyc_res = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
+    kyc_res = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
+    updates_res = supabase.table("test_customer_update_requests").select("*").eq("status", "PENDING").order("id", desc=True).execute()
+    updates_data = updates_res.data or []
+    for u in updates_data:
+        c = cust_map.get(u.get("customer_id"), {})
+        u["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{u.get('customer_id')}"), "mobile": c.get("mobile", "-")}
 
-        # 5. Profile Updates
-        updates_res = supabase.table("test_customer_update_requests").select("*").eq("status", "PENDING").order("id", desc=True).execute()
-        updates_data = updates_res.data or []
-        for u in updates_data:
-            c = cust_map.get(u.get("customer_id"), {})
-            u["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{u.get('customer_id')}"), "mobile": c.get("mobile", "-")}
-
-        return {
-            "status": "success",
-            "pending_kyc": kyc_res.data or [],
-            "pending_updates": updates_data,
-            "pending_visits": visits_data,
-            "pending_payouts": payouts_data,
-            "pending_receipts": receipts_data
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"நிலுவைகள் பிழை: {str(e)}")
+    return {
+        "status": "success",
+        "pending_kyc": kyc_res.data or [],
+        "pending_updates": updates_data,
+        "pending_visits": visits_data,
+        "pending_payouts": payouts_data,
+        "pending_receipts": receipts_data
+    }
 
 @app.post("/api/hq/approve-visit")
 def process_visit_approval(data: ApprovalActionPayload):
-    try:
-        status = "VERIFIED" if data.action == "APPROVE" else "REJECTED"
-        supabase.table("test_customer_visits").update({
-            "visit_status": status,
-            "approved_by": data.admin_id,
-            "approved_at": "now()"
-        }).eq("id", data.request_id).execute()
-        return {"status": "success", "message": f"வருகை நிலை '{status}' என மாற்றப்பட்டது."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"வருகை ஒப்புதல் பிழை: {str(e)}")
+    status = "VERIFIED" if data.action == "APPROVE" else "REJECTED"
+    supabase.table("test_customer_visits").update({
+        "visit_status": status,
+        "approved_by": data.admin_id,
+        "approved_at": "now()"
+    }).eq("id", data.request_id).execute()
+    return {"status": "success", "message": f"வருகை நிலை '{status}' என மாற்றப்பட்டது."}
 
 @app.post("/api/hq/approve-kyc")
 def process_kyc_approval(data: ApprovalActionPayload):
@@ -466,78 +557,7 @@ def process_update_approval(data: ApprovalActionPayload):
         supabase.table("test_customer_update_requests").update({"status": "REJECTED"}).eq("id", data.request_id).execute()
         return {"status": "success", "message": "சுயவிவர மாற்றக் கோரிக்கை நிராகரிக்கப்பட்டது."}
 
-# வாடிக்கையாளர் தேடல் & முழு KYC
-@app.get("/api/customer/search")
-def search_customer(query: str = Query(..., min_length=1)):
-    clean_query = query.strip()
-    if clean_query.isdigit():
-        res = supabase.table("test_customers").select("*").ilike("mobile", f"%{clean_query}%").limit(10).execute()
-    else:
-        res = supabase.table("test_customers").select("*").ilike("name", f"%{clean_query}%").limit(10).execute()
-    return {"status": "success", "count": len(res.data), "data": res.data}
-
-# ==================== நிர்வாகம்: வங்கிக் கணக்குகள் & நகைக்கடன் திட்டங்கள் ====================
-
-# 1. நிறுவன வங்கி கணக்குகள் மேலாண்மை
-@app.get("/api/admin/company-banks")
-def get_company_banks():
-    res = supabase.table("test_company_banks").select("*").eq("is_active", True).order("id", desc=True).execute()
-    return {"status": "success", "data": res.data}
-
-@app.post("/api/admin/company-bank/create")
-def create_company_bank(data: CompanyBankPayload):
-    try:
-        res = supabase.table("test_company_banks").insert(data.model_dump()).execute()
-        return {"status": "success", "message": "நிறுவன வங்கி கணக்கு சேர்க்கப்பட்டது.", "data": res.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"வங்கி பதிவு பிழை: {str(e)}")
-
-@app.delete("/api/admin/company-bank/{bank_id}")
-def delete_company_bank(bank_id: int):
-    supabase.table("test_company_banks").delete().eq("id", bank_id).execute()
-    return {"status": "success", "message": "வங்கி கணக்கு நீக்கப்பட்டது."}
-
-# 2. நகைக்கடன் திட்டங்கள் மேலாண்மை
-@app.get("/api/admin/schemes")
-def get_loan_schemes():
-    res = supabase.table("test_loan_schemes").select("*").eq("is_active", True).order("id", desc=True).execute()
-    return {"status": "success", "data": res.data}
-
-@app.post("/api/admin/scheme/create")
-def create_loan_scheme(data: LoanSchemePayload):
-    try:
-        check = supabase.table("test_loan_schemes").select("id").eq("scheme_code", data.scheme_code.strip()).execute()
-        if check.data:
-            raise HTTPException(status_code=400, detail="இந்த திட்டக் குறியீடு (Scheme Code) ஏற்கனவே உள்ளது.")
-
-        res = supabase.table("test_loan_schemes").insert(data.model_dump()).execute()
-        return {"status": "success", "message": "புதிய நகைக்கடன் திட்டம் வெற்றிகரமாகச் சேர்க்கப்பட்டது.", "data": res.data}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"திட்டம் உருவாக்கம் பிழை: {str(e)}")
-
-@app.delete("/api/admin/scheme/{scheme_id}")
-def delete_loan_scheme(scheme_id: int):
-    supabase.table("test_loan_schemes").delete().eq("id", scheme_id).execute()
-    return {"status": "success", "message": "திட்டம் நீக்கப்பட்டது."}
-
-# 3. அன்றைய தங்க விலை மேலாண்மை
-@app.get("/api/admin/gold-rate/today")
-def get_today_gold_rate():
-    res = supabase.table("test_daily_gold_rates").select("*").order("rate_date", desc=True).limit(1).execute()
-    return {"status": "success", "data": res.data[0] if res.data else None}
-
-@app.post("/api/admin/gold-rate/update")
-def update_today_gold_rate(data: DailyGoldRatePayload):
-    try:
-        record = data.model_dump()
-        record["rate_date"] = "now()"
-        res = supabase.table("test_daily_gold_rates").upsert(record, on_conflict="rate_date").execute()
-        return {"status": "success", "message": "அன்றைய தங்க விலை நிர்ணயிக்கப்பட்டது.", "data": res.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"தங்க விலை பிழை: {str(e)}")
-        
+# 9. வருகைப் பதிவு & முழு KYC & சுயவிவர மாற்றம்
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     record = {"customer_id": data.customer_id, "branch_id": data.branch_id, "purpose": data.purpose, "visit_status": "PENDING"}
@@ -567,41 +587,7 @@ def request_customer_update(data: CustomerUpdateRequest):
     supabase.table("test_customer_update_requests").insert(record).execute()
     return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது."}
 
-# நகைக்கடன் பதிவு
-@app.post("/api/loan/new-pawn")
-def create_new_pawn(data: NewGoldLoanEntry):
-    if not data.items:
-        raise HTTPException(status_code=400, detail="நகைகளைச் சேர்க்கவும்.")
-    total_gross = sum(i.gross_weight for i in data.items)
-    total_net = sum(i.net_weight for i in data.items)
-    net_payable = data.loan_amount - data.charges_amount
-    loan_record = {
-        "loan_no": data.loan_no.strip(),
-        "customer_id": data.customer_id,
-        "scheme_name": data.scheme_name,
-        "total_gross_weight": round(total_gross, 3),
-        "total_net_weight": round(total_net, 3),
-        "loan_amount": data.loan_amount,
-        "charges_amount": data.charges_amount,
-        "net_payable_amount": net_payable,
-        "photo_url": data.photo_url,
-        "branch_id": data.branch_id,
-        "status": "ACTIVE"
-    }
-    res_loan = supabase.table("test_gold_loans").insert(loan_record).execute()
-    new_loan_id = res_loan.data[0]["id"]
-    items_payload = [{
-        "loan_id": new_loan_id,
-        "item_type": i.item_type.strip(),
-        "item_count": i.item_count,
-        "gross_weight": i.gross_weight,
-        "net_weight": i.net_weight,
-        "purity": i.purity
-    } for i in data.items]
-    supabase.table("test_gold_loan_items").insert(items_payload).execute()
-    return {"status": "success", "message": "நகைக்கடன் கார்ட்டில் சேர்க்கப்பட்டது.", "loan_id": new_loan_id, "net_payable": net_payable}
-
-# OTP & Settlement
+# 10. OTP & இறுதி செட்டில்மென்ட்
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     otp_code = str(random.randint(100000, 999999))

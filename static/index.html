@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>கிளைப் பரிவர்த்தனை & நிர்வாக மேலாண்மை</title>
+  <title>கிளைப் பரிவர்த்தனை & முழுமையான KYC அமைப்பு</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
 
-  <!-- ==================== 1. லாகின் திரை ==================== -->
+  <!-- 1. லாகின் திரை -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 max-w-md w-full space-y-6">
       <div class="text-center space-y-2">
@@ -16,17 +16,15 @@
         <h1 class="text-xl font-bold text-slate-800">கிளை & நிர்வாக அமைப்பு</h1>
         <p class="text-xs text-amber-600 font-semibold">பணியாளர் உள்நுழைவு (Staff Login)</p>
       </div>
-
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">பயனர் பெயர் (Username)</label>
-          <input type="text" id="login_username" placeholder="பயனர் பெயர்" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          <input type="text" id="login_username" placeholder="staff_thg / admin_hq" class="w-full px-4 py-3 border rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
         </div>
         <div>
           <label class="block text-xs font-bold text-slate-600 mb-1">கடவுச்சொல் (Password)</label>
-          <input type="password" id="login_password" placeholder="••••••••" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          <input type="password" id="login_password" placeholder="••••••••" class="w-full px-4 py-3 border rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
         </div>
-
         <button onclick="handleLogin()" id="btnLogin" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-sm shadow transition">
           உள்நுழைக (Sign In)
         </button>
@@ -34,16 +32,14 @@
     </div>
   </div>
 
-
-  <!-- ==================== 2. பிரதான இடைமுகம் ==================== -->
+  <!-- 2. முதன்மை இடைமுகம் -->
   <div id="mainDashboard" class="hidden p-3 md:p-6 space-y-5 max-w-6xl mx-auto">
-
-    <!-- Header (மெனு பட்டன்கள் அனுமதி உள்ளவர்களுக்கு மட்டும் டைனமிக்காக உருவாகும்) -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-3">
+    <!-- Header -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row justify-between items-center gap-3">
       <div class="flex items-center space-x-3 w-full md:w-auto">
         <span class="text-3xl">⚖️</span>
         <div>
-          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளை & நிர்வாக அமைப்பு</h1>
+          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளை மேலாண்மை அமைப்பு</h1>
           <p class="text-xs text-slate-500">
             பணியாளர்: <span id="loggedStaffName" class="font-bold text-slate-700">-</span> | 
             பங்கு: <span id="loggedStaffRole" class="font-bold text-amber-700">-</span> |
@@ -51,12 +47,9 @@
           </p>
         </div>
       </div>
-
-      <!-- Navigation Tabs Container (Dynamic RBAC) -->
+      <!-- Dynamic RBAC Menu Buttons -->
       <div class="flex items-center gap-2 w-full md:w-auto justify-end">
-        <div id="navButtonsContainer" class="flex items-center gap-2">
-          <!-- அனுமதி உள்ள பட்டன்கள் மட்டுமே JavaScript மூலம் உருவாகும் -->
-        </div>
+        <div id="navButtonsContainer" class="flex items-center gap-2"></div>
         <button onclick="handleLogout()" class="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg transition">
           வெளியேறு 🚪
         </button>
@@ -65,55 +58,59 @@
 
     <input type="hidden" id="active_branch_id" value="1">
 
-    <!-- ==================== TAB A: கவுண்ட்டர் & அடகு கார்ட் ==================== -->
+    <!-- TAB A: கவுண்ட்டர் பிரிவு -->
     <div id="counterTab" class="hidden space-y-4">
-      <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+      <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
         <div class="flex flex-col sm:flex-row gap-2">
-          <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+          <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
           <button onclick="handleSearch()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold">தேடு</button>
-          <button onclick="openNewKycModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold">+ புதிய KYC</button>
+          <button onclick="openNewKycModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold">+ புதிய முழு KYC</button>
         </div>
         <div id="searchResults" class="space-y-2 hidden"></div>
       </div>
 
+      <!-- தேர்வு செய்யப்பட்ட வாடிக்கையாளர் அட்டை (வாடிக்கையாளர் படத்துடன்) -->
       <div id="activeCustomerSection" class="hidden space-y-4">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
-          <div>
-            <span class="text-xs text-slate-400 font-semibold uppercase">நடப்பு வாடிக்கையாளர்</span>
-            <div class="flex items-center gap-2">
-              <h2 class="text-base font-bold text-slate-800" id="cardName">-</h2>
-              <span id="cardKycBadge" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">PENDING</span>
+        <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row justify-between items-center gap-4">
+          <div class="flex items-center space-x-4 w-full md:w-auto">
+            <!-- வாடிக்கையாளர் படம் -->
+            <div class="relative w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+              <img id="cardCustomerImg" src="" alt="Customer" class="w-full h-full object-cover hidden">
+              <span id="cardCustomerPlaceholder" class="text-2xl text-slate-400">👤</span>
             </div>
-            <p class="text-xs text-slate-500">மொபைல்: <span id="cardMobile" class="font-semibold text-slate-700">-</span> | ID: <span id="cardId">-</span> | முகவரி: <span id="cardAddress">-</span></p>
+            <div>
+              <span class="text-xs text-slate-400 font-semibold uppercase">நடப்பு வாடிக்கையாளர்</span>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-bold text-slate-800" id="cardName">-</h2>
+                <span id="cardKycBadge" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">PENDING</span>
+              </div>
+              <p class="text-xs text-slate-500">
+                மொபைல்: <span id="cardMobile" class="font-bold text-slate-700">-</span> | 
+                உறவு: <span id="cardRelation" class="font-semibold text-slate-700">-</span> |
+                சான்று எண்: <span id="cardProofNo" class="font-semibold text-slate-700">-</span>
+              </p>
+              <p class="text-xs text-slate-500 truncate max-w-md">முகவரி: <span id="cardAddress">-</span></p>
+            </div>
           </div>
-          <div class="flex gap-2">
-            <button onclick="showUpdateForm()" class="text-xs text-amber-700 border border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg">விவர மாற்றம்</button>
-            <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg">முடி / மாற்று</button>
-          </div>
-        </div>
-
-        <div id="updateFormSection" class="hidden bg-white p-4 rounded-xl border border-amber-200 space-y-3">
-          <h3 class="text-xs font-bold text-amber-900 uppercase">வாடிக்கையாளர் புதிய விபர மாற்றம்:</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input type="text" id="upd_mobile" placeholder="புதிய மொபைல் எண்" class="border p-2 rounded text-xs">
-            <input type="text" id="upd_address" placeholder="புதிய முகவரி" class="border p-2 rounded text-xs">
-          </div>
-          <div class="flex justify-end gap-2">
-            <button onclick="document.getElementById('updateFormSection').classList.add('hidden')" class="px-3 py-1.5 border rounded text-xs">ரத்து</button>
-            <button onclick="submitUpdateReq()" class="bg-amber-600 text-white px-4 py-1.5 rounded text-xs font-bold">தலைமை ஒப்புதலுக்கு அனுப்பு</button>
+          <div class="flex gap-2 w-full md:w-auto justify-end">
+            <button onclick="openFullUpdateModal()" class="text-xs text-amber-700 border border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg font-bold">
+              முழு விபர மாற்றம் 📝
+            </button>
+            <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg font-bold">
+              முடி / மாற்று
+            </button>
           </div>
         </div>
 
         <!-- Loan Form & Cart -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border space-y-4">
             <div class="border-b pb-2 flex justify-between items-center">
               <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                 <span>🪙</span> புதிய நகைக்கடன் அடகு (New Loan Entry)
               </h3>
               <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">படிவம்</span>
             </div>
-
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1">நகைக்கடன் எண் *</label>
@@ -129,7 +126,8 @@
               </div>
             </div>
 
-            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <!-- நகை விபரம் -->
+            <div class="bg-slate-50 p-3 rounded-xl border space-y-2">
               <h4 class="text-xs font-bold text-slate-700">நகை விபரங்களைச் சேர்க்கவும்:</h4>
               <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 <input type="text" id="item_type" placeholder="வகை (எ.கா: செயின்)" class="border p-1.5 rounded text-xs col-span-2 sm:col-span-1">
@@ -193,7 +191,8 @@
             </div>
           </div>
 
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between space-y-4">
+          <!-- கார்ட் சுருக்கம் -->
+          <div class="bg-white p-5 rounded-xl shadow-sm border flex flex-col justify-between space-y-4">
             <div>
               <div class="border-b pb-2 flex justify-between items-center">
                 <h3 class="text-sm font-bold text-slate-800">🛒 பரிவர்த்தனை கூடை</h3>
@@ -204,7 +203,7 @@
               </div>
             </div>
 
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+            <div class="bg-slate-50 p-4 rounded-xl border space-y-2">
               <div class="flex justify-between text-xs text-slate-600">
                 <span>வாடிக்கையாளர் தருவது (+):</span>
                 <span class="font-bold text-emerald-600" id="cartCredit">₹ 0.00</span>
@@ -228,10 +227,9 @@
       </div>
     </div>
 
-
-    <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் ==================== -->
+    <!-- TAB B: தலைமையக ஒப்புதல்கள் -->
     <div id="hqApprovalTab" class="hidden space-y-5">
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+      <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
         <div class="flex justify-between items-center border-b pb-3">
           <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
             <span>🛡️</span> தலைமையக ஒப்புதல் நிலுவைகள் (Pending Approvals)
@@ -245,15 +243,17 @@
             <table class="w-full text-xs text-left">
               <thead class="bg-slate-100 text-slate-600 border-b">
                 <tr>
+                  <th class="p-2.5">படம்</th>
                   <th class="p-2.5">பெயர்</th>
                   <th class="p-2.5">மொபைல்</th>
-                  <th class="p-2.5">பாதுகாவலர் பெயர்</th>
-                  <th class="p-2.5">முகவரி</th>
+                  <th class="p-2.5">உறவுமுறை</th>
+                  <th class="p-2.5">சான்று எண்</th>
+                  <th class="p-2.5">நாமினி</th>
                   <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
               <tbody id="pendingKycTableBody" class="divide-y text-slate-700">
-                <tr><td colspan="5" class="p-4 text-center text-slate-400">நிலுவைகள் இல்லை</td></tr>
+                <tr><td colspan="7" class="p-4 text-center text-slate-400">நிலுவைகள் இல்லை</td></tr>
               </tbody>
             </table>
           </div>
@@ -280,13 +280,11 @@
       </div>
     </div>
 
-
-    <!-- ==================== TAB C: கிளை & பணியாளர் நிர்வாகம் ==================== -->
+    <!-- TAB C: கிளை & பணியாளர் நிர்வாகம் -->
     <div id="adminPanelTab" class="hidden space-y-6">
-
-      <!-- கிளை மேலாண்மை -->
+      <!-- கிளைகள் மேலாண்மை -->
       <div class="space-y-4">
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <div class="flex justify-between items-center border-b pb-2">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2" id="branchFormTitle">
               <span>🏢</span> புதிய கிளை உருவாக்கம்
@@ -295,9 +293,9 @@
           </div>
           <input type="hidden" id="edit_branch_id" value="">
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="text" id="new_branch_code" placeholder="கிளை குறியீடு (எ.கா: BR003) *" class="border p-2 rounded text-xs">
-            <input type="text" id="new_branch_name" placeholder="கிளை பெயர் (எ.கா: Marthandam) *" class="border p-2 rounded text-xs">
-            <input type="text" id="new_branch_city" placeholder="நகரம் (City) *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_code" placeholder="கிளை குறியீடு (BR003) *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_name" placeholder="கிளை பெயர் *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_city" placeholder="நகரம் *" class="border p-2 rounded text-xs">
             <input type="text" id="new_branch_phone" placeholder="தொடர்பு எண்" class="border p-2 rounded text-xs">
           </div>
           <div class="flex justify-end">
@@ -307,9 +305,9 @@
           </div>
         </div>
 
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
           <div class="flex justify-between items-center">
-            <h4 class="text-xs font-bold text-slate-700 uppercase">உருவாக்கப்பட்ட கிளைகளின் பட்டியல்:</h4>
+            <h4 class="text-xs font-bold text-slate-700 uppercase">உருவாக்கப்பட்ட கிளைகள்:</h4>
             <button onclick="loadBranchesList()" class="text-xs text-amber-600 font-bold hover:underline">புதுப்பி</button>
           </div>
           <div class="overflow-x-auto border rounded-lg">
@@ -332,27 +330,27 @@
         </div>
       </div>
 
-      <!-- பணியாளர் மேலாண்மை -->
+      <!-- பணியாளர்கள் மேலாண்மை -->
       <div class="space-y-4 pt-4 border-t">
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-4">
+        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
           <div class="flex justify-between items-center border-b pb-2">
             <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2" id="staffFormTitle">
-              <span>👤</span> புதிய பணியாளர் கணக்கு & அணுகல் உரிமைகள் உருவாக்கம்
+              <span>👤</span> புதிய பணியாளர் கணக்கு & அணுகல் உரிமைகள்
             </h3>
             <button onclick="cancelStaffEdit()" id="btnCancelStaffEdit" class="hidden text-xs text-rose-600 font-bold hover:underline">ரத்து</button>
           </div>
           <input type="hidden" id="edit_staff_id" value="">
           
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="text" id="new_staff_user" placeholder="பயனர் பெயர் (Username) *" class="border p-2 rounded text-xs">
-            <input type="password" id="new_staff_pass" placeholder="கடவுச்சொல் (மாற்ற விரும்பினால் மட்டும்)" class="border p-2 rounded text-xs">
+            <input type="text" id="new_staff_user" placeholder="பயனர் பெயர் *" class="border p-2 rounded text-xs">
+            <input type="password" id="new_staff_pass" placeholder="கடவுச்சொல்" class="border p-2 rounded text-xs">
             <input type="text" id="new_staff_name" placeholder="முழு பெயர் *" class="border p-2 rounded text-xs">
             <input type="tel" id="new_staff_mobile" placeholder="மொபைல் எண் *" class="border p-2 rounded text-xs">
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-1">பணியாளர் பதவி / வகை:</label>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">பதவி:</label>
               <select id="new_staff_role" class="w-full border p-2 rounded text-xs bg-white">
                 <option value="BRANCH_STAFF">BRANCH_STAFF (கிளை பணியாளர்)</option>
                 <option value="BRANCH_MANAGER">BRANCH_MANAGER (கிளை மேலாளர்)</option>
@@ -361,9 +359,7 @@
             </div>
             <div>
               <label class="block text-xs font-semibold text-slate-600 mb-1">ஒதுக்கப்படும் கிளை:</label>
-              <select id="new_staff_branch" class="w-full border p-2 rounded text-xs bg-white font-medium text-amber-900">
-                <option value="">கிளைகள் ஏற்றப்படுகின்றன...</option>
-              </select>
+              <select id="new_staff_branch" class="w-full border p-2 rounded text-xs bg-white font-medium text-amber-900"></select>
             </div>
           </div>
 
@@ -371,20 +367,20 @@
             <label class="block text-xs font-bold text-amber-900">அணுகல் உரிமைகள் (Permissions):</label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <label class="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" id="perm_counter" checked class="rounded text-amber-600 focus:ring-amber-500">
+                <input type="checkbox" id="perm_counter" checked class="rounded text-amber-600">
                 <span class="text-slate-700 font-semibold">1. கவுண்ட்டர் & அடகு கார்ட் அணுகல்</span>
               </label>
               <label class="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" id="perm_kyc" class="rounded text-amber-600 focus:ring-amber-500">
+                <input type="checkbox" id="perm_kyc" class="rounded text-amber-600">
                 <span class="text-slate-700 font-semibold">2. புதிய வாடிக்கையாளர் KYC ஒப்புதல் உரிமை</span>
               </label>
               <label class="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" id="perm_updates" class="rounded text-amber-600 focus:ring-amber-500">
+                <input type="checkbox" id="perm_updates" class="rounded text-amber-600">
                 <span class="text-slate-700 font-semibold">3. சுயவிவர மாற்ற ஒப்புதல் உரிமை</span>
               </label>
               <label class="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" id="perm_admin" class="rounded text-amber-600 focus:ring-amber-500">
-                <span class="text-slate-700 font-semibold">4. கிளை & பணியாளர் மேலாண்மை அணுகல் (Admin)</span>
+                <input type="checkbox" id="perm_admin" class="rounded text-amber-600">
+                <span class="text-slate-700 font-semibold">4. கிளை & பணியாளர் மேலாண்மை அணுகல்</span>
               </label>
             </div>
           </div>
@@ -396,9 +392,9 @@
           </div>
         </div>
 
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 space-y-3">
+        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
           <div class="flex justify-between items-center">
-            <h4 class="text-xs font-bold text-slate-700 uppercase">உருவாக்கப்பட்ட பணியாளர்களின் விபரங்கள்:</h4>
+            <h4 class="text-xs font-bold text-slate-700 uppercase">பணியாளர்கள் பட்டியல்:</h4>
             <button onclick="loadStaffList()" class="text-xs text-amber-600 font-bold hover:underline">புதுப்பி</button>
           </div>
           <div class="overflow-x-auto border rounded-lg">
@@ -420,10 +416,234 @@
           </div>
         </div>
       </div>
-
     </div>
 
-    <!-- Modals -->
+    <!-- ==================== 3. புதிய விரிவான KYC MODAL ==================== -->
+    <div id="fullKycModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-2xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+            <span>📋</span> புதிய வாடிக்கையாளர் விரிவான KYC படிவம்
+          </h3>
+          <button onclick="closeNewKycModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <!-- 1. அடிப்படை & தொடர்பு விபரங்கள் -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold text-amber-800 uppercase border-b pb-1">1. அடிப்படை & தொடர்பு விபரங்கள்</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">வாடிக்கையாளர் பெயர் *</label>
+              <input type="text" id="fkyc_name" class="w-full border p-2 rounded text-xs" placeholder="பெயர்">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">முதன்மை மொபைல் எண் *</label>
+              <input type="tel" id="fkyc_mobile" class="w-full border p-2 rounded text-xs" placeholder="10 இலக்க எண்">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">மாற்று மொபைல் எண் (Alt Mobile)</label>
+              <input type="tel" id="fkyc_alt_mobile" class="w-full border p-2 rounded text-xs" placeholder="மாற்று எண்">
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">உறவுமுறை வகை</label>
+              <select id="fkyc_rel_type" class="w-full border p-2 rounded text-xs bg-white">
+                <option value="தந்தை">தந்தை (Father)</option>
+                <option value="தாய்">தாய் (Mother)</option>
+                <option value="கணவர்">கணவர் (Husband)</option>
+                <option value="மகன்">மகன் (Son)</option>
+                <option value="மகள்">மகள் (Daughter)</option>
+                <option value="பாதுகாவலர்">பாதுகாவலர் (Guardian)</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-600">உறவினர் / பாதுகாவலர் பெயர்</label>
+              <input type="text" id="fkyc_guardian" class="w-full border p-2 rounded text-xs" placeholder="உறவினர் பெயர்">
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600">முழு முகவரி *</label>
+            <textarea id="fkyc_address" rows="2" class="w-full border p-2 rounded text-xs" placeholder="கதவு எண், தெரு, கிராமம்/நகரம், அஞ்சல் குறியீடு"></textarea>
+          </div>
+        </div>
+
+        <!-- 2. அடையாள & முகவரிச் சான்று -->
+        <div class="space-y-3 pt-2">
+          <h4 class="text-xs font-bold text-amber-800 uppercase border-b pb-1">2. அடையாள & முகவரிச் சான்று (ID Proof)</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">சான்று வகை (Proof Type)</label>
+              <select id="fkyc_proof_type" class="w-full border p-2 rounded text-xs bg-white">
+                <option value="Aadhaar Card">ஆதார் அட்டை (Aadhaar Card)</option>
+                <option value="Smart Ration Card">ஸ்மார்ட் ரேஷன் அட்டை</option>
+                <option value="Voter ID">வாக்காளர் அடையாள அட்டை</option>
+                <option value="PAN Card">பான் கார்டு (PAN)</option>
+                <option value="Driving License">ஓட்டுநர் உரிமம்</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">சான்று எண் (Proof ID No) *</label>
+              <input type="text" id="fkyc_proof_no" class="w-full border p-2 rounded text-xs" placeholder="XXXX XXXX XXXX">
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. நாமினி விபரங்கள் -->
+        <div class="space-y-3 pt-2">
+          <h4 class="text-xs font-bold text-amber-800 uppercase border-b pb-1">3. நாமினி விபரங்கள் (Nominee)</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input type="text" id="fkyc_nominee_name" placeholder="நாமினி பெயர்" class="border p-2 rounded text-xs">
+            <input type="text" id="fkyc_nominee_rel" placeholder="உறவுமுறை (எ.கா: மனைவி, மகன்)" class="border p-2 rounded text-xs">
+            <input type="tel" id="fkyc_nominee_mob" placeholder="நாமினி மொபைல் எண்" class="border p-2 rounded text-xs">
+          </div>
+        </div>
+
+        <!-- 4. ரெபரன்ஸ் நபர்கள் (2 References) -->
+        <div class="space-y-3 pt-2">
+          <h4 class="text-xs font-bold text-amber-800 uppercase border-b pb-1">4. ரெபரன்ஸ் நபர்கள் (Reference Persons)</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-xl border">
+            <div class="space-y-1.5">
+              <span class="text-[10px] font-bold text-slate-600 uppercase">ரெபரன்ஸ் நபர் 1:</span>
+              <input type="text" id="fkyc_ref1_name" placeholder="பெயர்" class="w-full border p-1.5 rounded text-xs bg-white">
+              <input type="tel" id="fkyc_ref1_mob" placeholder="மொபைல் எண்" class="w-full border p-1.5 rounded text-xs bg-white">
+              <input type="text" id="fkyc_ref1_addr" placeholder="ஊர் / முகவரி" class="w-full border p-1.5 rounded text-xs bg-white">
+            </div>
+            <div class="space-y-1.5">
+              <span class="text-[10px] font-bold text-slate-600 uppercase">ரெபரன்ஸ் நபர் 2:</span>
+              <input type="text" id="fkyc_ref2_name" placeholder="பெயர்" class="w-full border p-1.5 rounded text-xs bg-white">
+              <input type="tel" id="fkyc_ref2_mob" placeholder="மொபைல் எண்" class="w-full border p-1.5 rounded text-xs bg-white">
+              <input type="text" id="fkyc_ref2_addr" placeholder="ஊர் / முகவரி" class="w-full border p-1.5 rounded text-xs bg-white">
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. படங்கள் & ஆவணப் பதிவேற்றம் (Photo / Signature / ID Upload) -->
+        <div class="space-y-3 pt-2">
+          <h4 class="text-xs font-bold text-amber-800 uppercase border-b pb-1">5. புகைப்படங்கள் & சான்று ஆவணங்கள் (Upload)</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="border border-dashed p-3 rounded-xl text-center space-y-1">
+              <label class="block text-[11px] font-bold text-slate-700">1. வாடிக்கையாளர் படம் 📷</label>
+              <input type="file" id="fkyc_file_photo" accept="image/*" capture="user" class="text-[10px] text-slate-500 w-full">
+            </div>
+            <div class="border border-dashed p-3 rounded-xl text-center space-y-1">
+              <label class="block text-[11px] font-bold text-slate-700">2. கையொப்பம் / ரேகை ✍️</label>
+              <input type="file" id="fkyc_file_sign" accept="image/*" class="text-[10px] text-slate-500 w-full">
+            </div>
+            <div class="border border-dashed p-3 rounded-xl text-center space-y-1">
+              <label class="block text-[11px] font-bold text-slate-700">3. அடையாளச் சான்று படம் 🪪</label>
+              <input type="file" id="fkyc_file_proof" accept="image/*" capture="environment" class="text-[10px] text-slate-500 w-full">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button onclick="closeNewKycModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
+          <button onclick="submitFullKycForm()" id="btnSubmitFullKyc" class="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow">
+            முழு KYC-ஐ சமர்ப்பி (Submit KYC)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 4. முழு விபர மாற்ற MODAL (Pre-filled Profile Edit) ==================== -->
+    <div id="fullUpdateModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-2xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div class="flex justify-between items-center border-b pb-2">
+          <div>
+            <h3 class="text-base font-bold text-slate-800">வாடிக்கையாளர் சுயவிவர மாற்றம் (Edit Customer Profile)</h3>
+            <p class="text-xs text-amber-700">ஏற்கனவே உள்ள விபரங்கள் கீழே காட்டப்பட்டுள்ளன. மாற்ற வேண்டியவற்றை மட்டும் திருத்தவும்.</p>
+          </div>
+          <button onclick="closeFullUpdateModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">பெயர்</label>
+              <input type="text" id="upd_name" class="w-full border p-2 rounded text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">முதன்மை மொபைல்</label>
+              <input type="tel" id="upd_mobile" class="w-full border p-2 rounded text-xs font-bold">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">மாற்று மொபைல் எண்</label>
+              <input type="tel" id="upd_alt_mobile" class="w-full border p-2 rounded text-xs">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">உறவுமுறை</label>
+              <select id="upd_rel_type" class="w-full border p-2 rounded text-xs bg-white">
+                <option value="தந்தை">தந்தை (Father)</option>
+                <option value="தாய்">தாய் (Mother)</option>
+                <option value="கணவர்">கணவர் (Husband)</option>
+                <option value="மகன்">மகன் (Son)</option>
+                <option value="மகள்">மகள் (Daughter)</option>
+                <option value="பாதுகாவலர்">பாதுகாவலர் (Guardian)</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-600">பாதுகாவலர் பெயர்</label>
+              <input type="text" id="upd_guardian" class="w-full border p-2 rounded text-xs">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-600">முழு முகவரி</label>
+            <textarea id="upd_address" rows="2" class="w-full border p-2 rounded text-xs"></textarea>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">சான்று வகை</label>
+              <select id="upd_proof_type" class="w-full border p-2 rounded text-xs bg-white">
+                <option value="Aadhaar Card">ஆதார் அட்டை</option>
+                <option value="Smart Ration Card">ஸ்மார்ட் ரேஷன் அட்டை</option>
+                <option value="Voter ID">வாக்காளர் அட்டை</option>
+                <option value="PAN Card">பான் கார்டு (PAN)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600">சான்று எண்</label>
+              <input type="text" id="upd_proof_no" class="w-full border p-2 rounded text-xs">
+            </div>
+          </div>
+
+          <!-- நாமினி திருத்தம் -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t">
+            <input type="text" id="upd_nominee_name" placeholder="நாமினி பெயர்" class="border p-2 rounded text-xs">
+            <input type="text" id="upd_nominee_rel" placeholder="நாமினி உறவுமுறை" class="border p-2 rounded text-xs">
+            <input type="tel" id="upd_nominee_mob" placeholder="நாமினி மொபைல்" class="border p-2 rounded text-xs">
+          </div>
+
+          <!-- ரெபரன்ஸ் திருத்தம் -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-xl border">
+            <div class="space-y-1">
+              <span class="text-[10px] font-bold text-slate-600 uppercase">ரெபரன்ஸ் 1:</span>
+              <input type="text" id="upd_ref1_name" placeholder="பெயர்" class="w-full border p-1.5 rounded text-xs bg-white">
+              <input type="tel" id="upd_ref1_mob" placeholder="மொபைல்" class="w-full border p-1.5 rounded text-xs bg-white">
+            </div>
+            <div class="space-y-1">
+              <span class="text-[10px] font-bold text-slate-600 uppercase">ரெபரன்ஸ் 2:</span>
+              <input type="text" id="upd_ref2_name" placeholder="பெயர்" class="w-full border p-1.5 rounded text-xs bg-white">
+              <input type="tel" id="upd_ref2_mob" placeholder="மொபைல்" class="w-full border p-1.5 rounded text-xs bg-white">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button onclick="closeFullUpdateModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
+          <button onclick="submitFullUpdateReq()" class="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow">
+            மாற்றங்களை தலைமை ஒப்புதலுக்கு அனுப்பு
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Denomination / OTP Modal -->
     <div id="checkoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-2xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center border-b pb-3">
@@ -503,25 +723,8 @@
         <div class="flex justify-center gap-2 pt-2">
           <button onclick="closeOtpModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
           <button onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">
-            சரிபார்த்து முடி (Verify & Close)
+            சரிபார்த்து முடி
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- புதிய KYC Modal -->
-    <div id="kycModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
-      <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
-        <h3 class="text-base font-bold text-slate-800">புதிய வாடிக்கையாளர் KYC</h3>
-        <div class="space-y-3">
-          <input type="text" id="kyc_name" placeholder="பெயர் *" class="w-full border p-2 rounded-lg text-xs">
-          <input type="tel" id="kyc_mobile" placeholder="மொபைல் எண் *" class="w-full border p-2 rounded-lg text-xs">
-          <input type="text" id="kyc_guardian" placeholder="தந்தை / கணவர் பெயர்" class="w-full border p-2 rounded-lg text-xs">
-          <textarea id="kyc_address" placeholder="முழு முகவரி" class="w-full border p-2 rounded-lg text-xs" rows="2"></textarea>
-        </div>
-        <div class="flex justify-end gap-2 pt-2">
-          <button onclick="closeNewKycModal()" class="px-4 py-2 border rounded-lg text-xs">ரத்து</button>
-          <button onclick="submitNewKyc()" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-bold">சேமி</button>
         </div>
       </div>
     </div>
@@ -539,15 +742,11 @@
     let branchesCache = [];
     let staffCache = [];
 
-    // 1. Auth & Dynamic Navigation Rendering (முக்கிய மாற்றம்)
+    // 1. Auth & Dynamic Navigation
     async function handleLogin() {
       const u = document.getElementById('login_username').value.trim();
       const p = document.getElementById('login_password').value.trim();
-
-      if (!u || !p) {
-        alert("பயனர் பெயர் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
-        return;
-      }
+      if (!u || !p) return alert("பயனர் பெயர் மற்றும் கடவுச்சொல்லை உள்ளிடவும்.");
 
       const btn = document.getElementById('btnLogin');
       btn.innerText = "உள்நுழைகிறது...";
@@ -575,38 +774,26 @@
       }
     }
 
-    // அனுமதி உள்ள பட்டன்களை மட்டும் DOM-ல் உருவாக்கும் செயல்பாடு
     function renderNavMenu(user) {
       const container = document.getElementById('navButtonsContainer');
       container.innerHTML = '';
-
       const p = user.permissions || {};
       const activeTabs = [];
 
-      if (p.can_access_counter === true) {
-        activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
-      }
-      if (p.can_approve_kyc === true || p.can_approve_updates === true) {
-        activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
-      }
-      if (p.can_manage_users === true) {
-        activeTabs.push({ id: 'adminPanelTab', label: 'கிளை & பணியாளர் நிர்வாகம் ⚙️' });
-      }
+      if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
+      if (p.can_approve_kyc === true || p.can_approve_updates === true) activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
+      if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'கிளை & பணியாளர் நிர்வாகம் ⚙️' });
 
       activeTabs.forEach((tab, index) => {
         const btn = document.createElement('button');
         btn.id = `btn_${tab.id}`;
         btn.innerText = tab.label;
         btn.onclick = () => switchTab(tab.id);
-        btn.className = index === 0 
-          ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white" 
-          : "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+        btn.className = index === 0 ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white" : "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
         container.appendChild(btn);
       });
 
-      if (activeTabs.length > 0) {
-        switchTab(activeTabs[0].id);
-      }
+      if (activeTabs.length > 0) switchTab(activeTabs[0].id);
     }
 
     function showDashboard(user) {
@@ -619,10 +806,7 @@
       document.getElementById('mainDashboard').classList.remove('hidden');
 
       renderNavMenu(user);
-
-      if (user.permissions?.can_manage_users === true) {
-        loadBranchesList();
-      }
+      if (user.permissions?.can_manage_users === true) loadBranchesList();
     }
 
     function handleLogout() {
@@ -644,351 +828,19 @@
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
-
       const target = document.getElementById(tabId);
       if (target) target.classList.remove('hidden');
 
-      const container = document.getElementById('navButtonsContainer');
-      const buttons = container.querySelectorAll('button');
+      const buttons = document.getElementById('navButtonsContainer').querySelectorAll('button');
       buttons.forEach(btn => {
-        if (btn.id === `btn_${tabId}`) {
-          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white";
-        } else {
-          btn.className = "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
-        }
+        btn.className = (btn.id === `btn_${tabId}`) ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white" : "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
       });
 
       if (tabId === 'hqApprovalTab') loadPendingApprovals();
-      if (tabId === 'adminPanelTab') {
-        loadBranchesList();
-        loadStaffList();
-      }
+      if (tabId === 'adminPanelTab') { loadBranchesList(); loadStaffList(); }
     }
 
-    // 2. Admin: Branches CRUD
-    async function loadBranchesList() {
-      try {
-        const res = await fetch('/api/admin/branches');
-        const data = await res.json();
-        branchesCache = data.data || [];
-
-        const tbody = document.getElementById('branchesTableBody');
-        tbody.innerHTML = '';
-        if (branchesCache.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">கிளைகள் எதுவும் இல்லை</td></tr>`;
-        } else {
-          branchesCache.forEach(b => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold">${b.id}</td>
-              <td class="p-2.5 font-semibold text-amber-800">${b.branch_code}</td>
-              <td class="p-2.5 font-bold text-slate-800">${b.branch_name}</td>
-              <td class="p-2.5">${b.city}</td>
-              <td class="p-2.5">${b.phone || '-'}</td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="editBranch(${b.id})" class="px-2 py-1 bg-amber-100 text-amber-800 rounded font-bold text-[11px] hover:bg-amber-200">எடிட் ✏️</button>
-                <button onclick="deleteBranch(${b.id})" class="px-2 py-1 bg-rose-100 text-rose-800 rounded font-bold text-[11px] hover:bg-rose-200">டிலீட் 🗑️</button>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-
-        const bSelect = document.getElementById('new_staff_branch');
-        bSelect.innerHTML = '';
-        branchesCache.forEach(b => {
-          const opt = document.createElement('option');
-          opt.value = b.id;
-          opt.innerText = `${b.branch_name} (${b.branch_code} - ${b.city})`;
-          bSelect.appendChild(opt);
-        });
-
-      } catch (err) {
-        console.error("கிளைகள் ஏற்றுவதில் பிழை:", err);
-      }
-    }
-
-    function editBranch(id) {
-      const b = branchesCache.find(x => x.id === id);
-      if (!b) return;
-
-      document.getElementById('edit_branch_id').value = b.id;
-      document.getElementById('new_branch_code').value = b.branch_code;
-      document.getElementById('new_branch_name').value = b.branch_name;
-      document.getElementById('new_branch_city').value = b.city;
-      document.getElementById('new_branch_phone').value = b.phone || '';
-
-      document.getElementById('branchFormTitle').innerHTML = `<span>✏️</span> கிளை விபரம் திருத்துதல் (ID: ${b.id})`;
-      document.getElementById('btnSubmitBranch').innerText = "மாற்றங்களைச் சேமி (Update)";
-      document.getElementById('btnCancelBranchEdit').classList.remove('hidden');
-    }
-
-    function cancelBranchEdit() {
-      document.getElementById('edit_branch_id').value = '';
-      document.getElementById('new_branch_code').value = '';
-      document.getElementById('new_branch_name').value = '';
-      document.getElementById('new_branch_city').value = '';
-      document.getElementById('new_branch_phone').value = '';
-
-      document.getElementById('branchFormTitle').innerHTML = `<span>🏢</span> புதிய கிளை உருவாக்கம்`;
-      document.getElementById('btnSubmitBranch').innerText = "+ கிளையைச் சேர்";
-      document.getElementById('btnCancelBranchEdit').classList.add('hidden');
-    }
-
-    async function submitBranchForm() {
-      const editId = document.getElementById('edit_branch_id').value;
-      const payload = {
-        branch_code: document.getElementById('new_branch_code').value.trim(),
-        branch_name: document.getElementById('new_branch_name').value.trim(),
-        city: document.getElementById('new_branch_city').value.trim(),
-        phone: document.getElementById('new_branch_phone').value.trim() || null
-      };
-
-      if (!payload.branch_code || !payload.branch_name || !payload.city) {
-        alert("அனைத்து விபரங்களையும் உள்ளிடவும்.");
-        return;
-      }
-
-      const url = editId ? `/api/admin/branch/${editId}` : '/api/admin/branch/create';
-      const method = editId ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        cancelBranchEdit();
-        loadBranchesList();
-      } else {
-        alert("❌ பிழை: " + data.detail);
-      }
-    }
-
-    async function deleteBranch(id) {
-      if (!confirm("இந்தக் கிளையை நிச்சயம் நீக்க விரும்புகிறீர்களா?")) return;
-      const res = await fetch(`/api/admin/branch/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        loadBranchesList();
-      } else {
-        alert("❌ பிழை: " + data.detail);
-      }
-    }
-
-    // 3. Admin: Staff CRUD
-    async function loadStaffList() {
-      try {
-        const res = await fetch('/api/admin/staff');
-        const data = await res.json();
-        staffCache = data.data || [];
-        const tbody = document.getElementById('staffTableBody');
-        tbody.innerHTML = '';
-
-        if (staffCache.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">பணியாளர்கள் யாரும் இல்லை</td></tr>`;
-        } else {
-          staffCache.forEach(s => {
-            const tr = document.createElement('tr');
-            let perms = [];
-            if (s.can_access_counter) perms.push('<span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">கவுண்ட்டர்</span>');
-            if (s.can_approve_kyc) perms.push('<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-bold">KYC</span>');
-            if (s.can_approve_updates) perms.push('<span class="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">மாற்றம்</span>');
-            if (s.can_manage_users) perms.push('<span class="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold">அட்மின்</span>');
-
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold text-slate-800">${s.username}</td>
-              <td class="p-2.5 font-medium">${s.full_name}</td>
-              <td class="p-2.5 font-semibold text-amber-900">${s.test_branches?.branch_name || 'Branch #' + s.branch_id}</td>
-              <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold text-[10px]">${s.role_key}</span></td>
-              <td class="p-2.5 flex flex-wrap gap-1">${perms.join('') || '<span class="text-slate-400">இல்லை</span>'}</td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="editStaff(${s.id})" class="px-2 py-1 bg-amber-100 text-amber-800 rounded font-bold text-[11px] hover:bg-amber-200">எடிட் ✏️</button>
-                <button onclick="deleteStaff(${s.id})" class="px-2 py-1 bg-rose-100 text-rose-800 rounded font-bold text-[11px] hover:bg-rose-200">டிலீட் 🗑️</button>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
-        }
-      } catch (err) {
-        console.error("பணியாளர் பட்டியல் பிழை:", err);
-      }
-    }
-
-    function editStaff(id) {
-      const s = staffCache.find(x => x.id === id);
-      if (!s) return;
-
-      document.getElementById('edit_staff_id').value = s.id;
-      document.getElementById('new_staff_user').value = s.username;
-      document.getElementById('new_staff_user').disabled = true;
-      document.getElementById('new_staff_pass').value = '';
-      document.getElementById('new_staff_name').value = s.full_name;
-      document.getElementById('new_staff_mobile').value = s.mobile;
-      document.getElementById('new_staff_role').value = s.role_key;
-      document.getElementById('new_staff_branch').value = s.branch_id;
-
-      document.getElementById('perm_counter').checked = !!s.can_access_counter;
-      document.getElementById('perm_kyc').checked = !!s.can_approve_kyc;
-      document.getElementById('perm_updates').checked = !!s.can_approve_updates;
-      document.getElementById('perm_admin').checked = !!s.can_manage_users;
-
-      document.getElementById('staffFormTitle').innerHTML = `<span>✏️</span> பணியாளர் உரிமைகள் திருத்துதல் (${s.username})`;
-      document.getElementById('btnSubmitStaff').innerText = "உரிமைகளைச் சேமி (Update)";
-      document.getElementById('btnCancelStaffEdit').classList.remove('hidden');
-    }
-
-    function cancelStaffEdit() {
-      document.getElementById('edit_staff_id').value = '';
-      document.getElementById('new_staff_user').value = '';
-      document.getElementById('new_staff_user').disabled = false;
-      document.getElementById('new_staff_pass').value = '';
-      document.getElementById('new_staff_name').value = '';
-      document.getElementById('new_staff_mobile').value = '';
-
-      document.getElementById('perm_counter').checked = true;
-      document.getElementById('perm_kyc').checked = false;
-      document.getElementById('perm_updates').checked = false;
-      document.getElementById('perm_admin').checked = false;
-
-      document.getElementById('staffFormTitle').innerHTML = `<span>👤</span> புதிய பணியாளர் கணக்கு & அணுகல் உரிமைகள் உருவாக்கம்`;
-      document.getElementById('btnSubmitStaff').innerText = "+ பணியாளரை உருவாக்கு";
-      document.getElementById('btnCancelStaffEdit').classList.add('hidden');
-    }
-
-    async function submitStaffForm() {
-      const editId = document.getElementById('edit_staff_id').value;
-      const branchId = parseInt(document.getElementById('new_staff_branch').value);
-      if (!branchId) {
-        alert("கிளையைத் தேர்வு செய்யவும்.");
-        return;
-      }
-
-      const payload = {
-        username: document.getElementById('new_staff_user').value.trim(),
-        password: document.getElementById('new_staff_pass').value.trim() || (editId ? null : "gold123"),
-        full_name: document.getElementById('new_staff_name').value.trim(),
-        mobile: document.getElementById('new_staff_mobile').value.trim(),
-        role_key: document.getElementById('new_staff_role').value,
-        branch_id: branchId,
-        can_access_counter: document.getElementById('perm_counter').checked,
-        can_approve_kyc: document.getElementById('perm_kyc').checked,
-        can_approve_updates: document.getElementById('perm_updates').checked,
-        can_manage_users: document.getElementById('perm_admin').checked
-      };
-
-      if (!payload.username || !payload.full_name) {
-        alert("முக்கிய விபரங்களை உள்ளிடவும்.");
-        return;
-      }
-
-      const url = editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create';
-      const method = editId ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        cancelStaffEdit();
-        loadStaffList();
-      } else {
-        alert("❌ பிழை: " + data.detail);
-      }
-    }
-
-    async function deleteStaff(id) {
-      if (!confirm("இந்தப் பணியாளர் கணக்கை நிச்சயம் நீக்க விரும்புகிறீர்களா?")) return;
-      const res = await fetch(`/api/admin/staff/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message);
-        loadStaffList();
-      } else {
-        alert("❌ பிழை: " + data.detail);
-      }
-    }
-
-    // 4. HQ Approvals
-    async function loadPendingApprovals() {
-      try {
-        const res = await fetch('/api/hq/pending-approvals');
-        const data = await res.json();
-        
-        const kycBody = document.getElementById('pendingKycTableBody');
-        kycBody.innerHTML = '';
-        if (!data.pending_kyc || data.pending_kyc.length === 0) {
-          kycBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">நிலுவைகள் இல்லை</td></tr>`;
-        } else {
-          data.pending_kyc.forEach(c => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold">${c.name}</td>
-              <td class="p-2.5">${c.mobile}</td>
-              <td class="p-2.5">${c.guardian_name || '-'}</td>
-              <td class="p-2.5">${c.address || '-'}</td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionKyc(${c.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
-                <button onclick="actionKyc(${c.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-              </td>
-            `;
-            kycBody.appendChild(tr);
-          });
-        }
-
-        const upBody = document.getElementById('pendingUpdatesTableBody');
-        upBody.innerHTML = '';
-        if (!data.pending_updates || data.pending_updates.length === 0) {
-          upBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்றக் கோரிக்கைகள் இல்லை</td></tr>`;
-        } else {
-          data.pending_updates.forEach(u => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold">${u.test_customers?.name || 'ID: ' + u.customer_id}</td>
-              <td class="p-2.5">${u.branch_id}</td>
-              <td class="p-2.5"><code class="text-[10px] bg-slate-100 p-1 rounded">${JSON.stringify(u.requested_changes)}</code></td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionUpdate(${u.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
-                <button onclick="actionUpdate(${u.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-              </td>
-            `;
-            upBody.appendChild(tr);
-          });
-        }
-      } catch (err) {
-        alert("ஒப்புதல் பட்டியல் பிழை: " + err.message);
-      }
-    }
-
-    async function actionKyc(id, action) {
-      const res = await fetch('/api/hq/approve-kyc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_id: id, action: action, admin_id: currentUser.id })
-      });
-      const data = await res.json();
-      alert(data.message);
-      loadPendingApprovals();
-    }
-
-    async function actionUpdate(id, action) {
-      const res = await fetch('/api/hq/approve-update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request_id: id, action: action, admin_id: currentUser.id })
-      });
-      const data = await res.json();
-      alert(data.message);
-      loadPendingApprovals();
-    }
-
-    // 5. Counter & Pawn Cart
+    // 2. வாடிக்கையாளர் தேடல் & படம் காட்டுதல்
     async function handleSearch() {
       const q = document.getElementById('searchInput').value.trim();
       if (!q) return;
@@ -999,15 +851,21 @@
       container.innerHTML = '';
 
       if (!result.data || result.data.length === 0) {
-        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border border-rose-200">வாடிக்கையாளர் இல்லை. '+ புதிய KYC' மூலம் பதிவு செய்யவும்.</div>`;
+        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border">வாடிக்கையாளர் இல்லை. '+ புதிய முழு KYC' மூலம் பதிவு செய்யவும்.</div>`;
       } else {
         result.data.forEach(cust => {
           const div = document.createElement('div');
-          div.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center hover:bg-amber-50 cursor-pointer transition";
+          div.className = "p-3 bg-slate-50 border rounded-xl flex items-center justify-between hover:bg-amber-50 cursor-pointer transition";
+          
+          const photoThumb = cust.customer_photo ? `<img src="${cust.customer_photo}" class="w-10 h-10 rounded-full object-cover border mr-3">` : `<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center mr-3 text-base">👤</div>`;
+
           div.innerHTML = `
-            <div>
-              <div class="font-bold text-sm text-slate-800">${cust.name} (${cust.kyc_status})</div>
-              <div class="text-xs text-slate-500">மொபைல்: ${cust.mobile} | கிளை ஐடி: ${cust.branch_id || '-'}</div>
+            <div class="flex items-center">
+              ${photoThumb}
+              <div>
+                <div class="font-bold text-sm text-slate-800">${cust.name} <span class="text-[10px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">(${cust.kyc_status})</span></div>
+                <div class="text-xs text-slate-500">மொபைல்: ${cust.mobile} | சான்று எண்: ${cust.id_proof_no || 'இல்லை'}</div>
+              </div>
             </div>
             <button class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold">தேர்ந்தெடு</button>
           `;
@@ -1022,12 +880,25 @@
       activeCustomer = cust;
       document.getElementById('cardName').innerText = cust.name;
       document.getElementById('cardMobile').innerText = cust.mobile;
-      document.getElementById('cardId').innerText = cust.id;
+      document.getElementById('cardRelation').innerText = (cust.relation_type || 'உறவினர்') + ": " + (cust.guardian_name || '-');
+      document.getElementById('cardProofNo').innerText = cust.id_proof_no || '-';
       document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
+
+      // படம் காட்டுதல்
+      const imgElem = document.getElementById('cardCustomerImg');
+      const placeholder = document.getElementById('cardCustomerPlaceholder');
+      if (cust.customer_photo) {
+        imgElem.src = cust.customer_photo;
+        imgElem.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+      } else {
+        imgElem.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+      }
 
       const badge = document.getElementById('cardKycBadge');
       badge.innerText = cust.kyc_status;
-      badge.className = cust.kyc_status === 'VERIFIED' ? "text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800" : "text-[10px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800";
+      badge.className = (cust.kyc_status === 'VERIFIED') ? "text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800" : "text-[10px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800";
 
       document.getElementById('searchSection').classList.add('hidden');
       document.getElementById('activeCustomerSection').classList.remove('hidden');
@@ -1050,13 +921,52 @@
       document.getElementById('searchSection').classList.remove('hidden');
     }
 
-    function showUpdateForm() { document.getElementById('updateFormSection').classList.remove('hidden'); }
+    // 3. முழு விபர மாற்றம் (Pre-filled Update Modal)
+    function openFullUpdateModal() {
+      if (!activeCustomer) return;
+      document.getElementById('upd_name').value = activeCustomer.name || '';
+      document.getElementById('upd_mobile').value = activeCustomer.mobile || '';
+      document.getElementById('upd_alt_mobile').value = activeCustomer.alt_mobile || '';
+      document.getElementById('upd_rel_type').value = activeCustomer.relation_type || 'தந்தை';
+      document.getElementById('upd_guardian').value = activeCustomer.guardian_name || '';
+      document.getElementById('upd_address').value = activeCustomer.address || '';
+      document.getElementById('upd_proof_type').value = activeCustomer.id_proof_type || 'Aadhaar Card';
+      document.getElementById('upd_proof_no').value = activeCustomer.id_proof_no || '';
+      document.getElementById('upd_nominee_name').value = activeCustomer.nominee_name || '';
+      document.getElementById('upd_nominee_rel').value = activeCustomer.nominee_relation || '';
+      document.getElementById('upd_nominee_mob').value = activeCustomer.nominee_mobile || '';
+      document.getElementById('upd_ref1_name').value = activeCustomer.ref1_name || '';
+      document.getElementById('upd_ref1_mob').value = activeCustomer.ref1_mobile || '';
+      document.getElementById('upd_ref2_name').value = activeCustomer.ref2_name || '';
+      document.getElementById('upd_ref2_mob').value = activeCustomer.ref2_mobile || '';
 
-    async function submitUpdateReq() {
+      document.getElementById('fullUpdateModal').classList.remove('hidden');
+    }
+
+    function closeFullUpdateModal() {
+      document.getElementById('fullUpdateModal').classList.add('hidden');
+    }
+
+    async function submitFullUpdateReq() {
       if (!activeCustomer) return;
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      const newMobile = document.getElementById('upd_mobile').value.trim();
-      const newAddress = document.getElementById('upd_address').value.trim();
+      const changes = {
+        name: document.getElementById('upd_name').value.trim(),
+        mobile: document.getElementById('upd_mobile').value.trim(),
+        alt_mobile: document.getElementById('upd_alt_mobile').value.trim() || null,
+        relation_type: document.getElementById('upd_rel_type').value,
+        guardian_name: document.getElementById('upd_guardian').value.trim() || null,
+        address: document.getElementById('upd_address').value.trim() || null,
+        id_proof_type: document.getElementById('upd_proof_type').value,
+        id_proof_no: document.getElementById('upd_proof_no').value.trim() || null,
+        nominee_name: document.getElementById('upd_nominee_name').value.trim() || null,
+        nominee_relation: document.getElementById('upd_nominee_rel').value.trim() || null,
+        nominee_mobile: document.getElementById('upd_nominee_mob').value.trim() || null,
+        ref1_name: document.getElementById('upd_ref1_name').value.trim() || null,
+        ref1_mobile: document.getElementById('upd_ref1_mob').value.trim() || null,
+        ref2_name: document.getElementById('upd_ref2_name').value.trim() || null,
+        ref2_mobile: document.getElementById('upd_ref2_mob').value.trim() || null
+      };
 
       const res = await fetch('/api/customer/request-update', {
         method: 'POST',
@@ -1064,18 +974,100 @@
         body: JSON.stringify({
           customer_id: activeCustomer.id,
           branch_id: branchId,
-          requested_changes: { mobile: newMobile, address: newAddress }
+          requested_changes: changes
         })
       });
       const data = await res.json();
       if (res.ok) {
         alert("✅ " + data.message);
-        document.getElementById('updateFormSection').classList.add('hidden');
+        closeFullUpdateModal();
       } else {
         alert("❌ பிழை: " + data.detail);
       }
     }
 
+    // 4. புதிய விரிவான KYC சமர்ப்பித்தல் (File to Base64)
+    function openNewKycModal() { document.getElementById('fullKycModal').classList.remove('hidden'); }
+    function closeNewKycModal() { document.getElementById('fullKycModal').classList.add('hidden'); }
+
+    function readFileAsBase64(fileInput) {
+      return new Promise((resolve) => {
+        if (!fileInput.files || !fileInput.files[0]) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(fileInput.files[0]);
+      });
+    }
+
+    async function submitFullKycForm() {
+      const name = document.getElementById('fkyc_name').value.trim();
+      const mobile = document.getElementById('fkyc_mobile').value.trim();
+      const address = document.getElementById('fkyc_address').value.trim();
+      const proofNo = document.getElementById('fkyc_proof_no').value.trim();
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+
+      if (!name || !mobile || !address || !proofNo) {
+        alert("பெயர், முதன்மை மொபைல், முகவரி மற்றும் சான்று எண் கட்டாயம் தேவை.");
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitFullKyc');
+      btn.innerText = "படங்கள் பதிவேற்றப்பட்டு சமர்ப்பிக்கப்படுகிறது...";
+      btn.disabled = true;
+
+      const photoBase64 = await readFileAsBase64(document.getElementById('fkyc_file_photo'));
+      const signBase64 = await readFileAsBase64(document.getElementById('fkyc_file_sign'));
+      const proofBase64 = await readFileAsBase64(document.getElementById('fkyc_file_proof'));
+
+      const payload = {
+        name: name,
+        mobile: mobile,
+        alt_mobile: document.getElementById('fkyc_alt_mobile').value.trim() || null,
+        relation_type: document.getElementById('fkyc_rel_type').value,
+        guardian_name: document.getElementById('fkyc_guardian').value.trim() || null,
+        address: address,
+        id_proof_type: document.getElementById('fkyc_proof_type').value,
+        id_proof_no: proofNo,
+        nominee_name: document.getElementById('fkyc_nominee_name').value.trim() || null,
+        nominee_relation: document.getElementById('fkyc_nominee_rel').value.trim() || null,
+        nominee_mobile: document.getElementById('fkyc_nominee_mob').value.trim() || null,
+        ref1_name: document.getElementById('fkyc_ref1_name').value.trim() || null,
+        ref1_mobile: document.getElementById('fkyc_ref1_mob').value.trim() || null,
+        ref1_address: document.getElementById('fkyc_ref1_addr').value.trim() || null,
+        ref2_name: document.getElementById('fkyc_ref2_name').value.trim() || null,
+        ref2_mobile: document.getElementById('fkyc_ref2_mob').value.trim() || null,
+        ref2_address: document.getElementById('fkyc_ref2_addr').value.trim() || null,
+        customer_photo: photoBase64,
+        signature_photo: signBase64,
+        id_proof_photo: proofBase64,
+        branch_id: branchId
+      };
+
+      try {
+        const res = await fetch('/api/customer/new-full-kyc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ " + data.message);
+          closeNewKycModal();
+          document.getElementById('searchInput').value = mobile;
+          handleSearch();
+        } else {
+          alert("❌ பிழை: " + data.detail);
+        }
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      } finally {
+        btn.innerText = "முழு KYC-ஐ சமர்ப்பி (Submit KYC)";
+        btn.disabled = false;
+      }
+    }
+
+    // 5. Ornaments & Pawn Cart
     function addOrnamentToTable() {
       const type = document.getElementById('item_type').value.trim();
       const count = parseInt(document.getElementById('item_count').value) || 1;
@@ -1083,11 +1075,7 @@
       const net = parseFloat(document.getElementById('item_net').value) || 0;
       const purity = document.getElementById('item_purity').value;
 
-      if (!type || gross <= 0 || net <= 0) {
-        alert("நகை வகை, மொத்த எடை மற்றும் நிகர எடையைச் சரியாக உள்ளிடவும்.");
-        return;
-      }
-
+      if (!type || gross <= 0 || net <= 0) return alert("நகை வகை, மொத்த எடை மற்றும் நிகர எடையை உள்ளிடவும்.");
       ornamentList.push({ item_type: type, item_count: count, gross_weight: gross, net_weight: net, purity: purity });
       renderOrnamentsTable();
 
@@ -1105,7 +1093,6 @@
     function renderOrnamentsTable() {
       const tbody = document.getElementById('ornamentsTableBody');
       tbody.innerHTML = '';
-
       if (ornamentList.length === 0) {
         tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-3 text-center text-slate-400">நகைகள் சேர்க்கப்படவில்லை</td></tr>`;
         document.getElementById('sumCount').innerText = '0';
@@ -1116,10 +1103,7 @@
 
       let totCount = 0, totGross = 0, totNet = 0;
       ornamentList.forEach((item, idx) => {
-        totCount += item.item_count;
-        totGross += item.gross_weight;
-        totNet += item.net_weight;
-
+        totCount += item.item_count; totGross += item.gross_weight; totNet += item.net_weight;
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="p-2 font-medium">${item.item_type}</td>
@@ -1131,7 +1115,6 @@
         `;
         tbody.appendChild(tr);
       });
-
       document.getElementById('sumCount').innerText = totCount;
       document.getElementById('sumGross').innerText = totGross.toFixed(3);
       document.getElementById('sumNet').innerText = totNet.toFixed(3);
@@ -1145,24 +1128,12 @@
       const chgAmt = parseFloat(document.getElementById('charges_amount').value) || 0;
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
 
-      if (!loanNo || loanAmt <= 0) {
-        alert("நகைக்கடன் எண் மற்றும் கடன் தொகையை உள்ளிடவும்.");
-        return;
-      }
-      if (ornamentList.length === 0) {
-        alert("குறைந்தது ஒரு நகையாவது பட்டியலில் இருக்க வேண்டும்.");
-        return;
-      }
+      if (!loanNo || loanAmt <= 0) return alert("நகைக்கடன் எண் மற்றும் கடன் தொகையை உள்ளிடவும்.");
+      if (ornamentList.length === 0) return alert("குறைந்தது ஒரு நகையாவது சேர்க்கப்பட வேண்டும்.");
 
       const payload = {
-        customer_id: activeCustomer.id,
-        branch_id: branchId,
-        loan_no: loanNo,
-        scheme_name: scheme,
-        loan_amount: loanAmt,
-        charges_amount: chgAmt,
-        photo_url: null,
-        items: ornamentList
+        customer_id: activeCustomer.id, branch_id: branchId, loan_no: loanNo, scheme_name: scheme,
+        loan_amount: loanAmt, charges_amount: chgAmt, photo_url: null, items: ornamentList
       };
 
       try {
@@ -1176,13 +1147,10 @@
           cartItems.push({
             title: `புதிய அடகு (${loanNo})`,
             details: `${ornamentList.length} நகைகள் | நிகர எடை: ${document.getElementById('sumNet').innerText}g`,
-            debit: loanAmt,
-            credit: chgAmt
+            debit: loanAmt, credit: chgAmt
           });
-
           renderCart();
           alert("✅ " + data.message);
-
           document.getElementById('loan_no').value = '';
           document.getElementById('loan_amount').value = '';
           document.getElementById('charges_amount').value = '0';
@@ -1199,7 +1167,6 @@
     function renderCart() {
       const container = document.getElementById('cartItemsList');
       container.innerHTML = '';
-
       if (cartItems.length === 0) {
         container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>`;
         document.getElementById('cartCredit').innerText = '₹ 0.00';
@@ -1213,9 +1180,7 @@
 
       let totCredit = 0, totDebit = 0;
       cartItems.forEach((item) => {
-        totCredit += item.credit;
-        totDebit += item.debit;
-
+        totCredit += item.credit; totDebit += item.debit;
         const div = document.createElement('div');
         div.className = "p-2.5 bg-slate-50 border rounded-lg text-xs space-y-1";
         div.innerHTML = `
@@ -1256,14 +1221,10 @@
       }
     }
 
-    // 6. Checkout
+    // 6. Checkout & Denomination Logics
     function openCheckoutModal() {
-      if (cartItems.length === 0 || currentNetAbs <= 0) {
-        alert("கார்ட்டில் பரிவர்த்தனைகள் இல்லை அல்லது நிகர தொகை பூஜ்ஜியமாக உள்ளது.");
-        return;
-      }
-      const dirText = currentDirection === "COMPANY_PAYABLE" ? "நாம் வாடிக்கையாளருக்குத் தர வேண்டியது" : "வாடிக்கையாளர் நமக்குத் தர வேண்டியது";
-      document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${dirText})`;
+      if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் பரிவர்த்தனைகள் இல்லை.");
+      document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)}`;
       setPaymentMode('FULL_CASH');
       document.getElementById('checkoutModal').classList.remove('hidden');
     }
@@ -1275,7 +1236,6 @@
       const bCash = document.getElementById('btn_cash');
       const bBank = document.getElementById('btn_bank');
       const bSplit = document.getElementById('btn_split');
-
       bCash.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
       bBank.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
       bSplit.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
@@ -1287,19 +1247,14 @@
 
       const pCash = document.getElementById('pay_cash');
       const pBank = document.getElementById('pay_bank');
-
       if (mode === 'FULL_CASH') {
-        pCash.value = currentNetAbs; pBank.value = 0;
-        pCash.readOnly = true; pBank.readOnly = true;
+        pCash.value = currentNetAbs; pBank.value = 0; pCash.readOnly = true; pBank.readOnly = true;
       } else if (mode === 'FULL_BANK') {
-        pCash.value = 0; pBank.value = currentNetAbs;
-        pCash.readOnly = true; pBank.readOnly = true;
+        pCash.value = 0; pBank.value = currentNetAbs; pCash.readOnly = true; pBank.readOnly = true;
       } else {
-        pCash.value = (currentNetAbs / 2).toFixed(2);
-        pBank.value = (currentNetAbs / 2).toFixed(2);
+        pCash.value = (currentNetAbs / 2).toFixed(2); pBank.value = (currentNetAbs / 2).toFixed(2);
         pCash.readOnly = false; pBank.readOnly = false;
       }
-
       toggleSectionVisibility();
       calcDenom();
     }
@@ -1308,13 +1263,10 @@
       if (selectedMode !== 'SPLIT') return;
       const pCash = document.getElementById('pay_cash');
       const pBank = document.getElementById('pay_bank');
-
       if (source === 'cash') {
-        const cVal = parseFloat(pCash.value) || 0;
-        pBank.value = Math.max(0, currentNetAbs - cVal).toFixed(2);
+        pBank.value = Math.max(0, currentNetAbs - (parseFloat(pCash.value) || 0)).toFixed(2);
       } else {
-        const bVal = parseFloat(pBank.value) || 0;
-        pCash.value = Math.max(0, currentNetAbs - bVal).toFixed(2);
+        pCash.value = Math.max(0, currentNetAbs - (parseFloat(pBank.value) || 0)).toFixed(2);
       }
       toggleSectionVisibility();
       calcDenom();
@@ -1335,13 +1287,11 @@
       const d20 = (parseInt(document.getElementById('d20').value) || 0) * 20;
       const d10 = (parseInt(document.getElementById('d10').value) || 0) * 10;
       const dcoins = parseInt(document.getElementById('dcoins').value) || 0;
-
       const totalDenom = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
       document.getElementById('denomSumDisplay').innerText = `₹ ${totalDenom.toFixed(2)}`;
 
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const badge = document.getElementById('denomMatchBadge');
-
       if (cVal > 0) {
         if (Math.round(totalDenom) === Math.round(cVal)) {
           badge.innerText = "பொருந்தியது (Match)";
@@ -1357,27 +1307,7 @@
     async function requestOtpFromCustomer() {
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
-
-      if (bVal > 0 && !document.getElementById('bank_ref').value.trim()) {
-        alert("வங்கி பரிவர்த்தனை குறிப்பு எண் உள்ளிடவும்.");
-        return;
-      }
-
-      if (cVal > 0) {
-        const d500 = (parseInt(document.getElementById('d500').value) || 0) * 500;
-        const d200 = (parseInt(document.getElementById('d200').value) || 0) * 200;
-        const d100 = (parseInt(document.getElementById('d100').value) || 0) * 100;
-        const d50 = (parseInt(document.getElementById('d50').value) || 0) * 50;
-        const d20 = (parseInt(document.getElementById('d20').value) || 0) * 20;
-        const d10 = (parseInt(document.getElementById('d10').value) || 0) * 10;
-        const dcoins = parseInt(document.getElementById('dcoins').value) || 0;
-        const tot = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
-
-        if (Math.round(tot) !== Math.round(cVal)) {
-          alert(`தாள்களின் மொத்தம் ரொக்கத் தொகையுடன் சரியாகப் பொருந்த வேண்டும்.`);
-          return;
-        }
-      }
+      if (bVal > 0 && !document.getElementById('bank_ref').value.trim()) return alert("வங்கி பரிவர்த்தனை குறிப்பு எண் உள்ளிடவும்.");
 
       const btn = document.getElementById('btn_send_otp');
       btn.innerText = "SMS அனுப்பப்படுகிறது...";
@@ -1388,11 +1318,8 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            customer_id: activeCustomer.id,
-            mobile: activeCustomer.mobile,
-            customer_name: activeCustomer.name,
-            net_amount: currentNetAbs,
-            direction: currentDirection
+            customer_id: activeCustomer.id, mobile: activeCustomer.mobile,
+            customer_name: activeCustomer.name, net_amount: currentNetAbs, direction: currentDirection
           })
         });
         const data = await res.json();
@@ -1415,10 +1342,7 @@
 
     async function confirmSettleWithOtp() {
       const enteredOtp = document.getElementById('input_otp').value.trim();
-      if (!enteredOtp || enteredOtp.length !== 6) {
-        alert("6 இலக்க OTP எண்ணைச் சரியாக உள்ளிடவும்.");
-        return;
-      }
+      if (!enteredOtp || enteredOtp.length !== 6) return alert("6 இலக்க OTP எண்ணை உள்ளிடவும்.");
 
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
@@ -1438,17 +1362,10 @@
       }
 
       const payload = {
-        customer_id: activeCustomer.id,
-        branch_id: branchId,
-        otp_code: enteredOtp,
-        net_amount: currentNetAbs,
-        direction: currentDirection,
-        settlement_type: selectedMode,
-        cash_amount: cVal,
-        bank_amount: bVal,
-        bank_ref_no: document.getElementById('bank_ref').value.trim() || null,
-        bank_name: document.getElementById('bank_name').value.trim() || null,
-        denominations: denomPayload
+        customer_id: activeCustomer.id, branch_id: branchId, otp_code: enteredOtp,
+        net_amount: currentNetAbs, direction: currentDirection, settlement_type: selectedMode,
+        cash_amount: cVal, bank_amount: bVal, bank_ref_no: document.getElementById('bank_ref').value.trim() || null,
+        bank_name: document.getElementById('bank_name').value.trim() || null, denominations: denomPayload
       };
 
       const btn = document.getElementById('btn_confirm_settle');
@@ -1472,43 +1389,273 @@
       } catch (err) {
         alert("பிழை: " + err.message);
       } finally {
-        btn.innerText = "சரிபார்த்து முடி (Verify & Close)";
+        btn.innerText = "சரிபார்த்து முடி";
         btn.disabled = false;
       }
     }
 
-    function openNewKycModal() { document.getElementById('kycModal').classList.remove('hidden'); }
-    function closeNewKycModal() { document.getElementById('kycModal').classList.add('hidden'); }
+    // 8. HQ Approvals & Admin CRUD
+    async function loadPendingApprovals() {
+      try {
+        const res = await fetch('/api/hq/pending-approvals');
+        const data = await res.json();
+        const kycBody = document.getElementById('pendingKycTableBody');
+        kycBody.innerHTML = '';
+        if (!data.pending_kyc || data.pending_kyc.length === 0) {
+          kycBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">நிலுவைகள் இல்லை</td></tr>`;
+        } else {
+          data.pending_kyc.forEach(c => {
+            const tr = document.createElement('tr');
+            const img = c.customer_photo ? `<img src="${c.customer_photo}" class="w-8 h-8 rounded-full object-cover border">` : `👤`;
+            tr.innerHTML = `
+              <td class="p-2.5 text-center">${img}</td>
+              <td class="p-2.5 font-bold">${c.name}</td>
+              <td class="p-2.5">${c.mobile}</td>
+              <td class="p-2.5">${c.relation_type || '-'}: ${c.guardian_name || '-'}</td>
+              <td class="p-2.5">${c.id_proof_type || ''}: ${c.id_proof_no || '-'}</td>
+              <td class="p-2.5">${c.nominee_name || '-'} (${c.nominee_relation || ''})</td>
+              <td class="p-2.5 text-center space-x-1">
+                <button onclick="actionKyc(${c.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
+                <button onclick="actionKyc(${c.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
+              </td>
+            `;
+            kycBody.appendChild(tr);
+          });
+        }
 
-    async function submitNewKyc() {
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      const payload = {
-        name: document.getElementById('kyc_name').value.trim(),
-        mobile: document.getElementById('kyc_mobile').value.trim(),
-        guardian_name: document.getElementById('kyc_guardian').value.trim() || null,
-        address: document.getElementById('kyc_address').value.trim() || null,
-        branch_id: branchId
-      };
-
-      if (!payload.name || !payload.mobile) {
-        alert("பெயர் மற்றும் மொபைல் எண் கட்டாயம் தேவை.");
-        return;
+        const upBody = document.getElementById('pendingUpdatesTableBody');
+        upBody.innerHTML = '';
+        if (!data.pending_updates || data.pending_updates.length === 0) {
+          upBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்றக் கோரிக்கைகள் இல்லை</td></tr>`;
+        } else {
+          data.pending_updates.forEach(u => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="p-2.5 font-bold">${u.test_customers?.name || 'ID: ' + u.customer_id}</td>
+              <td class="p-2.5">${u.branch_id}</td>
+              <td class="p-2.5"><code class="text-[10px] bg-slate-100 p-1 rounded max-w-xs block overflow-x-auto">${JSON.stringify(u.requested_changes)}</code></td>
+              <td class="p-2.5 text-center space-x-1">
+                <button onclick="actionUpdate(${u.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
+                <button onclick="actionUpdate(${u.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
+              </td>
+            `;
+            upBody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        console.error("ஒப்புதல் பட்டியல் பிழை:", err);
       }
+    }
 
-      const res = await fetch('/api/customer/new-kyc', {
+    async function actionKyc(id, action) {
+      const res = await fetch('/api/hq/approve-kyc', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: id, action: action, admin_id: currentUser.id })
+      });
+      const data = await res.json();
+      alert(data.message);
+      loadPendingApprovals();
+    }
+
+    async function actionUpdate(id, action) {
+      const res = await fetch('/api/hq/approve-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: id, action: action, admin_id: currentUser.id })
+      });
+      const data = await res.json();
+      alert(data.message);
+      loadPendingApprovals();
+    }
+
+    // கிளை & பணியாளர் CRUD
+    async function loadBranchesList() {
+      const res = await fetch('/api/admin/branches');
+      const data = await res.json();
+      branchesCache = data.data || [];
+      const tbody = document.getElementById('branchesTableBody');
+      tbody.innerHTML = '';
+      branchesCache.forEach(b => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold">${b.id}</td>
+          <td class="p-2.5 font-semibold text-amber-800">${b.branch_code}</td>
+          <td class="p-2.5 font-bold">${b.branch_name}</td>
+          <td class="p-2.5">${b.city}</td>
+          <td class="p-2.5">${b.phone || '-'}</td>
+          <td class="p-2.5 text-center space-x-1">
+            <button onclick="editBranch(${b.id})" class="px-2 py-1 bg-amber-100 text-amber-800 rounded font-bold text-[11px]">எடிட் ✏️</button>
+            <button onclick="deleteBranch(${b.id})" class="px-2 py-1 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட் 🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const bSelect = document.getElementById('new_staff_branch');
+      bSelect.innerHTML = '';
+      branchesCache.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id; opt.innerText = `${b.branch_name} (${b.branch_code})`;
+        bSelect.appendChild(opt);
+      });
+    }
+
+    function editBranch(id) {
+      const b = branchesCache.find(x => x.id === id);
+      if (!b) return;
+      document.getElementById('edit_branch_id').value = b.id;
+      document.getElementById('new_branch_code').value = b.branch_code;
+      document.getElementById('new_branch_name').value = b.branch_name;
+      document.getElementById('new_branch_city').value = b.city;
+      document.getElementById('new_branch_phone').value = b.phone || '';
+      document.getElementById('branchFormTitle').innerHTML = `<span>✏️</span> கிளை திருத்துதல் (ID: ${b.id})`;
+      document.getElementById('btnSubmitBranch').innerText = "புதுப்பி (Update)";
+      document.getElementById('btnCancelBranchEdit').classList.remove('hidden');
+    }
+
+    function cancelBranchEdit() {
+      document.getElementById('edit_branch_id').value = '';
+      document.getElementById('new_branch_code').value = '';
+      document.getElementById('new_branch_name').value = '';
+      document.getElementById('new_branch_city').value = '';
+      document.getElementById('new_branch_phone').value = '';
+      document.getElementById('branchFormTitle').innerHTML = `<span>🏢</span> புதிய கிளை உருவாக்கம்`;
+      document.getElementById('btnSubmitBranch').innerText = "+ கிளையைச் சேர்";
+      document.getElementById('btnCancelBranchEdit').classList.add('hidden');
+    }
+
+    async function submitBranchForm() {
+      const editId = document.getElementById('edit_branch_id').value;
+      const payload = {
+        branch_code: document.getElementById('new_branch_code').value.trim(),
+        branch_name: document.getElementById('new_branch_name').value.trim(),
+        city: document.getElementById('new_branch_city').value.trim(),
+        phone: document.getElementById('new_branch_phone').value.trim() || null
+      };
+      if (!payload.branch_code || !payload.branch_name || !payload.city) return alert("அனைத்து விபரங்களையும் உள்ளிடவும்.");
+
+      const res = await fetch(editId ? `/api/admin/branch/${editId}` : '/api/admin/branch/create', {
+        method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
-        alert("✅ " + data.message);
-        closeNewKycModal();
-        document.getElementById('searchInput').value = payload.mobile;
-        handleSearch();
-      } else {
-        alert("❌ பிழை: " + (data.detail || "பதிவு தோல்வியடைந்தது"));
-      }
+        alert("✅ " + data.message); cancelBranchEdit(); loadBranchesList();
+      } else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function deleteBranch(id) {
+      if (!confirm("இந்தக் கிளையை நிச்சயம் நீக்க விரும்புகிறீர்களா?")) return;
+      const res = await fetch(`/api/admin/branch/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) { alert("✅ " + data.message); loadBranchesList(); }
+      else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function loadStaffList() {
+      const res = await fetch('/api/admin/staff');
+      const data = await res.json();
+      staffCache = data.data || [];
+      const tbody = document.getElementById('staffTableBody');
+      tbody.innerHTML = '';
+      staffCache.forEach(s => {
+        const tr = document.createElement('tr');
+        let perms = [];
+        if (s.can_access_counter) perms.push('<span class="bg-blue-50 text-blue-700 px-1 py-0.5 rounded text-[10px] font-bold">கவுண்ட்டர்</span>');
+        if (s.can_approve_kyc) perms.push('<span class="bg-emerald-50 text-emerald-700 px-1 py-0.5 rounded text-[10px] font-bold">KYC</span>');
+        if (s.can_approve_updates) perms.push('<span class="bg-amber-50 text-amber-700 px-1 py-0.5 rounded text-[10px] font-bold">மாற்றம்</span>');
+        if (s.can_manage_users) perms.push('<span class="bg-purple-50 text-purple-700 px-1 py-0.5 rounded text-[10px] font-bold">அட்மின்</span>');
+
+        tr.innerHTML = `
+          <td class="p-2.5 font-bold">${s.username}</td>
+          <td class="p-2.5">${s.full_name}</td>
+          <td class="p-2.5 font-semibold text-amber-900">${s.test_branches?.branch_name || 'Branch #' + s.branch_id}</td>
+          <td class="p-2.5"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold text-[10px]">${s.role_key}</span></td>
+          <td class="p-2.5 flex flex-wrap gap-1">${perms.join('') || '-'}</td>
+          <td class="p-2.5 text-center space-x-1">
+            <button onclick="editStaff(${s.id})" class="px-2 py-1 bg-amber-100 text-amber-800 rounded font-bold text-[11px]">எடிட் ✏️</button>
+            <button onclick="deleteStaff(${s.id})" class="px-2 py-1 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட் 🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function editStaff(id) {
+      const s = staffCache.find(x => x.id === id);
+      if (!s) return;
+      document.getElementById('edit_staff_id').value = s.id;
+      document.getElementById('new_staff_user').value = s.username;
+      document.getElementById('new_staff_user').disabled = true;
+      document.getElementById('new_staff_pass').value = '';
+      document.getElementById('new_staff_name').value = s.full_name;
+      document.getElementById('new_staff_mobile').value = s.mobile;
+      document.getElementById('new_staff_role').value = s.role_key;
+      document.getElementById('new_staff_branch').value = s.branch_id;
+      document.getElementById('perm_counter').checked = !!s.can_access_counter;
+      document.getElementById('perm_kyc').checked = !!s.can_approve_kyc;
+      document.getElementById('perm_updates').checked = !!s.can_approve_updates;
+      document.getElementById('perm_admin').checked = !!s.can_manage_users;
+      document.getElementById('staffFormTitle').innerHTML = `<span>✏️</span> பணியாளர் திருத்துதல் (${s.username})`;
+      document.getElementById('btnSubmitStaff').innerText = "புதுப்பி (Update)";
+      document.getElementById('btnCancelStaffEdit').classList.remove('hidden');
+    }
+
+    function cancelStaffEdit() {
+      document.getElementById('edit_staff_id').value = '';
+      document.getElementById('new_staff_user').value = '';
+      document.getElementById('new_staff_user').disabled = false;
+      document.getElementById('new_staff_pass').value = '';
+      document.getElementById('new_staff_name').value = '';
+      document.getElementById('new_staff_mobile').value = '';
+      document.getElementById('perm_counter').checked = true;
+      document.getElementById('perm_kyc').checked = false;
+      document.getElementById('perm_updates').checked = false;
+      document.getElementById('perm_admin').checked = false;
+      document.getElementById('staffFormTitle').innerHTML = `<span>👤</span> புதிய பணியாளர் கணக்கு உருவாக்கம்`;
+      document.getElementById('btnSubmitStaff').innerText = "+ பணியாளரை உருவாக்கு";
+      document.getElementById('btnCancelStaffEdit').classList.add('hidden');
+    }
+
+    async function submitStaffForm() {
+      const editId = document.getElementById('edit_staff_id').value;
+      const branchId = parseInt(document.getElementById('new_staff_branch').value);
+      if (!branchId) return alert("கிளையைத் தேர்வு செய்யவும்.");
+
+      const payload = {
+        username: document.getElementById('new_staff_user').value.trim(),
+        password: document.getElementById('new_staff_pass').value.trim() || (editId ? null : "gold123"),
+        full_name: document.getElementById('new_staff_name').value.trim(),
+        mobile: document.getElementById('new_staff_mobile').value.trim(),
+        role_key: document.getElementById('new_staff_role').value,
+        branch_id: branchId,
+        can_access_counter: document.getElementById('perm_counter').checked,
+        can_approve_kyc: document.getElementById('perm_kyc').checked,
+        can_approve_updates: document.getElementById('perm_updates').checked,
+        can_manage_users: document.getElementById('perm_admin').checked
+      };
+
+      if (!payload.username || !payload.full_name) return alert("அனைத்து விபரங்களையும் உள்ளிடவும்.");
+
+      const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
+        method: editId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message); cancelStaffEdit(); loadStaffList();
+      } else alert("❌ பிழை: " + data.detail);
+    }
+
+    async function deleteStaff(id) {
+      if (!confirm("இந்தப் பணியாளரை நிச்சயம் நீக்க விரும்புகிறீர்களா?")) return;
+      const res = await fetch(`/api/admin/staff/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) { alert("✅ " + data.message); loadStaffList(); }
+      else alert("❌ பிழை: " + data.detail);
     }
   </script>
 </body>

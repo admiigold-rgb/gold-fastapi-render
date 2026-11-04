@@ -217,18 +217,22 @@ def staff_unified_login(data: LoginRequest):
             raise HTTPException(status_code=403, detail="இந்தக் கணக்கு முடக்கப்பட்டுள்ளது.")
 
         branch_info = user.get("test_branches") or {}
+        role = user.get("role_key", "BRANCH_STAFF")
+        is_admin_role = (role in ["HQ_ADMIN", "ADMIN"])
+
+        # HQ_ADMIN ஆக இருந்தால் கட்டாயமாக அனைத்து உரிமைகளும் True ஆக்கப்படும்
         user_profile = {
             "id": user["id"],
             "username": user["username"],
             "full_name": user["full_name"],
-            "role_key": user.get("role_key", "BRANCH_STAFF"),
+            "role_key": role,
             "branch_id": user.get("branch_id") or 1,
-            "branch_name": branch_info.get("branch_name", "Branch"),
+            "branch_name": branch_info.get("branch_name", "Head Office"),
             "permissions": {
-                "can_access_counter": bool(user.get("can_access_counter", True)),
-                "can_approve_kyc": bool(user.get("can_approve_kyc", False)),
-                "can_approve_updates": bool(user.get("can_approve_updates", False)),
-                "can_manage_users": bool(user.get("can_manage_users", False))
+                "can_access_counter": True if is_admin_role else bool(user.get("can_access_counter", True)),
+                "can_approve_kyc": True if is_admin_role else bool(user.get("can_approve_kyc", False)),
+                "can_approve_updates": True if is_admin_role else bool(user.get("can_approve_updates", False)),
+                "can_manage_users": True if is_admin_role else bool(user.get("can_manage_users", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}

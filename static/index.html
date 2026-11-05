@@ -315,6 +315,30 @@
     </div>
 
     <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் மையம் ==================== -->
+    <!-- தலைமையகம்: OTP விலக்குக் கோரிக்கைகள் -->
+    <div id="hqOtpExemptSection" class="space-y-2 bg-yellow-50 p-3.5 rounded-2xl border-2 border-yellow-400 shadow-sm">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs font-black text-amber-950 uppercase flex items-center gap-2">
+          <span>⚡</span> கிளைகளின் அவசர OTP விலக்குக் கோரிக்கைகள்:
+        </h3>
+        <span class="text-[10px] bg-yellow-200 text-amber-900 px-2 py-0.5 rounded font-bold">உயர் அதிகாரம் தேவை</span>
+      </div>
+      <div class="overflow-x-auto border-2 border-yellow-200 rounded-xl bg-white">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-yellow-100/80 text-amber-950 border-b border-yellow-200">
+            <tr>
+              <th class="p-2.5">வருகை #</th>
+              <th class="p-2.5">வாடிக்கையாளர் பெயர்</th>
+              <th class="p-2.5">காரணம்</th>
+              <th class="p-2.5 text-center">நடவடிக்கை</th>
+            </tr>
+          </thead>
+          <tbody id="hqOtpExemptTableBody" class="divide-y divide-yellow-100 text-slate-700">
+            <tr><td colspan="4" class="p-4 text-center text-slate-400">விலக்குக் கோரிக்கைகள் எதுவும் இல்லை</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div id="hqApprovalTab" class="hidden space-y-5">
       <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
         <div class="flex justify-between items-center border-b border-purple-100 pb-3">
@@ -622,6 +646,9 @@
             <label class="flex items-center space-x-2 font-bold text-brand-violet"><input type="checkbox" id="perm_kyc"><span>2. KYC ஒப்புதல் உரிமை</span></label>
             <label class="flex items-center space-x-2 font-bold text-brand-violet"><input type="checkbox" id="perm_updates"><span>3. சுயவிவர மாற்ற ஒப்புதல்</span></label>
             <label class="flex items-center space-x-2 font-bold text-brand-violet"><input type="checkbox" id="perm_admin"><span>4. நிர்வாக அணுகல்</span></label>
+            <label class="flex items-center space-x-2 font-bold text-amber-900 col-span-1 sm:col-span-2 bg-yellow-100/60 p-1.5 rounded-lg border border-yellow-300">
+              <input type="checkbox" id="perm_otp_exempt"><span>5. அவசர OTP விலக்கு ஒப்புதல் உரிமை (HQ Exemption Authority)</span>
+            </label>
           </div>
           <div class="flex justify-end">
             <button onclick="submitStaffForm()" id="btnSubmitStaff" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500">+ பணியாளரை உருவாக்கு</button>
@@ -801,11 +828,17 @@
         </div>
 
         <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
+          <button onclick="requestOtpExemptionModal()" type="button" class="px-3.5 py-2 bg-yellow-100 hover:bg-yellow-200 text-amber-900 rounded-xl text-xs font-black border border-yellow-400 shadow-sm transition">
+          ⚡ OTP விலக்கு கோரு (Exempt OTP)
+        </button>
+      
+        <div class="flex gap-2">
           <button onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
-          <button onclick="requestOtpFromCustomer()" id="btn_send_otp" class="brand-gradient-gold-btn px-6 py-2.5 rounded-xl text-xs font-black shadow border border-yellow-500">SMS OTP அனுப்பு 📲</button>
+          <button onclick="requestOtpFromCustomer()" id="btn_send_otp" class="brand-gradient-gold-btn px-5 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">
+            SMS OTP அனுப்பு 📲
+          </button>
         </div>
       </div>
-    </div>
 
     <!-- 4. OTP Modal -->
     <div id="otpVerifyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
@@ -2228,6 +2261,7 @@
       });
     }
 
+    // 1. பணியாளர் படிவத்தில் புதிய செக்பாக்ஸை கையாளுதல்
     function editStaff(id) {
       const s = staffCache.find(x => x.id === id);
       if (!s) return;
@@ -2243,25 +2277,17 @@
       document.getElementById('perm_kyc').checked = !!s.can_approve_kyc;
       document.getElementById('perm_updates').checked = !!s.can_approve_updates;
       document.getElementById('perm_admin').checked = !!s.can_manage_users;
+      document.getElementById('perm_otp_exempt').checked = !!s.can_approve_otp_exempt; // 👈 சேர்க்கப்பட்டது
       document.getElementById('staffFormTitle').innerText = "✏️ பணியாளர் திருத்துதல்";
       document.getElementById('btnSubmitStaff').innerText = "புதுப்பி";
       document.getElementById('btnCancelStaffEdit').classList.remove('hidden');
     }
-
-    function cancelStaffEdit() {
-      document.getElementById('edit_staff_id').value = '';
-      document.getElementById('new_staff_user').value = '';
-      document.getElementById('new_staff_user').disabled = false;
-      document.getElementById('staffFormTitle').innerText = "👤 புதிய பணியாளர் உருவாக்கம்";
-      document.getElementById('btnSubmitStaff').innerText = "+ பணியாளரை உருவாக்கு";
-      document.getElementById('btnCancelStaffEdit').classList.add('hidden');
-    }
-
+    
     async function submitStaffForm() {
       const editId = document.getElementById('edit_staff_id').value;
       const branchId = parseInt(document.getElementById('new_staff_branch').value);
       if (!branchId) return alert("கிளையைத் தேர்வு செய்யவும்.");
-
+    
       const payload = {
         username: document.getElementById('new_staff_user').value.trim(),
         password: document.getElementById('new_staff_pass').value.trim() || (editId ? null : "gold123"),
@@ -2272,16 +2298,111 @@
         can_access_counter: document.getElementById('perm_counter').checked,
         can_approve_kyc: document.getElementById('perm_kyc').checked,
         can_approve_updates: document.getElementById('perm_updates').checked,
-        can_manage_users: document.getElementById('perm_admin').checked
+        can_manage_users: document.getElementById('perm_admin').checked,
+        can_approve_otp_exempt: document.getElementById('perm_otp_exempt').checked // 👈 அனுப்பப்படும் தரவு
       };
-
+    
       const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
         method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (res.ok) { alert("✅ " + data.message); cancelStaffEdit(); loadStaffList(); } else alert("❌ பிழை: " + data.detail);
+      if (res.ok) { alert("✅ " + data.message); cancelStaffEdit(); loadStaffList(); } 
+      else alert("❌ பிழை: " + data.detail);
+    }
+    
+    // 2. கிளை கவுண்ட்டரிலிருந்து OTP விலக்குக் கோரிக்கை அனுப்புதல்
+    async function requestOtpExemptionModal() {
+      if (!activeVisitId) return alert("செயலில் உள்ள வருகை விபரம் கிடைக்கவில்லை. வாடிக்கையாளரைத் தேர்வு செய்யவும்.");
+      const reason = prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும் (எ.கா: வாடிக்கையாளர் மொபைல் சிக்னல் இல்லை / நெட்வொர்க் பிழை):");
+      if (!reason) return;
+    
+      const res = await fetch('/api/otp/request-exemption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visit_id: activeVisitId,
+          branch_id: parseInt(document.getElementById('active_branch_id').value) || 1,
+          reason: reason,
+          staff_id: currentUser ? currentUser.id : 1
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் இந்தப் பரிவர்த்தனை தானாகவே நிறைவடையும்.");
+        checkOtpExemptionLoop(); // அனுமதியைத் தானாகக் கவனிக்கும் லூப்
+      } else {
+        alert("❌ பிழை: " + data.detail);
+      }
+    }
+    
+    // அனுமதியைத் தானாகக் கவனித்து OTP இன்றி முடித்தல்
+    async function checkOtpExemptionLoop() {
+      if (!activeVisitId) return;
+      const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
+      const data = await res.json();
+      
+      if (data.data?.otp_exempted === true) {
+        alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
+        closeCheckoutModal();
+        confirmSettleWithOtp(true); // 👈 isExempted = true என அனுப்பி தானாக முடித்தல்
+      } else if (data.data?.otp_exemption_status === 'REJECTED') {
+        alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. வாடிக்கையாளர் மொபைலுக்கு SMS OTP அனுப்பவும்.");
+      } else {
+        setTimeout(checkOtpExemptionLoop, 3000); // 3 விநாடிகளுக்கு ஒருமுறை சரிபார்த்தல்
+      }
+    }
+    
+    // 3. தலைமையகம்: OTP விலக்குக் கோரிக்கைகளைப் பட்டியலிடுதல் & அனுமதித்தல்
+    async function loadHqOtpExemptions() {
+      const exBody = document.getElementById('hqOtpExemptTableBody');
+      if (!exBody) return;
+      
+      try {
+        const res = await fetch('/api/hq/pending-otp-exemptions');
+        const data = await res.json();
+        exBody.innerHTML = '';
+        
+        if (!data.data || data.data.length === 0) {
+          exBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விலக்குக் கோரிக்கைகள் எதுவும் இல்லை</td></tr>`;
+          return;
+        }
+    
+        const hasAuthority = currentUser?.permissions?.can_approve_otp_exempt === true;
+    
+        data.data.forEach(ex => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-2.5 font-bold font-mono text-brand-violet">#VIS-${ex.id}</td>
+            <td class="p-2.5 font-bold">${ex.test_customers?.name} <span class="text-slate-500 font-mono text-xs">(${ex.test_customers?.mobile})</span></td>
+            <td class="p-2.5 text-rose-700 font-semibold">${ex.purpose}</td>
+            <td class="p-2.5 text-center space-x-1.5">
+              ${hasAuthority ? `
+                <button onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow">அனுமதி (Approve)</button>
+                <button onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
+              ` : `
+                <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded">அனுமதி உரிமை இல்லை</span>
+              `}
+            </td>
+          `;
+          exBody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    
+    async function actionOtpExempt(visitId, action) {
+      if (!confirm(`இந்த வருகைக்கு OTP விலக்கினை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+      const res = await fetch('/api/hq/approve-otp-exemption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visit_id: visitId, action, admin_id: currentUser.id })
+      });
+      const data = await res.json();
+      alert(data.message);
+      loadHqOtpExemptions();
     }
 
     async function deleteStaff(id) {

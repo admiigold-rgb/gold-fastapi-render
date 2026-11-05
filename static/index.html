@@ -1037,29 +1037,52 @@
 
     function onDateChanged() { checkCurrentDateStatus(); }
 
+    // 2: நாளின் நிலையைச் சரிபார்த்து திரையில் உள்ள பொத்தான்களை முடக்குதல் / அனுமதித்தல்
     async function checkCurrentDateStatus() {
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
       const selDate = document.getElementById('txn_date').value;
       const badge = document.getElementById('cashDayStatusBadge');
-
+      const btnCloseDay = document.getElementById('btnCloseDay');
+    
       try {
         const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date=${selDate}`);
         const data = await res.json();
         currentCashDayData = data.data;
-
-        if (!currentCashDayData) {
-          badge.innerText = "திறக்கப்படவில்லை (NOT OPEN)";
-          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
-        } else if (currentCashDayData.status === 'OPEN') {
-          badge.innerText = `திறக்கப்பட்டுள்ளது (இருப்பு: ₹${currentCashDayData.opening_balance})`;
+    
+        if (currentCashDayData.status === 'OPEN') {
+          badge.innerText = `திறக்கப்பட்டுள்ளது (தொடக்க இருப்பு: ₹${currentCashDayData.opening_balance.toLocaleString('en-IN')})`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
+          
+          if (btnCloseDay) btnCloseDay.classList.remove('hidden');
+          toggleFormsLock(false);
         } else {
-          badge.innerText = `பூட்டப்பட்டது (Closed: ₹${currentCashDayData.closing_balance})`;
-          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-purple-100 text-brand-violet border border-purple-300";
+          badge.innerText = `🔒 பூட்டப்பட்டது (இறுதி இருப்பு: ₹${currentCashDayData.closing_balance.toLocaleString('en-IN')})`;
+          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
+          
+          if (btnCloseDay) btnCloseDay.classList.add('hidden');
+          toggleFormsLock(true);
         }
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error("நாள் நிலை பிழை:", e);
+      }
     }
-
+    
+    // படிவத்தைப் பூட்டும் / திறக்கும் செயல்பாடு
+    function toggleFormsLock(isLocked) {
+      const pawnBtn = document.querySelector("button[onclick='submitPawnToDatabase()']");
+      const checkoutBtn = document.querySelector("button[onclick='openCheckoutModal()']");
+      
+      if (pawnBtn) {
+        pawnBtn.disabled = isLocked;
+        pawnBtn.style.opacity = isLocked ? "0.5" : "1";
+        pawnBtn.style.cursor = isLocked ? "not-allowed" : "pointer";
+      }
+      if (checkoutBtn) {
+        checkoutBtn.disabled = isLocked;
+        checkoutBtn.style.opacity = isLocked ? "0.5" : "1";
+        checkoutBtn.style.cursor = isLocked ? "not-allowed" : "pointer";
+      }
+    }
     async function openCashDayModal(mode) {
       currentDayMode = mode;
       const selDate = document.getElementById('txn_date').value;
@@ -1413,7 +1436,9 @@
 
     // 6. Cart & Loan Submission
     async function submitPawnToDatabase() {
-      if (!activeCustomer) return;
+      if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
+        return alert("❌ தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் புதிய அடகு வைக்க முடியாது!");
+      }
       const loanNo = document.getElementById('loan_no').value.trim();
       const scheme = document.getElementById('scheme_name').value;
       const loanAmt = parseFloat(document.getElementById('loan_amount').value) || 0;

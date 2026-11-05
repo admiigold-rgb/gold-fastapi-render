@@ -834,8 +834,9 @@
         <div class="flex justify-between items-center gap-2 pt-3 border-t border-purple-100">
           <button type="button" 
                   id="btnExemptOtpTrigger" 
-                  onclick="requestOtpExemptionModal()" 
-                  class="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-amber-950 rounded-xl text-xs font-black border-2 border-yellow-500 shadow-md transition cursor-pointer">
+                  onclick="triggerOtpExemptDirectly(event)" 
+                  style="position: relative; z-index: 9999; cursor: pointer;"
+                  class="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-amber-950 rounded-xl text-xs font-black border-2 border-yellow-500 shadow-md">
             ⚡ OTP விலக்கு கோரு (Exempt OTP)
           </button>
           
@@ -1850,20 +1851,26 @@
 
     // 👇👇 இந்த இடத்தில் நேராக ஒட்டவும் (Paste Here) 👇👇
     async function requestOtpExemptionModal() {
-      // வாடிக்கையாளர் தேர்வு செய்யப்பட்டுள்ளாரா எனச் சரிபார்த்தல்
+    // ⚡ எந்தத் தடையுமின்றி நேரடியாக இயங்கும் OTP விலக்கு செயல்பாடு
+    async function triggerOtpExemptDirectly(e) {
+      if (e) e.preventDefault();
+
+      // 1. வாடிக்கையாளர் தேர்வு சரிபார்ப்பு
       if (!activeCustomer || !activeCustomer.id) {
-        return alert("⚠️ செயலில் உள்ள வாடிக்கையாளர் விபரம் கிடைக்கவில்லை. வாடிக்கையாளரை மீண்டும் தேடித் தேர்வு செய்யவும்.");
+        alert("⚠️ வாடிக்கையாளர் தேர்வு செய்யப்படவில்லை! தயவுசெய்து வாடிக்கையாளரைத் தேடித் தேர்ந்தெடுக்கவும்.");
+        return;
       }
 
-      // ஒருவேளை activeVisitId கிடைக்கவில்லை என்றால், உடனடியாகப் புதிய வருகையைப் பதிவு செய்து கொள்ளுதல்
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+
+      // 2. வருகை எண் இல்லை எனில் உடனே உருவாக்குதல்
       if (!activeVisitId) {
         try {
           const vRes = await fetch('/api/customer/visit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              customer_id: activeCustomer.id, 
+            body: JSON.stringify({
+              customer_id: activeCustomer.id,
               branch_id: branchId,
               purpose: "REGULAR_TRANSACTION"
             })
@@ -1871,17 +1878,21 @@
           const vData = await vRes.json();
           activeVisitId = vData.data?.id;
         } catch (err) {
-          return alert("❌ வருகைப் பதிவு தொடங்குவதில் பிழை: " + err.message);
+          alert("❌ வருகை பதிவு செய்வதில் பிழை: " + err.message);
+          return;
         }
       }
 
       if (!activeVisitId) {
-        return alert("⚠️ வருகை எண்ணை உருவாக்க முடியவில்லை. தயவுசெய்து பக்கத்தைப் புதுப்பித்து மீண்டும் முயற்சிக்கவும்.");
+        alert("⚠️ வருகை எண் கிடைக்கவில்லை. பக்கத்தை ரீஃப்ரெஷ் செய்யவும்.");
+        return;
       }
 
-      const reason = prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும் (எ.கா: சிக்னல் இல்லை / வாடிக்கையாளர் மொபைல் கொண்டுவரவில்லை):");
+      // 3. காரணத்தை உள்ளிடக் கோருதல்
+      const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
       if (!reason || reason.trim() === "") return;
 
+      // 4. API-க்கு கோரிக்கை அனுப்புதல்
       try {
         const res = await fetch('/api/otp/request-exemption', {
           method: 'POST',
@@ -1894,14 +1905,36 @@
           })
         });
         const data = await res.json();
+
         if (res.ok) {
-          alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் இந்தப் பரிவர்த்தனை தானாகவே நிறைவடையும்.");
-          checkOtpExemptionLoop(); // தலைமையக அனுமதியைக் கவனிக்கும் லூப்
+          alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் தானாகவே பரிவர்த்தனை முடிவடையும்.");
+          listenForOtpApproval();
         } else {
-          alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கையை அனுப்ப முடியவில்லை"));
+          alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கை தோல்வியடைந்தது"));
         }
       } catch (err) {
         alert("❌ இணைப்புப் பிழை: " + err.message);
+      }
+    }
+
+    // தலைமையக ஒப்புதலைக் கவனிக்கும் லூப்
+    async function listenForOtpApproval() {
+      if (!activeVisitId) return;
+      try {
+        const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
+        const data = await res.json();
+
+        if (data.data?.otp_exempted === true) {
+          alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
+          closeCheckoutModal();
+          confirmSettleWithOtp(true);
+        } else if (data.data?.otp_exemption_status === 'REJECTED') {
+          alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. SMS OTP அனுப்பவும்.");
+        } else {
+          setTimeout(listenForOtpApproval, 3000);
+        }
+      } catch (e) {
+        console.error("Exemption loop error:", e);
       }
     }
     // 👆👆 இங்கு வரை 👆👆

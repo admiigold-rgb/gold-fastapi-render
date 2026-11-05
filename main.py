@@ -892,22 +892,20 @@ def process_update_approval(data: ApprovalActionPayload):
         if not req_res.data:
             raise HTTPException(status_code=404, detail="கோரிக்கை கிடைக்கவில்லை.")
         req = req_res.data[0]
-        
+
         if data.action == "APPROVE":
             changes = req.get("requested_changes", {})
             if changes:
-                # வாடிக்கையாளர் சுயவிவரத்தில் புதிய தகவல்களைப் புதுப்பித்தல்
+                # வாடிக்கையாளர் அட்டவணையில் இப்போதுதான் விவரங்கள் புதுப்பிக்கப்படும்
                 supabase.table("test_customers").update(changes).eq("id", req["customer_id"]).execute()
-            
-            # கோரிக்கையின் நிலையை APPROVED என மாற்றுதல்
+
             supabase.table("test_customer_update_requests").update({
                 "status": "APPROVED",
                 "approved_by": data.admin_id,
                 "approved_at": "now()"
             }).eq("id", data.request_id).execute()
-            return {"status": "success", "message": "சுயவிவர மாற்றம் அங்கீகரிக்கப்பட்டு வாடிக்கையாளர் விவரங்கள் புதுப்பிக்கப்பட்டன."}
+            return {"status": "success", "message": "சுயவிவர மாற்றம் வெற்றிகரமாக அங்கீகரிக்கப்பட்டது!"}
         else:
-            # கோரிக்கையை REJECTED என மாற்றுதல்
             supabase.table("test_customer_update_requests").update({
                 "status": "REJECTED",
                 "approved_by": data.admin_id,
@@ -933,11 +931,14 @@ def create_full_kyc(data: FullCustomerKYCPayload):
 
 @app.post("/api/customer/request-update")
 def request_customer_update(data: CustomerUpdateRequest):
-    record = {
-        "customer_id": data.customer_id,
-        "branch_id": data.branch_id,
-        "requested_changes": data.requested_changes,
-        "status": "PENDING"
-    }
-    supabase.table("test_customer_update_requests").insert(record).execute()
-    return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது."}
+    try:
+        record = {
+            "customer_id": data.customer_id,
+            "branch_id": data.branch_id,
+            "requested_changes": data.requested_changes,
+            "status": "PENDING"
+        }
+        res = supabase.table("test_customer_update_requests").insert(record).execute()
+        return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கோரிக்கை பதிவு பிழை: {str(e)}")

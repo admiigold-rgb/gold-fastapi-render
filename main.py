@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from database import supabase
 
 app = FastAPI(
-    title="Muthusise Gold ERP - Unified Enterprise Core",
+    title="முத்துசைஸ் கோல்டு கம்பெனி - முழுமையான கிளை & தலைமையக அமைப்பு",
     version="7.0.0"
 )
 
@@ -54,7 +54,7 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
     except Exception as e:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
 
-# ==================== SCHEMAS ====================
+# --- Pydantic Schemas ---
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -99,8 +99,8 @@ class LoanSchemePayload(BaseModel):
     min_interest_days: int = 7
     auction_grace_days: int = 30
     auction_charge_amount: float = 500.00
-    processing_charge_type: str = "PLEDGE"
-    processing_charge_calc: str = "AMOUNT"
+    processing_charge_type: str = "PLEDGE"  # PLEDGE / RELEASE
+    processing_charge_calc: str = "AMOUNT"  # AMOUNT / PERCENTAGE
     processing_charge_value: float = 0.00
     max_ltv_percentage: float = 75.00
     interest_slabs: List[InterestSlab]
@@ -246,19 +246,18 @@ class CashDayClosePayload(BaseModel):
     calculated_system_cash: float
     staff_id: int
 
-# ==================== CORE APIS ====================
+# --- API Endpoints ---
 
 @app.get("/")
 def serve_ui():
     if os.path.exists("static/index.html"):
         return FileResponse("static/index.html")
-    return {"message": "Muthusise Gold ERP Live"}
+    return {"message": "FastAPI Server Running"}
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Unified ERP API v7"}
+    return {"status": "active", "service": "Enterprise API v7"}
 
-# 1. Staff Login
 @app.post("/api/auth/staff-login")
 def staff_unified_login(data: LoginRequest):
     try:
@@ -301,7 +300,6 @@ def staff_unified_login(data: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"உள்நுழைவு பிழை: {str(e)}")
 
-# 2. Branch Customer Search
 @app.get("/api/customer/search")
 def search_customer(query: str = Query(..., min_length=1), branch_id: int = Query(...)):
     try:
@@ -315,7 +313,6 @@ def search_customer(query: str = Query(..., min_length=1), branch_id: int = Quer
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தேடல் பிழை: {str(e)}")
 
-# 3. Auto Loan Number
 @app.get("/api/loan/next-loan-no")
 def get_next_loan_no(branch_id: int = Query(...)):
     try:
@@ -335,7 +332,7 @@ def get_next_loan_no(branch_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் எண் பிழை: {str(e)}")
 
-# 4. Pawn Entry with Ornament Image
+# அடகு நகைப் படம் (ஆவணம்) மற்றும் விபரம் பதிவு
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
     if not data.items:
@@ -378,7 +375,7 @@ def delete_cart_loan(loan_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் நீக்கல் பிழை: {str(e)}")
 
-# 5. Auto Roll-Forward Cash Day Status
+# 2. தானியங்கி தொடக்க இருப்பு & பூட்டப்பட்ட நாள் சோதனை API
 @app.get("/api/cash-day/status")
 def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
     try:
@@ -386,6 +383,7 @@ def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
         if res.data:
             return {"status": "success", "data": res.data[0]}
 
+        # முந்தைய நாளின் இறுதி இருப்பை நேற்றிலிருந்து எடுத்தல்
         prev_res = (
             supabase.table("test_branch_cash_days")
             .select("closing_balance")
@@ -397,6 +395,7 @@ def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
         )
         carried_opening = float(prev_res.data[0]["closing_balance"]) if prev_res.data and prev_res.data[0].get("closing_balance") is not None else 0.0
 
+        # இன்றைய நாளுக்கான புதிய தொடக்க இருப்பு தானாக உருவாதல்
         new_day_record = {
             "branch_id": branch_id,
             "business_date": date,
@@ -408,7 +407,7 @@ def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 6. Day Report
+# 1. அன்றைய நடவடிக்கைகள் அறிக்கை API
 @app.get("/api/cash-day/report")
 def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
     try:
@@ -450,13 +449,13 @@ def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 7. Day Close Action
+# மாலை நாள் முடிப்பு & பூட்டுதல்
 @app.post("/api/cash-day/close")
 def close_cash_day(data: CashDayClosePayload):
     try:
         day_res = supabase.table("test_branch_cash_days").select("id").eq("branch_id", data.branch_id).eq("business_date", data.business_date).execute()
         if not day_res.data:
-            raise HTTPException(status_code=404, detail="இந்த நாளின் தொடக்கப் பதிவு கிடைக்கவில்லை.")
+            raise HTTPException(status_code=404, detail="இந்த நாளின் பதிவு கிடைக்கவில்லை.")
         day_id = day_res.data[0]["id"]
 
         diff = data.closing_balance - data.calculated_system_cash
@@ -469,14 +468,14 @@ def close_cash_day(data: CashDayClosePayload):
             "closed_at": "now()",
             "status": "CLOSED"
         }
-        res = supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
+        supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
         return {"status": "success", "message": "நாள் வெற்றிகரமாகப் பூட்டப்பட்டது! இனி புதிய பரிவர்த்தனைகள் செய்ய முடியாது.", "difference": diff}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 8. Counter Live Visits Table
+# 7. கவுண்டர் பக்க வருகை அட்டவணை API
 @app.get("/api/customer/branch-visits")
 def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
     try:
@@ -492,6 +491,7 @@ def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# வாடிக்கையாளர் வருகைப் பதிவு
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     record = {
@@ -505,7 +505,7 @@ def log_customer_visit(data: CustomerVisitEntry):
     res = supabase.table("test_customer_visits").insert(record).execute()
     return {"status": "success", "message": "வருகை துவங்கியது.", "data": res.data[0]}
 
-# 9. OTP Exemption System
+# 4. OTP விலக்குக் கோரிக்கை மற்றும் ஒப்புதல் API
 @app.post("/api/otp/request-exemption")
 def request_otp_exemption(data: OtpExemptRequestPayload):
     supabase.table("test_customer_visits").update({
@@ -541,7 +541,7 @@ def check_otp_exemption_status(visit_id: int = Query(...)):
         return {"status": "success", "data": res.data[0]}
     return {"status": "success", "data": {"otp_exemption_status": "NONE"}}
 
-# 10. OTP & Settlement
+# 5. OTP மற்றும் செட்டில்மென்ட் (முடிந்த பிறகே HQ Approval-க்குச் செல்லும்)
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     otp_code = str(random.randint(100000, 999999))
@@ -561,9 +561,10 @@ def trigger_otp_sms(payload: SendOtpPayload):
 
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
+    # நாள் பூட்டப்பட்டிருந்தால் தடுத்தல்
     day_status_res = supabase.table("test_branch_cash_days").select("status").eq("branch_id", data.branch_id).eq("business_date", data.transaction_date or "now()").execute()
     if day_status_res.data and day_status_res.data[0]["status"] == "CLOSED":
-        raise HTTPException(status_code=400, detail="இந்த நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் புதிய பரிவர்த்தனைகள் செய்ய முடியாது!")
+        raise HTTPException(status_code=400, detail="இந்த நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). புதிய பரிவர்த்தனைகள் செய்ய முடியாது!")
 
     if not data.is_exempted:
         otp_query = (
@@ -607,6 +608,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
             "total_calculated_cash": data.cash_amount
         }).execute()
 
+    # வருகை முடிந்து தலைமையக ஒப்புதலுக்கு அனுப்புதல்
     if data.visit_id:
         supabase.table("test_customer_visits").update({
             "status": "PENDING_HQ",
@@ -619,7 +621,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
 
     return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது! வருகை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "settlement_id": new_settle_id}
 
-# 11. Admin CRUD (Schemes, Banks, Gold Rate, Branches, Staff)
+# நிர்வாகம்: திட்டங்கள், வங்கிகள் & தங்கம்
 @app.get("/api/admin/schemes")
 def get_loan_schemes():
     res = supabase.table("test_loan_schemes").select("*").eq("is_active", True).order("id", desc=True).execute()
@@ -720,7 +722,6 @@ def delete_staff(staff_id: int):
     supabase.table("test_staff_users").delete().eq("id", staff_id).execute()
     return {"status": "success", "message": "பணியாளர் நீக்கப்பட்டது."}
 
-# 12. Bank Transfers & HQ Approvals
 @app.post("/api/bank/request-transfer")
 def create_bank_transfer(data: BankTransferPayload):
     record = data.model_dump()

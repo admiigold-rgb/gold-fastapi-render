@@ -815,7 +815,10 @@
 
         <!-- ரொக்கத் தாள்கள் -->
         <div id="denomSection" class="space-y-2 border-t border-purple-100 pt-2 text-xs">
-          <div class="flex justify-between items-center"><span class="font-extrabold text-brand-violet" id="denomTitleText">ரூபாய் தாள்கள் டினாமினேஷன்:</span><span id="denomMatchBadge" class="px-2 py-0.5 rounded-lg font-bold bg-amber-100 text-amber-900 border border-yellow-300">சரிபார்க்கவும்</span></div>
+          <div class="flex justify-between items-center">
+            <span class="font-extrabold text-brand-violet" id="denomTitleText">ரூபாய் தாள்கள் டினாமினேஷன்:</span>
+            <span id="denomMatchBadge" class="px-2 py-0.5 rounded-lg font-bold bg-amber-100 text-amber-900 border border-yellow-300">சரிபார்க்கவும்</span>
+          </div>
           <div class="grid grid-cols-4 gap-2 text-center">
             <div>500: <input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
             <div>200: <input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
@@ -835,7 +838,7 @@
           <button type="button" 
                   id="btnExemptOtpTrigger" 
                   onclick="triggerOtpExemptDirectly(event)" 
-                  style="position: relative; z-index: 9999; cursor: pointer;"
+                  style="position: relative; z-index: 99999; cursor: pointer;"
                   class="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-amber-950 rounded-xl text-xs font-black border-2 border-yellow-500 shadow-md">
             ⚡ OTP விலக்கு கோரு (Exempt OTP)
           </button>
@@ -847,6 +850,8 @@
             </button>
           </div>
         </div>
+      </div>
+    </div>
 
     <!-- 4. OTP Modal -->
     <div id="otpVerifyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
@@ -854,10 +859,10 @@
         <div class="text-5xl">🔐</div>
         <h3 class="text-base font-extrabold text-brand-violet">OTP சரிபார்ப்பு</h3>
         <p class="text-xs text-slate-500">வாடிக்கையாளர் மொபைலுக்கு அனுப்பப்பட்ட 6 இலக்க எண்ணை உள்ளிடவும்.</p>
-        <input type="text" id="input_otp" maxlength="6" placeholder="000000" class="w-full text-center text-3xl font-mono tracking-widest border-2 border-brand-gold rounded-2xl py-3 focus:outline-none bg-yellow-50/50">
+        <input type="text" id="input_otp" maxlength="6" placeholder="000000" class="w-full text-center text-3xl font-mono tracking-widest border-2 border-yellow-500 rounded-2xl py-3 focus:outline-none bg-yellow-50/50">
         <div class="flex justify-center gap-2 pt-2">
-          <button onclick="closeOtpModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
-          <button onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="brand-gradient-gold-btn px-6 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">சரிபார்த்து முடி</button>
+          <button type="button" onclick="closeOtpModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
+          <button type="button" onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="brand-gradient-gold-btn px-6 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">சரிபார்த்து முடி</button>
         </div>
       </div>
     </div>
@@ -1849,95 +1854,6 @@
       } else alert("❌ SMS பிழை: " + data.detail);
     }
 
-    // 👇👇 இந்த இடத்தில் நேராக ஒட்டவும் (Paste Here) 👇👇
-    // ⚡ எந்தத் தடையுமின்றி நேரடியாக இயங்கும் OTP விலக்கு செயல்பாடு
-    async function triggerOtpExemptDirectly(e) {
-      if (e) e.preventDefault();
-
-      // 1. வாடிக்கையாளர் தேர்வு சரிபார்ப்பு
-      if (!activeCustomer || !activeCustomer.id) {
-        alert("⚠️ வாடிக்கையாளர் தேர்வு செய்யப்படவில்லை! தயவுசெய்து வாடிக்கையாளரைத் தேடித் தேர்ந்தெடுக்கவும்.");
-        return;
-      }
-
-      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
-
-      // 2. வருகை எண் இல்லை எனில் உடனே உருவாக்குதல்
-      if (!activeVisitId) {
-        try {
-          const vRes = await fetch('/api/customer/visit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              customer_id: activeCustomer.id,
-              branch_id: branchId,
-              purpose: "REGULAR_TRANSACTION"
-            })
-          });
-          const vData = await vRes.json();
-          activeVisitId = vData.data?.id;
-        } catch (err) {
-          alert("❌ வருகை பதிவு செய்வதில் பிழை: " + err.message);
-          return;
-        }
-      }
-
-      if (!activeVisitId) {
-        alert("⚠️ வருகை எண் கிடைக்கவில்லை. பக்கத்தை ரீஃப்ரெஷ் செய்யவும்.");
-        return;
-      }
-
-      // 3. காரணத்தை உள்ளிடக் கோருதல்
-      const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
-      if (!reason || reason.trim() === "") return;
-
-      // 4. API-க்கு கோரிக்கை அனுப்புதல்
-      try {
-        const res = await fetch('/api/otp/request-exemption', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            visit_id: activeVisitId,
-            branch_id: branchId,
-            reason: reason.trim(),
-            staff_id: currentUser ? currentUser.id : 1
-          })
-        });
-        const data = await res.json();
-
-        if (res.ok) {
-          alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் தானாகவே பரிவர்த்தனை முடிவடையும்.");
-          listenForOtpApproval();
-        } else {
-          alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கை தோல்வியடைந்தது"));
-        }
-      } catch (err) {
-        alert("❌ இணைப்புப் பிழை: " + err.message);
-      }
-    }
-
-    // தலைமையக ஒப்புதலைக் கவனிக்கும் லூப்
-    async function listenForOtpApproval() {
-      if (!activeVisitId) return;
-      try {
-        const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
-        const data = await res.json();
-
-        if (data.data?.otp_exempted === true) {
-          alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
-          closeCheckoutModal();
-          confirmSettleWithOtp(true);
-        } else if (data.data?.otp_exemption_status === 'REJECTED') {
-          alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. SMS OTP அனுப்பவும்.");
-        } else {
-          setTimeout(listenForOtpApproval, 3000);
-        }
-      } catch (e) {
-        console.error("Exemption loop error:", e);
-      }
-    }
-    // 👆👆 இங்கு வரை 👆👆
-
     // தலைமையகம் அனுமதித்தவுடன் திரையில் தானாகப் பரிவர்த்தனை முடிவதற்கான லூப்
     async function checkOtpExemptionLoop() {
       if (!activeVisitId) return;
@@ -2886,29 +2802,29 @@
     }
 
     // செக்அவுட் திறக்கும் போதும் பட்டனை உறுதி செய்தல்
-    const originalOpenCheckout = window.openCheckoutModal;
-    window.openCheckoutModal = function() {
-      if (typeof originalOpenCheckout === 'function') originalOpenCheckout();
-      setTimeout(attachOtpExemptBtn, 100);
-    };
+    // ⚡ OTP விலக்கு கோரிக்கை அனுப்பும் நேரடிச் செயல்பாடு
+    async function triggerOtpExemptDirectly(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
 
-    // முக்கிய செயல்பாடு
-    async function executeOtpExemption() {
       // 1. வாடிக்கையாளர் தேர்வு சரிபார்ப்பு
       if (!activeCustomer || !activeCustomer.id) {
-        alert("⚠️ செயலில் உள்ள வாடிக்கையாளர் விபரம் கிடைக்கவில்லை. வாடிக்கையாளரை மீண்டும் தேடித் தேர்வு செய்யவும்.");
+        alert("⚠️ வாடிக்கையாளர் தேர்வு செய்யப்படவில்லை! தயவுசெய்து வாடிக்கையாளரைத் தேடித் தேர்ந்தெடுக்கவும்.");
         return;
       }
 
-      // 2. வருகை எண் சரிபார்ப்பு
       const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+
+      // 2. வருகை எண் இல்லை எனில் உடனே உருவாக்குதல்
       if (!activeVisitId) {
         try {
           const vRes = await fetch('/api/customer/visit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              customer_id: activeCustomer.id, 
+            body: JSON.stringify({
+              customer_id: activeCustomer.id,
               branch_id: branchId,
               purpose: "REGULAR_TRANSACTION"
             })
@@ -2916,21 +2832,21 @@
           const vData = await vRes.json();
           activeVisitId = vData.data?.id;
         } catch (err) {
-          alert("❌ வருகைப் பதிவு பிழை: " + err.message);
+          alert("❌ வருகை பதிவு செய்வதில் பிழை: " + err.message);
           return;
         }
       }
 
       if (!activeVisitId) {
-        alert("⚠️ வருகை எண் கிடைக்கவில்லை. தயவுசெய்து பக்கத்தைப் புதுப்பிக்கவும்.");
+        alert("⚠️ வருகை எண் கிடைக்கவில்லை. பக்கத்தை ரீஃப்ரெஷ் செய்யவும்.");
         return;
       }
 
       // 3. காரணத்தை உள்ளிடக் கோருதல்
-      const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: வாடிக்கையாளர் மொபைலில் சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
+      const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
       if (!reason || reason.trim() === "") return;
 
-      // 4. தலைமையகத்திற்கு கோரிக்கை அனுப்புதல்
+      // 4. API-க்கு கோரிக்கை அனுப்புதல்
       try {
         const res = await fetch('/api/otp/request-exemption', {
           method: 'POST',
@@ -2943,10 +2859,10 @@
           })
         });
         const data = await res.json();
-        
+
         if (res.ok) {
-          alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் இந்தப் பரிவர்த்தனை தானாகவே முடிவடையும்.");
-          pollOtpExemptionStatus(); // தலைமையக ஒப்புதலைக் கவனிக்கும் லூப்
+          alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் தானாகவே பரிவர்த்தனை முடிவடையும்.");
+          listenForOtpApproval();
         } else {
           alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கை தோல்வியடைந்தது"));
         }
@@ -2955,24 +2871,24 @@
       }
     }
 
-    // தலைமையக ஒப்புதலை 3 விநாடிகளுக்கு ஒருமுறை கவனித்தல்
-    async function pollOtpExemptionStatus() {
+    // தலைமையக ஒப்புதலை 3 விநாடிகளுக்கு ஒருமுறை கவனிக்கும் லூப்
+    async function listenForOtpApproval() {
       if (!activeVisitId) return;
       try {
         const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
         const data = await res.json();
-        
+
         if (data.data?.otp_exempted === true) {
           alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
           closeCheckoutModal();
-          confirmSettleWithOtp(true); // OTP இன்றி தானாக முடித்தல்
+          confirmSettleWithOtp(true);
         } else if (data.data?.otp_exemption_status === 'REJECTED') {
           alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. SMS OTP அனுப்பவும்.");
         } else {
-          setTimeout(pollOtpExemptionStatus, 3000);
+          setTimeout(listenForOtpApproval, 3000);
         }
       } catch (e) {
-        console.error("Exemption polling error:", e);
+        console.error("Exemption loop error:", e);
       }
     }
   </script>

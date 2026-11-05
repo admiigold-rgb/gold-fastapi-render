@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from database import supabase
 
 app = FastAPI(
-    title="முத்துசைஸ் கோல்டு கம்பெனி - முழுமையான கிளை & தலைமையக அமைப்பு",
-    version="7.0.0"
+    title="Gold Branch Management - Enterprise Core",
+    version="6.0.0"
 )
 
 app.add_middleware(
@@ -25,7 +25,6 @@ app.add_middleware(
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Fast2SMS OTP Helper
 def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount: float, txn_type: str = "receive"):
     try:
         api_key = os.getenv("FAST2SMS_API_KEY", "eBGQYanRZNKVCpMSg3KB5kUxY2QhDnOjxesh3Hqr7FOG792XV9wut4TPhQia")
@@ -54,7 +53,7 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
     except Exception as e:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
 
-# --- Pydantic Schemas ---
+# Schemas
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -99,8 +98,8 @@ class LoanSchemePayload(BaseModel):
     min_interest_days: int = 7
     auction_grace_days: int = 30
     auction_charge_amount: float = 500.00
-    processing_charge_type: str = "PLEDGE"  # PLEDGE / RELEASE
-    processing_charge_calc: str = "AMOUNT"  # AMOUNT / PERCENTAGE
+    processing_charge_type: str = "PLEDGE"
+    processing_charge_calc: str = "AMOUNT"
     processing_charge_value: float = 0.00
     max_ltv_percentage: float = 75.00
     interest_slabs: List[InterestSlab]
@@ -256,7 +255,7 @@ def serve_ui():
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Enterprise API v7"}
+    return {"status": "active", "service": "Enterprise API v6"}
 
 @app.post("/api/auth/staff-login")
 def staff_unified_login(data: LoginRequest):
@@ -332,7 +331,7 @@ def get_next_loan_no(branch_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் எண் பிழை: {str(e)}")
 
-# அடகு நகைப் படம் (ஆவணம்) மற்றும் விபரம் பதிவு
+# அடகு நகைப் படம் மற்றும் பதிவு
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
     if not data.items:
@@ -375,7 +374,7 @@ def delete_cart_loan(loan_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் நீக்கல் பிழை: {str(e)}")
 
-# 2. தானியங்கி தொடக்க இருப்பு & பூட்டப்பட்ட நாள் சோதனை API
+# 2. தானியங்கி நாள் திறப்பு & நிலை சரிபார்த்தல் API
 @app.get("/api/cash-day/status")
 def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
     try:
@@ -383,7 +382,7 @@ def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
         if res.data:
             return {"status": "success", "data": res.data[0]}
 
-        # முந்தைய நாளின் இறுதி இருப்பை நேற்றிலிருந்து எடுத்தல்
+        # முந்தைய நாளின் இறுதி இருப்பை எடுத்தல் (Auto roll-forward)
         prev_res = (
             supabase.table("test_branch_cash_days")
             .select("closing_balance")
@@ -395,7 +394,7 @@ def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
         )
         carried_opening = float(prev_res.data[0]["closing_balance"]) if prev_res.data and prev_res.data[0].get("closing_balance") is not None else 0.0
 
-        # இன்றைய நாளுக்கான புதிய தொடக்க இருப்பு தானாக உருவாதல்
+        # புதிய நாளுக்கு தொடக்க இருப்பை அமைத்து தானாகத் திறத்தல்
         new_day_record = {
             "branch_id": branch_id,
             "business_date": date,
@@ -407,7 +406,7 @@ def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 1. அன்றைய நடவடிக்கைகள் அறிக்கை API
+# 1. அன்றைய நடவடிக்கைகள் அறிக்கை API (Day Summary Report)
 @app.get("/api/cash-day/report")
 def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
     try:
@@ -449,13 +448,13 @@ def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# மாலை நாள் முடிப்பு & பூட்டுதல்
+# மாலை நாள் முடிப்பு
 @app.post("/api/cash-day/close")
 def close_cash_day(data: CashDayClosePayload):
     try:
         day_res = supabase.table("test_branch_cash_days").select("id").eq("branch_id", data.branch_id).eq("business_date", data.business_date).execute()
         if not day_res.data:
-            raise HTTPException(status_code=404, detail="இந்த நாளின் பதிவு கிடைக்கவில்லை.")
+            raise HTTPException(status_code=404, detail="இந்த நாளின் தொடக்கப் பதிவு கிடைக்கவில்லை.")
         day_id = day_res.data[0]["id"]
 
         diff = data.closing_balance - data.calculated_system_cash
@@ -468,14 +467,14 @@ def close_cash_day(data: CashDayClosePayload):
             "closed_at": "now()",
             "status": "CLOSED"
         }
-        supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
+        res = supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
         return {"status": "success", "message": "நாள் வெற்றிகரமாகப் பூட்டப்பட்டது! இனி புதிய பரிவர்த்தனைகள் செய்ய முடியாது.", "difference": diff}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 7. கவுண்டர் பக்க வருகை அட்டவணை API
+# 7. கவுண்டர் நேரடி வருகைப் பட்டியல் API
 @app.get("/api/customer/branch-visits")
 def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
     try:
@@ -491,7 +490,7 @@ def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# வாடிக்கையாளர் வருகைப் பதிவு
+# வருகைப் பதிவு தொடக்கம்
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     record = {
@@ -505,7 +504,7 @@ def log_customer_visit(data: CustomerVisitEntry):
     res = supabase.table("test_customer_visits").insert(record).execute()
     return {"status": "success", "message": "வருகை துவங்கியது.", "data": res.data[0]}
 
-# 4. OTP விலக்குக் கோரிக்கை மற்றும் ஒப்புதல் API
+# 4. OTP விலக்குக் கோரிக்கை & ஒப்புதல்
 @app.post("/api/otp/request-exemption")
 def request_otp_exemption(data: OtpExemptRequestPayload):
     supabase.table("test_customer_visits").update({
@@ -541,7 +540,7 @@ def check_otp_exemption_status(visit_id: int = Query(...)):
         return {"status": "success", "data": res.data[0]}
     return {"status": "success", "data": {"otp_exemption_status": "NONE"}}
 
-# 5. OTP மற்றும் செட்டில்மென்ட் (முடிந்த பிறகே HQ Approval-க்குச் செல்லும்)
+# 5. OTP & இறுதி செட்டில்மென்ட் (முடிந்த பின்பே HQ Approval-க்குச் செல்லும்)
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     otp_code = str(random.randint(100000, 999999))
@@ -561,10 +560,10 @@ def trigger_otp_sms(payload: SendOtpPayload):
 
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
-    # நாள் பூட்டப்பட்டிருந்தால் தடுத்தல்
+    # நாள் பூட்டப்பட்டிருந்தால் பரிவர்த்தனையைத் தடுத்தல்
     day_status_res = supabase.table("test_branch_cash_days").select("status").eq("branch_id", data.branch_id).eq("business_date", data.transaction_date or "now()").execute()
     if day_status_res.data and day_status_res.data[0]["status"] == "CLOSED":
-        raise HTTPException(status_code=400, detail="இந்த நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). புதிய பரிவர்த்தனைகள் செய்ய முடியாது!")
+        raise HTTPException(status_code=400, detail="இந்த நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் புதிய பரிவர்த்தனைகள் செய்ய முடியாது!")
 
     if not data.is_exempted:
         otp_query = (
@@ -608,7 +607,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
             "total_calculated_cash": data.cash_amount
         }).execute()
 
-    # வருகை முடிந்து தலைமையக ஒப்புதலுக்கு அனுப்புதல்
+    # வருகை முடிந்து தலைமையக ஒப்புதல் பகுதிக்கு அனுப்புதல்
     if data.visit_id:
         supabase.table("test_customer_visits").update({
             "status": "PENDING_HQ",
@@ -621,7 +620,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
 
     return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது! வருகை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "settlement_id": new_settle_id}
 
-# நிர்வாகம்: திட்டங்கள், வங்கிகள் & தங்கம்
+# திட்டங்கள் & வங்கிகள் & தங்கம்
 @app.get("/api/admin/schemes")
 def get_loan_schemes():
     res = supabase.table("test_loan_schemes").select("*").eq("is_active", True).order("id", desc=True).execute()

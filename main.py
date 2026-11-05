@@ -76,6 +76,7 @@ class StaffPayload(BaseModel):
     can_approve_kyc: bool = False
     can_approve_updates: bool = False
     can_manage_users: bool = False
+    can_approve_otp_exempt: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -284,7 +285,8 @@ def staff_unified_login(data: LoginRequest):
                 "can_access_counter": True if is_admin_role else bool(user.get("can_access_counter", True)),
                 "can_approve_kyc": True if is_admin_role else bool(user.get("can_approve_kyc", False)),
                 "can_approve_updates": True if is_admin_role else bool(user.get("can_approve_updates", False)),
-                "can_manage_users": True if is_admin_role else bool(user.get("can_manage_users", False))
+                "can_manage_users": True if is_admin_role else bool(user.get("can_manage_users", False)),
+                "can_approve_otp_exempt": True if is_admin_role else bool(user.get("can_approve_otp_exempt", False)) # 👈 உரிமை சரிபார்த்தல்
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -485,6 +487,7 @@ def update_staff(staff_id: int, data: StaffPayload):
         "can_approve_kyc": data.can_approve_kyc,
         "can_approve_updates": data.can_approve_updates,
         "can_manage_users": data.can_manage_users
+        "can_approve_otp_exempt": data.can_approve_otp_exempt
     }
     if data.password:
         update_dict["password"] = data.password
@@ -856,6 +859,45 @@ def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அறிக்கை எடுப்பதில் பிழை: {str(e)}")
+
+# OTP விலக்குக் கோரிக்கை
+@app.post("/api/otp/request-exemption")
+def request_otp_exemption(data: OtpExemptRequestPayload):
+    supabase.table("test_customer_visits").update({
+        "otp_exemption_status": "REQUESTED",
+        "purpose": f"OTP விலக்குக் கோரிக்கை: {data.reason}"
+    }).eq("id", data.visit_id).execute()
+    return {"status": "success", "message": "OTP விலக்குக் கோரிக்கை தலைமையகத்திற்கு அனுப்பப்பட்டது."}
+
+# நிலுவையில் உள்ள OTP விலக்குக் கோரிக்கைகள் பட்டியல்
+@app.get("/api/hq/pending-otp-exemptions")
+def get_pending_otp_exemptions():
+    res = (
+        supabase.table("test_customer_visits")
+        .select("*, test_customers(name, mobile)")
+        .eq("otp_exemption_status", "REQUESTED")
+        .order("id", desc=True)
+        .execute()
+    )
+    return {"status": "success", "data": res.data or []}
+
+# தலைமையகம் ஒப்புதல் அளித்தல்
+@app.post("/api/hq/approve-otp-exemption")
+def approve_otp_exemption(data: OtpExemptApprovalPayload):
+    status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
+    supabase.table("test_customer_visits").update({
+        "otp_exemption_status": status,
+        "otp_exempted": (status == "APPROVED")
+    }).eq("id", data.visit_id).execute()
+    return {"status": "success", "message": f"OTP விலக்கு '{status}' செய்யப்பட்டது."}
+
+# கிளை கவுண்ட்டரில் நிலை அறியும் API
+@app.get("/api/otp/exemption-status")
+def check_otp_exemption_status(visit_id: int = Query(...)):
+    res = supabase.table("test_customer_visits").select("otp_exemption_status, otp_exempted").eq("id", visit_id).execute()
+    if res.data:
+        return {"status": "success", "data": res.data[0]}
+    return {"status": "success", "data": {"otp_exemption_status": "NONE", "otp_exempted": False}}
 
 # 4. மாலை நாள் முடிப்பு & பூட்டுதல் (Close Cash Day)
 # 1. D: மாலை நாள் பூட்டுதல்

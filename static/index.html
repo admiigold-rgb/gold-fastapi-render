@@ -3,59 +3,106 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>கிளை மேலாண்மை & வங்கி பரிவர்த்தனை அமைப்பு</title>
+  <title>முத்துசைஸ் கோல்டு - கிளை & தலைமையக அமைப்பு</title>
   
-  <!-- நிலையான மற்றும் வேகமான Tailwind CSS CDN -->
+  <!-- Tailwind CSS CDN -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 
   <style>
+    /* கார்ப்பரேட் வைலட் & கோல்டு தீம் மாறிகள் */
+    :root {
+      --color-violet-dark: #4a1566;
+      --color-violet: #723a91;
+      --color-violet-light: #9453b8;
+      --color-gold: #d4af37;
+      --color-gold-light: #fef7db;
+      --color-gold-dark: #aa8619;
+    }
+
+    body {
+      background-color: #f8f5fb;
+    }
+
+    .bg-brand-violet { background-color: var(--color-violet); }
+    .bg-brand-violet-dark { background-color: var(--color-violet-dark); }
+    .text-brand-violet { color: var(--color-violet); }
+    .border-brand-violet { border-color: var(--color-violet); }
+
+    .bg-brand-gold { background-color: var(--color-gold); }
+    .text-brand-gold { color: var(--color-gold-dark); }
+    .border-brand-gold { border-color: var(--color-gold); }
+
+    .brand-gradient-header {
+      background: linear-gradient(135deg, #44125e 0%, #723a91 60%, #582173 100%);
+    }
+
+    .brand-gradient-gold-btn {
+      background: linear-gradient(135deg, #e5c04b 0%, #d4af37 50%, #b38b16 100%);
+      color: #381203;
+    }
+    .brand-gradient-gold-btn:hover {
+      background: linear-gradient(135deg, #eed06d 0%, #dfbc45 50%, #c49919 100%);
+    }
+
+    .brand-gradient-violet-btn {
+      background: linear-gradient(135deg, #723a91 0%, #582173 100%);
+      color: #ffffff;
+    }
+    .brand-gradient-violet-btn:hover {
+      background: linear-gradient(135deg, #8749ab 0%, #682888 100%);
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="min-h-screen text-slate-800 font-sans">
 
-  <!-- 1. லாகின் திரை (முதலில் இது மட்டுமே தெரியும்) -->
+  <!-- 1. லாகின் திரை -->
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white p-8 rounded-3xl shadow-xl border max-w-md w-full space-y-6">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl border-2 border-brand-gold max-w-md w-full space-y-6">
       <div class="text-center space-y-2">
-        <div class="text-5xl">🏛️</div>
-        <h1 class="text-xl font-bold text-slate-800">கிளை & தலைமையக அமைப்பு</h1>
-        <p class="text-xs text-amber-600 font-semibold">பணியாளர் உள்நுழைவு (Staff Login)</p>
+        <div class="inline-block p-4 rounded-full bg-purple-50 border border-brand-gold shadow-inner text-4xl">🪙</div>
+        <h1 class="text-xl font-extrabold text-brand-violet tracking-wide">முத்துசைஸ் கோல்டு கம்பெனி</h1>
+        <p class="text-xs text-amber-800 font-bold uppercase tracking-wider">கிளை & தலைமையக பணியாளர் உள்நுழைவு</p>
       </div>
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">பயனர் பெயர் (Username)</label>
-          <input type="text" id="login_username" placeholder="staff_thg / admin_hq" class="w-full px-4 py-3 border rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
+          <label class="block text-xs font-bold text-slate-700 mb-1">பயனர் பெயர் (Username)</label>
+          <input type="text" id="login_username" placeholder="staff_thg / admin_hq" class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl text-sm focus:border-brand-violet focus:outline-none">
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-600 mb-1">கடவுச்சொல் (Password)</label>
-          <input type="password" id="login_password" placeholder="••••••••" class="w-full px-4 py-3 border rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
+          <label class="block text-xs font-bold text-slate-700 mb-1">கடவுச்சொல் (Password)</label>
+          <input type="password" id="login_password" placeholder="••••••••" class="w-full px-4 py-3 border-2 border-purple-100 rounded-xl text-sm focus:border-brand-violet focus:outline-none">
         </div>
-        <button onclick="handleLogin()" id="btnLogin" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-sm shadow transition">
-          உள்நுழைக (Sign In)
+        <button onclick="handleLogin()" id="btnLogin" class="w-full brand-gradient-gold-btn font-extrabold py-3.5 rounded-xl text-sm shadow-lg transition transform active:scale-95 border border-yellow-500">
+          உள்நுழைக (Sign In) 🔐
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 2. பிரதான இடைமுகம் (லாகின் ஆனதும் மட்டுமே தெரியும்) -->
+  <!-- 2. பிரதான இடைமுகம் -->
   <div id="mainDashboard" class="hidden p-3 md:p-6 space-y-5 max-w-6xl mx-auto">
-    <!-- Header -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row justify-between items-center gap-3">
-      <div class="flex items-center space-x-3 w-full md:w-auto">
-        <span class="text-3xl">⚖️</span>
+    
+    <!-- பிராண்டட் கார்ப்பரேட் ஹெடர் (Royal Violet & Gold) -->
+    <div class="brand-gradient-header text-white p-5 rounded-2xl shadow-xl border-b-4 border-brand-gold flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center space-x-4 w-full md:w-auto">
+        <span class="text-4xl p-2.5 bg-white bg-opacity-10 rounded-2xl border border-yellow-300 shadow-inner">⚖️</span>
         <div>
-          <h1 class="text-base md:text-lg font-bold text-slate-800">கிளை & தலைமையக அமைப்பு</h1>
-          <p class="text-xs text-slate-500">
-            பணியாளர்: <span id="loggedStaffName" class="font-bold text-slate-700">-</span> | 
-            பங்கு: <span id="loggedStaffRole" class="font-bold text-amber-700">-</span> |
-            கிளை: <span id="loggedBranchName" class="font-bold text-slate-700">-</span>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg md:text-xl font-extrabold text-yellow-300 tracking-wide">முத்துசைஸ் கோல்டு கம்பெனி</h1>
+            <span class="text-[10px] bg-yellow-400 text-purple-950 font-black px-2 py-0.5 rounded-md uppercase">Core System</span>
+          </div>
+          <p class="text-xs text-purple-100 mt-0.5">
+            பணியாளர்: <span id="loggedStaffName" class="font-bold text-white">-</span> | 
+            பங்கு: <span id="loggedStaffRole" class="font-bold text-yellow-300">-</span> |
+            கிளை: <span id="loggedBranchName" class="font-bold text-white">-</span>
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+      <div class="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
         <div id="navButtonsContainer" class="flex items-center gap-2"></div>
-        <button onclick="handleLogout()" class="px-3 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-lg transition">
+        <button onclick="handleLogout()" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow transition">
           வெளியேறு 🚪
         </button>
       </div>
@@ -68,171 +115,171 @@
     <div id="counterTab" class="hidden space-y-4">
 
       <!-- பரிவர்த்தனை தேதி & நாள் இருப்பு பட்டை -->
-      <div class="bg-white p-3 rounded-xl border flex flex-wrap justify-between items-center gap-3 text-xs">
+      <div class="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-wrap justify-between items-center gap-3 text-xs">
         <div class="flex items-center gap-2">
-          <span class="font-bold text-slate-700">📅 பரிவர்த்தனை தேதி:</span>
-          <input type="date" id="txn_date" onchange="onDateChanged()" class="border px-2 py-1 rounded bg-slate-50 font-bold text-amber-900">
-          <span id="cashDayStatusBadge" class="px-2 py-0.5 rounded font-bold text-[10px] bg-slate-100 text-slate-600">நிலை அறியப்படுகிறது...</span>
+          <span class="font-extrabold text-brand-violet flex items-center gap-1">📅 பரிவர்த்தனை தேதி:</span>
+          <input type="date" id="txn_date" onchange="onDateChanged()" class="border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-purple-50 font-bold text-brand-violet focus:outline-none">
+          <span id="cashDayStatusBadge" class="px-2.5 py-1 rounded-lg font-bold text-[10px] bg-slate-100 text-slate-600 shadow-sm">நிலை அறியப்படுகிறது...</span>
         </div>
-        <div class="flex items-center gap-2">
-          <button onclick="openCashDayModal('OPEN')" id="btnOpenDay" class="bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700">
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="openCashDayModal('OPEN')" id="btnOpenDay" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition">
             ☀️ காலை தொடக்க இருப்பு (Day Open)
           </button>
-          <button onclick="openDaySummaryReportModal()" class="bg-slate-800 text-white px-3 py-1 rounded font-bold hover:bg-black">
+          <button onclick="openDaySummaryReportModal()" class="brand-gradient-violet-btn px-3.5 py-1.5 rounded-xl font-bold shadow transition">
             📊 அன்றைய நடவடிக்கைகள்
           </button>
-          <button onclick="openCashDayModal('CLOSE')" id="btnCloseDay" class="bg-rose-600 text-white px-3 py-1 rounded font-bold hover:bg-rose-700">
+          <button onclick="openCashDayModal('CLOSE')" id="btnCloseDay" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition">
             🌙 மாலை நாள் பூட்டுதல் (Day Close)
           </button>
         </div>
       </div>
 
       <!-- வங்கி அறிவிப்பு பட்டை -->
-      <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl flex justify-between items-center text-xs">
+      <div class="bg-gradient-to-r from-amber-50 to-purple-50 border-2 border-amber-200 p-3 rounded-2xl flex justify-between items-center text-xs shadow-sm">
         <div>
-          <span class="font-bold text-amber-900">🔔 வங்கி பட்டுவாடா & வரவு நிலவரம்:</span>
-          <span id="branchBankLiveStatus" class="ml-2 text-slate-700">நிலவரங்கள் ஏற்றப்படுகின்றன...</span>
+          <span class="font-bold text-brand-violet">🔔 வங்கி பட்டுவாடா & வரவு நிலவரம்:</span>
+          <span id="branchBankLiveStatus" class="ml-2 font-semibold text-slate-700">நிலவரங்கள் ஏற்றப்படுகின்றன...</span>
         </div>
-        <button onclick="checkBranchBankStatus()" class="text-amber-800 font-bold hover:underline">புதுப்பி</button>
+        <button onclick="checkBranchBankStatus()" class="text-amber-900 font-extrabold hover:underline bg-yellow-200 px-2.5 py-1 rounded-lg">புதுப்பி 🔄</button>
       </div>
 
       <!-- வாடிக்கையாளர் தேடல் -->
-      <div id="searchSection" class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
+      <div id="searchSection" class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
         <div class="flex flex-col sm:flex-row gap-2">
-          <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-amber-500">
-          <button onclick="handleSearch()" class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold">தேடு</button>
-          <button onclick="openNewKycModal()" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-bold">+ புதிய முழு KYC</button>
+          <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border-2 border-purple-100 rounded-xl text-sm focus:border-brand-violet focus:outline-none">
+          <button onclick="handleSearch()" class="brand-gradient-gold-btn px-6 py-2.5 rounded-xl text-xs font-black shadow transition">தேடு 🔍</button>
+          <button onclick="openNewKycModal()" class="brand-gradient-violet-btn px-5 py-2.5 rounded-xl text-xs font-bold shadow transition">+ புதிய முழு KYC</button>
         </div>
         <div id="searchResults" class="space-y-2 hidden"></div>
       </div>
 
       <!-- நடப்பு வாடிக்கையாளர் அட்டை -->
       <div id="activeCustomerSection" class="hidden space-y-4">
-        <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-brand-gold flex flex-col md:flex-row justify-between items-center gap-4">
           <div class="flex items-center space-x-4 w-full md:w-auto">
-            <div class="relative w-16 h-16 rounded-xl border bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
+            <div class="relative w-16 h-16 rounded-2xl border-2 border-purple-200 bg-purple-50 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
               <img id="cardCustomerImg" src="" alt="Customer" class="w-full h-full object-cover hidden">
-              <span id="cardCustomerPlaceholder" class="text-2xl text-slate-400">👤</span>
+              <span id="cardCustomerPlaceholder" class="text-3xl text-purple-400">👤</span>
             </div>
             <div>
-              <span class="text-xs text-slate-400 font-semibold uppercase">நடப்பு வாடிக்கையாளர்</span>
+              <span class="text-[10px] text-purple-600 font-bold uppercase tracking-wider">நடப்பு வாடிக்கையாளர்</span>
               <div class="flex items-center gap-2">
-                <h2 class="text-base font-bold text-slate-800" id="cardName">-</h2>
-                <span id="cardKycBadge" class="text-[10px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">PENDING</span>
+                <h2 class="text-base font-extrabold text-brand-violet" id="cardName">-</h2>
+                <span id="cardKycBadge" class="text-[10px] px-2 py-0.5 rounded font-black bg-amber-100 text-amber-900 border border-yellow-300">PENDING</span>
               </div>
-              <p class="text-xs text-slate-500">
-                மொபைல்: <span id="cardMobile" class="font-bold text-slate-700">-</span> | 
-                உறவு: <span id="cardRelation" class="font-semibold text-slate-700">-</span> |
-                சான்று: <span id="cardProofNo" class="font-semibold text-slate-700">-</span>
+              <p class="text-xs text-slate-600 mt-0.5">
+                மொபைல்: <span id="cardMobile" class="font-bold text-slate-800">-</span> | 
+                உறவு: <span id="cardRelation" class="font-semibold text-slate-800">-</span> |
+                சான்று: <span id="cardProofNo" class="font-semibold text-slate-800">-</span>
               </p>
-              <p class="text-xs text-slate-500 truncate max-w-md">முகவரி: <span id="cardAddress">-</span></p>
+              <p class="text-xs text-slate-500 truncate max-w-md mt-0.5">முகவரி: <span id="cardAddress">-</span></p>
             </div>
           </div>
           <div class="flex gap-2 w-full md:w-auto justify-end">
-            <button onclick="openFullUpdateModal()" class="text-xs text-amber-700 border border-amber-300 hover:bg-amber-50 px-3 py-1.5 rounded-lg font-bold">
+            <button onclick="openFullUpdateModal()" class="text-xs text-purple-800 bg-purple-50 border-2 border-purple-200 hover:bg-purple-100 px-3.5 py-1.5 rounded-xl font-bold transition">
               சுயவிவர மாற்றம் 📝
             </button>
-            <button onclick="resetCustomer()" class="text-xs text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg font-bold">
-              முடி / மாற்று
+            <button onclick="resetCustomer()" class="text-xs text-rose-600 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 px-3.5 py-1.5 rounded-xl font-bold transition">
+              முடி / மாற்று ✕
             </button>
           </div>
         </div>
 
         <!-- அடகு படிவம் & கூடை -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="lg:col-span-2 bg-white p-5 rounded-xl shadow-sm border space-y-4">
-            <div class="border-b pb-2 flex justify-between items-center">
-              <h3 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+          <div class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+            <div class="border-b border-purple-100 pb-2 flex justify-between items-center">
+              <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2">
                 <span>🪙</span> புதிய நகைக்கடன் அடகு (New Loan Entry)
               </h3>
-              <span class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-semibold">படிவம்</span>
+              <span class="text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold">படிவம்</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">தொடர் நகைக்கடன் எண் (Auto-generated) *</label>
-                <input type="text" id="loan_no" readonly class="w-full border p-2 rounded-lg text-xs font-mono font-bold bg-slate-50 text-amber-900 cursor-not-allowed">
+                <label class="block text-xs font-bold text-slate-700 mb-1">தொடர் நகைக்கடன் எண் (Auto) *</label>
+                <input type="text" id="loan_no" readonly class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold bg-purple-50 text-brand-violet cursor-not-allowed">
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">நகைக்கடன் திட்டம் (Schemes) *</label>
-                <select id="scheme_name" class="w-full border p-2 rounded-lg text-xs bg-white font-medium text-amber-900"></select>
+                <label class="block text-xs font-bold text-slate-700 mb-1">நகைக்கடன் திட்டம் (Schemes) *</label>
+                <select id="scheme_name" class="w-full border-2 border-purple-200 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet focus:outline-none"></select>
               </div>
             </div>
 
             <!-- நகை உள்ளீடு -->
-            <div class="bg-slate-50 p-3 rounded-xl border space-y-2">
-              <h4 class="text-xs font-bold text-slate-700">நகை விபரம்:</h4>
+            <div class="bg-purple-50/60 p-3.5 rounded-2xl border-2 border-purple-100 space-y-2">
+              <h4 class="text-xs font-extrabold text-brand-violet">நகையின் விவரங்கள்:</h4>
               <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                <input type="text" id="item_type" placeholder="வகை" class="border p-1.5 rounded text-xs col-span-2 sm:col-span-1">
-                <input type="number" id="item_count" placeholder="எண்ணிக்கை" min="1" value="1" class="border p-1.5 rounded text-xs">
-                <input type="number" id="item_gross" step="0.001" placeholder="மொத்த எடை" class="border p-1.5 rounded text-xs">
-                <input type="number" id="item_net" step="0.001" placeholder="நிகர எடை" class="border p-1.5 rounded text-xs">
-                <select id="item_purity" class="border p-1.5 rounded text-xs bg-white"></select>
+                <input type="text" id="item_type" placeholder="வகை (Ring, Chain)" class="border-2 border-purple-100 p-2 rounded-xl text-xs col-span-2 sm:col-span-1 bg-white">
+                <input type="number" id="item_count" placeholder="எண்ணிக்கை" min="1" value="1" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-center">
+                <input type="number" id="item_gross" step="0.001" placeholder="மொத்த எடை" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-right">
+                <input type="number" id="item_net" step="0.001" placeholder="நிகர எடை" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-right font-bold text-brand-violet">
+                <select id="item_purity" class="border-2 border-purple-200 p-2 rounded-xl text-xs bg-white font-bold text-purple-900"></select>
               </div>
               <div class="flex justify-end pt-1">
-                <button onclick="addOrnamentToTable()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg font-semibold">+ நகையைச் சேர்</button>
+                <button onclick="addOrnamentToTable()" class="brand-gradient-violet-btn text-xs px-4 py-2 rounded-xl font-bold shadow">+ நகையைச் சேர்</button>
               </div>
             </div>
 
             <!-- நகைப் பட்டியல் அட்டவணை -->
-            <div class="overflow-x-auto border rounded-lg">
+            <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
               <table class="w-full text-xs text-left">
-                <thead class="bg-slate-100 text-slate-600 border-b">
+                <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
                   <tr>
-                    <th class="p-2">வகை</th>
-                    <th class="p-2 text-center">எண்ணிக்கை</th>
-                    <th class="p-2 text-right">மொத்த எடை</th>
-                    <th class="p-2 text-right">நிகர எடை</th>
-                    <th class="p-2 text-center">தரம்</th>
-                    <th class="p-2 text-center">நீக்கு</th>
+                    <th class="p-2.5 font-extrabold">வகை</th>
+                    <th class="p-2.5 text-center font-extrabold">எண்ணிக்கை</th>
+                    <th class="p-2.5 text-right font-extrabold">மொத்த எடை</th>
+                    <th class="p-2.5 text-right font-extrabold">நிகர எடை</th>
+                    <th class="p-2.5 text-center font-extrabold">தரம்</th>
+                    <th class="p-2.5 text-center font-extrabold">நீக்கு</th>
                   </tr>
                 </thead>
-                <tbody id="ornamentsTableBody" class="divide-y text-slate-700">
-                  <tr id="emptyRow"><td colspan="6" class="p-3 text-center text-slate-400">நகைகள் சேர்க்கப்படவில்லை</td></tr>
+                <tbody id="ornamentsTableBody" class="divide-y divide-purple-100 text-slate-700">
+                  <tr id="emptyRow"><td colspan="6" class="p-4 text-center text-slate-400">நகைகள் சேர்க்கப்படவில்லை</td></tr>
                 </tbody>
               </table>
             </div>
 
             <!-- நேரடி நகைகளின் தங்க மதிப்பு & திட்டத்தின் LTV கடன் மதிப்பீட்டுக் கார்டு -->
-            <div class="bg-amber-50/70 p-3 rounded-xl border border-amber-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs my-2">
+            <div class="bg-gradient-to-r from-amber-50 to-yellow-50 p-3.5 rounded-2xl border-2 border-brand-gold grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs my-2 shadow-sm">
               <div>
-                <span class="text-slate-500 block">மொத்த நிகர எடை:</span>
-                <span id="displayTotalNetWeight" class="text-sm font-bold text-slate-800">0.000 g</span>
+                <span class="text-slate-500 block font-semibold">மொத்த நிகர எடை:</span>
+                <span id="displayTotalNetWeight" class="text-sm font-extrabold text-brand-violet">0.000 g</span>
               </div>
               <div>
-                <span class="text-slate-500 block">அன்றைய நகைகளின் சந்தை மதிப்பு:</span>
-                <span id="displayTotalGoldValue" class="text-sm font-bold text-amber-900">₹ 0.00</span>
+                <span class="text-slate-500 block font-semibold">அன்றைய நகைகளின் சந்தை மதிப்பு:</span>
+                <span id="displayTotalGoldValue" class="text-sm font-extrabold text-amber-900">₹ 0.00</span>
               </div>
               <div>
-                <span class="text-slate-500 block">திட்டத்தின்படி அனுமதிக்கப்பட்ட அதிகபட்ச கடன் (LTV):</span>
-                <span id="displayMaxEligibleLoan" class="text-sm font-extrabold text-emerald-700">₹ 0.00</span>
+                <span class="text-slate-500 block font-semibold">திட்டத்தின்படி அனுமதிக்கப்பட்ட கடன் (LTV):</span>
+                <span id="displayMaxEligibleLoan" class="text-sm font-black text-emerald-700">₹ 0.00</span>
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-100">
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">கடன் தொகை (₹) * [-]</label>
-                <input type="number" id="loan_amount" placeholder="50000" class="w-full border p-2 rounded-lg text-xs font-bold text-rose-600">
+                <label class="block text-xs font-bold text-slate-700 mb-1">கடன் தொகை (₹) * [-]</label>
+                <input type="number" id="loan_amount" placeholder="50000" class="w-full border-2 border-rose-200 p-2 rounded-xl text-xs font-black text-rose-600 bg-rose-50/30 focus:outline-none">
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Processing கட்டணம் (₹) [+]</label>
-                <input type="number" id="charges_amount" value="0" class="w-full border p-2 rounded-lg text-xs font-bold text-emerald-600">
+                <label class="block text-xs font-bold text-slate-700 mb-1">Processing கட்டணம் (₹) [+]</label>
+                <input type="number" id="charges_amount" value="0" class="w-full border-2 border-emerald-200 p-2 rounded-xl text-xs font-black text-emerald-600 bg-emerald-50/30 focus:outline-none">
               </div>
             </div>
 
             <div class="flex justify-end pt-2">
-              <button onclick="submitPawnToDatabase()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow">
-                கூடையில் சேர் (Add to Cart)
+              <button onclick="submitPawnToDatabase()" class="brand-gradient-gold-btn font-black text-xs px-6 py-3 rounded-xl shadow-lg border border-yellow-500 transition transform active:scale-95">
+                கூடையில் சேர் (Add to Cart) 🛒
               </button>
             </div>
           </div>
 
           <!-- கார்ட் சுருக்கம் & Undo வசதி -->
-          <div class="bg-white p-5 rounded-xl shadow-sm border flex flex-col justify-between space-y-4">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-col justify-between space-y-4">
             <div>
-              <div class="border-b pb-2 flex justify-between items-center">
-                <h3 class="text-sm font-bold text-slate-800">🛒 பரிவர்த்தனை கூடை</h3>
+              <div class="border-b border-purple-100 pb-2 flex justify-between items-center">
+                <h3 class="text-sm font-extrabold text-brand-violet">🛒 பரிவர்த்தனை கூடை</h3>
                 <div class="flex items-center gap-1.5">
-                  <span id="cartCountBadge" class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-bold">0 கடன்கள்</span>
+                  <span id="cartCountBadge" class="text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-full font-bold">0 கடன்கள்</span>
                   <button onclick="removeLastCartItem()" id="btnUndoCart" class="hidden text-[10px] bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded font-bold hover:bg-rose-100">
                     ↩ கடைசியை நீக்கு
                   </button>
@@ -243,7 +290,7 @@
               </div>
             </div>
 
-            <div class="bg-slate-50 p-4 rounded-xl border space-y-2">
+            <div class="bg-purple-50/50 p-4 rounded-2xl border-2 border-purple-100 space-y-2">
               <div class="flex justify-between text-xs text-slate-600">
                 <span>நாம் தர வேண்டியது (-):</span>
                 <span class="font-bold text-rose-600" id="cartDebit">₹ 0.00</span>
@@ -252,14 +299,14 @@
                 <span>நாம் பெறுவது (+):</span>
                 <span class="font-bold text-emerald-600" id="cartCredit">₹ 0.00</span>
               </div>
-              <div class="border-t pt-2 flex justify-between text-sm font-extrabold text-slate-800">
+              <div class="border-t border-purple-200 pt-2 flex justify-between text-sm font-black text-brand-violet">
                 <span>நிகர தீர்வு:</span>
                 <span id="cartNetTotal">₹ 0.00</span>
               </div>
               <p class="text-[10px] text-slate-500 text-right" id="cartStatusText">-</p>
 
-              <button onclick="openCheckoutModal()" class="w-full mt-2 bg-slate-900 hover:bg-black text-white text-xs font-bold py-2.5 rounded-xl transition">
-                பணம் செலுத்துதல் / நிறைவு (Checkout)
+              <button onclick="openCheckoutModal()" class="w-full mt-2 brand-gradient-violet-btn text-xs font-black py-3 rounded-xl shadow-lg border border-purple-700 transition transform active:scale-95">
+                பணம் செலுத்துதல் / நிறைவு (Checkout) 💳
               </button>
             </div>
           </div>
@@ -269,21 +316,21 @@
 
     <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் மையம் ==================== -->
     <div id="hqApprovalTab" class="hidden space-y-5">
-      <div class="bg-white p-5 rounded-xl shadow-sm border space-y-5">
-        <div class="flex justify-between items-center border-b pb-3">
-          <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-3">
+          <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
             <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
           </h2>
-          <button onclick="loadAllHqApprovals()" class="px-3 py-1.5 text-xs bg-slate-100 hover:bg-slate-200 rounded-lg font-bold">புதுப்பி</button>
+          <button onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition">புதுப்பி 🔄</button>
         </div>
 
         <div class="space-y-2">
-          <h3 class="text-xs font-bold text-rose-800 uppercase flex items-center gap-1.5">
+          <h3 class="text-xs font-extrabold text-rose-800 uppercase flex items-center gap-1.5">
             <span>💸</span> 1. வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள்:
           </h3>
-          <div class="overflow-x-auto border rounded-lg">
+          <div class="overflow-x-auto border-2 border-rose-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-rose-50 text-rose-900 border-b">
+              <thead class="bg-rose-50 text-rose-900 border-b border-rose-200">
                 <tr>
                   <th class="p-2.5">வாடிக்கையாளர்</th>
                   <th class="p-2.5">தொகை</th>
@@ -293,20 +340,20 @@
                   <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
-              <tbody id="pendingPayoutsTableBody" class="divide-y text-slate-700">
+              <tbody id="pendingPayoutsTableBody" class="divide-y divide-rose-100 text-slate-700">
                 <tr><td colspan="6" class="p-4 text-center text-slate-400">பட்டுவாடா நிலுவைகள் இல்லை</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <div class="space-y-2 pt-4 border-t">
-          <h3 class="text-xs font-bold text-emerald-800 uppercase flex items-center gap-1.5">
+        <div class="space-y-2 pt-4 border-t border-purple-100">
+          <h3 class="text-xs font-extrabold text-emerald-800 uppercase flex items-center gap-1.5">
             <span>📥</span> 2. வாடிக்கையாளர் வங்கி மூலம் செலுத்திய வரவு சரிபார்ப்புகள்:
           </h3>
-          <div class="overflow-x-auto border rounded-lg">
+          <div class="overflow-x-auto border-2 border-emerald-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-emerald-50 text-emerald-900 border-b">
+              <thead class="bg-emerald-50 text-emerald-900 border-b border-emerald-200">
                 <tr>
                   <th class="p-2.5">வாடிக்கையாளர்</th>
                   <th class="p-2.5">தொகை</th>
@@ -316,20 +363,20 @@
                   <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
-              <tbody id="pendingReceiptsTableBody" class="divide-y text-slate-700">
+              <tbody id="pendingReceiptsTableBody" class="divide-y divide-emerald-100 text-slate-700">
                 <tr><td colspan="6" class="p-4 text-center text-slate-400">வரவு நிலுவைகள் இல்லை</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <div class="space-y-2 pt-4 border-t">
-          <h3 class="text-xs font-bold text-blue-800 uppercase flex items-center gap-1.5">
+        <div class="space-y-2 pt-4 border-t border-purple-100">
+          <h3 class="text-xs font-extrabold text-blue-800 uppercase flex items-center gap-1.5">
             <span>🚪</span> 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல்:
           </h3>
-          <div class="overflow-x-auto border rounded-lg">
+          <div class="overflow-x-auto border-2 border-blue-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-blue-50 text-blue-900 border-b">
+              <thead class="bg-blue-50 text-blue-900 border-b border-blue-200">
                 <tr>
                   <th class="p-2.5">வாடிக்கையாளர்</th>
                   <th class="p-2.5">மொபைல்</th>
@@ -338,18 +385,18 @@
                   <th class="p-2.5 text-center">ஒப்புதல்</th>
                 </tr>
               </thead>
-              <tbody id="pendingVisitsTableBody" class="divide-y text-slate-700">
+              <tbody id="pendingVisitsTableBody" class="divide-y divide-blue-100 text-slate-700">
                 <tr><td colspan="5" class="p-4 text-center text-slate-400">வருகை நிலுவைகள் இல்லை</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <div class="space-y-2 pt-4 border-t">
-          <h3 class="text-xs font-bold text-amber-900 uppercase">4. புதிய வாடிக்கையாளர் KYC கோரிக்கைகள்:</h3>
-          <div class="overflow-x-auto border rounded-lg">
+        <div class="space-y-2 pt-4 border-t border-purple-100">
+          <h3 class="text-xs font-extrabold text-brand-violet uppercase">4. புதிய வாடிக்கையாளர் KYC கோரிக்கைகள்:</h3>
+          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-slate-100 border-b">
+              <thead class="bg-purple-50 text-brand-violet border-b border-purple-200">
                 <tr>
                   <th class="p-2.5">படம்</th>
                   <th class="p-2.5">பெயர்</th>
@@ -359,18 +406,18 @@
                   <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
-              <tbody id="pendingKycTableBody" class="divide-y text-slate-700">
+              <tbody id="pendingKycTableBody" class="divide-y divide-purple-100 text-slate-700">
                 <tr><td colspan="6" class="p-4 text-center text-slate-400">KYC நிலுவைகள் இல்லை</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <div class="space-y-2 pt-4 border-t">
-          <h3 class="text-xs font-bold text-amber-900 uppercase">5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள்:</h3>
-          <div class="overflow-x-auto border rounded-lg">
+        <div class="space-y-2 pt-4 border-t border-purple-100">
+          <h3 class="text-xs font-extrabold text-brand-violet uppercase">5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள்:</h3>
+          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-slate-100 border-b">
+              <thead class="bg-purple-50 text-brand-violet border-b border-purple-200">
                 <tr>
                   <th class="p-2.5">வாடிக்கையாளர்</th>
                   <th class="p-2.5">கிளை</th>
@@ -378,7 +425,7 @@
                   <th class="p-2.5 text-center">நடவடிக்கை</th>
                 </tr>
               </thead>
-              <tbody id="pendingUpdatesTableBody" class="divide-y text-slate-700">
+              <tbody id="pendingUpdatesTableBody" class="divide-y divide-purple-100 text-slate-700">
                 <tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்ற நிலுவைகள் இல்லை</td></tr>
               </tbody>
             </table>
@@ -388,205 +435,206 @@
     </div>
 
     <!-- ==================== TAB C: நிர்வாகம் ==================== -->
-    <div id="adminPanelTab" class="hidden space-y-8">
-      <!-- 1. தங்க விலை -->
-      <div class="bg-amber-50 p-5 rounded-2xl border border-amber-200 shadow-sm space-y-3">
-        <h3 class="text-sm font-bold text-amber-900 flex items-center gap-2">
+    <div id="adminPanelTab" class="hidden space-y-6">
+      
+      <!-- 1. தங்க விலை நிர்ணயம் -->
+      <div class="bg-gradient-to-r from-amber-50 to-purple-50 p-5 rounded-2xl border-2 border-brand-gold shadow-sm space-y-3">
+        <h3 class="text-sm font-extrabold text-amber-900 flex items-center gap-2">
           <span>💰</span> அன்றைய தங்க விலை நிர்ணயம் (Today's Gold Rate per Gram)
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div><label class="block text-[11px] font-semibold mb-1">24K தூய தங்கம் (₹/g) *</label><input type="number" id="gr_24k" placeholder="7800" class="w-full border p-2 rounded text-xs font-bold bg-white"></div>
-          <div><label class="block text-[11px] font-semibold mb-1">22K / 916 தங்கம் (₹/g) *</label><input type="number" id="gr_22k" placeholder="7150" class="w-full border p-2 rounded text-xs font-bold bg-white text-amber-900"></div>
-          <div><label class="block text-[11px] font-semibold mb-1">18K தங்கம் (₹/g) *</label><input type="number" id="gr_18k" placeholder="5850" class="w-full border p-2 rounded text-xs font-bold bg-white"></div>
-          <div class="flex items-end"><button onclick="submitTodayGoldRate()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded text-xs shadow">விலையை சேமி 💾</button></div>
+          <div><label class="block text-[11px] font-bold text-slate-700 mb-1">24K தூய தங்கம் (₹/g) *</label><input type="number" id="gr_24k" placeholder="7800" class="w-full border-2 border-yellow-200 p-2 rounded-xl text-xs font-bold bg-white"></div>
+          <div><label class="block text-[11px] font-bold text-slate-700 mb-1">22K / 916 தங்கம் (₹/g) *</label><input type="number" id="gr_22k" placeholder="7150" class="w-full border-2 border-yellow-300 p-2 rounded-xl text-xs font-black bg-white text-brand-violet"></div>
+          <div><label class="block text-[11px] font-bold text-slate-700 mb-1">18K தங்கம் (₹/g) *</label><input type="number" id="gr_18k" placeholder="5850" class="w-full border-2 border-yellow-200 p-2 rounded-xl text-xs font-bold bg-white"></div>
+          <div class="flex items-end"><button onclick="submitTodayGoldRate()" class="w-full brand-gradient-gold-btn font-black py-2.5 rounded-xl text-xs shadow border border-yellow-500">விலையை சேமி 💾</button></div>
         </div>
       </div>
 
       <!-- 2. திட்டங்கள் -->
       <div class="space-y-4">
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-2">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+          <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2 border-b border-purple-100 pb-2">
             <span>📜</span> புதிய நகைக்கடன் திட்டம் உருவாக்கம் (New Loan Scheme)
           </h3>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input type="text" id="sch_code" placeholder="திட்டக் குறியீடு (GL-SMART-12) *" class="border p-2 rounded text-xs font-mono">
-            <input type="text" id="sch_name" placeholder="திட்டத்தின் பெயர் *" class="border p-2 rounded text-xs">
-            <input type="number" id="sch_tenure" placeholder="கடன் காலம் (மாதங்களில், எ.கா: 12) *" class="border p-2 rounded text-xs">
+            <input type="text" id="sch_code" placeholder="திட்டக் குறியீடு (GL-SMART-12) *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold text-brand-violet">
+            <input type="text" id="sch_name" placeholder="திட்டத்தின் பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="number" id="sch_tenure" placeholder="கடன் காலம் (மாதங்கள், எ.கா: 12) *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="number" id="sch_min_loan" placeholder="குறைந்தபட்ச கடன் (₹)" class="border p-2 rounded text-xs" value="1000">
-            <input type="number" id="sch_max_loan" placeholder="அதிகபட்ச கடன் (₹)" class="border p-2 rounded text-xs" value="1500000">
-            <input type="number" id="sch_min_days" placeholder="Min Interest Days" class="border p-2 rounded text-xs" value="7">
-            <input type="number" id="sch_ltv" placeholder="அதிகபட்ச Loan % (LTV)" class="border p-2 rounded text-xs" value="75">
+            <input type="number" id="sch_min_loan" placeholder="குறைந்தபட்ச கடன் (₹)" class="border-2 border-purple-100 p-2 rounded-xl text-xs" value="1000">
+            <input type="number" id="sch_max_loan" placeholder="அதிகபட்ச கடன் (₹)" class="border-2 border-purple-100 p-2 rounded-xl text-xs" value="1500000">
+            <input type="number" id="sch_min_days" placeholder="Min Interest Days" class="border-2 border-purple-100 p-2 rounded-xl text-xs" value="7">
+            <input type="number" id="sch_ltv" placeholder="அதிகபட்ச LTV % (LTV)" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-bold text-emerald-600" value="75">
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-3 rounded-xl border text-xs">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-purple-50/50 p-3.5 rounded-2xl border-2 border-purple-100 text-xs">
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">ஏலக் கட்டணம் (Auction Charge ₹)</label>
-              <input type="number" id="sch_auction_charge" class="w-full border p-1.5 rounded bg-white" value="500">
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">ஏலக் கட்டணம் (₹)</label>
+              <input type="number" id="sch_auction_charge" class="w-full border-2 border-purple-100 p-2 rounded-xl bg-white" value="500">
             </div>
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Processing Charge நேரம்</label>
-              <select id="sch_proc_type" class="w-full border p-1.5 rounded bg-white">
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">Processing கட்டண நேரம்</label>
+              <select id="sch_proc_type" class="w-full border-2 border-purple-100 p-2 rounded-xl bg-white">
                 <option value="PLEDGE">அடகு வைக்கும் போது (Pledge)</option>
                 <option value="RELEASE">திருப்பும் போது (Release)</option>
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">கட்டண கணக்கீடு முறை</label>
-              <select id="sch_proc_calc" class="w-full border p-1.5 rounded bg-white">
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">கட்டண கணக்கீடு முறை</label>
+              <select id="sch_proc_calc" class="w-full border-2 border-purple-100 p-2 rounded-xl bg-white">
                 <option value="AMOUNT">நிலையான தொகை (₹)</option>
                 <option value="PERCENTAGE">சதவீதம் (%)</option>
               </select>
             </div>
             <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">கட்டண மதிப்பு (Value)</label>
-              <input type="number" id="sch_proc_val" class="w-full border p-1.5 rounded bg-white" value="100">
+              <label class="block text-[11px] font-bold text-slate-700 mb-1">மதிப்பு</label>
+              <input type="number" id="sch_proc_val" class="w-full border-2 border-purple-100 p-2 rounded-xl bg-white" value="100">
             </div>
           </div>
-          <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-200 space-y-2">
+          <div class="bg-amber-50 p-3.5 rounded-2xl border-2 border-amber-200 space-y-2">
             <div class="flex justify-between items-center">
-              <span class="text-xs font-bold text-amber-900">வட்டி அடுக்குகள் (Interest Slabs):</span>
-              <button onclick="addInterestSlabRow()" class="text-xs text-amber-800 font-bold hover:underline">+ அடுக்கு சேர்</button>
+              <span class="text-xs font-black text-amber-900">வட்டி அடுக்குகள் (Interest Slabs):</span>
+              <button onclick="addInterestSlabRow()" class="text-xs text-brand-violet font-bold hover:underline">+ அடுக்கு சேர்</button>
             </div>
             <div id="slabsContainer" class="space-y-1.5">
               <div class="grid grid-cols-3 gap-2 slab-row">
-                <input type="number" placeholder="From Day (1)" value="1" class="border p-1.5 rounded text-xs bg-white slab-from">
-                <input type="number" placeholder="To Day (30)" value="30" class="border p-1.5 rounded text-xs bg-white slab-to">
-                <input type="number" placeholder="வட்டி % (12)" value="12" class="border p-1.5 rounded text-xs bg-white slab-rate">
+                <input type="number" placeholder="From Day (1)" value="1" class="border p-2 rounded-xl text-xs bg-white slab-from">
+                <input type="number" placeholder="To Day (30)" value="30" class="border p-2 rounded-xl text-xs bg-white slab-to">
+                <input type="number" placeholder="வட்டி % (12)" value="12" class="border p-2 rounded-xl text-xs bg-white slab-rate font-bold text-brand-violet">
               </div>
               <div class="grid grid-cols-3 gap-2 slab-row">
-                <input type="number" placeholder="From Day (31)" value="31" class="border p-1.5 rounded text-xs bg-white slab-from">
-                <input type="number" placeholder="To Day (90)" value="90" class="border p-1.5 rounded text-xs bg-white slab-to">
-                <input type="number" placeholder="வட்டி % (15)" value="15" class="border p-1.5 rounded text-xs bg-white slab-rate">
+                <input type="number" placeholder="From Day (31)" value="31" class="border p-2 rounded-xl text-xs bg-white slab-from">
+                <input type="number" placeholder="To Day (90)" value="90" class="border p-2 rounded-xl text-xs bg-white slab-to">
+                <input type="number" placeholder="வட்டி % (15)" value="15" class="border p-2 rounded-xl text-xs bg-white slab-rate font-bold text-brand-violet">
               </div>
             </div>
           </div>
           <div class="flex justify-end">
-            <button onclick="submitLoanSchemeForm()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ திட்டத்தை உருவாக்கு</button>
+            <button onclick="submitLoanSchemeForm()" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500">+ திட்டத்தை உருவாக்கு</button>
           </div>
         </div>
 
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
-          <h4 class="text-xs font-bold text-slate-700 uppercase">திட்டங்களின் பட்டியல்:</h4>
-          <div class="overflow-x-auto border rounded-lg">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
+          <h4 class="text-xs font-extrabold text-brand-violet uppercase">திட்டங்களின் பட்டியல்:</h4>
+          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-slate-100 border-b">
-                <tr><th class="p-2.5">குறியீடு</th><th class="p-2.5">பெயர்</th><th class="p-2.5">காலம்</th><th class="p-2.5">வரம்பு (₹)</th><th class="p-2.5">ஏலக் கட்டணம்</th><th class="p-2.5">வட்டி ஸ்லேப்</th><th class="p-2.5 text-center">செயல்</th></tr>
+              <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+                <tr><th class="p-2.5 font-bold">குறியீடு</th><th class="p-2.5 font-bold">பெயர்</th><th class="p-2.5 font-bold">காலம்</th><th class="p-2.5 font-bold">வரம்பு (₹)</th><th class="p-2.5 font-bold">ஏலக் கட்டணம்</th><th class="p-2.5 font-bold">வட்டி ஸ்லேப்</th><th class="p-2.5 text-center font-bold">செயல்</th></tr>
               </thead>
-              <tbody id="schemesTableBody" class="divide-y text-slate-700"></tbody>
+              <tbody id="schemesTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- 3. வங்கிகள் -->
-      <div class="space-y-4 pt-4 border-t">
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
-          <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2 border-b pb-2">
+      <!-- 3. நிறுவன வங்கிக் கணக்குகள் -->
+      <div class="space-y-4 pt-4 border-t border-purple-100">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+          <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2 border-b border-purple-100 pb-2">
             <span>🏦</span> நிறுவன வங்கி கணக்கு சேர்க்கை (Company Banks)
           </h3>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input type="text" id="bank_acc_name" placeholder="வங்கிப் பெயர் *" class="border p-2 rounded text-xs">
-            <input type="text" id="bank_acc_branch" placeholder="கிளை பெயர் *" class="border p-2 rounded text-xs">
-            <select id="bank_acc_type" class="border p-2 rounded text-xs bg-white font-medium">
+            <input type="text" id="bank_acc_name" placeholder="வங்கிப் பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="text" id="bank_acc_branch" placeholder="கிளை பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <select id="bank_acc_type" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet">
               <option value="CURRENT">CURRENT ACCOUNT</option>
               <option value="SAVINGS">SAVINGS</option>
               <option value="OD">OVERDRAFT</option>
             </select>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input type="text" id="bank_acc_no" placeholder="கணக்கு எண் *" class="border p-2 rounded text-xs">
-            <input type="text" id="bank_acc_ifsc" placeholder="IFSC *" class="border p-2 rounded text-xs">
-            <input type="text" id="bank_acc_upi" placeholder="நிறுவன UPI ID" class="border p-2 rounded text-xs">
+            <input type="text" id="bank_acc_no" placeholder="கணக்கு எண் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold">
+            <input type="text" id="bank_acc_ifsc" placeholder="IFSC *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="text" id="bank_acc_upi" placeholder="நிறுவன UPI ID" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
           </div>
           <div class="flex justify-end">
-            <button onclick="submitCompanyBankForm()" class="bg-slate-800 hover:bg-black text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ வங்கி கணக்கைச் சேர்</button>
+            <button onclick="submitCompanyBankForm()" class="brand-gradient-violet-btn font-bold text-xs px-6 py-2.5 rounded-xl shadow">+ வங்கி கணக்கைச் சேர்</button>
           </div>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
-          <h4 class="text-xs font-bold text-slate-700 uppercase">நிறுவன வங்கி கணக்குகள்:</h4>
-          <div class="overflow-x-auto border rounded-lg">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
+          <h4 class="text-xs font-extrabold text-brand-violet uppercase">நிறுவன வங்கி கணக்குகள்:</h4>
+          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-slate-100 border-b">
-                <tr><th class="p-2.5">வங்கி</th><th class="p-2.5">கிளை</th><th class="p-2.5">வகை</th><th class="p-2.5">கணக்கு எண்</th><th class="p-2.5">IFSC</th><th class="p-2.5 text-center">செயல்</th></tr>
+              <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+                <tr><th class="p-2.5 font-bold">வங்கி</th><th class="p-2.5 font-bold">கிளை</th><th class="p-2.5 font-bold">வகை</th><th class="p-2.5 font-bold">கணக்கு எண்</th><th class="p-2.5 font-bold">IFSC</th><th class="p-2.5 text-center font-bold">செயல்</th></tr>
               </thead>
-              <tbody id="companyBanksTableBody" class="divide-y text-slate-700"></tbody>
+              <tbody id="companyBanksTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <!-- 4. கிளைகள் மேலாண்மை -->
-      <div class="space-y-4 pt-4 border-t">
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
-          <div class="flex justify-between items-center border-b pb-2">
-            <h3 class="text-sm font-bold text-slate-800" id="branchFormTitle">🏢 புதிய கிளை உருவாக்கம்</h3>
+      <!-- 4. கிளைகள் & பணியாளர்கள் மேலாண்மை -->
+      <div class="space-y-4 pt-4 border-t border-purple-100">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+          <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+            <h3 class="text-sm font-extrabold text-brand-violet" id="branchFormTitle">🏢 புதிய கிளை உருவாக்கம்</h3>
             <button onclick="cancelBranchEdit()" id="btnCancelBranchEdit" class="hidden text-xs text-rose-600 font-bold">ரத்து</button>
           </div>
           <input type="hidden" id="edit_branch_id" value="">
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="text" id="new_branch_code" placeholder="குறியீடு (NGL/THG) *" class="border p-2 rounded text-xs">
-            <input type="text" id="new_branch_name" placeholder="கிளை பெயர் *" class="border p-2 rounded text-xs">
-            <input type="text" id="new_branch_city" placeholder="நகரம் *" class="border p-2 rounded text-xs">
-            <input type="text" id="new_branch_phone" placeholder="தொலைபேசி" class="border p-2 rounded text-xs">
+            <input type="text" id="new_branch_code" placeholder="குறியீடு (NGL/THG) *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold text-brand-violet">
+            <input type="text" id="new_branch_name" placeholder="கிளை பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="text" id="new_branch_city" placeholder="நகரம் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="text" id="new_branch_phone" placeholder="தொலைபேசி" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
           </div>
           <div class="flex justify-end">
-            <button onclick="submitBranchForm()" id="btnSubmitBranch" class="bg-slate-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl">+ சேர்</button>
+            <button onclick="submitBranchForm()" id="btnSubmitBranch" class="brand-gradient-violet-btn text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ சேர்</button>
           </div>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
-          <h4 class="text-xs font-bold text-slate-700 uppercase">கிளைகளின் பட்டியல்:</h4>
-          <div class="overflow-x-auto border rounded-lg">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
+          <h4 class="text-xs font-extrabold text-brand-violet uppercase">கிளைகளின் பட்டியல்:</h4>
+          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-slate-100 border-b">
-                <tr><th class="p-2.5">ID</th><th class="p-2.5">குறியீடு</th><th class="p-2.5">பெயர்</th><th class="p-2.5">நகரம்</th><th class="p-2.5 text-center">செயல்</th></tr>
+              <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+                <tr><th class="p-2.5 font-bold">ID</th><th class="p-2.5 font-bold">குறியீடு</th><th class="p-2.5 font-bold">பெயர்</th><th class="p-2.5 font-bold">நகரம்</th><th class="p-2.5 text-center font-bold">செயல்</th></tr>
               </thead>
-              <tbody id="branchesTableBody" class="divide-y text-slate-700"></tbody>
+              <tbody id="branchesTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
             </table>
           </div>
         </div>
       </div>
 
       <!-- 5. பணியாளர்கள் மேலாண்மை -->
-      <div class="space-y-4 pt-4 border-t">
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-4">
-          <div class="flex justify-between items-center border-b pb-2">
-            <h3 class="text-sm font-bold text-slate-800" id="staffFormTitle">👤 பணியாளர் கணக்கு & அணுகல் உரிமைகள்</h3>
+      <div class="space-y-4 pt-4 border-t border-purple-100">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+          <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+            <h3 class="text-sm font-extrabold text-brand-violet" id="staffFormTitle">👤 பணியாளர் கணக்கு & அணுகல் உரிமைகள்</h3>
             <button onclick="cancelStaffEdit()" id="btnCancelStaffEdit" class="hidden text-xs text-rose-600 font-bold">ரத்து</button>
           </div>
           <input type="hidden" id="edit_staff_id" value="">
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="text" id="new_staff_user" placeholder="Username *" class="border p-2 rounded text-xs">
-            <input type="password" id="new_staff_pass" placeholder="Password" class="border p-2 rounded text-xs">
-            <input type="text" id="new_staff_name" placeholder="பெயர் *" class="border p-2 rounded text-xs">
-            <input type="tel" id="new_staff_mobile" placeholder="மொபைல் *" class="border p-2 rounded text-xs">
+            <input type="text" id="new_staff_user" placeholder="Username *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-bold">
+            <input type="password" id="new_staff_pass" placeholder="Password" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="text" id="new_staff_name" placeholder="பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="tel" id="new_staff_mobile" placeholder="மொபைல் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select id="new_staff_role" class="border p-2 rounded text-xs bg-white">
+            <select id="new_staff_role" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet">
               <option value="BRANCH_STAFF">BRANCH_STAFF</option>
               <option value="BRANCH_MANAGER">BRANCH_MANAGER</option>
               <option value="HQ_ADMIN">HQ_ADMIN</option>
             </select>
-            <select id="new_staff_branch" class="border p-2 rounded text-xs bg-white font-medium text-amber-900"></select>
+            <select id="new_staff_branch" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet"></select>
           </div>
-          <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-            <label class="flex items-center space-x-2"><input type="checkbox" id="perm_counter" checked><span>1. கவுண்ட்டர் & அடகு அணுகல்</span></label>
-            <label class="flex items-center space-x-2"><input type="checkbox" id="perm_kyc"><span>2. KYC ஒப்புதல் உரிமை</span></label>
-            <label class="flex items-center space-x-2"><input type="checkbox" id="perm_updates"><span>3. சுயவிவர மாற்ற ஒப்புதல்</span></label>
-            <label class="flex items-center space-x-2"><input type="checkbox" id="perm_admin"><span>4. நிர்வாக அணுகல்</span></label>
+          <div class="bg-purple-50 p-3.5 rounded-2xl border-2 border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center space-x-2 font-bold text-brand-violet"><input type="checkbox" id="perm_counter" checked><span>1. கவுண்ட்டர் & அடகு அணுகல்</span></label>
+            <label class="flex items-center space-x-2 font-bold text-brand-violet"><input type="checkbox" id="perm_kyc"><span>2. KYC ஒப்புதல் உரிமை</span></label>
+            <label class="flex items-center space-x-2 font-bold text-brand-violet"><input type="checkbox" id="perm_updates"><span>3. சுயவிவர மாற்ற ஒப்புதல்</span></label>
+            <label class="flex items-center space-x-2 font-bold text-brand-violet"><input type="checkbox" id="perm_admin"><span>4. நிர்வாக அணுகல்</span></label>
           </div>
           <div class="flex justify-end">
-            <button onclick="submitStaffForm()" id="btnSubmitStaff" class="bg-amber-600 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ பணியாளரை உருவாக்கு</button>
+            <button onclick="submitStaffForm()" id="btnSubmitStaff" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500">+ பணியாளரை உருவாக்கு</button>
           </div>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow-sm border space-y-3">
-          <h4 class="text-xs font-bold text-slate-700 uppercase">பணியாளர்கள் பட்டியல்:</h4>
-          <div class="overflow-x-auto border rounded-lg">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
+          <h4 class="text-xs font-extrabold text-brand-violet uppercase">பணியாளர்கள் பட்டியல்:</h4>
+          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
-              <thead class="bg-slate-100 border-b">
-                <tr><th class="p-2.5">Username</th><th class="p-2.5">பெயர்</th><th class="p-2.5">கிளை</th><th class="p-2.5">பதவி</th><th class="p-2.5">உரிமைகள்</th><th class="p-2.5 text-center">செயல்</th></tr>
+              <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+                <tr><th class="p-2.5 font-bold">Username</th><th class="p-2.5 font-bold">பெயர்</th><th class="p-2.5 font-bold">கிளை</th><th class="p-2.5 font-bold">பதவி</th><th class="p-2.5 font-bold">உரிமைகள்</th><th class="p-2.5 text-center font-bold">செயல்</th></tr>
               </thead>
-              <tbody id="staffTableBody" class="divide-y text-slate-700"></tbody>
+              <tbody id="staffTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
             </table>
           </div>
         </div>
@@ -595,250 +643,250 @@
 
     <!-- Modals -->
     <!-- 1. புதிய முழு KYC Modal -->
-    <div id="fullKycModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-2xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-base font-bold text-slate-800">📋 புதிய வாடிக்கையாளர் முழுமையான KYC படிவம்</h3>
+    <div id="fullKycModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-gold">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <h3 class="text-base font-extrabold text-brand-violet">📋 புதிய வாடிக்கையாளர் முழுமையான KYC படிவம்</h3>
           <button onclick="closeNewKycModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
         <div class="space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input type="text" id="fkyc_name" placeholder="பெயர் *" class="border p-2 rounded text-xs">
-            <input type="tel" id="fkyc_mobile" placeholder="முதன்மை மொபைல் *" class="border p-2 rounded text-xs">
-            <input type="tel" id="fkyc_alt_mobile" placeholder="மாற்று மொபைல்" class="border p-2 rounded text-xs">
+            <input type="text" id="fkyc_name" placeholder="பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="tel" id="fkyc_mobile" placeholder="முதன்மை மொபைல் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="tel" id="fkyc_alt_mobile" placeholder="மாற்று மொபைல்" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <select id="fkyc_rel_type" class="border p-2 rounded text-xs bg-white">
+            <select id="fkyc_rel_type" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white">
               <option value="தந்தை">தந்தை</option><option value="தாய்">தாய்</option><option value="கணவர்">கணவர்</option><option value="மகன்">மகன்</option>
             </select>
-            <input type="text" id="fkyc_guardian" placeholder="உறவினர் பெயர்" class="border p-2 rounded text-xs sm:col-span-2">
+            <input type="text" id="fkyc_guardian" placeholder="உறவினர் பெயர்" class="border-2 border-purple-100 p-2 rounded-xl text-xs sm:col-span-2">
           </div>
-          <textarea id="fkyc_address" placeholder="முழு முகவரி *" rows="2" class="w-full border p-2 rounded text-xs"></textarea>
+          <textarea id="fkyc_address" placeholder="முழு முகவரி *" rows="2" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs"></textarea>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select id="fkyc_proof_type" class="border p-2 rounded text-xs bg-white">
+            <select id="fkyc_proof_type" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white">
               <option value="Aadhaar Card">ஆதார் அட்டை</option><option value="Smart Card">ஸ்மார்ட் ரேஷன் அட்டை</option><option value="PAN Card">பான் கார்டு</option>
             </select>
-            <input type="text" id="fkyc_proof_no" placeholder="சான்று எண் *" class="border p-2 rounded text-xs">
+            <input type="text" id="fkyc_proof_no" placeholder="சான்று எண் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-2.5 rounded-xl border">
-            <input type="text" id="fkyc_nominee_name" placeholder="நாமினி பெயர்" class="border p-1.5 rounded text-xs bg-white">
-            <input type="text" id="fkyc_nominee_rel" placeholder="நாமினி உறவு" class="border p-1.5 rounded text-xs bg-white">
-            <input type="tel" id="fkyc_nominee_mob" placeholder="நாமினி மொபைல்" class="border p-1.5 rounded text-xs bg-white">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-purple-50 p-3 rounded-2xl border border-purple-100">
+            <input type="text" id="fkyc_nominee_name" placeholder="நாமினி பெயர்" class="border p-2 rounded-xl text-xs bg-white">
+            <input type="text" id="fkyc_nominee_rel" placeholder="நாமினி உறவு" class="border p-2 rounded-xl text-xs bg-white">
+            <input type="tel" id="fkyc_nominee_mob" placeholder="நாமினி மொபைல்" class="border p-2 rounded-xl text-xs bg-white">
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-xl border text-xs">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-purple-50 p-3 rounded-2xl border border-purple-100 text-xs">
             <div class="space-y-1">
-              <span class="font-bold text-slate-600">ரெபரன்ஸ் 1:</span>
-              <input type="text" id="fkyc_ref1_name" placeholder="பெயர்" class="w-full border p-1 rounded bg-white">
-              <input type="tel" id="fkyc_ref1_mob" placeholder="மொபைல்" class="w-full border p-1 rounded bg-white">
+              <span class="font-bold text-brand-violet">ரெபரன்ஸ் 1:</span>
+              <input type="text" id="fkyc_ref1_name" placeholder="பெயர்" class="w-full border p-1.5 rounded-lg bg-white">
+              <input type="tel" id="fkyc_ref1_mob" placeholder="மொபைல்" class="w-full border p-1.5 rounded-lg bg-white">
             </div>
             <div class="space-y-1">
-              <span class="font-bold text-slate-600">ரெபரன்ஸ் 2:</span>
-              <input type="text" id="fkyc_ref2_name" placeholder="பெயர்" class="w-full border p-1 rounded bg-white">
-              <input type="tel" id="fkyc_ref2_mob" placeholder="மொபைல்" class="w-full border p-1 rounded bg-white">
+              <span class="font-bold text-brand-violet">ரெபரன்ஸ் 2:</span>
+              <input type="text" id="fkyc_ref2_name" placeholder="பெயர்" class="w-full border p-1.5 rounded-lg bg-white">
+              <input type="tel" id="fkyc_ref2_mob" placeholder="மொபைல்" class="w-full border p-1.5 rounded-lg bg-white">
             </div>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t pt-2">
-            <div><label class="block text-[11px] font-bold">1. படம் 📷</label><input type="file" id="fkyc_file_photo" accept="image/*" class="text-[10px]"></div>
-            <div><label class="block text-[11px] font-bold">2. கையொப்பம் ✍️</label><input type="file" id="fkyc_file_sign" accept="image/*" class="text-[10px]"></div>
-            <div><label class="block text-[11px] font-bold">3. ஆவணப் படம் 🪪</label><input type="file" id="fkyc_file_proof" accept="image/*" class="text-[10px]"></div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-purple-100 pt-2">
+            <div><label class="block text-[11px] font-bold text-brand-violet">1. படம் 📷</label><input type="file" id="fkyc_file_photo" accept="image/*" class="text-[10px]"></div>
+            <div><label class="block text-[11px] font-bold text-brand-violet">2. கையொப்பம் ✍️</label><input type="file" id="fkyc_file_sign" accept="image/*" class="text-[10px]"></div>
+            <div><label class="block text-[11px] font-bold text-brand-violet">3. ஆவணப் படம் 🪪</label><input type="file" id="fkyc_file_proof" accept="image/*" class="text-[10px]"></div>
           </div>
         </div>
-        <div class="flex justify-end gap-2 pt-2 border-t">
+        <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
           <button onclick="closeNewKycModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
-          <button onclick="submitFullKycForm()" id="btnSubmitFullKyc" class="px-5 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">சமர்ப்பி (Submit KYC)</button>
+          <button onclick="submitFullKycForm()" id="btnSubmitFullKyc" class="brand-gradient-gold-btn px-6 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">சமர்ப்பி (Submit KYC)</button>
         </div>
       </div>
     </div>
 
     <!-- 2. சுயவிவர மாற்ற Modal -->
-    <div id="fullUpdateModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-2xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-base font-bold text-slate-800">சுயவிவர மாற்றம் (Edit Customer Profile)</h3>
+    <div id="fullUpdateModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-violet">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <h3 class="text-base font-extrabold text-brand-violet">சுயவிவர மாற்றம் (Edit Customer Profile)</h3>
           <button onclick="closeFullUpdateModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
         <div class="space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div><label class="text-[11px] font-semibold">பெயர்</label><input type="text" id="upd_name" class="w-full border p-2 rounded text-xs font-bold"></div>
-            <div><label class="text-[11px] font-semibold">முதன்மை மொபைல்</label><input type="tel" id="upd_mobile" class="w-full border p-2 rounded text-xs font-bold"></div>
-            <div><label class="text-[11px] font-semibold">மாற்று மொபைல்</label><input type="tel" id="upd_alt_mobile" class="w-full border p-2 rounded text-xs"></div>
+            <div><label class="text-[11px] font-bold">பெயர்</label><input type="text" id="upd_name" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs font-bold"></div>
+            <div><label class="text-[11px] font-bold">முதன்மை மொபைல்</label><input type="tel" id="upd_mobile" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs font-bold"></div>
+            <div><label class="text-[11px] font-bold">மாற்று மொபைல்</label><input type="tel" id="upd_alt_mobile" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs"></div>
           </div>
-          <div><label class="text-[11px] font-semibold">முழு முகவரி</label><textarea id="upd_address" rows="2" class="w-full border p-2 rounded text-xs"></textarea></div>
+          <div><label class="text-[11px] font-bold">முழு முகவரி</label><textarea id="upd_address" rows="2" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs"></textarea></div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div><label class="text-[11px] font-semibold">சான்று எண்</label><input type="text" id="upd_proof_no" class="w-full border p-2 rounded text-xs"></div>
-            <div><label class="text-[11px] font-semibold">நாமினி பெயர்</label><input type="text" id="upd_nominee_name" class="w-full border p-2 rounded text-xs"></div>
+            <div><label class="text-[11px] font-bold">சான்று எண்</label><input type="text" id="upd_proof_no" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs"></div>
+            <div><label class="text-[11px] font-bold">நாமினி பெயர்</label><input type="text" id="upd_nominee_name" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs"></div>
           </div>
-          <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
+          <div class="bg-purple-50 p-3 rounded-2xl border border-purple-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
             <div><span>புதிய படம்:</span><input type="file" id="upd_file_photo" accept="image/*" class="w-full mt-1 text-[10px]"></div>
             <div><span>புதிய கையொப்பம்:</span><input type="file" id="upd_file_sign" accept="image/*" class="w-full mt-1 text-[10px]"></div>
             <div><span>புதிய சான்றுப் படம்:</span><input type="file" id="upd_file_proof" accept="image/*" class="w-full mt-1 text-[10px]"></div>
           </div>
         </div>
-        <div class="flex justify-end gap-2 pt-2 border-t">
+        <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
           <button onclick="closeFullUpdateModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
-          <button onclick="submitFullUpdateReq()" id="btnSubmitFullUpdate" class="px-5 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold shadow">ஒப்புதலுக்கு அனுப்பு</button>
+          <button onclick="submitFullUpdateReq()" id="btnSubmitFullUpdate" class="brand-gradient-violet-btn px-6 py-2 rounded-xl text-xs font-bold shadow">ஒப்புதலுக்கு அனுப்பு</button>
         </div>
       </div>
     </div>
 
     <!-- 3. Checkout Modal -->
-    <div id="checkoutModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-2xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-base font-bold text-slate-800">பரிவர்த்தனை தீர்வு (Checkout)</h3>
+    <div id="checkoutModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-gold">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <h3 class="text-base font-extrabold text-brand-violet">பரிவர்த்தனை தீர்வு (Checkout)</h3>
           <button onclick="closeCheckoutModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
-        <p class="text-xs text-amber-600 font-semibold" id="modalDirectionSummary">நிகர தொகை: ₹0.00</p>
+        <p class="text-xs text-amber-800 font-extrabold" id="modalDirectionSummary">நிகர தொகை: ₹0.00</p>
         <div class="grid grid-cols-3 gap-2">
-          <button type="button" onclick="setPaymentMode('FULL_CASH')" id="btn_cash" class="py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900">முழு ரொக்கம்</button>
-          <button type="button" onclick="setPaymentMode('FULL_BANK')" id="btn_bank" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">முழு வங்கி</button>
-          <button type="button" onclick="setPaymentMode('SPLIT')" id="btn_split" class="py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700">பகுதி ரொக்கம் + வங்கி</button>
+          <button type="button" onclick="setPaymentMode('FULL_CASH')" id="btn_cash" class="py-2.5 text-xs font-bold rounded-xl border-2 bg-purple-50 border-brand-violet text-brand-violet">முழு ரொக்கம்</button>
+          <button type="button" onclick="setPaymentMode('FULL_BANK')" id="btn_bank" class="py-2.5 text-xs font-bold rounded-xl border-2 bg-white border-slate-300 text-slate-700">முழு வங்கி</button>
+          <button type="button" onclick="setPaymentMode('SPLIT')" id="btn_split" class="py-2.5 text-xs font-bold rounded-xl border-2 bg-white border-slate-300 text-slate-700">பகுதி ரொக்கம் + வங்கி</button>
         </div>
-        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border">
-          <div><label class="block text-xs font-semibold mb-1">ரொக்கத் தொகை (₹)</label><input type="number" id="pay_cash" oninput="onAmountChanged('cash')" class="w-full border p-2 rounded text-xs font-bold"></div>
-          <div><label class="block text-xs font-semibold mb-1">வங்கித் தொகை (₹)</label><input type="number" id="pay_bank" oninput="onAmountChanged('bank')" class="w-full border p-2 rounded text-xs font-bold"></div>
+        <div class="grid grid-cols-2 gap-3 bg-purple-50/50 p-3.5 rounded-2xl border-2 border-purple-100">
+          <div><label class="block text-xs font-bold text-slate-700 mb-1">ரொக்கத் தொகை (₹)</label><input type="number" id="pay_cash" oninput="onAmountChanged('cash')" class="w-full border-2 border-purple-200 p-2 rounded-xl text-xs font-black text-brand-violet bg-white"></div>
+          <div><label class="block text-xs font-bold text-slate-700 mb-1">வங்கித் தொகை (₹)</label><input type="number" id="pay_bank" oninput="onAmountChanged('bank')" class="w-full border-2 border-purple-200 p-2 rounded-xl text-xs font-black text-brand-violet bg-white"></div>
         </div>
 
         <!-- Payout -->
-        <div id="bankPayoutSection" class="hidden space-y-2.5 bg-rose-50 p-3 rounded-xl border border-rose-200 text-xs">
-          <span class="font-bold text-rose-900 uppercase">வங்கி மூலம் நாம் பணம் வழங்கும் விபரம்:</span>
+        <div id="bankPayoutSection" class="hidden space-y-2.5 bg-rose-50 p-3.5 rounded-2xl border-2 border-rose-200 text-xs">
+          <span class="font-extrabold text-rose-900 uppercase">வங்கி மூலம் நாம் பணம் வழங்கும் விபரம்:</span>
           <div class="grid grid-cols-2 gap-2">
-            <select id="payout_mode" onchange="togglePayoutFields()" class="border p-1.5 rounded bg-white">
+            <select id="payout_mode" onchange="togglePayoutFields()" class="border-2 border-rose-200 p-2 rounded-xl bg-white font-bold">
               <option value="BANK_TRANSFER">வங்கி பரிவர்த்தனை (IMPS/NEFT)</option><option value="UPI">UPI ஐடி மூலம்</option>
             </select>
-            <input type="text" id="payout_beneficiary" placeholder="கணக்கு பெயர் *" class="border p-1.5 rounded bg-white">
+            <input type="text" id="payout_beneficiary" placeholder="கணக்கு பெயர் *" class="border-2 border-rose-200 p-2 rounded-xl bg-white">
           </div>
           <div id="payout_bank_fields" class="grid grid-cols-3 gap-2">
-            <input type="text" id="payout_acc_no" placeholder="கணக்கு எண் *" class="border p-1.5 rounded bg-white">
-            <input type="text" id="payout_ifsc" placeholder="IFSC *" class="border p-1.5 rounded bg-white">
-            <input type="text" id="payout_bank_name" placeholder="வங்கி" class="border p-1.5 rounded bg-white">
+            <input type="text" id="payout_acc_no" placeholder="கணக்கு எண் *" class="border-2 border-rose-200 p-2 rounded-xl bg-white font-mono">
+            <input type="text" id="payout_ifsc" placeholder="IFSC *" class="border-2 border-rose-200 p-2 rounded-xl bg-white">
+            <input type="text" id="payout_bank_name" placeholder="வங்கி" class="border-2 border-rose-200 p-2 rounded-xl bg-white">
           </div>
           <div id="payout_upi_fields" class="hidden">
-            <input type="text" id="payout_upi_id" placeholder="UPI ID (mobile@upi) *" class="w-full border p-1.5 rounded bg-white">
+            <input type="text" id="payout_upi_id" placeholder="UPI ID (mobile@upi) *" class="w-full border-2 border-rose-200 p-2 rounded-xl bg-white font-mono">
           </div>
           <div class="pt-1 border-t border-rose-200 space-y-1">
-            <label class="flex items-center space-x-2 font-bold cursor-pointer">
+            <label class="flex items-center space-x-2 font-bold cursor-pointer text-rose-900">
               <input type="checkbox" id="payout_is_third_party" onchange="toggleThirdPartyConsent()"><span>மூன்றாம் நபர் கணக்கு</span>
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-              <div><span class="font-bold">பாஸ்புக் படம் 📖 *</span><input type="file" id="payout_file_passbook" accept="image/*" class="w-full text-[10px]"></div>
-              <div id="thirdPartyConsentDiv" class="hidden"><span class="font-bold text-rose-800">ஒப்புதல் ஆவணம் 📄 *</span><input type="file" id="payout_file_consent" accept="image/*" class="w-full text-[10px]"></div>
+              <div><span class="font-bold text-rose-900">பாஸ்புக் படம் 📖 *</span><input type="file" id="payout_file_passbook" accept="image/*" class="w-full text-[10px]"></div>
+              <div id="thirdPartyConsentDiv" class="hidden"><span class="font-bold text-rose-900">ஒப்புதல் ஆவணம் 📄 *</span><input type="file" id="payout_file_consent" accept="image/*" class="w-full text-[10px]"></div>
             </div>
           </div>
         </div>
 
         <!-- Receipt -->
-        <div id="bankReceiptSection" class="hidden space-y-2 bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-xs">
-          <span class="font-bold text-emerald-900 uppercase">வங்கி வரவு சரிபார்ப்பு விபரம்:</span>
+        <div id="bankReceiptSection" class="hidden space-y-2 bg-emerald-50 p-3.5 rounded-2xl border-2 border-emerald-200 text-xs">
+          <span class="font-extrabold text-emerald-900 uppercase">வங்கி வரவு சரிபார்ப்பு விபரம்:</span>
           <div class="grid grid-cols-2 gap-2">
-            <select id="receipt_company_bank" class="border p-1.5 rounded bg-white font-medium text-emerald-900"></select>
-            <input type="text" id="receipt_ref_no" placeholder="UTR / Ref No *" class="border p-1.5 rounded bg-white">
+            <select id="receipt_company_bank" class="border-2 border-emerald-200 p-2 rounded-xl bg-white font-bold text-emerald-900"></select>
+            <input type="text" id="receipt_ref_no" placeholder="UTR / Ref No *" class="border-2 border-emerald-200 p-2 rounded-xl bg-white font-mono">
           </div>
-          <div><span class="block font-semibold mb-1">ஸ்கிரீன்ஷாட் *</span><input type="file" id="receipt_file_screenshot" accept="image/*" class="w-full text-xs"></div>
+          <div><span class="block font-bold text-emerald-900 mb-1">ஸ்கிரீன்ஷாட் *</span><input type="file" id="receipt_file_screenshot" accept="image/*" class="w-full text-xs"></div>
         </div>
 
         <!-- ரொக்கத் தாள்கள் -->
-        <div id="denomSection" class="space-y-1.5 border-t pt-2 text-xs">
-          <div class="flex justify-between items-center"><span class="font-bold" id="denomTitleText">ரூபாய் தாள்கள் டினாமினேஷன்:</span><span id="denomMatchBadge" class="px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span></div>
-          <div class="grid grid-cols-4 gap-1.5 text-center">
-            <div>500: <input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
-            <div>200: <input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
-            <div>100: <input type="number" min="0" value="0" id="d100" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
-            <div>50: <input type="number" min="0" value="0" id="d50" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
-            <div>20: <input type="number" min="0" value="0" id="d20" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
-            <div>10: <input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
-            <div>சில்: <input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
+        <div id="denomSection" class="space-y-2 border-t border-purple-100 pt-2 text-xs">
+          <div class="flex justify-between items-center"><span class="font-extrabold text-brand-violet" id="denomTitleText">ரூபாய் தாள்கள் டினாமினேஷன்:</span><span id="denomMatchBadge" class="px-2 py-0.5 rounded-lg font-bold bg-amber-100 text-amber-900 border border-yellow-300">சரிபார்க்கவும்</span></div>
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div>500: <input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
+            <div>200: <input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
+            <div>100: <input type="number" min="0" value="0" id="d100" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
+            <div>50: <input type="number" min="0" value="0" id="d50" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
+            <div>20: <input type="number" min="0" value="0" id="d20" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
+            <div>10: <input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
+            <div>சில்: <input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-14 border-2 border-purple-200 text-center rounded-lg p-1 font-bold"></div>
           </div>
-          <div class="text-right font-bold pt-1">மொத்த தாள்கள்: <span id="denomSumDisplay">₹ 0.00</span></div>
+          <div class="text-right font-black pt-1 text-sm text-brand-violet">மொத்த தாள்கள்: <span id="denomSumDisplay" class="text-emerald-700">₹ 0.00</span></div>
         </div>
 
-        <div class="flex justify-end gap-2 pt-2 border-t">
+        <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
           <button onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
-          <button onclick="requestOtpFromCustomer()" id="btn_send_otp" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow">SMS OTP அனுப்பு 📲</button>
+          <button onclick="requestOtpFromCustomer()" id="btn_send_otp" class="brand-gradient-gold-btn px-6 py-2.5 rounded-xl text-xs font-black shadow border border-yellow-500">SMS OTP அனுப்பு 📲</button>
         </div>
       </div>
     </div>
 
     <!-- 4. OTP Modal -->
     <div id="otpVerifyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center">
-        <div class="text-4xl">🔐</div>
-        <h3 class="text-base font-bold text-slate-800">OTP சரிபார்ப்பு</h3>
+      <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center border-2 border-brand-violet">
+        <div class="text-5xl">🔐</div>
+        <h3 class="text-base font-extrabold text-brand-violet">OTP சரிபார்ப்பு</h3>
         <p class="text-xs text-slate-500">வாடிக்கையாளர் மொபைலுக்கு அனுப்பப்பட்ட 6 இலக்க எண்ணை உள்ளிடவும்.</p>
-        <input type="text" id="input_otp" maxlength="6" placeholder="000000" class="w-full text-center text-2xl font-mono tracking-widest border-2 border-amber-500 rounded-xl py-2 focus:outline-none">
+        <input type="text" id="input_otp" maxlength="6" placeholder="000000" class="w-full text-center text-3xl font-mono tracking-widest border-2 border-brand-gold rounded-2xl py-3 focus:outline-none bg-yellow-50/50">
         <div class="flex justify-center gap-2 pt-2">
           <button onclick="closeOtpModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
-          <button onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow">சரிபார்த்து முடி</button>
+          <button onclick="confirmSettleWithOtp()" id="btn_confirm_settle" class="brand-gradient-gold-btn px-6 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">சரிபார்த்து முடி</button>
         </div>
       </div>
     </div>
 
     <!-- 5. நாள் தொடக்கம் / முடிப்பு Modal -->
-    <div id="cashDayModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-base font-bold text-slate-800" id="cashDayModalTitle">காலை தொடக்க இருப்பு பதிவு</h3>
+    <div id="cashDayModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 border-2 border-brand-violet">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <h3 class="text-base font-extrabold text-brand-violet" id="cashDayModalTitle">காலை தொடக்க இருப்பு பதிவு</h3>
           <button onclick="closeCashDayModal()" class="text-slate-400 font-bold">✕</button>
         </div>
-        <div class="bg-amber-50 p-2.5 rounded-lg border text-xs flex justify-between items-center">
+        <div class="bg-purple-50 p-3 rounded-xl border border-purple-100 text-xs flex justify-between items-center font-bold">
           <span>தேர்வு செய்யப்பட்ட தேதி:</span>
-          <span id="cashDayModalDate" class="font-bold text-amber-900">-</span>
+          <span id="cashDayModalDate" class="text-brand-violet font-black">-</span>
         </div>
-        <div id="divSystemCash" class="hidden bg-slate-50 p-2.5 rounded-lg border text-xs flex justify-between items-center">
+        <div id="divSystemCash" class="hidden bg-yellow-50 p-3 rounded-xl border border-yellow-200 text-xs flex justify-between items-center font-bold">
           <span>கணினியின்படி இருக்க வேண்டிய ரொக்கம்:</span>
-          <span id="txtSystemCash" class="font-bold text-slate-800">₹ 0.00</span>
+          <span id="txtSystemCash" class="text-amber-900 font-black">₹ 0.00</span>
         </div>
         <div class="space-y-2 text-xs">
-          <span class="font-bold text-slate-700">ரொக்கப் பெட்டியில் உள்ள தாள்கள் (Denominations):</span>
+          <span class="font-extrabold text-brand-violet">ரொக்கப் பெட்டியில் உள்ள தாள்கள்:</span>
           <div class="grid grid-cols-4 gap-2 text-center">
-            <div>500: <input type="number" min="0" value="0" id="cd_500" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
-            <div>200: <input type="number" min="0" value="0" id="cd_200" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
-            <div>100: <input type="number" min="0" value="0" id="cd_100" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
-            <div>50: <input type="number" min="0" value="0" id="cd_50" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
-            <div>20: <input type="number" min="0" value="0" id="cd_20" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
-            <div>10: <input type="number" min="0" value="0" id="cd_10" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
-            <div>சில்: <input type="number" min="0" value="0" id="cd_coins" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+            <div>500: <input type="number" min="0" value="0" id="cd_500" oninput="calcDayDenom()" class="w-full border-2 border-purple-100 p-1.5 rounded-lg text-center font-bold"></div>
+            <div>200: <input type="number" min="0" value="0" id="cd_200" oninput="calcDayDenom()" class="w-full border-2 border-purple-100 p-1.5 rounded-lg text-center font-bold"></div>
+            <div>100: <input type="number" min="0" value="0" id="cd_100" oninput="calcDayDenom()" class="w-full border-2 border-purple-100 p-1.5 rounded-lg text-center font-bold"></div>
+            <div>50: <input type="number" min="0" value="0" id="cd_50" oninput="calcDayDenom()" class="w-full border-2 border-purple-100 p-1.5 rounded-lg text-center font-bold"></div>
+            <div>20: <input type="number" min="0" value="0" id="cd_20" oninput="calcDayDenom()" class="w-full border-2 border-purple-100 p-1.5 rounded-lg text-center font-bold"></div>
+            <div>10: <input type="number" min="0" value="0" id="cd_10" oninput="calcDayDenom()" class="w-full border-2 border-purple-100 p-1.5 rounded-lg text-center font-bold"></div>
+            <div>சில்: <input type="number" min="0" value="0" id="cd_coins" oninput="calcDayDenom()" class="w-full border-2 border-purple-100 p-1.5 rounded-lg text-center font-bold"></div>
           </div>
-          <div class="border-t pt-2 flex justify-between font-bold text-sm">
+          <div class="border-t border-purple-100 pt-2 flex justify-between font-black text-sm text-brand-violet">
             <span>மொத்த எண்ணிய தொகை:</span>
             <span id="txtDayDenomTotal" class="text-emerald-700">₹ 0.00</span>
           </div>
-          <div id="divDiff" class="hidden text-right text-xs font-bold text-rose-600">
+          <div id="divDiff" class="hidden text-right text-xs font-black text-rose-600">
             வேறுபாடு: <span id="txtDiff">₹ 0.00</span>
           </div>
         </div>
-        <div class="flex justify-end gap-2 pt-2 border-t">
-          <button onclick="closeCashDayModal()" class="px-4 py-1.5 border rounded-lg text-xs">ரத்து</button>
-          <button onclick="submitCashDayAction()" id="btnSubmitCashDay" class="px-5 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold shadow">சேமி</button>
+        <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
+          <button onclick="closeCashDayModal()" class="px-4 py-1.5 border rounded-xl text-xs">ரத்து</button>
+          <button onclick="submitCashDayAction()" id="btnSubmitCashDay" class="brand-gradient-gold-btn px-6 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">சேமி</button>
         </div>
       </div>
     </div>
 
     <!-- 6. அன்றைய நடவடிக்கைகள் அறிக்கை Modal -->
-    <div id="dayReportModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-2xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-base font-bold text-slate-800">📊 அன்றைய ரொக்க நடவடிக்கைகள் அறிக்கை</h3>
+    <div id="dayReportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border-2 border-brand-violet">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <h3 class="text-base font-extrabold text-brand-violet">📊 அன்றைய ரொக்க நடவடிக்கைகள் அறிக்கை</h3>
           <button onclick="document.getElementById('dayReportModal').classList.add('hidden')" class="text-slate-400 font-bold">✕</button>
         </div>
         <div class="grid grid-cols-4 gap-2 text-xs text-center">
-          <div class="bg-slate-50 p-2 rounded-lg border"><span class="block text-slate-500">தொடக்க இருப்பு</span><b id="repOpenCash" class="text-slate-800">₹ 0.00</b></div>
-          <div class="bg-emerald-50 p-2 rounded-lg border"><span class="block text-emerald-600">ரொக்க வரவு (+)</span><b id="repCashIn" class="text-emerald-800">₹ 0.00</b></div>
-          <div class="bg-rose-50 p-2 rounded-lg border"><span class="block text-rose-600">ரொக்கப் பற்று (-)</span><b id="repCashOut" class="text-rose-800">₹ 0.00</b></div>
-          <div class="bg-amber-50 p-2 rounded-lg border"><span class="block text-amber-800">இருக்க வேண்டிய ரொக்கம்</span><b id="repClosingCash" class="text-amber-900">₹ 0.00</b></div>
+          <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-200"><span class="block text-slate-500">தொடக்க இருப்பு</span><b id="repOpenCash" class="text-brand-violet text-sm">₹ 0.00</b></div>
+          <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200"><span class="block text-emerald-600">ரொக்க வரவு (+)</span><b id="repCashIn" class="text-emerald-800 text-sm">₹ 0.00</b></div>
+          <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200"><span class="block text-rose-600">ரொக்கப் பற்று (-)</span><b id="repCashOut" class="text-rose-800 text-sm">₹ 0.00</b></div>
+          <div class="bg-amber-50 p-2.5 rounded-xl border border-yellow-300"><span class="block text-amber-800">இருக்க வேண்டியது</span><b id="repClosingCash" class="text-amber-900 text-sm">₹ 0.00</b></div>
         </div>
-        <div class="overflow-x-auto border rounded-lg text-xs">
+        <div class="overflow-x-auto border-2 border-purple-100 rounded-xl text-xs">
           <table class="w-full text-left">
-            <thead class="bg-slate-100 border-b">
-              <tr><th class="p-2">நேரம்/ID</th><th class="p-2">வாடிக்கையாளர்</th><th class="p-2">வகை</th><th class="p-2 text-right">ரொக்கம் (₹)</th><th class="p-2 text-right">வங்கி (₹)</th></tr>
+            <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+              <tr><th class="p-2 font-bold">நேரம்/ID</th><th class="p-2 font-bold">வாடிக்கையாளர்</th><th class="p-2 font-bold">வகை</th><th class="p-2 text-right font-bold">ரொக்கம் (₹)</th><th class="p-2 text-right font-bold">வங்கி (₹)</th></tr>
             </thead>
-            <tbody id="dayReportTableBody" class="divide-y"></tbody>
+            <tbody id="dayReportTableBody" class="divide-y divide-purple-100"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-  </div> <!-- mainDashboard End -->
+  </div>
 
   <script>
     let currentUser = null;
@@ -905,7 +953,9 @@
         btn.id = `btn_${tab.id}`;
         btn.innerText = tab.label;
         btn.onclick = () => switchTab(tab.id);
-        btn.className = index === 0 ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white" : "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+        btn.className = index === 0 
+          ? "px-3.5 py-1.5 text-xs font-black rounded-xl brand-gradient-gold-btn border border-yellow-400 shadow" 
+          : "px-3.5 py-1.5 text-xs font-bold rounded-xl bg-purple-900 bg-opacity-40 text-purple-100 hover:bg-opacity-60 border border-purple-400";
         container.appendChild(btn);
       });
       if (activeTabs.length > 0) switchTab(activeTabs[0].id);
@@ -960,7 +1010,9 @@
 
       const buttons = document.getElementById('navButtonsContainer').querySelectorAll('button');
       buttons.forEach(btn => {
-        btn.className = (btn.id === `btn_${tabId}`) ? "px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white" : "px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200";
+        btn.className = (btn.id === `btn_${tabId}`) 
+          ? "px-3.5 py-1.5 text-xs font-black rounded-xl brand-gradient-gold-btn border border-yellow-400 shadow" 
+          : "px-3.5 py-1.5 text-xs font-bold rounded-xl bg-purple-900 bg-opacity-40 text-purple-100 hover:bg-opacity-60 border border-purple-400";
       });
 
       if (tabId === 'hqApprovalTab') loadAllHqApprovals();
@@ -983,9 +1035,7 @@
       checkCurrentDateStatus();
     }
 
-    function onDateChanged() {
-      checkCurrentDateStatus();
-    }
+    function onDateChanged() { checkCurrentDateStatus(); }
 
     async function checkCurrentDateStatus() {
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
@@ -999,17 +1049,15 @@
 
         if (!currentCashDayData) {
           badge.innerText = "திறக்கப்படவில்லை (NOT OPEN)";
-          badge.className = "px-2 py-0.5 rounded font-bold text-[10px] bg-rose-100 text-rose-800";
+          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
         } else if (currentCashDayData.status === 'OPEN') {
           badge.innerText = `திறக்கப்பட்டுள்ளது (இருப்பு: ₹${currentCashDayData.opening_balance})`;
-          badge.className = "px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-100 text-emerald-800";
+          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
         } else {
           badge.innerText = `பூட்டப்பட்டது (Closed: ₹${currentCashDayData.closing_balance})`;
-          badge.className = "px-2 py-0.5 rounded font-bold text-[10px] bg-slate-200 text-slate-800";
+          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-purple-100 text-brand-violet border border-purple-300";
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) { console.error(e); }
     }
 
     async function openCashDayModal(mode) {
@@ -1161,9 +1209,7 @@
             <option value="24K">24K தூய தங்கம் (₹${todayGoldRates["24K"]}/g)</option>
           `;
         }
-      } catch (err) {
-        console.error("தங்க விலை பிழை:", err);
-      }
+      } catch (err) { console.error("தங்க விலை பிழை:", err); }
     }
 
     async function fetchAutoLoanNumber() {
@@ -1172,9 +1218,7 @@
         const res = await fetch(`/api/loan/next-loan-no?branch_id=${branchId}`);
         const data = await res.json();
         if (res.ok) document.getElementById('loan_no').value = data.next_loan_no;
-      } catch (e) {
-        console.error("கடன் எண் பிழை:", e);
-      }
+      } catch (e) { console.error("கடன் எண் பிழை:", e); }
     }
 
     // 4. Ornaments & LTV Calculation
@@ -1215,18 +1259,18 @@
       const tbody = document.getElementById('ornamentsTableBody');
       tbody.innerHTML = '';
       if (ornamentList.length === 0) {
-        tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-3 text-center text-slate-400">நகைகள் சேர்க்கப்படவில்லை</td></tr>`;
+        tbody.innerHTML = `<tr id="emptyRow"><td colspan="6" class="p-4 text-center text-slate-400">நகைகள் சேர்க்கப்படவில்லை</td></tr>`;
         return;
       }
       ornamentList.forEach((item, idx) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td class="p-2 font-medium">${item.item_type}</td>
-          <td class="p-2 text-center">${item.item_count}</td>
-          <td class="p-2 text-right">${item.gross_weight.toFixed(3)}</td>
-          <td class="p-2 text-right font-bold text-slate-800">${item.net_weight.toFixed(3)}</td>
-          <td class="p-2 text-center">${item.purity}</td>
-          <td class="p-2 text-center"><button type="button" onclick="removeOrnament(${idx})" class="text-rose-500 font-bold hover:underline">✕</button></td>
+          <td class="p-2.5 font-bold text-brand-violet">${item.item_type}</td>
+          <td class="p-2.5 text-center">${item.item_count}</td>
+          <td class="p-2.5 text-right font-mono">${item.gross_weight.toFixed(3)}</td>
+          <td class="p-2.5 text-right font-mono font-bold text-brand-violet">${item.net_weight.toFixed(3)}</td>
+          <td class="p-2.5 text-center font-bold text-amber-900">${item.purity}</td>
+          <td class="p-2.5 text-center"><button type="button" onclick="removeOrnament(${idx})" class="text-rose-500 font-bold hover:underline">✕</button></td>
         `;
         tbody.appendChild(tr);
       });
@@ -1300,21 +1344,21 @@
       const container = document.getElementById('searchResults');
       container.innerHTML = '';
       if (!result.data || result.data.length === 0) {
-        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-lg border">இந்தக் கிளையில் (${document.getElementById('loggedBranchName').innerText}) வாடிக்கையாளர் இல்லை. '+ புதிய முழு KYC' மூலம் பதிவு செய்யவும்.</div>`;
+        container.innerHTML = `<div class="p-3 text-xs text-rose-600 bg-rose-50 rounded-xl border border-rose-200">இந்தக் கிளையில் (${document.getElementById('loggedBranchName').innerText}) வாடிக்கையாளர் இல்லை. '+ புதிய முழு KYC' மூலம் பதிவு செய்யவும்.</div>`;
       } else {
         result.data.forEach(cust => {
           const div = document.createElement('div');
-          div.className = "p-3 bg-slate-50 border rounded-xl flex items-center justify-between hover:bg-amber-50 cursor-pointer transition";
-          const photoThumb = cust.customer_photo ? `<img src="${cust.customer_photo}" class="w-10 h-10 rounded-full object-cover border mr-3">` : `<div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center mr-3 text-base">👤</div>`;
+          div.className = "p-3 bg-purple-50/50 border border-purple-200 rounded-xl flex items-center justify-between hover:bg-purple-100/50 cursor-pointer transition";
+          const photoThumb = cust.customer_photo ? `<img src="${cust.customer_photo}" class="w-10 h-10 rounded-full object-cover border-2 border-brand-gold mr-3">` : `<div class="w-10 h-10 rounded-full bg-purple-200 text-brand-violet flex items-center justify-center mr-3 text-base">👤</div>`;
           div.innerHTML = `
             <div class="flex items-center">
               ${photoThumb}
               <div>
-                <div class="font-bold text-sm text-slate-800">${cust.name} <span class="text-[10px] text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">(${cust.kyc_status})</span></div>
+                <div class="font-bold text-sm text-brand-violet">${cust.name} <span class="text-[10px] text-amber-900 font-bold bg-yellow-200 px-1.5 py-0.5 rounded">(${cust.kyc_status})</span></div>
                 <div class="text-xs text-slate-500">மொபைல்: ${cust.mobile} | சான்று: ${cust.id_proof_no || 'இல்லை'}</div>
               </div>
             </div>
-            <button class="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold">தேர்ந்தெடு</button>
+            <button class="text-xs brand-gradient-gold-btn px-4 py-1.5 rounded-lg font-bold border border-yellow-500">தேர்ந்தெடு</button>
           `;
           div.onclick = () => selectCustomer(cust);
           container.appendChild(div);
@@ -1341,7 +1385,7 @@
 
       const badge = document.getElementById('cardKycBadge');
       badge.innerText = cust.kyc_status;
-      badge.className = (cust.kyc_status === 'VERIFIED') ? "text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800" : "text-[10px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800";
+      badge.className = (cust.kyc_status === 'VERIFIED') ? "text-[10px] px-2 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 border border-emerald-300" : "text-[10px] px-2 py-0.5 rounded font-black bg-amber-100 text-amber-900 border border-yellow-300";
 
       document.getElementById('searchSection').classList.add('hidden');
       document.getElementById('activeCustomerSection').classList.remove('hidden');
@@ -1415,9 +1459,7 @@
           renderOrnamentsTable();
           fetchAutoLoanNumber();
         } else alert("❌ பிழை: " + data.detail);
-      } catch (err) {
-        alert("பிழை: " + err.message);
-      }
+      } catch (err) { alert("பிழை: " + err.message); }
     }
 
     async function removeLastCartItem() {
@@ -1452,10 +1494,10 @@
       cartItems.forEach((item, index) => {
         totCredit += item.credit; totDebit += item.debit;
         const div = document.createElement('div');
-        div.className = "p-2.5 bg-slate-50 border rounded-lg text-xs flex justify-between items-center";
+        div.className = "p-2.5 bg-purple-50/50 border border-purple-100 rounded-xl text-xs flex justify-between items-center";
         div.innerHTML = `
           <div>
-            <span class="font-bold text-slate-800">${index + 1}. ${item.title}</span>
+            <span class="font-extrabold text-brand-violet">${index + 1}. ${item.title}</span>
             <p class="text-[11px] text-slate-500">${item.details}</p>
           </div>
           <div class="text-right">
@@ -1478,12 +1520,12 @@
       if (net > 0) {
         currentDirection = "COMPANY_PAYABLE";
         netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
-        netElem.className = "text-sm font-extrabold text-rose-600";
+        netElem.className = "text-sm font-black text-rose-600";
         statusElem.innerText = "(நிறுவனம் வாடிக்கையாளருக்கு வழங்க வேண்டிய தொகை)";
       } else {
         currentDirection = "CUSTOMER_PAYABLE";
         netElem.innerText = `₹ ${currentNetAbs.toFixed(2)}`;
-        netElem.className = "text-sm font-extrabold text-emerald-600";
+        netElem.className = "text-sm font-black text-emerald-600";
         statusElem.innerText = "(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய தொகை)";
       }
     }
@@ -1515,11 +1557,11 @@
       const bCash = document.getElementById('btn_cash');
       const bBank = document.getElementById('btn_bank');
       const bSplit = document.getElementById('btn_split');
-      bCash.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
-      bBank.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
-      bSplit.className = "py-2 text-xs font-bold rounded-lg border bg-white border-slate-300 text-slate-700";
+      bCash.className = "py-2.5 text-xs font-bold rounded-xl border-2 bg-white border-slate-300 text-slate-700";
+      bBank.className = "py-2.5 text-xs font-bold rounded-xl border-2 bg-white border-slate-300 text-slate-700";
+      bSplit.className = "py-2.5 text-xs font-bold rounded-xl border-2 bg-white border-slate-300 text-slate-700";
 
-      const activeClass = "py-2 text-xs font-bold rounded-lg border bg-amber-50 border-amber-500 text-amber-900";
+      const activeClass = "py-2.5 text-xs font-black rounded-xl border-2 bg-purple-50 border-brand-violet text-brand-violet shadow-sm";
       if (mode === 'FULL_CASH') bCash.className = activeClass;
       if (mode === 'FULL_BANK') bBank.className = activeClass;
       if (mode === 'SPLIT') bSplit.className = activeClass;
@@ -1569,7 +1611,7 @@
         if (currentDirection === "COMPANY_PAYABLE") payoutSec.classList.remove('hidden');
         else receiptSec.classList.remove('hidden');
       }
-      denomSec.className = cVal > 0 ? "space-y-1.5 border-t pt-2 text-xs" : "hidden";
+      denomSec.className = cVal > 0 ? "space-y-2 border-t border-purple-100 pt-2 text-xs" : "hidden";
     }
 
     function togglePayoutFields() {
@@ -1604,7 +1646,7 @@
       const badge = document.getElementById('denomMatchBadge');
       if (cVal > 0) {
         badge.innerText = (Math.round(totalDenom) === Math.round(cVal)) ? "பொருந்தியது" : `வேறுபாடு: ₹${Math.abs(cVal - totalDenom)}`;
-        badge.className = (Math.round(totalDenom) === Math.round(cVal)) ? "text-[11px] px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800" : "text-[11px] px-2 py-0.5 rounded font-bold bg-rose-100 text-rose-800";
+        badge.className = (Math.round(totalDenom) === Math.round(cVal)) ? "text-[11px] px-2.5 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800 border border-emerald-300" : "text-[11px] px-2.5 py-0.5 rounded font-bold bg-rose-100 text-rose-800 border border-rose-300";
       }
     }
 
@@ -1763,9 +1805,9 @@
       const div = document.createElement('div');
       div.className = "grid grid-cols-3 gap-2 slab-row";
       div.innerHTML = `
-        <input type="number" placeholder="From Day" class="border p-1.5 rounded text-xs bg-white slab-from">
-        <input type="number" placeholder="To Day" class="border p-1.5 rounded text-xs bg-white slab-to">
-        <input type="number" placeholder="வட்டி %" class="border p-1.5 rounded text-xs bg-white slab-rate">
+        <input type="number" placeholder="From Day" class="border p-2 rounded-xl text-xs bg-white slab-from">
+        <input type="number" placeholder="To Day" class="border p-2 rounded-xl text-xs bg-white slab-to">
+        <input type="number" placeholder="வட்டி %" class="border p-2 rounded-xl text-xs bg-white slab-rate font-bold text-brand-violet">
       `;
       container.appendChild(div);
     }
@@ -1824,13 +1866,13 @@
       const tbody = document.getElementById('schemesTableBody');
       tbody.innerHTML = '';
       if (schemesCache.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-3 text-center text-slate-400">திட்டங்கள் எதுவும் இல்லை</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">திட்டங்கள் எதுவும் இல்லை</td></tr>`;
       } else {
         schemesCache.forEach(s => {
           const slabsStr = (s.interest_slabs || []).map(x => `${x.from_days}-${x.to_days} நாள்: ${x.rate_percent}%`).join('<br>');
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="p-2.5 font-mono font-bold text-amber-900">${s.scheme_code}</td>
+            <td class="p-2.5 font-mono font-bold text-brand-violet">${s.scheme_code}</td>
             <td class="p-2.5 font-bold">${s.scheme_name}</td>
             <td class="p-2.5">${s.tenure_months} மாதம்</td>
             <td class="p-2.5">₹${s.min_loan_amount} - ₹${s.max_loan_amount}</td>
@@ -1860,7 +1902,7 @@
       schemesCache.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.scheme_name;
-        opt.innerText = `${s.scheme_name} (${s.scheme_code} - Max ${s.max_ltv_percentage}%)`;
+        opt.innerText = `${s.scheme_name} (${s.scheme_code} - LTV ${s.max_ltv_percentage}%)`;
         sSelect.appendChild(opt);
       });
       onSchemeSelected();
@@ -1907,7 +1949,7 @@
         tr.innerHTML = `
           <td class="p-2.5 font-bold">${b.bank_name}</td>
           <td class="p-2.5">${b.branch_name}</td>
-          <td class="p-2.5"><span class="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold">${b.account_type}</span></td>
+          <td class="p-2.5"><span class="px-1.5 py-0.5 bg-purple-100 text-brand-violet rounded text-[10px] font-bold">${b.account_type}</span></td>
           <td class="p-2.5 font-mono font-bold">${b.account_no}</td>
           <td class="p-2.5">${b.ifsc_code}</td>
           <td class="p-2.5 text-center"><button onclick="deleteCompanyBank(${b.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட்</button></td>
@@ -1962,126 +2004,7 @@
       }
     }
 
-    // 9. HQ Approvals
-    async function loadAllHqApprovals() {
-      try {
-        const res = await fetch('/api/hq/all-pending-approvals');
-        const data = await res.json();
-        if (!res.ok) return alert("❌ சர்வர் பிழை: " + (data.detail || "தரவு எடுக்க முடியவில்லை"));
-
-        const payoutBody = document.getElementById('pendingPayoutsTableBody');
-        payoutBody.innerHTML = '';
-        if (!data.pending_payouts || data.pending_payouts.length === 0) {
-          payoutBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">பட்டுவாடா நிலுவைகள் இல்லை</td></tr>`;
-        } else {
-          data.pending_payouts.forEach(p => {
-            const tr = document.createElement('tr');
-            const docs = `
-              ${p.passbook_photo ? `<a href="${p.passbook_photo}" target="_blank" class="text-blue-600 underline font-bold">பாஸ்புக்</a>` : ''}
-              ${p.consent_doc_photo ? ` | <a href="${p.consent_doc_photo}" target="_blank" class="text-rose-600 underline font-bold">ஒப்புதல்</a>` : ''}
-            `;
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold">${p.test_customers?.name}</td>
-              <td class="p-2.5 font-bold text-rose-600">₹${p.amount}</td>
-              <td class="p-2.5">${p.pay_mode}</td>
-              <td class="p-2.5 text-[11px]">${p.pay_mode === 'UPI' ? p.upi_id : `${p.beneficiary_name || '-'}<br>${p.account_no || ''} (${p.ifsc_code || ''})`}</td>
-              <td class="p-2.5 text-[11px]">${docs || 'இல்லை'}</td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionBankTransfer(${p.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">பணம் செலுத்தினேன் (Approve)</button>
-                <button onclick="actionBankTransfer(${p.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-              </td>
-            `;
-            payoutBody.appendChild(tr);
-          });
-        }
-
-        const receiptBody = document.getElementById('pendingReceiptsTableBody');
-        receiptBody.innerHTML = '';
-        if (!data.pending_receipts || data.pending_receipts.length === 0) {
-          receiptBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">வரவு நிலுவைகள் இல்லை</td></tr>`;
-        } else {
-          data.pending_receipts.forEach(r => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold">${r.test_customers?.name}</td>
-              <td class="p-2.5 font-bold text-emerald-600">₹${r.amount}</td>
-              <td class="p-2.5">${r.company_bank_name || '-'}</td>
-              <td class="p-2.5 font-mono font-bold">${r.receipt_ref_no || '-'}</td>
-              <td class="p-2.5">${r.receipt_screenshot ? `<a href="${r.receipt_screenshot}" target="_blank" class="text-blue-600 underline font-bold">ஸ்கிரீன்ஷாட்</a>` : 'இல்லை'}</td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionBankTransfer(${r.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">வரவு சரிபார்த்தேன்</button>
-                <button onclick="actionBankTransfer(${r.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-              </td>
-            `;
-            receiptBody.appendChild(tr);
-          });
-        }
-
-        const visitBody = document.getElementById('pendingVisitsTableBody');
-        visitBody.innerHTML = '';
-        if (!data.pending_visits || data.pending_visits.length === 0) {
-          visitBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">வருகை நிலுவைகள் இல்லை</td></tr>`;
-        } else {
-          data.pending_visits.forEach(v => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold">${v.test_customers?.name}</td>
-              <td class="p-2.5">${v.test_customers?.mobile}</td>
-              <td class="p-2.5">${v.purpose}</td>
-              <td class="p-2.5">Branch #${v.branch_id}</td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionVisit(${v.id}, 'APPROVE')" class="px-2 py-1 bg-blue-600 text-white rounded font-bold text-[11px]">ஏற்பு</button>
-                <button onclick="actionVisit(${v.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-              </td>
-            `;
-            visitBody.appendChild(tr);
-          });
-        }
-
-        const kycBody = document.getElementById('pendingKycTableBody');
-        kycBody.innerHTML = '';
-        if (!data.pending_kyc || data.pending_kyc.length === 0) {
-          kycBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">KYC நிலுவைகள் இல்லை</td></tr>`;
-        } else {
-          data.pending_kyc.forEach(c => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2.5 text-center">${c.customer_photo ? `<img src="${c.customer_photo}" class="w-8 h-8 rounded-full object-cover mx-auto">` : '👤'}</td>
-              <td class="p-2.5 font-bold">${c.name}</td>
-              <td class="p-2.5">${c.mobile}</td>
-              <td class="p-2.5">${c.id_proof_no || '-'}</td>
-              <td class="p-2.5">${c.nominee_name || '-'}</td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionKyc(${c.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
-                <button onclick="actionKyc(${c.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-              </td>
-            `;
-            kycBody.appendChild(tr);
-          });
-        }
-
-        const upBody = document.getElementById('pendingUpdatesTableBody');
-        upBody.innerHTML = '';
-        if (!data.pending_updates || data.pending_updates.length === 0) {
-          upBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விபர மாற்ற நிலுவைகள் இல்லை</td></tr>`;
-        } else {
-          data.pending_updates.forEach(u => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="p-2.5 font-bold">${u.test_customers?.name}</td>
-              <td class="p-2.5">Branch #${u.branch_id}</td>
-              <td class="p-2.5 text-[11px]"><code class="bg-slate-100 p-1 rounded block max-w-xs overflow-x-auto">${JSON.stringify(u.requested_changes)}</code></td>
-              <td class="p-2.5 text-center space-x-1">
-                <button onclick="actionUpdate(${u.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[11px]">ஒப்புதல்</button>
-                <button onclick="actionUpdate(${u.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[11px]">நிராகரி</button>
-              </td>
-            `;
-            upBody.appendChild(tr);
-          });
-        }
-      } catch (err) { alert("❌ கோரிக்கை எடுப்பதில் பிழை: " + err.message); }
-    }
-
+    // 9. HQ Approvals Actions
     async function actionBankTransfer(id, action) {
       const notes = prompt("குறிப்புகள்:") || "";
       const res = await fetch('/api/hq/process-bank-transfer', {
@@ -2127,7 +2050,7 @@
       loadAllHqApprovals();
     }
 
-    // 10. Branches & Staff CRUD
+    // 10. Branches & Staff CRUD Actions
     async function loadBranchesList() {
       const res = await fetch('/api/admin/branches');
       const data = await res.json();
@@ -2136,7 +2059,7 @@
       tbody.innerHTML = '';
       branchesCache.forEach(b => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="p-2">${b.id}</td><td class="p-2 font-bold">${b.branch_code}</td><td class="p-2">${b.branch_name}</td><td class="p-2">${b.city}</td><td class="p-2 text-center space-x-1"><button onclick="editBranch(${b.id})" class="px-2 py-0.5 bg-amber-100 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteBranch(${b.id})" class="px-2 py-0.5 bg-rose-100 rounded text-[11px] font-bold">டிலீட்</button></td>`;
+        tr.innerHTML = `<td class="p-2">${b.id}</td><td class="p-2 font-mono font-bold text-brand-violet">${b.branch_code}</td><td class="p-2 font-bold">${b.branch_name}</td><td class="p-2">${b.city}</td><td class="p-2 text-center space-x-1"><button onclick="editBranch(${b.id})" class="px-2 py-0.5 bg-yellow-100 text-amber-900 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteBranch(${b.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[11px] font-bold">டிலீட்</button></td>`;
         tbody.appendChild(tr);
       });
       const bSelect = document.getElementById('new_staff_branch');
@@ -2203,7 +2126,7 @@
       tbody.innerHTML = '';
       staffCache.forEach(s => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="p-2 font-bold">${s.username}</td><td class="p-2">${s.full_name}</td><td class="p-2">${s.test_branches?.branch_name || s.branch_id}</td><td class="p-2">${s.role_key}</td><td class="p-2 text-[11px]">${s.can_access_counter ? 'கவுண்ட்டர் ' : ''}${s.can_approve_kyc ? 'KYC ' : ''}${s.can_manage_users ? 'அட்மின்' : ''}</td><td class="p-2 text-center space-x-1"><button onclick="editStaff(${s.id})" class="px-2 py-0.5 bg-amber-100 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteStaff(${s.id})" class="px-2 py-0.5 bg-rose-100 rounded text-[11px] font-bold">டிலீட்</button></td>`;
+        tr.innerHTML = `<td class="p-2 font-mono font-bold text-brand-violet">${s.username}</td><td class="p-2 font-bold">${s.full_name}</td><td class="p-2">${s.test_branches?.branch_name || s.branch_id}</td><td class="p-2">${s.role_key}</td><td class="p-2 text-[11px]">${s.can_access_counter ? 'கவுண்ட்டர் ' : ''}${s.can_approve_kyc ? 'KYC ' : ''}${s.can_manage_users ? 'அட்மின்' : ''}</td><td class="p-2 text-center space-x-1"><button onclick="editStaff(${s.id})" class="px-2 py-0.5 bg-yellow-100 text-amber-900 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteStaff(${s.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[11px] font-bold">டிலீட்</button></td>`;
         tbody.appendChild(tr);
       });
     }

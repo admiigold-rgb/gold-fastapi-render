@@ -2262,13 +2262,13 @@
           tr.innerHTML = `
             <td class="p-2.5 font-bold font-mono text-brand-violet">#VIS-${ex.id}</td>
             <td class="p-2.5 font-bold">${ex.test_customers?.name || '-'} <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span></td>
-            <td class="p-2.5 text-rose-700 font-bold">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
-            <td class="p-2.5 text-center space-x-1.5">
-              <button onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow transition">
-                அனுமதி (Approve)
+            <td class="p-2.5 text-rose-700 font-semibold">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
+            <td class="p-2.5 text-center space-x-1.5 whitespace-nowrap">
+              <button type="button" onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow transition">
+                ✓ அனுமதி (Approve)
               </button>
-              <button onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs shadow transition">
-                நிராகரி
+              <button type="button" onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs shadow transition">
+                ✕ நிராகரி
               </button>
             </td>
           `;
@@ -2279,8 +2279,19 @@
       }
     }
 
-    // B. தலைமையகத்தின் அனைத்து நிலுவைகளையும் (OTP விலக்கு, வருகை ஆடிட், வங்கி, KYC) எடுத்தல்
-    
+    async function actionOtpExempt(visitId, action) {
+      if (!confirm(`இந்த வருகைக்கு OTP விலக்கினை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+      const res = await fetch('/api/hq/approve-otp-exemption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visit_id: visitId, action, admin_id: currentUser.id })
+      });
+      const data = await res.json();
+      alert(data.message);
+      loadHqOtpExemptions();
+    }
+
+    // B. தலைமையகத்தின் அனைத்து நிலுவைகளையும் எடுத்தல்
     async function loadAllHqApprovals() {
       await loadHqOtpExemptions();
 
@@ -2288,7 +2299,7 @@
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
 
-        // வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல்
+        // 1. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல்
         const uBody = document.getElementById('pendingUpdatesTableBody');
         if (uBody) {
           uBody.innerHTML = '';
@@ -2332,12 +2343,8 @@
             });
           }
         }
-      } catch (err) {
-        console.error("தலைமையக நிலுவைகள் பிழை:", err);
-      }
-    }
 
-        // 3. புதிய முழு KYC ஒப்புதல் பட்டியல்
+        // 2. புதிய முழு KYC ஒப்புதல் பட்டியல்
         const kBody = document.getElementById('pendingKycTableBody');
         if (kBody) {
           kBody.innerHTML = '';
@@ -2354,9 +2361,9 @@
                 <td class="p-2.5 font-mono">${k.mobile}</td>
                 <td class="p-2.5 text-xs">${k.id_proof_type || ''}: ${k.id_proof_no || '-'}</td>
                 <td class="p-2.5 text-xs">${k.nominee_name || '-'}</td>
-                <td class="p-2.5 text-center space-x-1">
-                  <button onclick="actionKyc(${k.id}, 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">ஒப்புதல்</button>
-                  <button onclick="actionKyc(${k.id}, 'REJECT')" class="px-2.5 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
+                <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+                  <button type="button" onclick="actionKyc(${k.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow">✓ ஒப்புதல்</button>
+                  <button type="button" onclick="actionKyc(${k.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow">✕ நிராகரி</button>
                 </td>
               `;
               kBody.appendChild(tr);
@@ -2364,7 +2371,7 @@
           }
         }
 
-        // 4. பரிவர்த்தனை முடிந்த வருகைகளின் பட்டியல் (Auditing)
+        // 3. பரிவர்த்தனை முடிந்த வருகைகளின் பட்டியல் (Auditing)
         const vBody = document.getElementById('pendingVisitsTableBody');
         if (vBody) {
           vBody.innerHTML = '';
@@ -2379,9 +2386,9 @@
                 <td class="p-2.5 font-bold">${v.test_customers?.name || '-'}</td>
                 <td class="p-2.5">${v.actions_summary || '-'}</td>
                 <td class="p-2.5 font-bold">₹${parseFloat(v.net_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                <td class="p-2.5 text-center space-x-1">
-                  <button onclick="actionVisit(${v.id}, 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">சரிபார்த்தேன் (Audit)</button>
-                  <button onclick="actionVisit(${v.id}, 'REJECT')" class="px-2.5 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
+                <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+                  <button type="button" onclick="actionVisitApproval(${v.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90">✓ சரிபார்த்தேன் (Audit)</button>
+                  <button type="button" onclick="actionVisitApproval(${v.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90">✕ நிராகரி</button>
                 </td>
               `;
               vBody.appendChild(tr);
@@ -2389,7 +2396,7 @@
           }
         }
 
-        // 5. வங்கிப் பட்டுவாடா வேண்டுகோள்கள்
+        // 4. வங்கிப் பட்டுவாடா வேண்டுகோள்கள்
         const pBody = document.getElementById('pendingPayoutsTableBody');
         if (pBody) {
           pBody.innerHTML = '';
@@ -2405,9 +2412,9 @@
                 <td class="p-2.5">${p.pay_mode}</td>
                 <td class="p-2.5 text-xs font-mono">${p.pay_mode === 'UPI' ? p.upi_id : (p.account_no + ' (' + p.ifsc_code + ')')}</td>
                 <td class="p-2.5 text-xs">${p.passbook_photo ? `<a href="${p.passbook_photo}" target="_blank" class="text-blue-600 font-bold underline">பாஸ்புக் படம்</a>` : 'இல்லை'}</td>
-                <td class="p-2.5 text-center space-x-1">
-                  <button onclick="actionBankTransfer(${p.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">அனுமதி</button>
-                  <button onclick="actionBankTransfer(${p.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
+                <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+                  <button type="button" onclick="actionBankTransfer(${p.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✓ அனுமதி</button>
+                  <button type="button" onclick="actionBankTransfer(${p.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✕ நிராகரி</button>
                 </td>
               `;
               pBody.appendChild(tr);
@@ -2415,7 +2422,7 @@
           }
         }
 
-        // 6. வாடிக்கையாளர் வங்கி வரவு சரிபார்ப்புகள்
+        // 5. வாடிக்கையாளர் வங்கி வரவு சரிபார்ப்புகள்
         const rBody = document.getElementById('pendingReceiptsTableBody');
         if (rBody) {
           rBody.innerHTML = '';
@@ -2431,9 +2438,9 @@
                 <td class="p-2.5">${r.company_bank_name || '-'}</td>
                 <td class="p-2.5 font-mono">${r.receipt_ref_no || '-'}</td>
                 <td class="p-2.5 text-xs">${r.receipt_screenshot ? `<a href="${r.receipt_screenshot}" target="_blank" class="text-blue-600 font-bold underline">ஸ்கிரீன்ஷாட்</a>` : 'இல்லை'}</td>
-                <td class="p-2.5 text-center space-x-1">
-                  <button onclick="actionBankTransfer(${r.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">வரவு சரிபார்த்தேன்</button>
-                  <button onclick="actionBankTransfer(${r.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
+                <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+                  <button type="button" onclick="actionBankTransfer(${r.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✓ வரவு சரிபார்த்தேன்</button>
+                  <button type="button" onclick="actionBankTransfer(${r.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✕ நிராகரி</button>
                 </td>
               `;
               rBody.appendChild(tr);
@@ -2452,19 +2459,23 @@
       const data = await res.json();
       branchesCache = data.data || [];
       const tbody = document.getElementById('branchesTableBody');
-      tbody.innerHTML = '';
-      branchesCache.forEach(b => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="p-2">${b.id}</td><td class="p-2 font-mono font-bold text-brand-violet">${b.branch_code}</td><td class="p-2 font-bold">${b.branch_name}</td><td class="p-2">${b.city}</td><td class="p-2 text-center space-x-1"><button onclick="editBranch(${b.id})" class="px-2 py-0.5 bg-yellow-100 text-amber-900 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteBranch(${b.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[11px] font-bold">டிலீட்</button></td>`;
-        tbody.appendChild(tr);
-      });
+      if (tbody) {
+        tbody.innerHTML = '';
+        branchesCache.forEach(b => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="p-2">${b.id}</td><td class="p-2 font-mono font-bold text-brand-violet">${b.branch_code}</td><td class="p-2 font-bold">${b.branch_name}</td><td class="p-2">${b.city}</td><td class="p-2 text-center space-x-1"><button onclick="editBranch(${b.id})" class="px-2 py-0.5 bg-yellow-100 text-amber-900 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteBranch(${b.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[11px] font-bold">டிலீட்</button></td>`;
+          tbody.appendChild(tr);
+        });
+      }
       const bSelect = document.getElementById('new_staff_branch');
-      bSelect.innerHTML = '';
-      branchesCache.forEach(b => {
-        const opt = document.createElement('option');
-        opt.value = b.id; opt.innerText = `${b.branch_name} (${b.branch_code})`;
-        bSelect.appendChild(opt);
-      });
+      if (bSelect) {
+        bSelect.innerHTML = '';
+        branchesCache.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.id; opt.innerText = `${b.branch_name} (${b.branch_code})`;
+          bSelect.appendChild(opt);
+        });
+      }
     }
 
     function editBranch(id) {
@@ -2519,15 +2530,16 @@
       const data = await res.json();
       staffCache = data.data || [];
       const tbody = document.getElementById('staffTableBody');
-      tbody.innerHTML = '';
-      staffCache.forEach(s => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="p-2 font-mono font-bold text-brand-violet">${s.username}</td><td class="p-2 font-bold">${s.full_name}</td><td class="p-2">${s.test_branches?.branch_name || s.branch_id}</td><td class="p-2">${s.role_key}</td><td class="p-2 text-[11px]">${s.can_access_counter ? 'கவுண்ட்டர் ' : ''}${s.can_approve_kyc ? 'KYC ' : ''}${s.can_manage_users ? 'அட்மின்' : ''}</td><td class="p-2 text-center space-x-1"><button onclick="editStaff(${s.id})" class="px-2 py-0.5 bg-yellow-100 text-amber-900 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteStaff(${s.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[11px] font-bold">டிலீட்</button></td>`;
-        tbody.appendChild(tr);
-      });
+      if (tbody) {
+        tbody.innerHTML = '';
+        staffCache.forEach(s => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="p-2 font-mono font-bold text-brand-violet">${s.username}</td><td class="p-2 font-bold">${s.full_name}</td><td class="p-2">${s.test_branches?.branch_name || s.branch_id}</td><td class="p-2">${s.role_key}</td><td class="p-2 text-[11px]">${s.can_access_counter ? 'கவுண்ட்டர் ' : ''}${s.can_approve_kyc ? 'KYC ' : ''}${s.can_manage_users ? 'அட்மின்' : ''}</td><td class="p-2 text-center space-x-1"><button onclick="editStaff(${s.id})" class="px-2 py-0.5 bg-yellow-100 text-amber-900 rounded text-[11px] font-bold">எடிட்</button><button onclick="deleteStaff(${s.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[11px] font-bold">டிலீட்</button></td>`;
+          tbody.appendChild(tr);
+        });
+      }
     }
 
-    // 1. பணியாளர் படிவத்தில் புதிய செக்பாக்ஸை கையாளுதல்
     function editStaff(id) {
       const s = staffCache.find(x => x.id === id);
       if (!s) return;
@@ -2543,17 +2555,34 @@
       document.getElementById('perm_kyc').checked = !!s.can_approve_kyc;
       document.getElementById('perm_updates').checked = !!s.can_approve_updates;
       document.getElementById('perm_admin').checked = !!s.can_manage_users;
-      document.getElementById('perm_otp_exempt').checked = !!s.can_approve_otp_exempt; // 👈 சேர்க்கப்பட்டது
+      document.getElementById('perm_otp_exempt').checked = !!s.can_approve_otp_exempt;
       document.getElementById('staffFormTitle').innerText = "✏️ பணியாளர் திருத்துதல்";
       document.getElementById('btnSubmitStaff').innerText = "புதுப்பி";
       document.getElementById('btnCancelStaffEdit').classList.remove('hidden');
     }
-    
+
+    function cancelStaffEdit() {
+      document.getElementById('edit_staff_id').value = '';
+      document.getElementById('new_staff_user').value = '';
+      document.getElementById('new_staff_user').disabled = false;
+      document.getElementById('new_staff_pass').value = '';
+      document.getElementById('new_staff_name').value = '';
+      document.getElementById('new_staff_mobile').value = '';
+      document.getElementById('perm_counter').checked = true;
+      document.getElementById('perm_kyc').checked = false;
+      document.getElementById('perm_updates').checked = false;
+      document.getElementById('perm_admin').checked = false;
+      document.getElementById('perm_otp_exempt').checked = false;
+      document.getElementById('staffFormTitle').innerText = "👤 புதிய பணியாளர் உருவாக்கம்";
+      document.getElementById('btnSubmitStaff').innerText = "+ பணியாளரை உருவாக்கு";
+      document.getElementById('btnCancelStaffEdit').classList.add('hidden');
+    }
+
     async function submitStaffForm() {
       const editId = document.getElementById('edit_staff_id').value;
       const branchId = parseInt(document.getElementById('new_staff_branch').value);
       if (!branchId) return alert("கிளையைத் தேர்வு செய்யவும்.");
-    
+
       const payload = {
         username: document.getElementById('new_staff_user').value.trim(),
         password: document.getElementById('new_staff_pass').value.trim() || (editId ? null : "gold123"),
@@ -2565,9 +2594,9 @@
         can_approve_kyc: document.getElementById('perm_kyc').checked,
         can_approve_updates: document.getElementById('perm_updates').checked,
         can_manage_users: document.getElementById('perm_admin').checked,
-        can_approve_otp_exempt: document.getElementById('perm_otp_exempt').checked // 👈 அனுப்பப்படும் தரவு
+        can_approve_otp_exempt: document.getElementById('perm_otp_exempt').checked
       };
-    
+
       const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
         method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2576,107 +2605,6 @@
       const data = await res.json();
       if (res.ok) { alert("✅ " + data.message); cancelStaffEdit(); loadStaffList(); } 
       else alert("❌ பிழை: " + data.detail);
-    }
-    
-    // 2. கிளை கவுண்ட்டரிலிருந்து OTP விலக்குக் கோரிக்கை அனுப்புதல்
-    async function requestOtpExemptionModal() {
-      if (!activeVisitId) return alert("செயலில் உள்ள வருகை விபரம் கிடைக்கவில்லை. வாடிக்கையாளரைத் தேர்வு செய்யவும்.");
-      const reason = prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும் (எ.கா: வாடிக்கையாளர் மொபைல் சிக்னல் இல்லை / நெட்வொர்க் பிழை):");
-      if (!reason) return;
-    
-      const res = await fetch('/api/otp/request-exemption', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          visit_id: activeVisitId,
-          branch_id: parseInt(document.getElementById('active_branch_id').value) || 1,
-          reason: reason,
-          staff_id: currentUser ? currentUser.id : 1
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் இந்தப் பரிவர்த்தனை தானாகவே நிறைவடையும்.");
-        checkOtpExemptionLoop(); // அனுமதியைத் தானாகக் கவனிக்கும் லூப்
-      } else {
-        alert("❌ பிழை: " + data.detail);
-      }
-    }
-    
-    // அனுமதியைத் தானாகக் கவனித்து OTP இன்றி முடித்தல்
-    async function checkOtpExemptionLoop() {
-      if (!activeVisitId) return;
-      const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
-      const data = await res.json();
-      
-      if (data.data?.otp_exempted === true) {
-        alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
-        closeCheckoutModal();
-        confirmSettleWithOtp(true); // 👈 isExempted = true என அனுப்பி தானாக முடித்தல்
-      } else if (data.data?.otp_exemption_status === 'REJECTED') {
-        alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. வாடிக்கையாளர் மொபைலுக்கு SMS OTP அனுப்பவும்.");
-      } else {
-        setTimeout(checkOtpExemptionLoop, 3000); // 3 விநாடிகளுக்கு ஒருமுறை சரிபார்த்தல்
-      }
-    }
-    
-    // 3. தலைமையகம்: OTP விலக்குக் கோரிக்கைகளைப் பட்டியலிடுதல் & அனுமதித்தல்
-    // தலைமை அனுமதி உள்ளவர்களுக்கு மட்டுமே OTP விலக்கு அட்டவணையைக் காட்டும் செயல்பாடு
-    async function loadHqOtpExemptions() {
-      const section = document.getElementById('hqOtpExemptSection');
-      const exBody = document.getElementById('hqOtpExemptTableBody');
-    
-      // லாகின் செய்தவருக்கு அனுமதி உள்ளதா எனச் சரிபார்க்கிறது
-      const isAuthorized = currentUser?.permissions?.can_approve_otp_exempt === true || currentUser?.role_key === 'HQ_ADMIN';
-    
-      // அனுமதி இல்லை எனில் இந்த அட்டவணை முற்றிலுமாக மறைக்கப்படும்
-      if (!isAuthorized) {
-        if (section) section.classList.add('hidden');
-        return;
-      }
-    
-      // அனுமதி இருந்தால் மட்டுமே திரையில் தெரியும்
-      if (section) section.classList.remove('hidden');
-      if (!exBody) return;
-    
-      try {
-        const res = await fetch('/api/hq/pending-otp-exemptions');
-        const data = await res.json();
-        exBody.innerHTML = '';
-    
-        if (!data.data || data.data.length === 0) {
-          exBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">விலக்குக் கோரிக்கைகள் எதுவும் இல்லை</td></tr>`;
-          return;
-        }
-    
-        data.data.forEach(ex => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="p-2.5 font-bold font-mono text-brand-violet">#VIS-${ex.id}</td>
-            <td class="p-2.5 font-bold">${ex.test_customers?.name || '-'} <span class="text-slate-500 font-mono text-xs">(${ex.test_customers?.mobile || '-'})</span></td>
-            <td class="p-2.5 text-rose-700 font-semibold">${ex.purpose}</td>
-            <td class="p-2.5 text-center space-x-1.5">
-              <button onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow">அனுமதி (Approve)</button>
-              <button onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
-            </td>
-          `;
-          exBody.appendChild(tr);
-        });
-      } catch (e) {
-        console.error("OTP விலக்கு பட்டியல் பிழை:", e);
-      }
-    }
-    
-    async function actionOtpExempt(visitId, action) {
-      if (!confirm(`இந்த வருகைக்கு OTP விலக்கினை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
-      const res = await fetch('/api/hq/approve-otp-exemption', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visit_id: visitId, action, admin_id: currentUser.id })
-      });
-      const data = await res.json();
-      alert(data.message);
-      loadHqOtpExemptions();
     }
 
     async function deleteStaff(id) {

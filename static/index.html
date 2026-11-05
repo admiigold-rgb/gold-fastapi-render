@@ -2280,28 +2280,98 @@
     }
 
     // B. தலைமையகத்தின் அனைத்து நிலுவைகளையும் (OTP விலக்கு, வருகை ஆடிட், வங்கி, KYC) எடுத்தல்
+    
     async function loadAllHqApprovals() {
-      // 1. OTP விலக்குக் கோரிக்கைகளை உடனடியாக எடுத்தல்
+      // 1. OTP விலக்குக் கோரிக்கைகளை எடுத்தல்
       await loadHqOtpExemptions();
 
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
 
-        // 2. பரிவர்த்தனை முடிந்த வருகைகளின் பட்டியல் (Auditing)
+        // 2. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல் (Profile Updates)
+        const uBody = document.getElementById('pendingUpdatesTableBody');
+        if (uBody) {
+          uBody.innerHTML = '';
+          const updates = data.pending_updates || [];
+          if (updates.length === 0) {
+            uBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">சுயவிவர மாற்ற நிலுவைகள் எதுவும் இல்லை</td></tr>`;
+          } else {
+            updates.forEach(u => {
+              const chg = u.requested_changes || {};
+              let summaryParts = [];
+              if (chg.name) summaryParts.push(`பெயர்: <b>${chg.name}</b>`);
+              if (chg.mobile) summaryParts.push(`மொபைல்: <b>${chg.mobile}</b>`);
+              if (chg.alt_mobile) summaryParts.push(`மாற்று மொபைல்: <b>${chg.alt_mobile}</b>`);
+              if (chg.address) summaryParts.push(`முகவரி: <b>${chg.address}</b>`);
+              if (chg.id_proof_no) summaryParts.push(`சான்று: <b>${chg.id_proof_no}</b>`);
+              if (chg.nominee_name) summaryParts.push(`நாமினி: <b>${chg.nominee_name}</b>`);
+              if (chg.customer_photo) summaryParts.push(`<span class="text-purple-600 font-bold">[புதிய புகைப்படம் உள்ளது]</span>`);
+
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td class="p-2.5">
+                  <span class="font-bold text-slate-800 block">${u.test_customers?.name || '-'}</span>
+                  <span class="text-[10px] text-slate-500 font-mono">${u.test_customers?.mobile || '-'}</span>
+                </td>
+                <td class="p-2.5 font-bold text-brand-violet">${u.test_branches?.branch_name || 'கிளை #' + u.branch_id}</td>
+                <td class="p-2.5 text-xs text-slate-700 leading-relaxed">${summaryParts.join('<br>') || 'விபரங்கள் இல்லை'}</td>
+                <td class="p-2.5 text-center space-x-1.5">
+                  <button onclick="actionUpdate(${u.id}, 'APPROVE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow transition">
+                    அங்கீகரி (Approve)
+                  </button>
+                  <button onclick="actionUpdate(${u.id}, 'REJECT')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow transition">
+                    நிராகரி
+                  </button>
+                </td>
+              `;
+              uBody.appendChild(tr);
+            });
+          }
+        }
+
+        // 3. புதிய முழு KYC ஒப்புதல் பட்டியல்
+        const kBody = document.getElementById('pendingKycTableBody');
+        if (kBody) {
+          kBody.innerHTML = '';
+          const kycList = data.pending_kyc || [];
+          if (kycList.length === 0) {
+            kBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">KYC நிலுவைகள் எதுவும் இல்லை</td></tr>`;
+          } else {
+            kycList.forEach(k => {
+              const photoThumb = k.customer_photo ? `<img src="${k.customer_photo}" class="w-8 h-8 rounded-full object-cover border border-yellow-500">` : '👤';
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td class="p-2.5">${photoThumb}</td>
+                <td class="p-2.5 font-bold text-brand-violet">${k.name}</td>
+                <td class="p-2.5 font-mono">${k.mobile}</td>
+                <td class="p-2.5 text-xs">${k.id_proof_type || ''}: ${k.id_proof_no || '-'}</td>
+                <td class="p-2.5 text-xs">${k.nominee_name || '-'}</td>
+                <td class="p-2.5 text-center space-x-1">
+                  <button onclick="actionKyc(${k.id}, 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">ஒப்புதல்</button>
+                  <button onclick="actionKyc(${k.id}, 'REJECT')" class="px-2.5 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
+                </td>
+              `;
+              kBody.appendChild(tr);
+            });
+          }
+        }
+
+        // 4. பரிவர்த்தனை முடிந்த வருகைகளின் பட்டியல் (Auditing)
         const vBody = document.getElementById('pendingVisitsTableBody');
         if (vBody) {
           vBody.innerHTML = '';
-          if (!data.pending_visits || data.pending_visits.length === 0) {
-            vBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">சரிபார்க்கப்பட வேண்டிய வருகைகள் இல்லை</td></tr>`;
+          const visits = data.pending_visits || [];
+          if (visits.length === 0) {
+            vBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">சரிபார்க்கப்பட வேண்டிய வருகைகள் இல்லை</td></tr>`;
           } else {
-            data.pending_visits.forEach(v => {
+            visits.forEach(v => {
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td class="p-2.5 font-mono font-bold text-brand-violet">#VIS-${v.id}</td>
                 <td class="p-2.5 font-bold">${v.test_customers?.name || '-'}</td>
                 <td class="p-2.5">${v.actions_summary || '-'}</td>
-                <td class="p-2.5 font-bold">₹${v.net_amount || 0}</td>
+                <td class="p-2.5 font-bold">₹${parseFloat(v.net_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td class="p-2.5 text-center space-x-1">
                   <button onclick="actionVisit(${v.id}, 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">சரிபார்த்தேன் (Audit)</button>
                   <button onclick="actionVisit(${v.id}, 'REJECT')" class="px-2.5 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
@@ -2312,24 +2382,25 @@
           }
         }
 
-        // 3. வங்கிப் பட்டுவாடா வேண்டுகோள்கள்
+        // 5. வங்கிப் பட்டுவாடா வேண்டுகோள்கள்
         const pBody = document.getElementById('pendingPayoutsTableBody');
-        if (pBody && data.pending_payouts) {
+        if (pBody) {
           pBody.innerHTML = '';
-          if (data.pending_payouts.length === 0) {
-            pBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">பட்டுவாடா நிலுவைகள் இல்லை</td></tr>`;
+          const payouts = data.pending_payouts || [];
+          if (payouts.length === 0) {
+            pBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">பட்டுவாடா நிலுவைகள் இல்லை</td></tr>`;
           } else {
-            data.pending_payouts.forEach(p => {
+            payouts.forEach(p => {
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td class="p-2.5 font-bold">${p.test_customers?.name || '-'}</td>
-                <td class="p-2.5 font-bold text-rose-600">₹${p.amount}</td>
+                <td class="p-2.5 font-bold text-rose-600">₹${parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td class="p-2.5">${p.pay_mode}</td>
                 <td class="p-2.5 text-xs font-mono">${p.pay_mode === 'UPI' ? p.upi_id : (p.account_no + ' (' + p.ifsc_code + ')')}</td>
-                <td class="p-2.5 text-xs">${p.passbook_photo ? `<a href="${p.passbook_photo}" target="_blank" class="text-blue-600 font-bold underline">பாஸ்புக்</a>` : 'இல்லை'}</td>
+                <td class="p-2.5 text-xs">${p.passbook_photo ? `<a href="${p.passbook_photo}" target="_blank" class="text-blue-600 font-bold underline">பாஸ்புக் படம்</a>` : 'இல்லை'}</td>
                 <td class="p-2.5 text-center space-x-1">
-                  <button onclick="actionBankTransfer(${p.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-xs">அனுமதி</button>
-                  <button onclick="actionBankTransfer(${p.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-xs">நிராகரி</button>
+                  <button onclick="actionBankTransfer(${p.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">அனுமதி</button>
+                  <button onclick="actionBankTransfer(${p.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
                 </td>
               `;
               pBody.appendChild(tr);
@@ -2337,24 +2408,25 @@
           }
         }
 
-        // 4. வாடிக்கையாளர் வங்கி வரவு சரிபார்ப்புகள்
+        // 6. வாடிக்கையாளர் வங்கி வரவு சரிபார்ப்புகள்
         const rBody = document.getElementById('pendingReceiptsTableBody');
-        if (rBody && data.pending_receipts) {
+        if (rBody) {
           rBody.innerHTML = '';
-          if (data.pending_receipts.length === 0) {
-            rBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">வரவு நிலுவைகள் இல்லை</td></tr>`;
+          const receipts = data.pending_receipts || [];
+          if (receipts.length === 0) {
+            rBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">வரவு நிலுவைகள் இல்லை</td></tr>`;
           } else {
-            data.pending_receipts.forEach(r => {
+            receipts.forEach(r => {
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td class="p-2.5 font-bold">${r.test_customers?.name || '-'}</td>
-                <td class="p-2.5 font-bold text-emerald-600">₹${r.amount}</td>
+                <td class="p-2.5 font-bold text-emerald-600">₹${parseFloat(r.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td class="p-2.5">${r.company_bank_name || '-'}</td>
                 <td class="p-2.5 font-mono">${r.receipt_ref_no || '-'}</td>
                 <td class="p-2.5 text-xs">${r.receipt_screenshot ? `<a href="${r.receipt_screenshot}" target="_blank" class="text-blue-600 font-bold underline">ஸ்கிரீன்ஷாட்</a>` : 'இல்லை'}</td>
                 <td class="p-2.5 text-center space-x-1">
-                  <button onclick="actionBankTransfer(${r.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-xs">வரவு சரிபார்த்தேன்</button>
-                  <button onclick="actionBankTransfer(${r.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-xs">நிராகரி</button>
+                  <button onclick="actionBankTransfer(${r.id}, 'APPROVE')" class="px-2 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">வரவு சரிபார்த்தேன்</button>
+                  <button onclick="actionBankTransfer(${r.id}, 'REJECT')" class="px-2 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
                 </td>
               `;
               rBody.appendChild(tr);

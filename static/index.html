@@ -60,6 +60,24 @@
 
     <!-- ==================== TAB A: கவுண்ட்டர் பிரிவு ==================== -->
     <div id="counterTab" class="hidden space-y-4">
+      <div class="bg-white p-3 rounded-xl border flex flex-wrap justify-between items-center gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-slate-700">📅 பரிவர்த்தனை தேதி:</span>
+          <input type="date" id="txn_date" onchange="onDateChanged()" class="border px-2 py-1 rounded bg-slate-50 font-bold text-amber-900">
+          <span id="cashDayStatusBadge" class="px-2 py-0.5 rounded font-bold text-[10px] bg-slate-100 text-slate-600">நிலை அறியப்படுகிறது...</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openCashDayModal('OPEN')" id="btnOpenDay" class="bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700">
+            ☀️ காலை தொடக்க இருப்பு (Day Open)
+          </button>
+          <button onclick="openDaySummaryReportModal()" class="bg-slate-800 text-white px-3 py-1 rounded font-bold hover:bg-black">
+            📊 அன்றைய நடவடிக்கைகள்
+          </button>
+          <button onclick="openCashDayModal('CLOSE')" id="btnCloseDay" class="bg-rose-600 text-white px-3 py-1 rounded font-bold hover:bg-rose-700">
+            🌙 மாலை நாள் பூட்டுதல் (Day Close)
+          </button>
+        </div>
+      </div>
       <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl flex justify-between items-center text-xs">
         <div>
           <span class="font-bold text-amber-900">🔔 வங்கி பட்டுவாடா & வரவு நிலவரம்:</span>
@@ -716,8 +734,11 @@
         </div>
 
         <!-- ரொக்கத் தாள்கள் -->
-        <div id="denomSection" class="space-y-1.5 border-t pt-2 text-xs">
-          <div class="flex justify-between items-center"><span class="font-bold">ரூபாய் தாள்கள்:</span><span id="denomMatchBadge" class="px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span></div>
+        <div id="denomSection" class="space-y-2 border-t pt-2 text-xs">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-slate-800" id="denomTitleText">ரூபாய் தாள்கள் டினாமினேஷன்:</span>
+            <span id="denomMatchBadge" class="px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800">சரிபார்க்கவும்</span>
+          </div>
           <div class="grid grid-cols-4 gap-1.5 text-center">
             <div>500: <input type="number" min="0" value="0" id="d500" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
             <div>200: <input type="number" min="0" value="0" id="d200" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
@@ -727,7 +748,7 @@
             <div>10: <input type="number" min="0" value="0" id="d10" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
             <div>சில்: <input type="number" min="0" value="0" id="dcoins" oninput="calcDenom()" class="w-12 border text-center rounded"></div>
           </div>
-          <div class="text-right font-bold pt-1">மொத்தம்: <span id="denomSumDisplay">₹ 0.00</span></div>
+          <div class="text-right font-bold pt-1">மொத்த தாள்கள்: <span id="denomSumDisplay">₹ 0.00</span></div>
         </div>
 
         <div class="flex justify-end gap-2 pt-2 border-t">
@@ -750,7 +771,76 @@
         </div>
       </div>
     </div>
-
+    <div id="cashDayModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+          <div class="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-2">
+              <h3 class="text-base font-bold text-slate-800" id="cashDayModalTitle">காலை தொடக்க இருப்பு பதிவு</h3>
+              <button onclick="closeCashDayModal()" class="text-slate-400 font-bold">✕</button>
+            </div>
+            
+            <div class="bg-amber-50 p-2.5 rounded-lg border text-xs flex justify-between items-center">
+              <span>தேர்வு செய்யப்பட்ட தேதி:</span>
+              <span id="cashDayModalDate" class="font-bold text-amber-900">-</span>
+            </div>
+    
+            <!-- கணக்கிடப்பட்ட கணினி ரொக்கம் (நாள் பூட்டும்போது மட்டும் தெரியும்) -->
+            <div id="divSystemCash" class="hidden bg-slate-50 p-2.5 rounded-lg border text-xs flex justify-between items-center">
+              <span>கணினியின்படி இருக்க வேண்டிய ரொக்கம்:</span>
+              <span id="txtSystemCash" class="font-bold text-slate-800">₹ 0.00</span>
+            </div>
+    
+            <div class="space-y-2 text-xs">
+              <span class="font-bold text-slate-700">ரொக்கப் பெட்டியில் உள்ள தாள்கள் (Denominations):</span>
+              <div class="grid grid-cols-4 gap-2 text-center">
+                <div>500: <input type="number" min="0" value="0" id="cd_500" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+                <div>200: <input type="number" min="0" value="0" id="cd_200" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+                <div>100: <input type="number" min="0" value="0" id="cd_100" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+                <div>50: <input type="number" min="0" value="0" id="cd_50" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+                <div>20: <input type="number" min="0" value="0" id="cd_20" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+                <div>10: <input type="number" min="0" value="0" id="cd_10" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+                <div>சில்: <input type="number" min="0" value="0" id="cd_coins" oninput="calcDayDenom()" class="w-full border p-1 rounded text-center"></div>
+              </div>
+              <div class="border-t pt-2 flex justify-between font-bold text-sm">
+                <span>மொத்த எண்ணிய தொகை:</span>
+                <span id="txtDayDenomTotal" class="text-emerald-700">₹ 0.00</span>
+              </div>
+              <div id="divDiff" class="hidden text-right text-xs font-bold text-rose-600">
+                வேறுபாடு: <span id="txtDiff">₹ 0.00</span>
+              </div>
+            </div>
+    
+            <div class="flex justify-end gap-2 pt-2 border-t">
+              <button onclick="closeCashDayModal()" class="px-4 py-1.5 border rounded-lg text-xs">ரத்து</button>
+              <button onclick="submitCashDayAction()" id="btnSubmitCashDay" class="px-5 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-bold shadow">சேமி</button>
+            </div>
+          </div>
+        </div>
+    
+        <!-- அன்றைய நடவடிக்கைகள் அறிக்கை Modal -->
+        <div id="dayReportModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+          <div class="bg-white rounded-2xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-2">
+              <h3 class="text-base font-bold text-slate-800">📊 அன்றைய ரொக்க நடவடிக்கைகள் அறிக்கை</h3>
+              <button onclick="document.getElementById('dayReportModal').classList.add('hidden')" class="text-slate-400 font-bold">✕</button>
+            </div>
+    
+            <div class="grid grid-cols-4 gap-2 text-xs text-center">
+              <div class="bg-slate-50 p-2 rounded-lg border"><span class="block text-slate-500">தொடக்க இருப்பு</span><b id="repOpenCash" class="text-slate-800">₹ 0.00</b></div>
+              <div class="bg-emerald-50 p-2 rounded-lg border"><span class="block text-emerald-600">ரொக்க வரவு (+)</span><b id="repCashIn" class="text-emerald-800">₹ 0.00</b></div>
+              <div class="bg-rose-50 p-2 rounded-lg border"><span class="block text-rose-600">ரொக்கப் பற்று (-)</span><b id="repCashOut" class="text-rose-800">₹ 0.00</b></div>
+              <div class="bg-amber-50 p-2 rounded-lg border"><span class="block text-amber-800">இருக்க வேண்டிய ரொக்கம்</span><b id="repClosingCash" class="text-amber-900">₹ 0.00</b></div>
+            </div>
+    
+            <div class="overflow-x-auto border rounded-lg text-xs">
+              <table class="w-full text-left">
+                <thead class="bg-slate-100 border-b">
+                  <tr><th class="p-2">நேரம்/ID</th><th class="p-2">வாடிக்கையாளர்</th><th class="p-2">வகை</th><th class="p-2 text-right">ரொக்கம் (₹)</th><th class="p-2 text-right">வங்கி (₹)</th></tr>
+                </thead>
+                <tbody id="dayReportTableBody" class="divide-y"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
   </div>
 
   <script>
@@ -852,7 +942,9 @@
         currentUser = JSON.parse(saved);
         showDashboard(currentUser);
       }
-      loadSchemesDropdown(); // பக்கம் ஏற்றப்பட்டதும் உடனே இயங்கும்
+      loadSchemesDropdown();
+      fetchAndSetupPurityDropdown();
+      initTxnDate(); // 👈 இந்த வரியை இங்கே சேர்க்கவும்
     };
 
     function switchTab(tabId) {
@@ -1467,12 +1559,18 @@
       btn.disabled = true;
 
       const settlePayload = {
-        customer_id: activeCustomer.id, branch_id: branchId, otp_code: enteredOtp,
-        net_amount: currentNetAbs, direction: currentDirection, settlement_type: selectedMode,
-        cash_amount: cVal, bank_amount: bVal,
+        customer_id: activeCustomer.id,
+        branch_id: branchId,
+        otp_code: enteredOtp,
+        net_amount: currentNetAbs,
+        direction: currentDirection,
+        settlement_type: selectedMode,
+        cash_amount: cVal,
+        bank_amount: bVal,
         bank_ref_no: document.getElementById('receipt_ref_no').value.trim() || null,
         bank_name: document.getElementById('receipt_company_bank').value || null,
-        denominations: denomPayload
+        denominations: denomPayload,
+        transaction_date: document.getElementById('txn_date').value // 👈 இந்த வரியை இங்கே சேர்க்கவும்
       };
 
       const resSettle = await fetch('/api/transaction/settle-with-otp', {
@@ -2162,6 +2260,36 @@
         document.getElementById('searchInput').value = mobile;
         handleSearch();
       } else alert("❌ பிழை: " + data.detail);
+    }
+    let currentCashDayData = null;
+    let currentDayMode = "OPEN"; // OPEN or CLOSE
+    let currentSystemCash = 0;
+
+    // தேதி துவக்கம்
+    function initTxnDate() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const dateInput = document.getElementById('txn_date');
+      if (dateInput && !dateInput.value) {
+        dateInput.value = todayStr;
+      }
+      checkCurrentDateStatus();
+    }
+
+    function onDateChanged() {
+      checkCurrentDateStatus();
+    }
+
+    // ... ஏனைய அனைத்து செயல்பாடுகளும் (checkCurrentDateStatus, openCashDayModal, submitCashDayAction போன்றவை) ...
+
+    function updateDenomTitle() {
+      const title = document.getElementById('denomTitleText');
+      if (title) {
+        if (currentDirection === "COMPANY_PAYABLE") {
+          title.innerText = "வாடிக்கையாளருக்கு நாம் கொடுக்கும் தாள்கள் (Outward Cash):";
+        } else {
+          title.innerText = "வாடிக்கையாளரிடம் நாம் பெறும் சில்லறை & தாள்கள் (Inward Cash):";
+        }
+      }
     }
   </script>
 </body>

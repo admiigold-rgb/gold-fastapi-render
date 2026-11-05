@@ -2282,14 +2282,13 @@
     // B. தலைமையகத்தின் அனைத்து நிலுவைகளையும் (OTP விலக்கு, வருகை ஆடிட், வங்கி, KYC) எடுத்தல்
     
     async function loadAllHqApprovals() {
-      // 1. OTP விலக்குக் கோரிக்கைகளை எடுத்தல்
       await loadHqOtpExemptions();
 
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
 
-        // 2. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல் (Profile Updates)
+        // வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல்
         const uBody = document.getElementById('pendingUpdatesTableBody');
         if (uBody) {
           uBody.innerHTML = '';
@@ -2316,12 +2315,16 @@
                 </td>
                 <td class="p-2.5 font-bold text-brand-violet">${u.test_branches?.branch_name || 'கிளை #' + u.branch_id}</td>
                 <td class="p-2.5 text-xs text-slate-700 leading-relaxed">${summaryParts.join('<br>') || 'விபரங்கள் இல்லை'}</td>
-                <td class="p-2.5 text-center space-x-1.5">
-                  <button onclick="actionUpdate(${u.id}, 'APPROVE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow transition">
-                    அங்கீகரி (Approve)
+                <td class="p-2.5 text-center space-x-2 whitespace-nowrap">
+                  <button type="button" onclick="actionUpdate(${u.id}, 'APPROVE')" 
+                          style="background-color: #059669; color: #ffffff;" 
+                          class="px-3 py-1.5 rounded-xl font-bold text-xs shadow hover:opacity-90 transition">
+                    ✓ அங்கீகரி (Approve)
                   </button>
-                  <button onclick="actionUpdate(${u.id}, 'REJECT')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow transition">
-                    நிராகரி
+                  <button type="button" onclick="actionUpdate(${u.id}, 'REJECT')" 
+                          style="background-color: #dc2626; color: #ffffff;" 
+                          class="px-3 py-1.5 rounded-xl font-bold text-xs shadow hover:opacity-90 transition">
+                    ✕ நிராகரி
                   </button>
                 </td>
               `;
@@ -2329,6 +2332,10 @@
             });
           }
         }
+      } catch (err) {
+        console.error("தலைமையக நிலுவைகள் பிழை:", err);
+      }
+    }
 
         // 3. புதிய முழு KYC ஒப்புதல் பட்டியல்
         const kBody = document.getElementById('pendingKycTableBody');

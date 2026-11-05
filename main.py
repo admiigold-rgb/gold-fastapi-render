@@ -323,7 +323,6 @@ def get_next_loan_no(branch_id: int = Query(...)):
         if not branch_res.data:
             raise HTTPException(status_code=404, detail="கிளை விபரம் கிடைக்கவில்லை.")
         branch_code = branch_res.data[0]["branch_code"].strip().upper()
-        
         count_res = supabase.table("test_gold_loans").select("id", count="exact").eq("branch_id", branch_id).execute()
         next_count = (count_res.count or len(count_res.data or [])) + 1
         formatted_loan_no = f"{branch_code}/{next_count:04d}"
@@ -758,7 +757,6 @@ def create_staff(data: StaffPayload):
     if check.data:
         raise HTTPException(status_code=400, detail="இந்தப் பயனர் பெயர் ஏற்கனவே உள்ளது.")
     
-    # 👈 கடவுச்சொல் மற்றும் OTP விலக்கு அனுமதிப்புப் புலங்களைச் சரியாகச் சேமிக்க
     staff_record = data.model_dump()
     if not staff_record.get("password"):
         staff_record["password"] = "gold123"

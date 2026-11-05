@@ -316,7 +316,7 @@
 
     <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் மையம் ==================== -->
     <!-- தலைமையகம்: OTP விலக்குக் கோரிக்கைகள் -->
-    <div id="hqOtpExemptSection" class="space-y-2 bg-yellow-50 p-3.5 rounded-2xl border-2 border-yellow-400 shadow-sm">
+    <div id="hqOtpExemptSection" class="hidden space-y-2 bg-yellow-50 p-3.5 rounded-2xl border-2 border-yellow-400 shadow-sm">
       <div class="flex justify-between items-center">
         <h3 class="text-xs font-black text-amber-950 uppercase flex items-center gap-2">
           <span>⚡</span> கிளைகளின் அவசர OTP விலக்குக் கோரிக்கைகள்:
@@ -1042,6 +1042,11 @@
         loadSchemesList();
         loadCompanyBanksList();
         loadTodayGoldRate();
+        loadSchemesDropdown();
+        fetchAndSetupPurityDropdown();
+        initTxnDate();
+        loadBranchVisitsTable();
+        loadHqOtpExemptions();
       }
     }
 
@@ -2355,41 +2360,49 @@
     }
     
     // 3. தலைமையகம்: OTP விலக்குக் கோரிக்கைகளைப் பட்டியலிடுதல் & அனுமதித்தல்
+    // தலைமை அனுமதி உள்ளவர்களுக்கு மட்டுமே OTP விலக்கு அட்டவணையைக் காட்டும் செயல்பாடு
     async function loadHqOtpExemptions() {
+      const section = document.getElementById('hqOtpExemptSection');
       const exBody = document.getElementById('hqOtpExemptTableBody');
+    
+      // லாகின் செய்தவருக்கு அனுமதி உள்ளதா எனச் சரிபார்க்கிறது
+      const isAuthorized = currentUser?.permissions?.can_approve_otp_exempt === true || currentUser?.role_key === 'HQ_ADMIN';
+    
+      // அனுமதி இல்லை எனில் இந்த அட்டவணை முற்றிலுமாக மறைக்கப்படும்
+      if (!isAuthorized) {
+        if (section) section.classList.add('hidden');
+        return;
+      }
+    
+      // அனுமதி இருந்தால் மட்டுமே திரையில் தெரியும்
+      if (section) section.classList.remove('hidden');
       if (!exBody) return;
-      
+    
       try {
         const res = await fetch('/api/hq/pending-otp-exemptions');
         const data = await res.json();
         exBody.innerHTML = '';
-        
+    
         if (!data.data || data.data.length === 0) {
-          exBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">விலக்குக் கோரிக்கைகள் எதுவும் இல்லை</td></tr>`;
+          exBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">விலக்குக் கோரிக்கைகள் எதுவும் இல்லை</td></tr>`;
           return;
         }
-    
-        const hasAuthority = currentUser?.permissions?.can_approve_otp_exempt === true;
     
         data.data.forEach(ex => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td class="p-2.5 font-bold font-mono text-brand-violet">#VIS-${ex.id}</td>
-            <td class="p-2.5 font-bold">${ex.test_customers?.name} <span class="text-slate-500 font-mono text-xs">(${ex.test_customers?.mobile})</span></td>
+            <td class="p-2.5 font-bold">${ex.test_customers?.name || '-'} <span class="text-slate-500 font-mono text-xs">(${ex.test_customers?.mobile || '-'})</span></td>
             <td class="p-2.5 text-rose-700 font-semibold">${ex.purpose}</td>
             <td class="p-2.5 text-center space-x-1.5">
-              ${hasAuthority ? `
-                <button onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow">அனுமதி (Approve)</button>
-                <button onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
-              ` : `
-                <span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded">அனுமதி உரிமை இல்லை</span>
-              `}
+              <button onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow">அனுமதி (Approve)</button>
+              <button onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
             </td>
           `;
           exBody.appendChild(tr);
         });
       } catch (e) {
-        console.error(e);
+        console.error("OTP விலக்கு பட்டியல் பிழை:", e);
       }
     }
     

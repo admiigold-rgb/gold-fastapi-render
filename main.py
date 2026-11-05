@@ -328,13 +328,30 @@ def get_next_loan_no(branch_id: int = Query(...)):
         raise HTTPException(status_code=500, detail=f"கடன் எண் பிழை: {str(e)}")
 
 # 4. நகைக்கடன் பதிவு & நீக்கம்
+# 1. B: புதிய அடகு பதிவின் போது நாள் பூட்டப்பட்டுள்ளதா எனச் சரிபார்த்தல்
 @app.post("/api/loan/new-pawn")
 def create_new_pawn(data: NewGoldLoanEntry):
+    check_day = (
+        supabase.table("test_branch_cash_days")
+        .select("status")
+        .eq("branch_id", data.branch_id)
+        .order("business_date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if check_day.data and check_day.data[0].get("status") == "CLOSED":
+        raise HTTPException(
+            status_code=400, 
+            detail="இந்த நாளுக்கான கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). புதிய அடகு வைக்க முடியாது!"
+        )
+
     if not data.items:
         raise HTTPException(status_code=400, detail="நகைகளைச் சேர்க்கவும்.")
+
     total_gross = sum(i.gross_weight for i in data.items)
     total_net = sum(i.net_weight for i in data.items)
     net_payable = data.loan_amount - data.charges_amount
+
     loan_record = {
         "loan_no": data.loan_no.strip(),
         "customer_id": data.customer_id,
@@ -345,11 +362,13 @@ def create_new_pawn(data: NewGoldLoanEntry):
         "charges_amount": data.charges_amount,
         "net_payable_amount": net_payable,
         "photo_url": data.photo_url,
+        "ornament_photo": data.photo_url,
         "branch_id": data.branch_id,
         "status": "ACTIVE"
     }
     res_loan = supabase.table("test_gold_loans").insert(loan_record).execute()
     new_loan_id = res_loan.data[0]["id"]
+
     items_payload = [{
         "loan_id": new_loan_id,
         "item_type": i.item_type.strip(),
@@ -359,7 +378,13 @@ def create_new_pawn(data: NewGoldLoanEntry):
         "purity": i.purity
     } for i in data.items]
     supabase.table("test_gold_loan_items").insert(items_payload).execute()
-    return {"status": "success", "message": "நகைக்கடன் கார்ட்டில் சேர்க்கப்பட்டது.", "loan_id": new_loan_id, "net_payable": net_payable}
+
+    return {
+        "status": "success", 
+        "message": "நகைக்கடன் கார்ட்டில் சேர்க்கப்பட்டது.", 
+        "loan_id": new_loan_id, 
+        "net_payable": net_payable
+    }
 
 @app.delete("/api/loan/{loan_id}")
 def delete_cart_loan(loan_id: int):
@@ -621,19 +646,37 @@ def trigger_otp_sms(payload: SendOtpPayload):
     }).execute()
     return {"status": "success", "message": "OTP SMS அனுப்பப்பட்டது."}
 
+# 1. C: செட்டில்மென்ட்டின் போது நாள் பூட்டப்பட்டுள்ளதா எனச் சரிபார்த்தல்
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
-    otp_query = (
-        supabase.table("test_transaction_otps")
-        .select("id, otp_code, is_verified")
-        .eq("customer_id", data.customer_id)
-        .eq("is_verified", False)
-        .order("created_at", desc=True)
-        .limit(1)
+    txn_date = data.transaction_date or "now()"
+    
+    day_status_res = (
+        supabase.table("test_branch_cash_days")
+        .select("status")
+        .eq("branch_id", data.branch_id)
+        .eq("business_date", txn_date)
         .execute()
     )
-    if not otp_query.data or otp_query.data[0]["otp_code"] != data.otp_code.strip():
-        raise HTTPException(status_code=400, detail="OTP தவறானது அல்லது காலாவதியானது.")
+    if day_status_res.data and day_status_res.data[0].get("status") == "CLOSED":
+        raise HTTPException(
+            status_code=400, 
+            detail="தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் பணப் பரிவர்த்தனை செய்ய முடியாது!"
+        )
+
+    if not data.is_exempted:
+        otp_query = (
+            supabase.table("test_transaction_otps")
+            .select("id, otp_code, is_verified")
+            .eq("customer_id", data.customer_id)
+            .eq("is_verified", False)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not otp_query.data or otp_query.data[0]["otp_code"] != (data.otp_code or "").strip():
+            raise HTTPException(status_code=400, detail="OTP தவறானது அல்லது காலாவதியானது.")
+        supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", otp_query.data[0]["id"]).execute()
 
     settle_record = {
         "customer_id": data.customer_id,
@@ -645,7 +688,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
         "bank_ref_no": data.bank_ref_no,
         "bank_name": data.bank_name,
         "direction": data.direction,
-        "transaction_date": data.transaction_date or "now()"
+        "transaction_date": txn_date
     }
     res_settle = supabase.table("test_transaction_settlements").insert(settle_record).execute()
     new_settle_id = res_settle.data[0]["id"]
@@ -663,19 +706,58 @@ def settle_with_otp(data: SettleWithOtpPayload):
             "total_calculated_cash": data.cash_amount
         }).execute()
 
-    supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", otp_query.data[0]["id"]).execute()
-    return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
+    if data.visit_id:
+        supabase.table("test_customer_visits").update({
+            "status": "PENDING_HQ",
+            "net_amount": data.net_amount,
+            "cash_amount": data.cash_amount,
+            "bank_amount": data.bank_amount,
+            "direction": data.direction,
+            "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை"
+        }).eq("id", data.visit_id).execute()
+
+    return {
+        "status": "success", 
+        "message": "பரிவர்த்தனை முடிந்தது!", 
+        "settlement_id": new_settle_id
+    }
 
 # ==================== கிளை நாள் திறப்பு, அறிக்கை & நாள் பூட்டுதல் API ====================
 
 # 1. குறிப்பிட்ட நாளின் நிலையை அறிதல் (Check Cash Day Status)
+# 1. A: நாள் நிலை அறிதல் மற்றும் முந்தைய நாளின் இருப்பைத் தானாகக் கொண்டுவருதல்
 @app.get("/api/cash-day/status")
 def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
     try:
         res = supabase.table("test_branch_cash_days").select("*").eq("branch_id", branch_id).eq("business_date", date).execute()
-        return {"status": "success", "data": res.data[0] if res.data else None}
+        if res.data:
+            return {"status": "success", "data": res.data[0]}
+
+        prev_res = (
+            supabase.table("test_branch_cash_days")
+            .select("closing_balance")
+            .eq("branch_id", branch_id)
+            .lt("business_date", date)
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        
+        carried_opening = 0.0
+        if prev_res.data and prev_res.data[0].get("closing_balance") is not None:
+            carried_opening = float(prev_res.data[0]["closing_balance"])
+
+        new_day = {
+            "branch_id": branch_id,
+            "business_date": date,
+            "opening_balance": carried_opening,
+            "status": "OPEN"
+        }
+        ins_res = supabase.table("test_branch_cash_days").insert(new_day).execute()
+        return {"status": "success", "data": ins_res.data[0]}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"நாள் இருப்பு பிழை: {str(e)}")
 
 # 2. நாள் திறப்பு (Open Cash Day)
 @app.post("/api/cash-day/open")
@@ -745,10 +827,26 @@ def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 # 4. மாலை நாள் முடிப்பு & பூட்டுதல் (Close Cash Day)
+# 1. D: மாலை நாள் பூட்டுதல்
 @app.post("/api/cash-day/close")
 def close_cash_day(data: CashDayClosePayload):
     try:
+        day_res = (
+            supabase.table("test_branch_cash_days")
+            .select("id, status")
+            .eq("branch_id", data.branch_id)
+            .eq("business_date", data.business_date)
+            .execute()
+        )
+        if not day_res.data:
+            raise HTTPException(status_code=404, detail="இந்த நாளின் இருப்புப் பதிவு கிடைக்கவில்லை.")
+
+        if day_res.data[0].get("status") == "CLOSED":
+            raise HTTPException(status_code=400, detail="இந்த நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது.")
+
+        day_id = day_res.data[0]["id"]
         diff = data.closing_balance - data.calculated_system_cash
+
         update_data = {
             "closing_balance": data.closing_balance,
             "closing_denominations": data.denominations,
@@ -758,7 +856,15 @@ def close_cash_day(data: CashDayClosePayload):
             "closed_at": "now()",
             "status": "CLOSED"
         }
-        res = supabase.table("test_branch_cash_days").update(update_data).eq("id", data.cash_day_id).execute()
-        return {"status": "success", "message": "நாள் வெற்றிகரமாகப் பூட்டப்பட்டது!", "difference": diff}
+        supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
+        return {
+            "status": "success", 
+            "message": "நாள் வெற்றிகரமாகப் பூட்டப்பட்டது! இனி புதிய பரிவர்த்தனைகள் செய்ய முடியாது.", 
+            "difference": diff
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

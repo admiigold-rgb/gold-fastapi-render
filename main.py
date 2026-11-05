@@ -222,6 +222,20 @@ class SettleWithOtpPayload(BaseModel):
     bank_name: Optional[str] = None
     denominations: Optional[DenominationCounts] = None
 
+# --- Cash Day Schemas ---
+class CashDayOpenPayload(BaseModel):
+    branch_id: int
+    business_date: str
+    opening_balance: float
+    denominations: Dict[str, int]
+    staff_id: int
+
+class CashDayClosePayload(BaseModel):
+    cash_day_id: int
+    closing_balance: float
+    denominations: Dict[str, int]
+    calculated_system_cash: float
+    staff_id: int
 # --- API Endpoints ---
 
 @app.get("/")
@@ -648,3 +662,99 @@ def settle_with_otp(data: SettleWithOtpPayload):
 
     supabase.table("test_transaction_otps").update({"is_verified": True}).eq("id", otp_query.data[0]["id"]).execute()
     return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
+    # ==================== கிளை நாள் திறப்பு, அறிக்கை & நாள் பூட்டுதல் API ====================
+
+    # 1. குறிப்பிட்ட நாளின் நிலையை அறிதல் (Check Cash Day Status)
+    @app.get("/api/cash-day/status")
+    def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
+        try:
+            res = supabase.table("test_branch_cash_days").select("*").eq("branch_id", branch_id).eq("business_date", date).execute()
+            return {"status": "success", "data": res.data[0] if res.data else None}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    # 2. நாள் திறப்பு (Open Cash Day)
+    @app.post("/api/cash-day/open")
+    def open_cash_day(data: CashDayOpenPayload):
+        try:
+            check = supabase.table("test_branch_cash_days").select("id").eq("branch_id", data.branch_id).eq("business_date", data.business_date).execute()
+            if check.data:
+                raise HTTPException(status_code=400, detail="இந்த நாளுக்கான தொடக்க இருப்பு ஏற்கனவே திறக்கப்பட்டுள்ளது.")
+            
+            record = {
+                "branch_id": data.branch_id,
+                "business_date": data.business_date,
+                "opening_balance": data.opening_balance,
+                "opening_denominations": data.denominations,
+                "opened_by": data.staff_id,
+                "status": "OPEN"
+            }
+            res = supabase.table("test_branch_cash_days").insert(record).execute()
+            return {"status": "success", "message": "நாள் வெற்றிகரமாகத் திறக்கப்பட்டது!", "data": res.data[0]}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    # 3. குறிப்பிட்ட நாளுக்கான அனைத்து நடவடிக்கைகள் & கணக்கீடுகள் (Day Summary Report)
+    @app.get("/api/cash-day/report")
+    def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
+        try:
+            # நாள் திறப்பு விவரம்
+            day_res = supabase.table("test_branch_cash_days").select("*").eq("branch_id", branch_id).eq("business_date", date).execute()
+            day_info = day_res.data[0] if day_res.data else None
+    
+            # அன்றைய செட்டில்மென்ட்கள் (ரொக்கப் பரிவர்த்தனைகள்)
+            settle_res = (
+                supabase.table("test_transaction_settlements")
+                .select("*, test_customers(name, mobile)")
+                .eq("branch_id", branch_id)
+                .eq("transaction_date", date)
+                .order("id", desc=True)
+                .execute()
+            )
+            settlements = settle_res.data or []
+    
+            total_cash_in = 0.0  # வாடிக்கையாளர் நமக்கு ரொக்கமாக செலுத்தியது
+            total_cash_out = 0.0 # வாடிக்கையாளருக்கு நாம் ரொக்கமாக கொடுத்தது
+    
+            for s in settlements:
+                cash = float(s.get("cash_amount") or 0.0)
+                if s.get("direction") == "CUSTOMER_PAYABLE":
+                    total_cash_in += cash
+                elif s.get("direction") == "COMPANY_PAYABLE":
+                    total_cash_out += cash
+    
+            opening = float(day_info.get("opening_balance") or 0.0) if day_info else 0.0
+            calculated_closing = opening + total_cash_in - total_cash_out
+    
+            return {
+                "status": "success",
+                "day_info": day_info,
+                "opening_balance": opening,
+                "total_cash_in": total_cash_in,
+                "total_cash_out": total_cash_out,
+                "calculated_closing": calculated_closing,
+                "settlements": settlements
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    # 4. மாலை நாள் முடிப்பு & பூட்டுதல் (Close Cash Day)
+    @app.post("/api/cash-day/close")
+    def close_cash_day(data: CashDayClosePayload):
+        try:
+            diff = data.closing_balance - data.calculated_system_cash
+            update_data = {
+                "closing_balance": data.closing_balance,
+                "closing_denominations": data.denominations,
+                "calculated_system_cash": data.calculated_system_cash,
+                "cash_difference": diff,
+                "closed_by": data.staff_id,
+                "closed_at": "now()",
+                "status": "CLOSED"
+            }
+            res = supabase.table("test_branch_cash_days").update(update_data).eq("id", data.cash_day_id).execute()
+            return {"status": "success", "message": "நாள் வெற்றிகரமாகப் பூட்டப்பட்டது!", "difference": diff}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))

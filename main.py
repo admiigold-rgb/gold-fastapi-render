@@ -818,42 +818,57 @@ def process_bank_transfer_hq(data: BankApprovalPayload):
 
 @app.get("/api/hq/all-pending-approvals")
 def get_all_pending_approvals():
-    cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
-    cust_map = {c["id"]: c for c in (cust_res.data or [])}
+    try:
+        # வாடிக்கையாளர் மற்றும் கிளை விவரங்களுக்கான மேப்பிங்
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        cust_map = {c["id"]: c for c in (cust_res.data or [])}
 
-    payouts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
-    payouts_data = payouts_res.data or []
-    for p in payouts_data:
-        c = cust_map.get(p.get("customer_id"), {})
-        p["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{p.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+        branch_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute()
+        branch_map = {b["id"]: b for b in (branch_res.data or [])}
 
-    receipts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
-    receipts_data = receipts_res.data or []
-    for r in receipts_data:
-        c = cust_map.get(r.get("customer_id"), {})
-        r["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+        # 1. வங்கி பட்டுவாடா வேண்டுகோள்கள்
+        payouts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
+        payouts_data = payouts_res.data or []
+        for p in payouts_data:
+            c = cust_map.get(p.get("customer_id"), {})
+            p["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{p.get('customer_id')}"), "mobile": c.get("mobile", "-")}
 
-    visits_res = supabase.table("test_customer_visits").select("*").eq("status", "PENDING_HQ").order("id", desc=True).limit(20).execute()
-    visits_data = visits_res.data or []
-    for v in visits_data:
-        c = cust_map.get(v.get("customer_id"), {})
-        v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+        # 2. வங்கி வரவு சரிபார்ப்புகள்
+        receipts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
+        receipts_data = receipts_res.data or []
+        for r in receipts_data:
+            c = cust_map.get(r.get("customer_id"), {})
+            r["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}"), "mobile": c.get("mobile", "-")}
 
-    kyc_res = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
-    updates_res = supabase.table("test_customer_update_requests").select("*").eq("status", "PENDING").order("id", desc=True).execute()
-    updates_data = updates_res.data or []
-    for u in updates_data:
-        c = cust_map.get(u.get("customer_id"), {})
-        u["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{u.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+        # 3. வருகை ஆடிட் நிலுவைகள்
+        visits_res = supabase.table("test_customer_visits").select("*").eq("status", "PENDING_HQ").order("id", desc=True).limit(20).execute()
+        visits_data = visits_res.data or []
+        for v in visits_data:
+            c = cust_map.get(v.get("customer_id"), {})
+            v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
 
-    return {
-        "status": "success",
-        "pending_kyc": kyc_res.data or [],
-        "pending_updates": updates_data,
-        "pending_visits": visits_data,
-        "pending_payouts": payouts_data,
-        "pending_receipts": receipts_data
-    }
+        # 4. புதிய KYC நிலுவைகள்
+        kyc_res = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
+
+        # 5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் (சரிசெய்யப்பட்ட பகுதி)
+        updates_res = supabase.table("test_customer_update_requests").select("*").eq("status", "PENDING").order("id", desc=True).execute()
+        updates_data = updates_res.data or []
+        for u in updates_data:
+            c = cust_map.get(u.get("customer_id"), {})
+            b = branch_map.get(u.get("branch_id"), {})
+            u["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{u.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+            u["test_branches"] = {"branch_name": b.get("branch_name", f"கிளை #{u.get('branch_id')}"), "branch_code": b.get("branch_code", "BR")}
+
+        return {
+            "status": "success",
+            "pending_kyc": kyc_res.data or [],
+            "pending_updates": updates_data,
+            "pending_visits": visits_data,
+            "pending_payouts": payouts_data,
+            "pending_receipts": receipts_data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"தலைமையக நிலுவைகள் பிழை: {str(e)}")
 
 @app.post("/api/hq/approve-visit")
 def process_visit_approval(data: ApprovalActionPayload):
@@ -872,19 +887,37 @@ def process_kyc_approval(data: ApprovalActionPayload):
 
 @app.post("/api/hq/approve-update")
 def process_update_approval(data: ApprovalActionPayload):
-    req_res = supabase.table("test_customer_update_requests").select("*").eq("id", data.request_id).execute()
-    if not req_res.data:
-        raise HTTPException(status_code=404, detail="கோரிக்கை கிடைக்கவில்லை.")
-    req = req_res.data[0]
-    if data.action == "APPROVE":
-        changes = req.get("requested_changes", {})
-        if changes:
-            supabase.table("test_customers").update(changes).eq("id", req["customer_id"]).execute()
-        supabase.table("test_customer_update_requests").update({"status": "APPROVED"}).eq("id", data.request_id).execute()
-        return {"status": "success", "message": "சுயவிவர மாற்றம் அங்கீகரிக்கப்பட்டது."}
-    else:
-        supabase.table("test_customer_update_requests").update({"status": "REJECTED"}).eq("id", data.request_id).execute()
-        return {"status": "success", "message": "சுயவிவர மாற்றக் கோரிக்கை நிராகரிக்கப்பட்டது."}
+    try:
+        req_res = supabase.table("test_customer_update_requests").select("*").eq("id", data.request_id).execute()
+        if not req_res.data:
+            raise HTTPException(status_code=404, detail="கோரிக்கை கிடைக்கவில்லை.")
+        req = req_res.data[0]
+        
+        if data.action == "APPROVE":
+            changes = req.get("requested_changes", {})
+            if changes:
+                # வாடிக்கையாளர் சுயவிவரத்தில் புதிய தகவல்களைப் புதுப்பித்தல்
+                supabase.table("test_customers").update(changes).eq("id", req["customer_id"]).execute()
+            
+            # கோரிக்கையின் நிலையை APPROVED என மாற்றுதல்
+            supabase.table("test_customer_update_requests").update({
+                "status": "APPROVED",
+                "approved_by": data.admin_id,
+                "approved_at": "now()"
+            }).eq("id", data.request_id).execute()
+            return {"status": "success", "message": "சுயவிவர மாற்றம் அங்கீகரிக்கப்பட்டு வாடிக்கையாளர் விவரங்கள் புதுப்பிக்கப்பட்டன."}
+        else:
+            # கோரிக்கையை REJECTED என மாற்றுதல்
+            supabase.table("test_customer_update_requests").update({
+                "status": "REJECTED",
+                "approved_by": data.admin_id,
+                "approved_at": "now()"
+            }).eq("id", data.request_id).execute()
+            return {"status": "success", "message": "சுயவிவர மாற்றக் கோரிக்கை நிராகரிக்கப்பட்டது."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"சுயவிவர ஒப்புதல் பிழை: {str(e)}")
 
 @app.post("/api/customer/new-full-kyc")
 def create_full_kyc(data: FullCustomerKYCPayload):

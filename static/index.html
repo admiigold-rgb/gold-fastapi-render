@@ -316,7 +316,16 @@
 
     <!-- ==================== TAB B: தலைமையக ஒப்புதல்கள் மையம் ==================== -->
     <!-- தலைமையகம்: OTP விலக்குக் கோரிக்கைகள் -->
-    <div id="hqOtpExemptSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-2xl border-2 border-yellow-400 shadow-sm">
+    
+    <div id="hqApprovalTab" class="hidden space-y-5">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-3">
+          <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
+            <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
+          </h2>
+          <button onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition">புதுப்பி 🔄</button>
+        </div>
+        <div id="hqOtpExemptSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-2xl border-2 border-yellow-400 shadow-sm">
           <div class="flex justify-between items-center border-b border-yellow-200 pb-2">
             <h3 class="text-xs font-black text-amber-950 uppercase flex items-center gap-2">
               <span>⚡</span> கிளைகளின் அவசர OTP விலக்குக் கோரிக்கைகள் (OTP Exemption Hub):
@@ -339,15 +348,7 @@
             </table>
           </div>
         </div>
-    <div id="hqApprovalTab" class="hidden space-y-5">
-      <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
-        <div class="flex justify-between items-center border-b border-purple-100 pb-3">
-          <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
-            <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
-          </h2>
-          <button onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition">புதுப்பி 🔄</button>
-        </div>
-
+  
         <div class="space-y-2">
           <h3 class="text-xs font-extrabold text-rose-800 uppercase flex items-center gap-1.5">
             <span>💸</span> 1. வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள்:
@@ -1046,7 +1047,6 @@
         fetchAndSetupPurityDropdown();
         initTxnDate();
         loadBranchVisitsTable();
-        loadHqOtpExemptions();
       }
     }
 
@@ -2234,14 +2234,16 @@
       const section = document.getElementById('hqOtpExemptSection');
       const exBody = document.getElementById('hqOtpExemptTableBody');
 
-      // லாகின் செய்தவருக்கு அனுமதி உள்ளதா எனப் பார்த்தல்
+      // 🔒 லாகின் செய்தவருக்கு அனுமதி உள்ளதா எனச் சரிபார்க்கிறது
       const isAuthorized = currentUser?.permissions?.can_approve_otp_exempt === true || currentUser?.role_key === 'HQ_ADMIN';
 
+      // அனுமதி இல்லையென்றால் திரையில் வரவே கூடாது
       if (!isAuthorized) {
         if (section) section.classList.add('hidden');
         return;
       }
 
+      // அனுமதி இருந்தால் மட்டுமே காட்ட வேண்டும்
       if (section) section.classList.remove('hidden');
       if (!exBody) return;
 

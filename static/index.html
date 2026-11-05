@@ -1825,6 +1825,107 @@
 
     function closeOtpModal() { document.getElementById('otpVerifyModal').classList.add('hidden'); }
 
+    async function requestOtpFromCustomer() {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_id: activeCustomer.id, mobile: activeCustomer.mobile,
+          customer_name: activeCustomer.name, net_amount: currentNetAbs, direction: currentDirection
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('input_otp').value = '';
+        closeCheckoutModal();
+        document.getElementById('otpVerifyModal').classList.remove('hidden');
+      } else alert("❌ SMS பிழை: " + data.detail);
+    }
+
+    // 👇👇 இந்த இடத்தில் நேராக ஒட்டவும் (Paste Here) 👇👇
+    async function requestOtpExemptionModal() {
+      // வாடிக்கையாளர் தேர்வு செய்யப்பட்டுள்ளாரா எனச் சரிபார்த்தல்
+      if (!activeCustomer || !activeCustomer.id) {
+        return alert("⚠️ செயலில் உள்ள வாடிக்கையாளர் விபரம் கிடைக்கவில்லை. வாடிக்கையாளரை மீண்டும் தேடித் தேர்வு செய்யவும்.");
+      }
+
+      // ஒருவேளை activeVisitId கிடைக்கவில்லை என்றால், உடனடியாகப் புதிய வருகையைப் பதிவு செய்து கொள்ளுதல்
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+      if (!activeVisitId) {
+        try {
+          const vRes = await fetch('/api/customer/visit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              customer_id: activeCustomer.id, 
+              branch_id: branchId,
+              purpose: "REGULAR_TRANSACTION"
+            })
+          });
+          const vData = await vRes.json();
+          activeVisitId = vData.data?.id;
+        } catch (err) {
+          return alert("❌ வருகைப் பதிவு தொடங்குவதில் பிழை: " + err.message);
+        }
+      }
+
+      if (!activeVisitId) {
+        return alert("⚠️ வருகை எண்ணை உருவாக்க முடியவில்லை. தயவுசெய்து பக்கத்தைப் புதுப்பித்து மீண்டும் முயற்சிக்கவும்.");
+      }
+
+      const reason = prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும் (எ.கா: சிக்னல் இல்லை / வாடிக்கையாளர் மொபைல் கொண்டுவரவில்லை):");
+      if (!reason || reason.trim() === "") return;
+
+      try {
+        const res = await fetch('/api/otp/request-exemption', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            visit_id: activeVisitId,
+            branch_id: branchId,
+            reason: reason.trim(),
+            staff_id: currentUser ? currentUser.id : 1
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் இந்தப் பரிவர்த்தனை தானாகவே நிறைவடையும்.");
+          checkOtpExemptionLoop(); // தலைமையக அனுமதியைக் கவனிக்கும் லூப்
+        } else {
+          alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கையை அனுப்ப முடியவில்லை"));
+        }
+      } catch (err) {
+        alert("❌ இணைப்புப் பிழை: " + err.message);
+      }
+    }
+    // 👆👆 இங்கு வரை 👆👆
+
+    // தலைமையகம் அனுமதித்தவுடன் திரையில் தானாகப் பரிவர்த்தனை முடிவதற்கான லூப்
+    async function checkOtpExemptionLoop() {
+      if (!activeVisitId) return;
+      try {
+        const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
+        const data = await res.json();
+        
+        if (data.data?.otp_exempted === true) {
+          alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
+          closeCheckoutModal();
+          confirmSettleWithOtp(true); // OTP இன்றி தானாக முடித்தல்
+        } else if (data.data?.otp_exemption_status === 'REJECTED') {
+          alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. வாடிக்கையாளர் மொபைலுக்கு SMS OTP அனுப்பவும்.");
+        } else {
+          setTimeout(checkOtpExemptionLoop, 3000); // 3 விநாடிகளுக்கு ஒருமுறை கவனிக்கும்
+        }
+      } catch (e) {
+        console.error("Exemption status check error:", e);
+      }
+    }
+
+    function closeOtpModal() {
+      const modal = document.getElementById('otpVerifyModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
     async function confirmSettleWithOtp() {
       const enteredOtp = document.getElementById('input_otp').value.trim();
       if (!enteredOtp || enteredOtp.length !== 6) return alert("6 இலக்க OTP உள்ளிடவும்.");

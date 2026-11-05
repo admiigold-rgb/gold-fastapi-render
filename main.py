@@ -323,8 +323,9 @@ def get_next_loan_no(branch_id: int = Query(...)):
         if not branch_res.data:
             raise HTTPException(status_code=404, detail="கிளை விபரம் கிடைக்கவில்லை.")
         branch_code = branch_res.data[0]["branch_code"].strip().upper()
+        
         count_res = supabase.table("test_gold_loans").select("id", count="exact").eq("branch_id", branch_id).execute()
-        next_count = (count_res.count or 0) + 1
+        next_count = (count_res.count or len(count_res.data or [])) + 1
         formatted_loan_no = f"{branch_code}/{next_count:04d}"
         return {
             "status": "success",
@@ -559,7 +560,8 @@ def log_customer_visit(data: CustomerVisitEntry):
         "purpose": data.purpose,
         "status": "IN_PROGRESS",
         "audit_status": "PENDING",
-        "otp_exemption_status": "NONE"
+        "otp_exemption_status": "NONE",
+        "otp_exempted": False
     }
     res = supabase.table("test_customer_visits").insert(record).execute()
     return {"status": "success", "message": "வருகை துவங்கியது.", "data": res.data[0]}
@@ -755,7 +757,13 @@ def create_staff(data: StaffPayload):
     check = supabase.table("test_staff_users").select("id").eq("username", data.username.strip()).execute()
     if check.data:
         raise HTTPException(status_code=400, detail="இந்தப் பயனர் பெயர் ஏற்கனவே உள்ளது.")
-    res = supabase.table("test_staff_users").insert(data.model_dump()).execute()
+    
+    # 👈 கடவுச்சொல் மற்றும் OTP விலக்கு அனுமதிப்புப் புலங்களைச் சரியாகச் சேமிக்க
+    staff_record = data.model_dump()
+    if not staff_record.get("password"):
+        staff_record["password"] = "gold123"
+        
+    res = supabase.table("test_staff_users").insert(staff_record).execute()
     return {"status": "success", "message": "பணியாளர் கணக்கு உருவாக்கப்பட்டது.", "data": res.data}
 
 @app.put("/api/admin/staff/{staff_id}")

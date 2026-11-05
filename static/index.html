@@ -2196,17 +2196,28 @@
 
     // 4. வாடிக்கையாளர் சுயவிவர மாற்ற ஒப்புதல்/நிராகரிப்பு
     async function actionUpdate(id, action) {
+      if (!confirm(`இந்த சுயவிவர மாற்றக் கோரிக்கையை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+      
       try {
         const res = await fetch('/api/hq/approve-update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: id, action, admin_id: currentUser.id })
+          body: JSON.stringify({
+            request_id: id,
+            action: action,
+            admin_id: currentUser ? currentUser.id : 1
+          })
         });
         const data = await res.json();
-        alert(data.message);
-        loadAllHqApprovals();
+        
+        if (res.ok) {
+          alert("✅ " + (data.message || "வெற்றிகரமாக மாற்றப்பட்டது!"));
+          loadAllHqApprovals(); // பட்டியலைப் புதுப்பிக்கிறது
+        } else {
+          alert("❌ பிழை: " + (data.detail || data.message || "செயல்பாடு தோல்வியடைந்தது"));
+        }
       } catch (err) {
-        alert("பிழை: " + err.message);
+        alert("❌ இணைப்புப் பிழை: " + err.message);
       }
     }
 

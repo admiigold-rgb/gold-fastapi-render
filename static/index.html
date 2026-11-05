@@ -321,25 +321,25 @@
         </div>
 
         <!-- தலைமையகத்தில் மட்டும் காட்டப்படும் OTP விலக்குக் கோரிக்கைகள் (உரிமை உள்ளவருக்கு மட்டும்) -->
-        <div id="hqOtpExemptSection" class="hidden space-y-2 bg-yellow-50 p-3.5 rounded-2xl border-2 border-yellow-400 shadow-sm">
-          <div class="flex justify-between items-center">
+        <div id="hqOtpExemptSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-2xl border-2 border-yellow-400 shadow-sm">
+          <div class="flex justify-between items-center border-b border-yellow-200 pb-2">
             <h3 class="text-xs font-black text-amber-950 uppercase flex items-center gap-2">
-              <span>⚡</span> கிளைகளின் அவசர OTP விலக்குக் கோரிக்கைகள்:
+              <span>⚡</span> கிளைகளின் அவசர OTP விலக்குக் கோரிக்கைகள் (OTP Exemption Hub):
             </h3>
-            <span class="text-[10px] bg-yellow-200 text-amber-900 px-2 py-0.5 rounded font-bold">உயர் அதிகாரம் தேவை</span>
+            <span class="text-[10px] bg-yellow-300 text-amber-950 px-2 py-0.5 rounded font-black border border-yellow-400">உயர் அனுமதி தேவை</span>
           </div>
           <div class="overflow-x-auto border-2 border-yellow-200 rounded-xl bg-white">
             <table class="w-full text-xs text-left">
-              <thead class="bg-yellow-100/80 text-amber-950 border-b border-yellow-200">
+              <thead class="bg-yellow-100/90 text-amber-950 border-b border-yellow-200">
                 <tr>
-                  <th class="p-2.5">வருகை #</th>
-                  <th class="p-2.5">வாடிக்கையாளர் பெயர்</th>
-                  <th class="p-2.5">காரணம்</th>
-                  <th class="p-2.5 text-center">நடவடிக்கை</th>
+                  <th class="p-2.5 font-bold">வருகை எண்</th>
+                  <th class="p-2.5 font-bold">வாடிக்கையாளர் பெயர்</th>
+                  <th class="p-2.5 font-bold">காரணம்</th>
+                  <th class="p-2.5 text-center font-bold">நடவடிக்கை / அனுமதி</th>
                 </tr>
               </thead>
               <tbody id="hqOtpExemptTableBody" class="divide-y divide-yellow-100 text-slate-700">
-                <tr><td colspan="4" class="p-4 text-center text-slate-400">விலக்குக் கோரிக்கைகள் எதுவும் இல்லை</td></tr>
+                <tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">விலக்குக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>
               </tbody>
             </table>
           </div>
@@ -1243,31 +1243,88 @@
       document.getElementById('searchSection').classList.remove('hidden');
     }
 
+    // தலைமையக ஒப்புதல் மையம்: OTP விலக்கு மற்றும் ஏனைய நிலுவைகளை எடுத்தல்
     async function loadAllHqApprovals() {
-      const res = await fetch('/api/hq/all-pending-approvals');
-      const data = await res.json();
+      // 1. OTP விலக்குக் கோரிக்கைகளை உடனடியாக எடுத்தல்
+      await loadHqOtpExemptions();
 
-      loadHqOtpExemptions();
+      try {
+        const res = await fetch('/api/hq/all-pending-approvals');
+        const data = await res.json();
 
-      const vBody = document.getElementById('pendingVisitsTableBody');
-      vBody.innerHTML = '';
-      if (!data.pending_visits || data.pending_visits.length === 0) {
-        vBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">சரிபார்க்கப்பட வேண்டிய வருகைகள் இல்லை</td></tr>`;
-      } else {
-        data.pending_visits.forEach(v => {
+        // 2. பரிவர்த்தனை முடிந்த வருகைகளின் பட்டியல்
+        const vBody = document.getElementById('pendingVisitsTableBody');
+        if (vBody) {
+          vBody.innerHTML = '';
+          if (!data.pending_visits || data.pending_visits.length === 0) {
+            vBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">சரிபார்க்கப்பட வேண்டிய வருகைகள் இல்லை</td></tr>`;
+          } else {
+            data.pending_visits.forEach(v => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td class="p-2.5 font-mono font-bold text-brand-violet">#VIS-${v.id}</td>
+                <td class="p-2.5 font-bold">${v.test_customers?.name || '-'}</td>
+                <td class="p-2.5">${v.actions_summary || '-'}</td>
+                <td class="p-2.5 font-bold">₹${v.net_amount || 0}</td>
+                <td class="p-2.5 text-center space-x-1">
+                  <button onclick="actionVisitApproval(${v.id}, 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-xs shadow">சரிபார்த்தேன் (Audit)</button>
+                  <button onclick="actionVisitApproval(${v.id}, 'REJECT')" class="px-2.5 py-1 bg-rose-600 text-white rounded-lg font-bold text-xs shadow">நிராகரி</button>
+                </td>
+              `;
+              vBody.appendChild(tr);
+            });
+          }
+        }
+      } catch (err) {
+        console.error("தலைமையக நிலுவைகள் பிழை:", err);
+      }
+    }
+
+    // OTP விலக்குக் கோரிக்கைகளைத் திரையில் கொண்டுவருதல் (அனுமதி உள்ளவருக்கு மட்டுமே தெரியும்)
+    async function loadHqOtpExemptions() {
+      const section = document.getElementById('hqOtpExemptSection');
+      const exBody = document.getElementById('hqOtpExemptTableBody');
+
+      // லாகின் செய்தவருக்கு அனுமதி உள்ளதா எனப் பார்த்தல்
+      const isAuthorized = currentUser?.permissions?.can_approve_otp_exempt === true || currentUser?.role_key === 'HQ_ADMIN';
+
+      if (!isAuthorized) {
+        if (section) section.classList.add('hidden');
+        return;
+      }
+
+      if (section) section.classList.remove('hidden');
+      if (!exBody) return;
+
+      try {
+        const res = await fetch('/api/hq/pending-otp-exemptions');
+        const data = await res.json();
+        exBody.innerHTML = '';
+
+        if (!data.data || data.data.length === 0) {
+          exBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">விலக்குக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>`;
+          return;
+        }
+
+        data.data.forEach(ex => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="p-2.5 font-mono font-bold">#VIS-${v.id}</td>
-            <td class="p-2.5 font-bold">${v.test_customers?.name}</td>
-            <td class="p-2.5">${v.actions_summary || '-'}</td>
-            <td class="p-2.5 font-bold">₹${v.net_amount || 0}</td>
-            <td class="p-2.5 text-center space-x-1">
-              <button onclick="actionVisitApproval(${v.id}, 'APPROVE')" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold">சரிபார்த்தேன் (Audit)</button>
-              <button onclick="actionVisitApproval(${v.id}, 'REJECT')" class="px-2.5 py-1 bg-rose-600 text-white rounded-lg font-bold">நிராகரி</button>
+            <td class="p-2.5 font-bold font-mono text-brand-violet">#VIS-${ex.id}</td>
+            <td class="p-2.5 font-bold">${ex.test_customers?.name || '-'} <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span></td>
+            <td class="p-2.5 text-rose-700 font-bold">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
+            <td class="p-2.5 text-center space-x-1.5">
+              <button onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow transition">
+                அனுமதி (Approve)
+              </button>
+              <button onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs shadow transition">
+                நிராகரி
+              </button>
             </td>
           `;
-          vBody.appendChild(tr);
+          exBody.appendChild(tr);
         });
+      } catch (e) {
+        console.error("OTP விலக்கு பட்டியல் பிழை:", e);
       }
     }
 

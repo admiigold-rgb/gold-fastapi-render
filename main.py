@@ -783,48 +783,79 @@ def open_cash_day(data: CashDayOpenPayload):
         raise HTTPException(status_code=500, detail=str(e))
 
 # 3. குறிப்பிட்ட நாளுக்கான அனைத்து நடவடிக்கைகள் & கணக்கீடுகள் (Day Summary Report)
+# ==================== 1. அன்றைய நடவடிக்கைகள் அறிக்கை API ====================
 @app.get("/api/cash-day/report")
 def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
     try:
-        # நாள் திறப்பு விவரம்
-        day_res = supabase.table("test_branch_cash_days").select("*").eq("branch_id", branch_id).eq("business_date", date).execute()
+        clean_date = date.strip()
+
+        # 1. அன்றைய நாள் இருப்பு விவரம்
+        day_res = (
+            supabase.table("test_branch_cash_days")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("business_date", clean_date)
+            .execute()
+        )
         day_info = day_res.data[0] if day_res.data else None
 
-        # அன்றைய செட்டில்மென்ட்கள் (ரொக்கப் பரிவர்த்தனைகள்)
+        # 2. வாடிக்கையாளர் விபரங்களை விரைவாக எடுக்க மேப்பிங் செய்தல்
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        cust_map = {c["id"]: c for c in (cust_res.data or [])}
+
+        # 3. குறிப்பிட்ட நாளின் அனைத்து செட்டில்மென்ட்களையும் எடுத்தல்
         settle_res = (
             supabase.table("test_transaction_settlements")
-            .select("*, test_customers(name, mobile)")
+            .select("*")
             .eq("branch_id", branch_id)
-            .eq("transaction_date", date)
+            .eq("transaction_date", clean_date)
             .order("id", desc=True)
             .execute()
         )
-        settlements = settle_res.data or []
+        raw_settlements = settle_res.data or []
 
-        total_cash_in = 0.0  # வாடிக்கையாளர் நமக்கு ரொக்கமாக செலுத்தியது
-        total_cash_out = 0.0 # வாடிக்கையாளருக்கு நாம் ரொக்கமாக கொடுத்தது
+        total_cash_in = 0.0   # வாடிக்கையாளர் நிறுவனத்திற்கு செலுத்திய ரொக்கம்
+        total_cash_out = 0.0  # நிறுவனம் வாடிக்கையாளருக்கு வழங்கிய ரொக்கம்
+        formatted_settlements = []
 
-        for s in settlements:
+        for s in raw_settlements:
             cash = float(s.get("cash_amount") or 0.0)
-            if s.get("direction") == "CUSTOMER_PAYABLE":
+            bank = float(s.get("bank_amount") or 0.0)
+            direction = s.get("direction", "COMPANY_PAYABLE")
+
+            if direction == "CUSTOMER_PAYABLE":
                 total_cash_in += cash
-            elif s.get("direction") == "COMPANY_PAYABLE":
+            elif direction == "COMPANY_PAYABLE":
                 total_cash_out += cash
+
+            c_info = cust_map.get(s.get("customer_id"), {})
+            formatted_settlements.append({
+                "id": s.get("id"),
+                "customer_name": c_info.get("name", f"வாடிக்கையாளர் #{s.get('customer_id')}"),
+                "mobile": c_info.get("mobile", "-"),
+                "direction": direction,
+                "settlement_type": s.get("settlement_type", "CASH"),
+                "cash_amount": cash,
+                "bank_amount": bank,
+                "net_amount": float(s.get("net_amount") or (cash + bank)),
+                "created_at": s.get("created_at")
+            })
 
         opening = float(day_info.get("opening_balance") or 0.0) if day_info else 0.0
         calculated_closing = opening + total_cash_in - total_cash_out
 
         return {
             "status": "success",
-            "day_info": day_info,
+            "business_date": clean_date,
             "opening_balance": opening,
             "total_cash_in": total_cash_in,
             "total_cash_out": total_cash_out,
             "calculated_closing": calculated_closing,
-            "settlements": settlements
+            "settlements_count": len(formatted_settlements),
+            "settlements": formatted_settlements
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"அறிக்கை எடுப்பதில் பிழை: {str(e)}")
 
 # 4. மாலை நாள் முடிப்பு & பூட்டுதல் (Close Cash Day)
 # 1. D: மாலை நாள் பூட்டுதல்

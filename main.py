@@ -486,7 +486,7 @@ def update_staff(staff_id: int, data: StaffPayload):
         "can_access_counter": data.can_access_counter,
         "can_approve_kyc": data.can_approve_kyc,
         "can_approve_updates": data.can_approve_updates,
-        "can_manage_users": data.can_manage_users
+        "can_manage_users": data.can_manage_users,
         "can_approve_otp_exempt": data.can_approve_otp_exempt
     }
     if data.password:

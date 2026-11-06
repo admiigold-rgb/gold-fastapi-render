@@ -80,6 +80,8 @@ class StaffPayload(BaseModel):
     can_approve_updates: bool = False
     can_manage_users: bool = False
     can_approve_otp_exempt: bool = False
+    can_approve_expenses: bool = False  
+    can_manage_treasury: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -374,7 +376,9 @@ def staff_unified_login(data: LoginRequest):
                 "can_approve_kyc": True if is_admin_role else bool(user.get("can_approve_kyc", False)),
                 "can_approve_updates": True if is_admin_role else bool(user.get("can_approve_updates", False)),
                 "can_manage_users": True if is_admin_role else bool(user.get("can_manage_users", False)),
-                "can_approve_otp_exempt": True if is_admin_role else bool(user.get("can_approve_otp_exempt", False))
+                "can_approve_otp_exempt": True if is_admin_role else bool(user.get("can_approve_otp_exempt", False)),
+                "can_approve_expenses": True if is_admin_role else bool(user.get("can_approve_expenses", False)),
+                "can_manage_treasury": True if is_admin_role else bool(user.get("can_manage_treasury", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -1021,7 +1025,9 @@ def update_staff(staff_id: int, data: StaffPayload):
         "can_approve_kyc": data.can_approve_kyc,
         "can_approve_updates": data.can_approve_updates,
         "can_manage_users": data.can_manage_users,
-        "can_approve_otp_exempt": data.can_approve_otp_exempt
+        "can_approve_otp_exempt": data.can_approve_otp_exempt,
+        "can_approve_expenses": data.can_approve_expenses,
+        "can_manage_treasury": data.can_manage_treasury
     }
     if data.password:
         update_dict["password"] = data.password

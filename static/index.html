@@ -1939,8 +1939,15 @@
       }
 
       const payload = {
-        customer_id: activeCustomer.id, branch_id: branchId, loan_no: loanNo, scheme_name: scheme,
-        loan_amount: loanAmt, charges_amount: chgAmt, photo_url: null, items: ornamentList
+        customer_id: activeCustomer.id, 
+        branch_id: branchId, 
+        visit_id: activeVisitId, // 👈 இந்த வரி உள்ளதா எனப் பார்க்கவும், இல்லையென்றால் சேர்த்துக்கொள்ளவும்
+        loan_no: loanNo, 
+        scheme_name: scheme,
+        loan_amount: loanAmt, 
+        charges_amount: chgAmt, 
+        photo_url: null, 
+        items: ornamentList
       };
 
       try {

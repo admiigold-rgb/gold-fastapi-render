@@ -628,7 +628,7 @@ def get_pending_otp_exemptions():
 @app.get("/api/hq/visit-details/{visit_id}")
 def get_visit_details_for_hq(visit_id: int):
     try:
-        # 1. வருகை விபரம்
+        # 1. வருகை விபரம் எடுத்தல்
         visit_res = supabase.table("test_customer_visits").select("*").eq("id", visit_id).execute()
         if not visit_res.data:
             raise HTTPException(status_code=404, detail="வருகை விபரம் கிடைக்கவில்லை")
@@ -642,19 +642,38 @@ def get_visit_details_for_hq(visit_id: int):
         branch_res = supabase.table("test_branches").select("branch_name, branch_code").eq("id", visit.get("branch_id", 1)).execute()
         branch = branch_res.data[0] if branch_res.data else {}
 
-        # 4. நகைக் கடன்கள் விபரம் (அந்த வருகை நேரத்தில் உருவான கடன்)
+        # 4. அந்த குறிப்பிட்ட வருகையில் மட்டும் மேற்கொள்ளப்பட்ட கடன் விபரம் (சரியான தொகையுடன் பொருத்துதல்)
+        v_net_amt = float(visit.get("net_amount") or 0.0)
+        
         loans_query = (
             supabase.table("test_gold_loans")
             .select("*, test_gold_loan_items(*)")
             .eq("customer_id", visit["customer_id"])
         )
+        
+        # வருகை நேரம் அல்லது அதற்குப் பின் உருவான கடன்களை எடுத்தல்
         if visit.get("created_at"):
             loans_query = loans_query.gte("created_at", visit["created_at"])
             
-        loans_res = loans_query.order("id", desc=True).limit(2).execute()
-        loans_data = loans_res.data or []
+        raw_loans = loans_query.order("id", desc=True).limit(5).execute().data or []
 
-        # 5. பணத் தீர்வு மற்றும் ரொக்கத் தாள்கள் (Denominations) விபரம்
+        # வருகைத் தொகையுடன் (net_amount) கச்சிதமாகப் பொருந்தும் கடனை மட்டும் தேர்வு செய்தல்
+        matched_loans = []
+        if raw_loans:
+            for l in raw_loans:
+                # கடன் தொகையோ அல்லது கழிவுகள் போக உள்ள தொகையோ வருகைத் தொகையுடன் ஒத்துப்போகிறதா எனப் பார்த்தல்
+                l_amt = float(l.get("loan_amount") or 0.0)
+                l_net = float(l.get("net_payable_amount") or 0.0)
+                
+                if v_net_amt > 0 and (abs(l_amt - v_net_amt) < 1000 or abs(l_net - v_net_amt) < 1000):
+                    matched_loans = [l]
+                    break
+            
+            # பொருந்தும் கடன் இல்லை எனில், அந்த வருகை நேரத்தில் உருவான கடைசி 1 கடனை மட்டும் எடுத்தல்
+            if not matched_loans:
+                matched_loans = [raw_loans[0]]
+
+        # 5. பணத் தீர்வு மற்றும் ரொக்கத் தாள்கள் விபரம்
         settle_res = (
             supabase.table("test_transaction_settlements")
             .select("*, test_cash_denominations(*)")
@@ -681,7 +700,7 @@ def get_visit_details_for_hq(visit_id: int):
             "visit": visit,
             "customer": customer,
             "branch": branch,
-            "loans": loans_data,
+            "loans": matched_loans,
             "settlement": settlement,
             "otp_info": otp_info
         }
@@ -689,6 +708,7 @@ def get_visit_details_for_hq(visit_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+        
 @app.post("/api/hq/approve-otp-exemption")
 def approve_otp_exemption(data: OtpExemptApprovalPayload):
     try:

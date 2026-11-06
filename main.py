@@ -598,16 +598,31 @@ def request_otp_exemption(data: OtpExemptRequestPayload):
 @app.get("/api/hq/pending-otp-exemptions")
 def get_pending_otp_exemptions():
     try:
+        # வாடிக்கையாளர் விவரங்களை தனியாக எடுத்தல்
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        cust_map = {c["id"]: c for c in (cust_res.data or [])}
+
+        # கோரிக்கைகளை எடுத்தல்
         res = (
             supabase.table("test_customer_visits")
-            .select("*, test_customers(name, mobile)")
+            .select("*")
             .eq("otp_exemption_status", "REQUESTED")
             .order("id", desc=True)
             .execute()
         )
-        return {"status": "success", "data": res.data or []}
+        visits_data = res.data or []
+
+        # வாடிக்கையாளர் பெயரை இணைத்தல்
+        for v in visits_data:
+            c = cust_map.get(v.get("customer_id"), {})
+            v["test_customers"] = {
+                "name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"),
+                "mobile": c.get("mobile", "-")
+            }
+
+        return {"status": "success", "data": visits_data}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"OTP விலக்கு பட்டியல் பிழை: {str(e)}")
 
 @app.post("/api/hq/approve-otp-exemption")
 def approve_otp_exemption(data: OtpExemptApprovalPayload):

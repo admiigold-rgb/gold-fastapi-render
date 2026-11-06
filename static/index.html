@@ -618,6 +618,8 @@
 
       <!-- நிறுவன வங்கி கணக்குகள் பட்டியல் -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
+          <!-- 3. நிறுவன வங்கி கணக்குகள் -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
           <h4 class="text-xs font-extrabold text-brand-violet uppercase">நிறுவன வங்கி கணக்குகள்:</h4>
           <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
@@ -635,138 +637,139 @@
             </table>
           </div>
         </div>
-      </div>
 
-      <!-- புதிய கிளை உருவாக்கம் மற்றும் பட்டியல் -->
-      <div class="space-y-4 pt-4 border-t border-purple-100">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
-          <div class="flex justify-between items-center border-b border-purple-100 pb-2">
-            <h3 class="text-sm font-extrabold text-brand-violet" id="branchFormTitle">🏢 புதிய கிளை உருவாக்கம்</h3>
-            <button type="button" onclick="cancelBranchEdit()" id="btnCancelBranchEdit" class="hidden text-xs text-rose-600 font-bold">ரத்து</button>
+        <!-- 4. புதிய கிளை உருவாக்கம் மற்றும் பட்டியல் -->
+        <div class="space-y-4 pt-4 border-t border-purple-100">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+              <h3 class="text-sm font-extrabold text-brand-violet" id="branchFormTitle">🏢 புதிய கிளை உருவாக்கம்</h3>
+              <button type="button" onclick="cancelBranchEdit()" id="btnCancelBranchEdit" class="hidden text-xs text-rose-600 font-bold">ரத்து</button>
+            </div>
+            <input type="hidden" id="edit_branch_id" value="">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <input type="text" id="new_branch_code" placeholder="குறியீடு (NGL/THG) *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold text-brand-violet">
+              <input type="text" id="new_branch_name" placeholder="கிளை பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+              <input type="text" id="new_branch_city" placeholder="நகரம் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+              <input type="text" id="new_branch_phone" placeholder="தொலைபேசி" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            </div>
+            <div class="flex justify-end">
+              <button type="button" onclick="submitBranchForm()" id="btnSubmitBranch" class="brand-gradient-violet-btn text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ சேர்</button>
+            </div>
           </div>
-          <input type="hidden" id="edit_branch_id" value="">
-          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="text" id="new_branch_code" placeholder="குறியீடு (NGL/THG) *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold text-brand-violet">
-            <input type="text" id="new_branch_name" placeholder="கிளை பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-            <input type="text" id="new_branch_city" placeholder="நகரம் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-            <input type="text" id="new_branch_phone" placeholder="தொலைபேசி" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-          </div>
-          <div class="flex justify-end">
-            <button type="button" onclick="submitBranchForm()" id="btnSubmitBranch" class="brand-gradient-violet-btn text-xs font-bold px-6 py-2.5 rounded-xl shadow">+ சேர்</button>
+
+          <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
+            <h4 class="text-xs font-extrabold text-brand-violet uppercase">கிளைகளின் பட்டியல்:</h4>
+            <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+                  <tr>
+                    <th class="p-2.5 font-bold">ID</th>
+                    <th class="p-2.5 font-bold">குறியீடு</th>
+                    <th class="p-2.5 font-bold">பெயர்</th>
+                    <th class="p-2.5 font-bold">நகரம்</th>
+                    <th class="p-2.5 text-center font-bold">செயல்</th>
+                  </tr>
+                </thead>
+                <tbody id="branchesTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
-          <h4 class="text-xs font-extrabold text-brand-violet uppercase">கிளைகளின் பட்டியல்:</h4>
-          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
-                <tr>
-                  <th class="p-2.5 font-bold">ID</th>
-                  <th class="p-2.5 font-bold">குறியீடு</th>
-                  <th class="p-2.5 font-bold">பெயர்</th>
-                  <th class="p-2.5 font-bold">நகரம்</th>
-                  <th class="p-2.5 text-center font-bold">செயல்</th>
-                </tr>
-              </thead>
-              <tbody id="branchesTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
-            </table>
+        <!-- 5. பணியாளர் கணக்கு & அணுகல் உரிமைகள் -->
+        <div class="space-y-4 pt-4 border-t border-purple-100">
+          <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+              <h3 class="text-sm font-extrabold text-brand-violet" id="staffFormTitle">👤 பணியாளர் கணக்கு & அணுகல் உரிமைகள்</h3>
+              <button type="button" onclick="cancelStaffEdit()" id="btnCancelStaffEdit" class="hidden text-xs text-rose-600 font-bold">ரத்து</button>
+            </div>
+            <input type="hidden" id="edit_staff_id" value="">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <input type="text" id="new_staff_user" placeholder="Username *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-bold">
+              <input type="password" id="new_staff_pass" placeholder="Password" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+              <input type="text" id="new_staff_name" placeholder="பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+              <input type="tel" id="new_staff_mobile" placeholder="மொபைல் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            </div>
+        
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <select id="new_staff_role" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet">
+                <option value="BRANCH_STAFF">BRANCH_STAFF</option>
+                <option value="BRANCH_MANAGER">BRANCH_MANAGER</option>
+                <option value="HQ_ADMIN">HQ_ADMIN</option>
+              </select>
+              <select id="new_staff_branch" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet"></select>
+            </div>
+        
+            <!-- அணுகல் உரிமைகள் செக்பாக்ஸ் கட்டமைப்பு -->
+            <div class="bg-purple-50 p-3.5 rounded-2xl border-2 border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+                <input type="checkbox" id="perm_counter" checked class="w-4 h-4 text-brand-violet rounded">
+                <span>1. கவுண்ட்டர் & அடகு அணுகல்</span>
+              </label>
+        
+              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+                <input type="checkbox" id="perm_kyc" class="w-4 h-4 text-brand-violet rounded">
+                <span>2. KYC ஒப்புதல் உரிமை</span>
+              </label>
+        
+              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+                <input type="checkbox" id="perm_updates" class="w-4 h-4 text-brand-violet rounded">
+                <span>3. சுயவிவர மாற்ற ஒப்புதல்</span>
+              </label>
+        
+              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+                <input type="checkbox" id="perm_admin" class="w-4 h-4 text-brand-violet rounded">
+                <span>4. நிர்வாக அணுகல்</span>
+              </label>
+        
+              <!-- புதிய அனுமதி 1: கிளைச் செலவுகள் -->
+              <label class="flex items-center space-x-2 font-bold text-amber-950 p-1.5 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100/60 cursor-pointer">
+                <input type="checkbox" id="perm_expenses" class="w-4 h-4 text-amber-600 rounded">
+                <span>5. கிளைச் செலவுகளை அனுமதிக்கும் உரிமை (Approve Expenses)</span>
+              </label>
+        
+              <!-- புதிய அனுமதி 2: உள்-பணப் பரிமாற்றம் -->
+              <label class="flex items-center space-x-2 font-bold text-amber-950 p-1.5 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100/60 cursor-pointer">
+                <input type="checkbox" id="perm_treasury" class="w-4 h-4 text-amber-600 rounded">
+                <span>6. உள்-பணப் பரிமாற்றம் & வங்கி மேலாண்மை (Manage Treasury)</span>
+              </label>
+        
+              <!-- சிறப்பு அனுமதி: அவசர OTP விலக்கு -->
+              <label class="flex items-center space-x-2 font-bold text-amber-900 col-span-1 sm:col-span-2 bg-yellow-100/80 p-2 rounded-xl border border-yellow-300 hover:bg-yellow-100 cursor-pointer">
+                <input type="checkbox" id="perm_otp_exempt" class="w-4 h-4 text-yellow-600 rounded">
+                <span>⚡ 7. அவசர OTP விலக்கு ஒப்புதல் உரிமை (HQ Exemption Authority)</span>
+              </label>
+            </div>
+        
+            <div class="flex justify-end">
+              <button type="button" onclick="submitStaffForm()" id="btnSubmitStaff" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500 cursor-pointer">+ பணியாளரை உருவாக்கு</button>
+            </div>
+          </div>
+        
+          <!-- பணியாளர்கள் பட்டியல் அட்டவணை -->
+          <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
+            <h4 class="text-xs font-extrabold text-brand-violet uppercase">பணியாளர்கள் பட்டியல்:</h4>
+            <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+                  <tr>
+                    <th class="p-2.5 font-bold">Username</th>
+                    <th class="p-2.5 font-bold">பெயர்</th>
+                    <th class="p-2.5 font-bold">கிளை</th>
+                    <th class="p-2.5 font-bold">பதவி</th>
+                    <th class="p-2.5 font-bold">உரிமைகள்</th>
+                    <th class="p-2.5 text-center font-bold">செயல்</th>
+                  </tr>
+                </thead>
+                <tbody id="staffTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- பணியாளர் கணக்கு & அணுகல் உரிமைகள் -->
-      <div class="space-y-4 pt-4 border-t border-purple-100">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
-          <div class="flex justify-between items-center border-b border-purple-100 pb-2">
-            <h3 class="text-sm font-extrabold text-brand-violet" id="staffFormTitle">👤 பணியாளர் கணக்கு & அணுகல் உரிமைகள்</h3>
-            <button type="button" onclick="cancelStaffEdit()" id="btnCancelStaffEdit" class="hidden text-xs text-rose-600 font-bold">ரத்து</button>
-          </div>
-          <input type="hidden" id="edit_staff_id" value="">
-          
-          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input type="text" id="new_staff_user" placeholder="Username *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-bold">
-            <input type="password" id="new_staff_pass" placeholder="Password" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-            <input type="text" id="new_staff_name" placeholder="பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-            <input type="tel" id="new_staff_mobile" placeholder="மொபைல் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-          </div>
-      
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select id="new_staff_role" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet">
-              <option value="BRANCH_STAFF">BRANCH_STAFF</option>
-              <option value="BRANCH_MANAGER">BRANCH_MANAGER</option>
-              <option value="HQ_ADMIN">HQ_ADMIN</option>
-            </select>
-            <select id="new_staff_branch" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet"></select>
-          </div>
-      
-          <!-- அணுகல் உரிமைகள் செக்பாக்ஸ் கட்டமைப்பு -->
-          <div class="bg-purple-50 p-3.5 rounded-2xl border-2 border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-            <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
-              <input type="checkbox" id="perm_counter" checked class="w-4 h-4 text-brand-violet rounded">
-              <span>1. கவுண்ட்டர் & அடகு அணுகல்</span>
-            </label>
-      
-            <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
-              <input type="checkbox" id="perm_kyc" class="w-4 h-4 text-brand-violet rounded">
-              <span>2. KYC ஒப்புதல் உரிமை</span>
-            </label>
-      
-            <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
-              <input type="checkbox" id="perm_updates" class="w-4 h-4 text-brand-violet rounded">
-              <span>3. சுயவிவர மாற்ற ஒப்புதல்</span>
-            </label>
-      
-            <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
-              <input type="checkbox" id="perm_admin" class="w-4 h-4 text-brand-violet rounded">
-              <span>4. நிர்வாக அணுகல்</span>
-            </label>
-      
-            <!-- புதிய அனுமதி 1: கிளைச் செலவுகள் -->
-            <label class="flex items-center space-x-2 font-bold text-amber-950 p-1.5 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100/60 cursor-pointer">
-              <input type="checkbox" id="perm_expenses" class="w-4 h-4 text-amber-600 rounded">
-              <span>5. கிளைச் செலவுகளை அனுமதிக்கும் உரிமை (Approve Expenses)</span>
-            </label>
-      
-            <!-- புதிய அனுமதி 2: உள்-பணப் பரிமாற்றம் -->
-            <label class="flex items-center space-x-2 font-bold text-amber-950 p-1.5 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100/60 cursor-pointer">
-              <input type="checkbox" id="perm_treasury" class="w-4 h-4 text-amber-600 rounded">
-              <span>6. உள்-பணப் பரிமாற்றம் & வங்கி மேலாண்மை (Manage Treasury)</span>
-            </label>
-      
-            <!-- சிறப்பு அனுமதி: அவசர OTP விலக்கு -->
-            <label class="flex items-center space-x-2 font-bold text-amber-900 col-span-1 sm:col-span-2 bg-yellow-100/80 p-2 rounded-xl border border-yellow-300 hover:bg-yellow-100 cursor-pointer">
-              <input type="checkbox" id="perm_otp_exempt" class="w-4 h-4 text-yellow-600 rounded">
-              <span>⚡ 7. அவசர OTP விலக்கு ஒப்புதல் உரிமை (HQ Exemption Authority)</span>
-            </label>
-          </div>
-      
-          <div class="flex justify-end">
-            <button type="button" onclick="submitStaffForm()" id="btnSubmitStaff" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500 cursor-pointer">+ பணியாளரை உருவாக்கு</button>
-          </div>
-        </div>
-      
-        <!-- பணியாளர்கள் பட்டியல் அட்டவணை -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
-          <h4 class="text-xs font-extrabold text-brand-violet uppercase">பணியாளர்கள் பட்டியல்:</h4>
-          <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
-                <tr>
-                  <th class="p-2.5 font-bold">Username</th>
-                  <th class="p-2.5 font-bold">பெயர்</th>
-                  <th class="p-2.5 font-bold">கிளை</th>
-                  <th class="p-2.5 font-bold">பதவி</th>
-                  <th class="p-2.5 font-bold">உரிமைகள்</th>
-                  <th class="p-2.5 text-center font-bold">செயல்</th>
-                </tr>
-              </thead>
-              <tbody id="staffTableBody" class="divide-y divide-purple-100 text-slate-700"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div> <!-- 👈 TAB C: நிர்வாகம் டேப் (Admin Tab) இங்கு சரியாக நிறைவு பெறுகிறது -->
+      </div> <!-- 👈 நிர்வாகம் பிரதான பெட்டி (Container) இங்கு சரியாக முடிகிறது -->
+    </div> <!-- 👈 TAB C: நிர்வாகம் டேப் (adminTab) இங்கு மட்டுமே சரியாக முடிகிறது -->
 
     <!-- ========================================== -->
     <!-- 🪟 பாப்-அப் சாளரங்கள் (Modals) தொடக்கம் -->

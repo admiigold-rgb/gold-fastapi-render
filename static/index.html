@@ -110,7 +110,7 @@
     <!-- TAB A: கவுண்ட்டர் பிரிவு -->
     <div id="counterTab" class="hidden space-y-4">
       
-      <!-- நாள் தொடக்கம் / நடவடிக்கைகள் பட்டை -->
+      <!-- நாள் தொடக்கம் / முடிப்பு பட்டை -->
       <div class="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-wrap justify-between items-center gap-3 text-xs">
         <div class="flex items-center gap-2">
           <span class="font-extrabold text-brand-violet flex items-center gap-1">📅 பரிவர்த்தனை தேதி:</span>
@@ -139,15 +139,15 @@
         <button type="button" onclick="checkBranchBankStatus()" class="text-amber-900 font-extrabold hover:underline bg-yellow-200 px-2.5 py-1 rounded-lg">புதுப்பி 🔄</button>
       </div>
 
-      <!-- ⏸️ நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளர்கள் பட்டை (Held Drafts Bar) -->
-      <div id="heldDraftsContainer" class="hidden bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-yellow-400 p-3 rounded-2xl flex items-center justify-between shadow-sm">
+      <!-- ⏸️ 1. நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளர்கள் பட்டை (Held Queue Bar) -->
+      <div id="heldDraftsContainer" class="hidden bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-yellow-400 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
         <div class="flex items-center gap-2 flex-wrap">
           <span class="text-xs font-black text-amber-950 flex items-center gap-1.5">
-            <span>⏸️</span> நிறுத்தி வைக்கப்பட்டுள்ள வாடிக்கையாளர்கள் (Held Drafts):
+            <span>⏸️</span> நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளர்கள்:
           </span>
           <div id="heldDraftsBadges" class="flex items-center gap-2 flex-wrap"></div>
         </div>
-        <span class="text-[10px] text-amber-900 font-bold bg-yellow-200 px-2.5 py-1 rounded-lg">கிளிக் செய்து பரிவர்த்தனையை முடிக்கலாம்</span>
+        <span class="text-[10px] text-amber-900 font-bold bg-yellow-200 px-2.5 py-1 rounded-lg border border-yellow-300">கிளிக் செய்து பரிவர்த்தனையை முடிக்கலாம்</span>
       </div>
 
       <!-- வாடிக்கையாளர் தேடல் -->
@@ -182,6 +182,7 @@
               <p class="text-xs text-slate-500 truncate max-w-md mt-0.5">முகவரி: <span id="cardAddress">-</span></p>
             </div>
           </div>
+          <!-- ⏸️ 2. நிறுத்தி வை (Hold) பட்டன் சேர்க்கப்பட்ட பகுதி -->
           <div class="flex gap-2 w-full md:w-auto justify-end flex-wrap">
             <button type="button" onclick="holdCurrentCustomerDraft()" class="text-xs text-amber-950 bg-yellow-400 border-2 border-yellow-500 hover:bg-yellow-500 px-3.5 py-1.5 rounded-xl font-black shadow transition">
               ⏸️ நிறுத்தி வை (Hold)
@@ -196,7 +197,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <!-- அடகு படிவம் -->
+          <!-- நகை அடகு படிவம் -->
           <div id="pawnFormSection" class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
             <div class="border-b border-purple-100 pb-2 flex justify-between items-center">
               <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2">
@@ -1052,7 +1053,7 @@
       loadCompanyBanksDropdown();
       fetchAndSetupPurityDropdown();
       initTxnDate();
-      renderHeldDraftsBar(); // ஹோல்ட் செய்யப்பட்ட வாடிக்கையாளர்களை ஏற்றுதல்
+      renderHeldDraftsBar(); // ஹோல்ட் செய்யப்பட்ட வாடிக்கையாளர் பட்டையை ஏற்றுதல்
 
       if (user.permissions?.can_manage_users === true) {
         loadBranchesList();
@@ -1565,7 +1566,7 @@
     }
 
     // ==========================================
-    // ⏸️ வாடிக்கையாளர் நிறுத்திவைப்பு (Draft/Hold System)
+    // ⏸️ 3. வாடிக்கையாளர் நிறுத்திவைப்பு (Draft/Hold System)
     // ==========================================
     function holdCurrentCustomerDraft() {
       if (!activeCustomer || !activeCustomer.id) {
@@ -1681,7 +1682,6 @@
       const pawnSection = document.getElementById('pawnFormSection');
       const undoBtn = document.getElementById('btnUndoCart');
       const statusBadge = document.getElementById('pawnStatusBadge');
-      const cartBadge = document.getElementById('cartCountBadge');
 
       if (pawnSection) {
         pawnSection.querySelectorAll("input, select, button").forEach(el => {
@@ -2454,14 +2454,23 @@
         data.data.forEach(ex => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="p-2.5 font-bold font-mono text-brand-violet">#VIS-${ex.id}</td>
-            <td class="p-2.5 font-bold">${ex.test_customers?.name || '-'} <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span></td>
-            <td class="p-2.5 text-rose-700 font-semibold">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
-            <td class="p-2.5 text-center space-x-1.5 whitespace-nowrap">
-              <button type="button" onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow transition">
+            <td class="p-2.5 font-bold font-mono text-purple-900">#VIS-${ex.id}</td>
+            <td class="p-2.5 font-bold text-slate-800">
+              ${ex.test_customers?.name || '-'} 
+              <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span>
+            </td>
+            <td class="p-2.5 text-rose-700 font-semibold text-xs">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
+            <td class="p-2.5 text-center space-x-2 whitespace-nowrap">
+              <button type="button" 
+                      onclick="actionOtpExempt(${ex.id}, 'APPROVE')" 
+                      style="background-color: #059669 !important; color: #ffffff !important; display: inline-block;" 
+                      class="px-3 py-1.5 rounded-xl font-black text-xs shadow-md hover:opacity-90 cursor-pointer">
                 ✓ அனுமதி (Approve)
               </button>
-              <button type="button" onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs shadow transition">
+              <button type="button" 
+                      onclick="actionOtpExempt(${ex.id}, 'REJECT')" 
+                      style="background-color: #dc2626 !important; color: #ffffff !important; display: inline-block;" 
+                      class="px-3 py-1.5 rounded-xl font-black text-xs shadow-md hover:opacity-90 cursor-pointer">
                 ✕ நிராகரி
               </button>
             </td>

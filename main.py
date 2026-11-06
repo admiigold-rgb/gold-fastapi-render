@@ -957,16 +957,61 @@ def get_branch_bank_status(branch_id: int = Query(...)):
         t["test_customers"] = {"name": c.get("name", "வாடிக்கையாளர்"), "mobile": c.get("mobile", "-")}
     return {"status": "success", "data": data}
 
+class HQBankPayoutApprovalPayload(BaseModel):
+    transfer_id: int
+    action: str
+    admin_id: int
+    company_bank_id: Optional[int] = None
+    utr_ref_no: Optional[str] = None
+    payment_mode_used: Optional[str] = "IMPS"
+    notes: Optional[str] = None
+
 @app.post("/api/hq/process-bank-transfer")
-def process_bank_transfer_hq(data: BankApprovalPayload):
-    status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
-    supabase.table("test_bank_transfers").update({
-        "status": status,
-        "approved_by": data.admin_id,
-        "hq_notes": data.notes,
-        "approved_at": "now()"
-    }).eq("id", data.transfer_id).execute()
-    return {"status": "success", "message": f"வங்கிப் பரிவர்த்தனை '{status}' செய்யப்பட்டது."}
+def process_bank_transfer_hq(data: HQBankPayoutApprovalPayload):
+    try:
+        status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
+        
+        # 1. பரிவர்த்தனை விபரத்தை எடுத்தல்
+        t_res = supabase.table("test_bank_transfers").select("*").eq("id", data.transfer_id).execute()
+        if not t_res.data:
+            raise HTTPException(status_code=404, detail="பரிவர்த்தனை விபரம் கிடைக்கவில்லை")
+        transfer = t_res.data[0]
+
+        # 2. அனுமதிக்கும் போது நிறுவன வங்கி இருப்பைக் குறைத்தல்
+        if status == "APPROVED" and transfer.get("direction") == "PAYOUT":
+            if not data.company_bank_id or not data.utr_ref_no:
+                raise HTTPException(status_code=400, detail="நிறுவன வங்கி கணக்கு மற்றும் UTR எண் தேவை.")
+            
+            payout_amount = float(transfer.get("amount") or 0.0)
+
+            # நிறுவன வங்கி விபரம் எடுத்தல்
+            bank_res = supabase.table("test_company_banks").select("*").eq("id", data.company_bank_id).execute()
+            if bank_res.data:
+                comp_bank = bank_res.data[0]
+                current_bal = float(comp_bank.get("current_balance") or comp_bank.get("opening_balance") or 0.0)
+                new_bal = current_bal - payout_amount
+
+                # வங்கி இருப்பைப் புதுப்பித்தல்
+                supabase.table("test_company_banks").update({
+                    "current_balance": new_bal
+                }).eq("id", data.company_bank_id).execute()
+
+        # 3. பரிவர்த்தனை நிலையைப் புதுப்பித்தல்
+        update_data = {
+            "status": status,
+            "approved_by": data.admin_id,
+            "hq_notes": data.notes,
+            "approved_at": "now()",
+            "receipt_ref_no": data.utr_ref_no or transfer.get("receipt_ref_no"),
+            "company_bank_name": str(data.company_bank_id) if data.company_bank_id else transfer.get("company_bank_name")
+        }
+        supabase.table("test_bank_transfers").update(update_data).eq("id", data.transfer_id).execute()
+
+        return {"status": "success", "message": f"வங்கிப் பட்டுவாடா வெற்றிகரமாக '{status}' செய்யப்பட்டது. வங்கி இருப்பில் புதுப்பிக்கப்பட்டது."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"வங்கி ஒப்புதல் பிழை: {str(e)}")
 
 @app.get("/api/hq/all-pending-approvals")
 def get_all_pending_approvals():

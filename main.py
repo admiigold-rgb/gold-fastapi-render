@@ -249,6 +249,84 @@ class CashDayClosePayload(BaseModel):
     denominations: Dict[str, int]
     calculated_system_cash: float
     staff_id: int
+# ==========================================
+# 🧾 கிளை தினசரி செலவு மேலாண்மை (Branch Expenses)
+# ==========================================
+
+# 1. Pydantic Model
+class BranchExpenseRequest(BaseModel):
+    branch_id: int
+    category: str
+    amount: float
+    payment_mode: str = "CASH"
+    reason: Optional[str] = None
+    bill_photo: Optional[str] = None
+    staff_id: int
+
+class ExpenseApprovalPayload(BaseModel):
+    expense_id: int
+    action: str  # APPROVE / REJECT
+    admin_id: int
+
+
+# 2. கிளை செலவுக் கோரிக்கை அனுப்பும் API
+@app.post("/api/expense/request")
+def create_branch_expense(data: BranchExpenseRequest):
+    try:
+        record = {
+            "branch_id": data.branch_id,
+            "category": data.category,
+            "amount": data.amount,
+            "payment_mode": data.payment_mode,
+            "reason": data.reason,
+            "bill_photo": data.bill_photo,
+            "status": "PENDING",
+            "created_by": data.staff_id
+        }
+        res = supabase.table("test_branch_expenses").insert(record).execute()
+        return {"status": "success", "message": "செலவுக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"செலவு பதிவு பிழை: {str(e)}")
+
+
+# 3. தலைமையகத்தில் நிலுவையில் உள்ள செலவுகளை எடுக்கும் API
+@app.get("/api/hq/pending-expenses")
+def get_pending_expenses():
+    try:
+        branch_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute()
+        b_map = {b["id"]: b for b in (branch_res.data or [])}
+
+        exp_res = (
+            supabase.table("test_branch_expenses")
+            .select("*")
+            .eq("status", "PENDING")
+            .order("id", desc=True)
+            .execute()
+        )
+        data = exp_res.data or []
+        for x in data:
+            b = b_map.get(x.get("branch_id"), {})
+            x["branch_name"] = b.get("branch_name", f"கிளை #{x.get('branch_id')}")
+
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# 4. தலைமையகம் செலவுக்கு ஒப்புதல் அளிக்கும் API
+@app.post("/api/hq/approve-expense")
+def approve_branch_expense(data: ExpenseApprovalPayload):
+    try:
+        status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
+        supabase.table("test_branch_expenses").update({
+            "status": status,
+            "approved_by": data.admin_id,
+            "approved_at": "now()"
+        }).eq("id", data.expense_id).execute()
+
+        return {"status": "success", "message": f"செலவு வெற்றிகரமாக '{status}' செய்யப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # API Endpoints
 @app.get("/")
@@ -491,7 +569,22 @@ def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
             })
 
         opening = float(day_info.get("opening_balance") or 0.0) if day_info else 0.0
-        calculated_closing = opening + total_cash_in - total_cash_out
+
+        # 👇 அங்கீகரிக்கப்பட்ட கிளை ரொக்கச் செலவுகளை எடுத்தல் 👇
+        exp_res = (
+            supabase.table("test_branch_expenses")
+            .select("amount")
+            .eq("branch_id", branch_id)
+            .eq("status", "APPROVED")
+            .eq("payment_mode", "CASH")
+            .gte("created_at", f"{clean_date}T00:00:00")
+            .lte("created_at", f"{clean_date}T23:59:59")
+            .execute()
+        )
+        total_branch_expenses = sum(float(x.get("amount") or 0.0) for x in (exp_res.data or []))
+
+        # கணினி ரொக்க இருப்பில் செலவைக் கழித்தல்:
+        calculated_closing = opening + total_cash_in - total_cash_out - total_branch_expenses
 
         return {
             "status": "success",
@@ -499,6 +592,7 @@ def get_day_cash_report(branch_id: int = Query(...), date: str = Query(...)):
             "opening_balance": opening,
             "total_cash_in": total_cash_in,
             "total_cash_out": total_cash_out,
+            "total_expenses": total_branch_expenses,
             "calculated_closing": calculated_closing,
             "settlements_count": len(formatted_settlements),
             "settlements": formatted_settlements

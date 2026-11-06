@@ -190,7 +190,7 @@
             <button type="button" onclick="openFullUpdateModal()" class="text-xs text-purple-800 bg-purple-50 border-2 border-purple-200 hover:bg-purple-100 px-3.5 py-1.5 rounded-xl font-bold transition">
               சுயவிவர மாற்றம் 📝
             </button>
-            <button type="button" onclick="resetCustomer()" class="text-xs text-rose-600 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 px-3.5 py-1.5 rounded-xl font-bold transition">
+            <button type="button" id="btnResetCustomer" onclick="resetCustomer()" class="text-xs text-rose-600 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 px-3.5 py-1.5 rounded-xl font-bold transition">
               முடி / மாற்று ✕
             </button>
           </div>
@@ -835,7 +835,7 @@
         </div>
 
         <!-- பட்டன்கள் பகுதி: இடதுபுறம் OTP விலக்கு, வலதுபுறம் ரத்து & SMS OTP -->
-        <div class="flex justify-between items-center gap-2 pt-3 border-t border-purple-100">
+        <div class="flex flex-wrap justify-between items-center gap-2 pt-3 border-t border-purple-100">
           <button type="button" 
                   id="btnExemptOtpTrigger" 
                   onclick="triggerOtpExemptDirectly(event)" 
@@ -845,6 +845,9 @@
           </button>
           
           <div class="flex gap-2">
+            <button type="button" onclick="holdCurrentCustomerDraft(); closeCheckoutModal();" class="px-3.5 py-2 bg-amber-100 hover:bg-yellow-200 text-amber-950 border border-yellow-400 rounded-xl text-xs font-black">
+              ⏸️ நிறுத்தி வை (Hold)
+            </button>
             <button type="button" onclick="closeCheckoutModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">ரத்து</button>
             <button type="button" onclick="requestOtpFromCustomer()" id="btn_send_otp" class="brand-gradient-gold-btn px-5 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">
               SMS OTP அனுப்பு 📲
@@ -1565,28 +1568,69 @@
       document.getElementById('searchSection').classList.remove('hidden');
     }
 
-    // ==========================================
-    // ⏸️ 3. வாடிக்கையாளர் நிறுத்திவைப்பு (Draft/Hold System)
-    // ==========================================
-    function holdCurrentCustomerDraft() {
+    // ========================================================
+    // 🔒 பணம் & ரூபாய் தாள்கள் கச்சிதமாகப் பொருந்துவதை உறுதிசெய்தல்
+    // ========================================================
+    function validatePaymentAndDenomMatch() {
+      const cVal = Math.round(parseFloat(document.getElementById('pay_cash')?.value) || 0);
+      const bVal = Math.round(parseFloat(document.getElementById('pay_bank')?.value) || 0);
+      const netVal = Math.round(currentNetAbs || 0);
+
+      // 1. ரொக்கம் + வங்கி = நிகரத் தொகை இருக்க வேண்டும்
+      if ((cVal + bVal) !== netVal) {
+        alert(`⚠️ கட்டணத் தொகை பொருந்தவில்லை!\nகார்ட்டின் நிகரத் தொகை: ₹${netVal}\nநீங்கள் உள்ளிட்ட தொகை: ₹${cVal + bVal} (ரொக்கம்: ₹${cVal} + வங்கி: ₹${bVal})`);
+        return false;
+      }
+
+      // 2. ரொக்கம் இருந்தால் தாள்கள் டினாமினேஷன் சமமாக இருக்க வேண்டும்
+      if (cVal > 0) {
+        const d500 = (parseInt(document.getElementById('d500')?.value) || 0) * 500;
+        const d200 = (parseInt(document.getElementById('d200')?.value) || 0) * 200;
+        const d100 = (parseInt(document.getElementById('d100')?.value) || 0) * 100;
+        const d50 = (parseInt(document.getElementById('d50')?.value) || 0) * 50;
+        const d20 = (parseInt(document.getElementById('d20')?.value) || 0) * 20;
+        const d10 = (parseInt(document.getElementById('d10')?.value) || 0) * 10;
+        const dcoins = parseInt(document.getElementById('dcoins')?.value) || 0;
+        const totalDenom = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
+
+        if (totalDenom !== cVal) {
+          alert(`⚠️ ரூபாய் தாள்கள் டினாமினேஷன் பொருந்தவில்லை!\nரொக்கத் தொகை: ₹${cVal}\nநீங்கள் எண்ணிய தாள்கள்: ₹${totalDenom}\nவேறுபாடு: ₹${Math.abs(cVal - totalDenom)}`);
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // ========================================================
+    // ⏸️ மேம்படுத்தப்பட்ட ஆட்டோ-ஹோல்ட், பேட்ஜ் ஸ்டேட்டஸ் & லாக்
+    // ========================================================
+
+    // 1. நடப்பு வாடிக்கையாளரை நிறுத்தி வைத்தல்
+    function holdCurrentCustomerDraft(exemptionStatus = "NONE") {
       if (!activeCustomer || !activeCustomer.id) {
         return alert("நிறுத்தி வைப்பதற்கு செயலில் உள்ள வாடிக்கையாளர் இல்லை.");
       }
+
+      const cVal = parseFloat(document.getElementById('pay_cash')?.value) || 0;
+      const bVal = parseFloat(document.getElementById('pay_bank')?.value) || 0;
 
       const draftSession = {
         customer: activeCustomer,
         visit_id: activeVisitId,
         cart: [...cartItems],
         ornaments: [...ornamentList],
-        saved_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        saved_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        exemption_status: exemptionStatus, // NONE | WAITING_HQ | APPROVED
+        pay_cash: cVal,
+        pay_bank: bVal,
+        selected_mode: selectedMode
       };
 
       let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
       drafts = drafts.filter(d => d.customer.id !== activeCustomer.id);
       drafts.push(draftSession);
       localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
-
-      alert(`✅ ${activeCustomer.name} அவர்களின் கணக்கு தற்காலிகமாக நிறுத்தி வைக்கப்பட்டது.\nஅடுத்த வாடிக்கையாளரின் சேவையைத் தொடரலாம்.`);
 
       toggleDraftLockMode(false);
       activeCustomer = null;
@@ -1601,6 +1645,7 @@
       renderHeldDraftsBar();
     }
 
+    // 2. மேலே உள்ள மஞ்சள் பட்டையில் வாடிக்கையாளர் நிலையைப் புதுப்பித்தல்
     function renderHeldDraftsBar() {
       const container = document.getElementById('heldDraftsContainer');
       const badgesContainer = document.getElementById('heldDraftsBadges');
@@ -1618,15 +1663,25 @@
       badgesContainer.innerHTML = '';
 
       drafts.forEach(d => {
+        let statusBadgeHtml = '';
+        if (d.exemption_status === 'WAITING_HQ') {
+          statusBadgeHtml = `<span class="text-[10px] bg-amber-200 text-amber-900 border border-yellow-400 px-2 py-0.5 rounded font-black animate-pulse">⏳ WAITING_HQ</span>`;
+        } else if (d.exemption_status === 'APPROVED') {
+          statusBadgeHtml = `<span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-400 px-2 py-0.5 rounded font-black">✅ APPROVED</span>`;
+        } else {
+          statusBadgeHtml = `<span class="text-[10px] bg-yellow-200 text-amber-900 px-1.5 py-0.5 rounded font-mono font-bold">${d.saved_at}</span>`;
+        }
+
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = "flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-yellow-200 border-2 border-yellow-500 rounded-xl text-xs font-black text-amber-950 shadow-sm transition";
-        btn.innerHTML = `<span>👤 ${d.customer.name}</span> <span class="text-[10px] bg-yellow-300 text-amber-900 px-1.5 py-0.5 rounded font-mono font-bold">${d.saved_at}</span>`;
+        btn.className = "flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-yellow-100 border-2 border-yellow-500 rounded-xl text-xs font-black text-amber-950 shadow transition";
+        btn.innerHTML = `<span>👤 ${d.customer.name}</span> ${statusBadgeHtml}`;
         btn.onclick = () => restoreCustomerDraft(d.customer.id);
         badgesContainer.appendChild(btn);
       });
     }
 
+    // 3. நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளரை மீட்டெடுத்தல் & லாக் செய்தல்
     function restoreCustomerDraft(customerId) {
       if (activeCustomer && activeCustomer.id) {
         if (!confirm(`தற்போது திரையில் உள்ள ${activeCustomer.name} அவர்களின் விபரங்களை நிறுத்தி வைத்துவிட்டு, தேர்வு செய்த வாடிக்கையாளரைத் திறக்கவா?`)) {
@@ -1673,25 +1728,49 @@
       fetchAutoLoanNumber();
       onSchemeSelected();
 
-      // 🔒 ஹோல்ட் செய்யப்பட்ட கணக்கின் அடகு படிவத்தை லாக் செய்தல்
+      // 🔒 அடகு படிவம் மற்றும் "முடி / மாற்று" பட்டனை முடக்குதல்
       toggleDraftLockMode(true);
+
+      // தலைமையகம் அனுமதி அளித்திருந்தால் உடனே செக்அவுட்டில் முடிக்க வாய்ப்பளித்தல்
+      if (target.exemption_status === 'APPROVED') {
+        openCheckoutModal();
+        setTimeout(() => {
+          if (confirm("🎉 இந்த வாடிக்கையாளருக்குத் தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனையை முடிக்கலாமா?")) {
+            closeCheckoutModal();
+            confirmSettleWithOtp(true);
+          }
+        }, 400);
+      }
     }
 
+    // 4. படிவம் & "முடி / மாற்று" பட்டனை லாக் செய்யும் செயல்பாடு
     function toggleDraftLockMode(lock) {
       isDraftLocked = lock;
       const pawnSection = document.getElementById('pawnFormSection');
       const undoBtn = document.getElementById('btnUndoCart');
       const statusBadge = document.getElementById('pawnStatusBadge');
+      const resetBtn = document.getElementById('btnResetCustomer');
 
+      // 1. அடகு படிவத்தை லாக் செய்தல்
       if (pawnSection) {
         pawnSection.querySelectorAll("input, select, button").forEach(el => {
           el.disabled = lock;
         });
         pawnSection.style.opacity = lock ? "0.6" : "1";
+        pawnSection.style.pointerEvents = lock ? "none" : "auto";
       }
 
+      // 2. கார்ட்டில் உள்ள "கடைசியை நீக்கு" பட்டனை மறைத்தல்
       if (undoBtn && lock) {
         undoBtn.classList.add('hidden');
+      }
+
+      // 3. 🔒 "முடி / மாற்று" (Reset Customer) பட்டனை முற்றிலும் முடக்குதல்
+      if (resetBtn) {
+        resetBtn.disabled = lock;
+        resetBtn.style.opacity = lock ? "0.4" : "1";
+        resetBtn.style.cursor = lock ? "not-allowed" : "pointer";
+        resetBtn.title = lock ? "ஹோல்டு செய்யப்பட்ட கணக்கை முடிக்காமல் மாற்ற இயலாது" : "";
       }
 
       if (statusBadge) {
@@ -1699,6 +1778,104 @@
         statusBadge.className = lock ? "text-xs bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-lg font-black border border-amber-400" : "text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold";
       }
     }
+
+    // 5. ⚡ OTP விலக்குக் கோரியவுடன் ஆட்டோ-ஹோல்டு செய்யும் மேம்படுத்தப்பட்ட செயல்பாடு
+    async function triggerOtpExemptDirectly(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      // 🔒 பணம் & தாள்கள் சரிபார்ப்பு
+      if (!validatePaymentAndDenomMatch()) return;
+
+      if (!activeCustomer || !activeCustomer.id) {
+        alert("⚠️ வாடிக்கையாளர் தேர்வு செய்யப்படவில்லை! தயவுசெய்து வாடிக்கையாளரைத் தேடித் தேர்ந்தெடுக்கவும்.");
+        return;
+      }
+
+      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+
+      if (!activeVisitId) {
+        try {
+          const vRes = await fetch('/api/customer/visit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customer_id: activeCustomer.id,
+              branch_id: branchId,
+              purpose: "REGULAR_TRANSACTION"
+            })
+          });
+          const vData = await vRes.json();
+          activeVisitId = vData.data?.id;
+        } catch (err) {
+          alert("❌ வருகை பதிவு செய்வதில் பிழை: " + err.message);
+          return;
+        }
+      }
+
+      if (!activeVisitId) {
+        alert("⚠️ வருகை எண் கிடைக்கவில்லை. பக்கத்தை ரீஃப்ரெஷ் செய்யவும்.");
+        return;
+      }
+
+      const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
+      if (!reason || reason.trim() === "") return;
+
+      try {
+        const res = await fetch('/api/otp/request-exemption', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            visit_id: activeVisitId,
+            branch_id: branchId,
+            reason: reason.trim(),
+            staff_id: currentUser ? currentUser.id : 1
+          })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("✅ கோரிக்கை அனுப்பப்பட்டது! வாடிக்கையாளர் கணக்கு தானாகவே நிறுத்தி வைக்கப்படுகிறது (Auto-Hold).\nஅடுத்த வாடிக்கையாளர் சேவையைத் தொடரலாம்.");
+          closeCheckoutModal();
+
+          // ⏸️ ஆட்டோ-ஹோல்டு செய்தல் (WAITING_HQ நிலையுடன்)
+          holdCurrentCustomerDraft("WAITING_HQ");
+        } else {
+          alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கை தோல்வியடைந்தது"));
+        }
+      } catch (err) {
+        alert("❌ இணைப்புப் பிழை: " + err.message);
+      }
+    }
+
+    // 6. பின்னணியில் அனைத்து டிராப்ட்களின் தலைமையக நிலையை 5 விநாடிகளுக்கு ஒருமுறை கவனிக்கும் லூப்
+    setInterval(async () => {
+      let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
+      let updated = false;
+
+      for (let d of drafts) {
+        if (d.exemption_status === 'WAITING_HQ' && d.visit_id) {
+          try {
+            const res = await fetch(`/api/otp/exemption-status?visit_id=${d.visit_id}`);
+            const data = await res.json();
+            if (data.data?.otp_exempted === true) {
+              d.exemption_status = 'APPROVED';
+              updated = true;
+            } else if (data.data?.otp_exemption_status === 'REJECTED') {
+              d.exemption_status = 'NONE';
+              updated = true;
+            }
+          } catch(e) {}
+        }
+      }
+
+      if (updated) {
+        localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
+        renderHeldDraftsBar();
+      }
+    }, 5000);
 
     // 6. Cart & Loan Submission
     async function submitPawnToDatabase() {
@@ -1831,7 +2008,37 @@
         statusElem.innerText = "(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய தொகை)";
       }
     }
+    // பணம் மற்றும் ரூபாய் தாள்கள் கச்சிதமாகப் பொருந்துகிறதா எனச் சரிபார்க்கும் செயல்பாடு
+    function validatePaymentAndDenomMatch() {
+      const cVal = Math.round(parseFloat(document.getElementById('pay_cash')?.value) || 0);
+      const bVal = Math.round(parseFloat(document.getElementById('pay_bank')?.value) || 0);
+      const netVal = Math.round(currentNetAbs || 0);
 
+      // 1. ரொக்கம் + வங்கி = நிகரத் தொகை இருக்க வேண்டும்
+      if ((cVal + bVal) !== netVal) {
+        alert(`⚠️ கட்டணத் தொகை பொருந்தவில்லை!\nகார்ட்டின் நிகரத் தொகை: ₹${netVal}\nநீங்கள் உள்ளிட்ட தொகை: ₹${cVal + bVal} (ரொக்கம்: ₹${cVal} + வங்கி: ₹${bVal})`);
+        return false;
+      }
+
+      // 2. ரொக்கம் இருந்தால் தாள்கள் டினாமினேஷன் சமமாக இருக்க வேண்டும்
+      if (cVal > 0) {
+        const d500 = (parseInt(document.getElementById('d500')?.value) || 0) * 500;
+        const d200 = (parseInt(document.getElementById('d200')?.value) || 0) * 200;
+        const d100 = (parseInt(document.getElementById('d100')?.value) || 0) * 100;
+        const d50 = (parseInt(document.getElementById('d50')?.value) || 0) * 50;
+        const d20 = (parseInt(document.getElementById('d20')?.value) || 0) * 20;
+        const d10 = (parseInt(document.getElementById('d10')?.value) || 0) * 10;
+        const dcoins = parseInt(document.getElementById('dcoins')?.value) || 0;
+        const totalDenom = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
+
+        if (totalDenom !== cVal) {
+          alert(`⚠️ ரூபாய் தாள்கள் டினாமினேஷன் பொருந்தவில்லை!\nரொக்கத் தொகை: ₹${cVal}\nநீங்கள் எண்ணிய தாள்கள்: ₹${totalDenom}\nவேறுபாடு: ₹${Math.abs(cVal - totalDenom)}`);
+          return false;
+        }
+      }
+
+      return true;
+    }
     // 7. Checkout & Settlement
     function openCheckoutModal() {
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
@@ -1953,6 +2160,7 @@
     }
 
     async function requestOtpFromCustomer() {
+      if (!validatePaymentAndDenomMatch()) return;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
       if (bVal > 0 && currentDirection === "COMPANY_PAYABLE") {
         const pMode = document.getElementById('payout_mode').value;
@@ -2918,12 +3126,17 @@
     // ==========================================
     // ⚡ OTP விலக்கு நேரடி இயக்கம் (Direct Trigger)
     // ==========================================
+    // ⚡ OTP விலக்குக் கோரியவுடன் சரிபார்த்து ஆட்டோ-ஹோல்டு செய்யும் முழுமையான செயல்பாடு
     async function triggerOtpExemptDirectly(e) {
       if (e) {
         e.preventDefault();
         e.stopPropagation();
       }
 
+      // 🔒 1. பணம் & தாள்கள் சமமாகப் பொருந்தினால் மட்டுமே OTP விலக்குக் கோர அனுமதித்தல்
+      if (!validatePaymentAndDenomMatch()) return;
+
+      // 2. வாடிக்கையாளர் தேர்வு சரிபார்ப்பு
       if (!activeCustomer || !activeCustomer.id) {
         alert("⚠️ வாடிக்கையாளர் தேர்வு செய்யப்படவில்லை! தயவுசெய்து வாடிக்கையாளரைத் தேடித் தேர்ந்தெடுக்கவும்.");
         return;
@@ -2931,6 +3144,7 @@
 
       const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
 
+      // 3. வருகை எண் இல்லை எனில் உருவாக்குதல்
       if (!activeVisitId) {
         try {
           const vRes = await fetch('/api/customer/visit', {
@@ -2955,9 +3169,11 @@
         return;
       }
 
+      // 4. விலக்குக்கான காரணத்தைக் கேட்டல்
       const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
       if (!reason || reason.trim() === "") return;
 
+      // 5. API-க்கு விலக்குக் கோரிக்கை அனுப்புதல்
       try {
         const res = await fetch('/api/otp/request-exemption', {
           method: 'POST',
@@ -2972,8 +3188,11 @@
         const data = await res.json();
 
         if (res.ok) {
-          alert("✅ " + data.message + "\n\nதலைமையகம் அனுமதித்தவுடன் தானாகவே பரிவர்த்தனை முடிவடையும்.");
-          listenForOtpApproval();
+          alert("✅ கோரிக்கை அனுப்பப்பட்டது! வாடிக்கையாளர் கணக்கு தானாகவே நிறுத்தி வைக்கப்படுகிறது (Auto-Hold).\nஅடுத்த வாடிக்கையாளர் சேவையைத் தொடரலாம்.");
+          closeCheckoutModal();
+
+          // ⏸️ ஆட்டோ-ஹோல்டு செய்தல் (WAITING_HQ நிலையுடன் மேற்பட்டைக்கு அனுப்புதல்)
+          holdCurrentCustomerDraft("WAITING_HQ");
         } else {
           alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கை தோல்வியடைந்தது"));
         }

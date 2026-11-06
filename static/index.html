@@ -727,6 +727,98 @@
       </div>
     </div>
 
+    <!-- 💸 தலைமையக வங்கி பட்டுவாடா பூர்த்தி & ஒப்புதல் Modal -->
+    <div id="hqPayoutActionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-rose-500">
+        
+        <div class="flex justify-between items-center border-b border-rose-100 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">💸</span>
+            <h3 class="text-base font-extrabold text-rose-900">வங்கிப் பட்டுவாடா உறுதிப்படுத்தல்</h3>
+          </div>
+          <button type="button" onclick="closeHqPayoutModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <input type="hidden" id="payout_action_transfer_id" value="">
+
+        <!-- வாடிக்கையாளர் வங்கி விபரம் -->
+        <div class="bg-rose-50 p-3 rounded-2xl border border-rose-200 text-xs space-y-1">
+          <div class="flex justify-between items-center font-bold">
+            <span class="text-slate-700">வாடிக்கையாளர்: <b id="po_cust_name" class="text-rose-900">-</b></span>
+            <span class="text-sm font-black text-rose-700">தொகை: <b id="po_amount">₹ 0.00</b></span>
+          </div>
+          <p class="text-slate-600 font-mono text-[11px]" id="po_beneficiary_details">-</p>
+        </div>
+
+        <!-- ஆவணங்கள் பார்வை (பாஸ்புக் & ஒப்புதல் ஆவணம்) -->
+        <div class="space-y-1">
+          <span class="text-xs font-bold text-brand-violet block">ஆவணங்கள் பார்வை:</span>
+          <div class="grid grid-cols-2 gap-2 text-center text-xs">
+            <div class="p-2 border rounded-xl bg-purple-50/50">
+              <span class="block text-[10px] font-bold text-slate-500 mb-1">வங்கி பாஸ்புக் படம்</span>
+              <div class="h-28 bg-white rounded-lg border flex items-center justify-center overflow-hidden">
+                <img id="po_img_passbook" src="" class="w-full h-full object-contain cursor-pointer" onclick="previewDocImage(this.src)" alt="Passbook">
+                <span id="po_no_passbook" class="text-slate-400 text-[10px] hidden">இல்லை</span>
+              </div>
+            </div>
+            <div class="p-2 border rounded-xl bg-purple-50/50">
+              <span class="block text-[10px] font-bold text-slate-500 mb-1">ஒப்புதல் ஆவணம் (Consent)</span>
+              <div class="h-28 bg-white rounded-lg border flex items-center justify-center overflow-hidden">
+                <img id="po_img_consent" src="" class="w-full h-full object-contain cursor-pointer" onclick="previewDocImage(this.src)" alt="Consent">
+                <span id="po_no_consent" class="text-slate-400 text-[10px] hidden">இல்லை</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- தலைமையக பணியாளர் பூர்த்தி செய்யும் பகுதி -->
+        <div class="bg-gradient-to-r from-amber-50 to-yellow-50 p-3.5 rounded-2xl border border-yellow-300 space-y-3 text-xs">
+          <span class="font-extrabold text-amber-950 uppercase block">தலைமையக பட்டுவாடா விபரங்கள்:</span>
+          
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">பணம் அனுப்பிய நமது நிறுவன வங்கி *</label>
+            <select id="po_company_bank" class="w-full border-2 border-yellow-300 p-2 rounded-xl bg-white font-bold text-brand-violet focus:outline-none">
+              <!-- நிறுவன வங்கிகள் தானாக வரும் -->
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">பரிவர்த்தனை வகை *</label>
+              <select id="po_txn_mode" class="w-full border-2 border-yellow-200 p-2 rounded-xl bg-white font-bold">
+                <option value="IMPS">IMPS (உடனடி பரிமாற்றம்)</option>
+                <option value="NEFT">NEFT</option>
+                <option value="RTGS">RTGS</option>
+                <option value="UPI">UPI Payout</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">வங்கி UTR / ரெபரன்ஸ் எண் *</label>
+              <input type="text" id="po_utr_ref" placeholder="எ.கா: 428719283712" class="w-full border-2 border-yellow-300 p-2 rounded-xl bg-white font-mono font-bold focus:outline-none">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">குறிப்புகள் (Notes)</label>
+            <input type="text" id="po_notes" placeholder="விரும்பினால் குறிப்பு உள்ளிடவும்" class="w-full border border-yellow-200 p-1.5 rounded-xl bg-white">
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center pt-2 border-t border-rose-100">
+          <button type="button" onclick="closeHqPayoutModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-slate-800 rounded-xl text-xs font-bold">ரத்து</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="rejectHqPayoutDirect()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold">
+              ✕ நிராகரி
+            </button>
+            <button type="button" onclick="confirmAndSettleHqPayout()" style="background-color: #059669; color: #ffffff;" class="px-5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90">
+              ✓ பட்டுவாடாவை உறுதிப்படுத்து (Confirm & Settle)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    
     <!-- 👁️ தலைமையக KYC முழு விபர சரிபார்ப்பு Modal -->
     <div id="hqKycViewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-gold">
@@ -2794,14 +2886,103 @@
       }
     }
 
-    // 9. HQ Approvals Actions
-    async function actionBankTransfer(id, action) {
-      const notes = prompt("குறிப்புகள்:") || "";
+    // 💸 பட்டுவாடா பாப்-அப் சாளரத்தைத் திறந்து விபரங்களை நிரப்புதல்
+    function openHqPayoutModal(transferId) {
+      const pBody = document.getElementById('pendingPayoutsTableBody');
+      const payouts = (window.latestHqApprovalsData && window.latestHqApprovalsData.pending_payouts) || [];
+      const item = payouts.find(x => x.id === transferId);
+
+      if (!item) return alert("பரிவர்த்தனை விபரம் கிடைக்கவில்லை.");
+
+      document.getElementById('payout_action_transfer_id').value = item.id;
+      document.getElementById('po_cust_name').innerText = item.test_customers?.name || '-';
+      document.getElementById('po_amount').innerText = `₹ ${parseFloat(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+      let benDetails = `வகை: ${item.pay_mode} | பயனாளி: ${item.beneficiary_name || '-'}`;
+      if (item.pay_mode === 'UPI') {
+        benDetails += ` | UPI ID: ${item.upi_id}`;
+      } else {
+        benDetails += ` | வங்கி: ${item.bank_name || '-'} | A/C: ${item.account_no} | IFSC: ${item.ifsc_code}`;
+      }
+      document.getElementById('po_beneficiary_details').innerText = benDetails;
+
+      // பாஸ்புக் & ஒப்புதல் படம் ஏற்றுதல்
+      setupDocImage('po_img_passbook', 'po_no_passbook', item.passbook_photo);
+      setupDocImage('po_img_consent', 'po_no_consent', item.consent_doc_photo);
+
+      // நிறுவன வங்கி கணக்குகளை டிராப்டவுனில் நிரப்புதல்
+      const bankSelect = document.getElementById('po_company_bank');
+      bankSelect.innerHTML = '';
+      (companyBanksCache || []).forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.innerText = `${b.bank_name} - ${b.account_no} (இருப்பு: ₹${parseFloat(b.current_balance || b.opening_balance || 0).toLocaleString('en-IN')})`;
+        bankSelect.appendChild(opt);
+      });
+
+      document.getElementById('po_utr_ref').value = '';
+      document.getElementById('po_notes').value = '';
+      document.getElementById('hqPayoutActionModal').classList.remove('hidden');
+    }
+
+    function closeHqPayoutModal() {
+      const modal = document.getElementById('hqPayoutActionModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // தலைமையக பணியாளர் பூர்த்தி செய்த பின் உறுதிப்படுத்துதல்
+    async function confirmAndSettleHqPayout() {
+      const transferId = document.getElementById('payout_action_transfer_id').value;
+      const bankId = document.getElementById('po_company_bank').value;
+      const utrNo = document.getElementById('po_utr_ref').value.trim();
+      const txnMode = document.getElementById('po_txn_mode').value;
+      const notes = document.getElementById('po_notes').value.trim();
+
+      if (!bankId) return alert("தயவுசெய்து பணம் அனுப்பிய நமது நிறுவன வங்கியைத் தேர்ந்தெடுக்கவும்.");
+      if (!utrNo) return alert("வங்கி UTR / Reference எண்ணை உள்ளிடவும்.");
+
       try {
         const res = await fetch('/api/hq/process-bank-transfer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transfer_id: id, action, admin_id: currentUser ? currentUser.id : 1, notes })
+          body: JSON.stringify({
+            transfer_id: parseInt(transferId),
+            action: 'APPROVE',
+            admin_id: currentUser ? currentUser.id : 1,
+            company_bank_id: parseInt(bankId),
+            utr_ref_no: utrNo,
+            payment_mode_used: txnMode,
+            notes: notes
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ " + data.message);
+          closeHqPayoutModal();
+          loadAllHqApprovals();
+          loadCompanyBanksList(); // புதிய இருப்பைப் புதுப்பித்தல்
+        } else {
+          alert("❌ பிழை: " + data.detail);
+        }
+      } catch (err) {
+        alert("❌ இணைப்புப் பிழை: " + err.message);
+      }
+    }
+
+    async function rejectHqPayoutDirect() {
+      const transferId = document.getElementById('payout_action_transfer_id').value;
+      if (!confirm("இந்த பட்டுவாடா வேண்டுகோளை நிராகரிக்கவா?")) return;
+      actionBankTransferDirect(transferId, 'REJECT');
+      closeHqPayoutModal();
+    }
+
+    async function actionBankTransferDirect(id, action) {
+      const notes = prompt("நிராகரிப்புக்கான காரணம் / குறிப்புகள்:") || "";
+      try {
+        const res = await fetch('/api/hq/process-bank-transfer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transfer_id: parseInt(id), action, admin_id: currentUser ? currentUser.id : 1, notes })
         });
         const data = await res.json();
         alert(data.message);
@@ -3041,6 +3222,7 @@
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
+        window.latestHqApprovalsData = data;
 
         // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல் பட்டியல்
         const vBody = document.getElementById('pendingVisitsTableBody');
@@ -3179,10 +3361,18 @@
                 <td class="p-2.5 font-bold text-rose-600">₹${parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td class="p-2.5">${p.pay_mode}</td>
                 <td class="p-2.5 text-xs font-mono">${p.pay_mode === 'UPI' ? p.upi_id : (p.account_no + ' (' + p.ifsc_code + ')')}</td>
-                <td class="p-2.5 text-xs">${p.passbook_photo ? `<a href="${p.passbook_photo}" target="_blank" class="text-blue-600 font-bold underline">பாஸ்புக் படம்</a>` : 'இல்லை'}</td>
+                <td class="p-2.5 text-xs space-x-1">
+                  ${p.passbook_photo ? `<button type="button" onclick="previewDocImage('${p.passbook_photo}')" class="text-blue-600 font-bold underline bg-blue-50 px-2 py-0.5 rounded">பாஸ்புக்</button>` : 'இல்லை'}
+                  ${p.consent_doc_photo ? `<button type="button" onclick="previewDocImage('${p.consent_doc_photo}')" class="text-purple-600 font-bold underline bg-purple-50 px-2 py-0.5 rounded">ஒப்புதல்</button>` : ''}
+                </td>
                 <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
-                  <button type="button" onclick="actionBankTransfer(${p.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✓ அனுமதி</button>
-                  <button type="button" onclick="actionBankTransfer(${p.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✕ நிராகரி</button>
+                  <!-- 👇 இப்போது இந்த பட்டனை அழுத்தினால் படிவம் திறக்கும் 👇 -->
+                  <button type="button" onclick="openHqPayoutModal(${p.id})" style="background-color: #059669; color: #ffffff;" class="px-3 py-1.5 rounded-xl font-bold text-xs shadow hover:opacity-90">
+                    ✓ பட்டுவாடா செய் (Approve)
+                  </button>
+                  <button type="button" onclick="actionBankTransferDirect(${p.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2 py-1.5 rounded-xl font-bold text-xs shadow hover:opacity-90">
+                    ✕ நிராகரி
+                  </button>
                 </td>
               `;
               pBody.appendChild(tr);
@@ -3205,10 +3395,10 @@
                 <td class="p-2.5 font-bold text-emerald-600">₹${parseFloat(r.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td class="p-2.5">${r.company_bank_name || '-'}</td>
                 <td class="p-2.5 font-mono">${r.receipt_ref_no || '-'}</td>
-                <td class="p-2.5 text-xs">${r.receipt_screenshot ? `<a href="${r.receipt_screenshot}" target="_blank" class="text-blue-600 font-bold underline">ஸ்கிரீன்ஷாட்</a>` : 'இல்லை'}</td>
+                <td class="p-2.5 text-xs">${r.receipt_screenshot ? `<button type="button" onclick="previewDocImage('${r.receipt_screenshot}')" class="text-blue-600 font-bold underline bg-blue-50 px-2 py-0.5 rounded">ஸ்கிரீன்ஷாட்</button>` : 'இல்லை'}</td>
                 <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
-                  <button type="button" onclick="actionBankTransfer(${r.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✓ வரவு சரிபார்த்தேன்</button>
-                  <button type="button" onclick="actionBankTransfer(${r.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✕ நிராகரி</button>
+                  <button type="button" onclick="actionBankTransferDirect(${r.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✓ வரவு சரிபார்த்தேன்</button>
+                  <button type="button" onclick="actionBankTransferDirect(${r.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2 py-1 rounded-lg font-bold text-xs shadow">✕ நிராகரி</button>
                 </td>
               `;
               rBody.appendChild(tr);

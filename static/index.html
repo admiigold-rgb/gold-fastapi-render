@@ -670,6 +670,41 @@
       </div>
     </div>
 
+    <!-- வருகை முழு விபர Modal -->
+    <div id="visitDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border-2 border-brand-violet">
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🔍</span>
+            <h3 class="text-base font-extrabold text-brand-violet" id="vd_title">வருகை முழு விபரம்</h3>
+          </div>
+          <button type="button" onclick="closeVisitDetailModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <!-- அடிப்படை விபரங்கள் -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100 text-xs">
+          <div><span class="text-slate-500 block">வாடிக்கையாளர்:</span><b id="vd_cust_name" class="text-brand-violet text-sm">-</b></div>
+          <div><span class="text-slate-500 block">மொபைல்:</span><b id="vd_cust_mobile" class="font-mono text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">கிளை:</span><b id="vd_branch" class="text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">வருகை நோக்கம்:</span><b id="vd_purpose" class="text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">நிகரத் தொகை:</span><b id="vd_net_amount" class="text-rose-600 font-black text-sm">₹ 0.00</b></div>
+          <div><span class="text-slate-500 block">பட்டுவாடா முறை:</span><b id="vd_pay_split" class="text-slate-800">-</b></div>
+        </div>
+
+        <!-- அடகு வைக்கப்பட்ட கடன்கள் மற்றும் நகைகள் -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-black text-brand-violet uppercase">அடகு வைக்கப்பட்ட நகைகள் விபரம்:</h4>
+          <div id="vd_loans_container" class="space-y-2.5 max-h-60 overflow-y-auto">
+            <p class="text-xs text-slate-400 text-center py-4">விவரங்கள் ஏற்றப்படுகின்றன...</p>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-purple-100">
+          <button type="button" onclick="closeVisitDetailModal()" class="px-5 py-2 bg-purple-100 hover:bg-purple-200 text-brand-violet font-bold rounded-xl text-xs">மூடு (Close)</button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Modals -->
     <!-- 1. புதிய முழு KYC Modal -->
     <div id="fullKycModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
@@ -2203,6 +2238,71 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    // வருகை விபர சாளரத்தைத் திறந்து தரவுகளை ஏற்றுதல்
+    async function viewVisitDetails(visitId) {
+      const modal = document.getElementById('visitDetailModal');
+      const container = document.getElementById('vd_loans_container');
+      document.getElementById('vd_title').innerText = `வருகை முழு விபரம் (#VIS-${visitId})`;
+      container.innerHTML = `<p class="text-xs text-brand-violet font-bold text-center py-4">விபரங்கள் திரட்டப்படுகின்றன...</p>`;
+      modal.classList.remove('hidden');
+
+      try {
+        const res = await fetch(`/api/hq/visit-details/${visitId}`);
+        const data = await res.json();
+        if (!res.ok) {
+          container.innerHTML = `<p class="text-xs text-rose-600 text-center py-4">❌ பிழை: ${data.detail}</p>`;
+          return;
+        }
+
+        const v = data.visit;
+        const c = data.customer;
+        const b = data.branch;
+
+        document.getElementById('vd_cust_name').innerText = c.name || '-';
+        document.getElementById('vd_cust_mobile').innerText = c.mobile || '-';
+        document.getElementById('vd_branch').innerText = `${b.branch_name || 'கிளை'} (${b.branch_code || v.branch_id})`;
+        document.getElementById('vd_purpose').innerText = v.purpose || '-';
+        document.getElementById('vd_net_amount').innerText = `₹ ${parseFloat(v.net_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('vd_pay_split').innerText = `ரொக்கம்: ₹${v.cash_amount || 0} | வங்கி: ₹${v.bank_amount || 0}`;
+
+        // நகைக் கடன்கள் பட்டியல்
+        container.innerHTML = '';
+        if (!data.loans || data.loans.length === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">நகைக் கடன் விபரங்கள் கிடைக்கவில்லை.</p>`;
+          return;
+        }
+
+        data.loans.forEach(loan => {
+          const loanDiv = document.createElement('div');
+          loanDiv.className = "p-3 bg-purple-50/40 rounded-xl border border-purple-200 text-xs space-y-1.5";
+          
+          let itemsHtml = (loan.test_gold_loan_items || []).map(it => 
+            `<span class="inline-block bg-white border border-purple-200 px-2 py-0.5 rounded text-[11px] mr-1 mb-1">
+              ${it.item_type} (${it.item_count} எண்ணிக்கை) - நிகர எடை: <b>${it.net_weight}g</b> (${it.purity})
+            </span>`
+          ).join('');
+
+          loanDiv.innerHTML = `
+            <div class="flex justify-between items-center font-bold">
+              <span class="text-brand-violet font-mono">கடன் எண்: ${loan.loan_no}</span>
+              <span class="text-rose-600 font-black">கடன் தொகை: ₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</span>
+            </div>
+            <div class="text-[11px] text-slate-600">திட்டம்: <b>${loan.scheme_name}</b> | Processing கட்டணம்: ₹${loan.charges_amount}</div>
+            <div class="pt-1">${itemsHtml || '<span class="text-slate-400">நகைகள் விபரம் இல்லை</span>'}</div>
+          `;
+          container.appendChild(loanDiv);
+        });
+
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-rose-600 text-center py-4">❌ இணைப்புப் பிழை: ${err.message}</p>`;
+      }
+    }
+
+    function closeVisitDetailModal() {
+      const modal = document.getElementById('visitDetailModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
     async function confirmSettleWithOtp(isExempted = false) {
       let enteredOtp = null;
       if (!isExempted) {
@@ -2662,7 +2762,13 @@
         data.data.forEach(ex => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="p-2.5 font-bold font-mono text-purple-900">#VIS-${ex.id}</td>
+            <td class="p-2.5">
+              <button type="button" onclick="viewVisitDetails(${ex.id})" 
+                      title="முழு விபரங்களைப் பார்க்க கிளிக் செய்யவும்" 
+                      class="font-black font-mono text-purple-900 underline hover:text-purple-600 cursor-pointer bg-purple-100 hover:bg-purple-200 px-2.5 py-1 rounded-lg transition">
+                #VIS-${ex.id} 🔍
+              </button>
+            </td>
             <td class="p-2.5 font-bold text-slate-800">
               ${ex.test_customers?.name || '-'} 
               <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span>

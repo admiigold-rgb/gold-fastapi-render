@@ -1833,12 +1833,12 @@
         enteredOtp = document.getElementById('input_otp').value.trim();
         if (!enteredOtp || enteredOtp.length !== 6) return alert("6 இலக்க OTP உள்ளிடவும்.");
       }
-
+    
       const cVal = parseFloat(document.getElementById('pay_cash').value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
       const selDate = document.getElementById('txn_date').value;
-
+    
       let denomPayload = null;
       if (cVal > 0) {
         denomPayload = {
@@ -1851,31 +1851,39 @@
           c_coins: parseInt(document.getElementById('dcoins').value) || 0
         };
       }
-
+    
       const btn = document.getElementById('btn_confirm_settle');
       if (btn) {
         btn.innerText = "சரிபார்க்கப்படுகிறது...";
         btn.disabled = true;
       }
-
+    
+      // இணைக்கப்பட்ட புதிய settlePayload (visit_id மற்றும் actions_summary உடன்)
       const settlePayload = {
-        customer_id: activeCustomer.id, branch_id: branchId, otp_code: enteredOtp,
+        customer_id: activeCustomer.id,
+        branch_id: branchId,
+        visit_id: activeVisitId,
+        otp_code: enteredOtp,
         is_exempted: isExempted,
-        net_amount: currentNetAbs, direction: currentDirection, settlement_type: selectedMode,
-        cash_amount: cVal, bank_amount: bVal,
-        bank_ref_no: document.getElementById('receipt_ref_no').value.trim() || null,
-        bank_name: document.getElementById('receipt_company_bank').value || null,
+        net_amount: currentNetAbs,
+        direction: currentDirection,
+        settlement_type: selectedMode,
+        cash_amount: cVal,
+        bank_amount: bVal,
+        bank_ref_no: document.getElementById('receipt_ref_no')?.value.trim() || null,
+        bank_name: document.getElementById('receipt_company_bank')?.value || null,
         denominations: denomPayload,
-        transaction_date: selDate
+        transaction_date: selDate,
+        actions_summary: cartItems.map(c => c.title).join(", ")
       };
-
+    
       const resSettle = await fetch('/api/transaction/settle-with-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settlePayload)
       });
       const settleData = await resSettle.json();
-
+    
       if (!resSettle.ok) {
         if (btn) {
           btn.innerText = "சரிபார்த்து முடி";
@@ -1883,7 +1891,7 @@
         }
         return alert("❌ பிழை: " + settleData.detail);
       }
-
+    
       if (bVal > 0) {
         if (currentDirection === "COMPANY_PAYABLE") {
           const passbookBase64 = await readFileAsBase64(document.getElementById('payout_file_passbook'));
@@ -1892,15 +1900,20 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              customer_id: activeCustomer.id, branch_id: branchId, settlement_id: settleData.settlement_id,
-              direction: "PAYOUT", amount: bVal, pay_mode: document.getElementById('payout_mode').value,
+              customer_id: activeCustomer.id,
+              branch_id: branchId,
+              settlement_id: settleData.settlement_id,
+              direction: "PAYOUT",
+              amount: bVal,
+              pay_mode: document.getElementById('payout_mode').value,
               beneficiary_name: document.getElementById('payout_beneficiary').value.trim(),
               account_no: document.getElementById('payout_acc_no').value.trim() || null,
               ifsc_code: document.getElementById('payout_ifsc').value.trim() || null,
               bank_name: document.getElementById('payout_bank_name').value.trim() || null,
               upi_id: document.getElementById('payout_upi_id').value.trim() || null,
               is_third_party: document.getElementById('payout_is_third_party').checked,
-              passbook_photo: passbookBase64, consent_doc_photo: consentBase64
+              passbook_photo: passbookBase64,
+              consent_doc_photo: consentBase64
             })
           });
         } else {
@@ -1909,8 +1922,12 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              customer_id: activeCustomer.id, branch_id: branchId, settlement_id: settleData.settlement_id,
-              direction: "RECEIPT", amount: bVal, pay_mode: "BANK_TRANSFER",
+              customer_id: activeCustomer.id,
+              branch_id: branchId,
+              settlement_id: settleData.settlement_id,
+              direction: "RECEIPT",
+              amount: bVal,
+              pay_mode: "BANK_TRANSFER",
               company_bank_name: document.getElementById('receipt_company_bank').value,
               receipt_ref_no: document.getElementById('receipt_ref_no').value.trim(),
               receipt_screenshot: screenBase64
@@ -1918,7 +1935,7 @@
           });
         }
       }
-
+    
       if (btn) {
         btn.innerText = "சரிபார்த்து முடி";
         btn.disabled = false;
@@ -2227,13 +2244,14 @@
     }
 
     // 👈 6. இரட்டைப் பதிவு நீக்கப்பட்டு ஒற்றை முறையாக அமைக்கப்பட்ட actionOtpExempt
+   // 1. OTP விலக்கு ஒப்புதல் / நிராகரிப்பு செயல்பாடு
     async function actionOtpExempt(visitId, action) {
       if (!confirm(`இந்த வருகைக்கு OTP விலக்கினை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
       try {
         const res = await fetch('/api/hq/approve-otp-exemption', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ visit_id: visitId, action, admin_id: currentUser.id })
+          body: JSON.stringify({ visit_id: visitId, action, admin_id: currentUser ? currentUser.id : 1 })
         });
         const data = await res.json();
         alert(data.message);
@@ -2243,6 +2261,7 @@
       }
     }
 
+    // 2. OTP விலக்குக் கோரிக்கைகளைப் பட்டியலிடும் செயல்பாடு
     async function loadHqOtpExemptions() {
       const section = document.getElementById('hqOtpExemptSection');
       const exBody = document.getElementById('hqOtpExemptTableBody');
@@ -2289,20 +2308,72 @@
       }
     }
 
+    // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல்/நிராகரிப்பு செயல்பாடு
+    async function actionVisitApproval(visitId, action) {
+      if (!confirm(`இந்த கவுண்டர் வருகை ஆடிட்டை ${action === 'APPROVE' ? 'ஒப்புதல் அளிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+      try {
+        const res = await fetch('/api/hq/approve-visit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_id: visitId, action, admin_id: currentUser ? currentUser.id : 1 })
+        });
+        const data = await res.json();
+        alert(data.message);
+        loadAllHqApprovals(); // பட்டியலைப் புதுப்பிக்கிறது
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      }
+    }
+
+    // 4. தலைமையகத்தின் அனைத்து நிலுவைகளையும் (OTP விலக்கு, வருகை ஆடிட் உள்ளிட்டவை) ஒருங்கிணைத்து ஏற்றிப் பட்டியலிடும் செயல்பாடு
     async function loadAllHqApprovals() {
+      // முதலில் OTP விலக்குக் கோரிக்கைகளைப் பட்டியலிடுதல்
       await loadHqOtpExemptions();
 
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
 
-        // 1. சுயவிவர மாற்றக் கோரிக்கைகள்
+        // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல் பட்டியல் (இணைக்கப்பட்ட பகுதி)
+        const vBody = document.getElementById('pendingVisitsTableBody');
+        if (vBody) {
+          vBody.innerHTML = '';
+          const visits = data.pending_visits || [];
+          if (visits.length === 0) {
+            vBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">சரிபார்க்கப்பட வேண்டிய வருகைகள் இல்லை</td></tr>`;
+          } else {
+            visits.forEach(v => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td class="p-2.5 font-bold text-slate-800">${v.test_customers?.name || '-'}</td>
+                <td class="p-2.5 font-mono text-xs text-slate-600">${v.test_customers?.mobile || '-'}</td>
+                <td class="p-2.5 text-xs text-slate-700">${v.actions_summary || v.purpose || 'நகைக்கடன் பரிவர்த்தனை'}</td>
+                <td class="p-2.5 font-bold text-brand-violet">${v.test_branches?.branch_name || 'கிளை #' + v.branch_id}</td>
+                <td class="p-2.5 text-center space-x-2 whitespace-nowrap">
+                  <button type="button" onclick="actionVisitApproval(${v.id}, 'APPROVE')" 
+                          style="background-color: #059669; color: #ffffff;" 
+                          class="px-3 py-1.5 rounded-xl font-bold text-xs shadow hover:opacity-90 transition">
+                    ✓ ஒப்புதல் (Approve)
+                  </button>
+                  <button type="button" onclick="actionVisitApproval(${v.id}, 'REJECT')" 
+                          style="background-color: #dc2626; color: #ffffff;" 
+                          class="px-3 py-1.5 rounded-xl font-bold text-xs shadow hover:opacity-90 transition">
+                    ✕ நிராகரி
+                  </button>
+                </td>
+              `;
+              vBody.appendChild(tr);
+            });
+          }
+        }
+
+        // வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல்
         const uBody = document.getElementById('pendingUpdatesTableBody');
         if (uBody) {
           uBody.innerHTML = '';
           const updates = data.pending_updates || [];
           if (updates.length === 0) {
-            uBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">சுயவிவர மாற்ற நிலுவைகள் எதுவும் இல்லை</td></tr>`;
+            uBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">விபர மாற்ற நிலுவைகள் இல்லை</td></tr>`;
           } else {
             updates.forEach(u => {
               const chg = u.requested_changes || {};
@@ -2341,13 +2412,13 @@
           }
         }
 
-        // 2. புதிய முழு KYC ஒப்புதல் பட்டியல்
+        // புதிய KYC பட்டியல்
         const kBody = document.getElementById('pendingKycTableBody');
         if (kBody) {
           kBody.innerHTML = '';
           const kycList = data.pending_kyc || [];
           if (kycList.length === 0) {
-            kBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">KYC நிலுவைகள் எதுவும் இல்லை</td></tr>`;
+            kBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">KYC நிலுவைகள் இல்லை</td></tr>`;
           } else {
             kycList.forEach(k => {
               const photoThumb = k.customer_photo ? `<img src="${k.customer_photo}" class="w-8 h-8 rounded-full object-cover border border-yellow-500">` : '👤';
@@ -2368,32 +2439,7 @@
           }
         }
 
-        // 3. பரிவர்த்தனை முடிந்த வருகைகள்
-        const vBody = document.getElementById('pendingVisitsTableBody');
-        if (vBody) {
-          vBody.innerHTML = '';
-          const visits = data.pending_visits || [];
-          if (visits.length === 0) {
-            vBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">சரிபார்க்கப்பட வேண்டிய வருகைகள் இல்லை</td></tr>`;
-          } else {
-            visits.forEach(v => {
-              const tr = document.createElement('tr');
-              tr.innerHTML = `
-                <td class="p-2.5 font-mono font-bold text-brand-violet">#VIS-${v.id}</td>
-                <td class="p-2.5 font-bold">${v.test_customers?.name || '-'}</td>
-                <td class="p-2.5">${v.actions_summary || '-'}</td>
-                <td class="p-2.5 font-bold">₹${parseFloat(v.net_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
-                  <button type="button" onclick="actionVisitApproval(${v.id}, 'APPROVE')" style="background-color: #059669; color: #ffffff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90">✓ சரிபார்த்தேன் (Audit)</button>
-                  <button type="button" onclick="actionVisitApproval(${v.id}, 'REJECT')" style="background-color: #dc2626; color: #ffffff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90">✕ நிராகரி</button>
-                </td>
-              `;
-              vBody.appendChild(tr);
-            });
-          }
-        }
-
-        // 4. வங்கிப் பட்டுவாடா வேண்டுகோள்கள்
+        // வங்கிப் பட்டுவாடா பட்டியல்
         const pBody = document.getElementById('pendingPayoutsTableBody');
         if (pBody) {
           pBody.innerHTML = '';
@@ -2419,7 +2465,7 @@
           }
         }
 
-        // 5. வாடிக்கையாளர் வங்கி வரவு சரிபார்ப்புகள்
+        // வங்கி வரவு சரிபார்ப்புகள் பட்டியல்
         const rBody = document.getElementById('pendingReceiptsTableBody');
         if (rBody) {
           rBody.innerHTML = '';

@@ -595,6 +595,7 @@ def request_otp_exemption(data: OtpExemptRequestPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"விலக்குக் கோரிக்கை பிழை: {str(e)}")
 
+
 @app.get("/api/hq/pending-otp-exemptions")
 def get_pending_otp_exemptions():
     try:
@@ -623,6 +624,46 @@ def get_pending_otp_exemptions():
         return {"status": "success", "data": visits_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OTP விலக்கு பட்டியல் பிழை: {str(e)}")
+
+
+@app.get("/api/hq/visit-details/{visit_id}")
+def get_visit_details_for_hq(visit_id: int):
+    try:
+        # 1. வருகை விபரம்
+        visit_res = supabase.table("test_customer_visits").select("*").eq("id", visit_id).execute()
+        if not visit_res.data:
+            raise HTTPException(status_code=404, detail="வருகை விபரம் கிடைக்கவில்லை")
+        visit = visit_res.data[0]
+
+        # 2. வாடிக்கையாளர் விபரம்
+        cust_res = supabase.table("test_customers").select("*").eq("id", visit["customer_id"]).execute()
+        customer = cust_res.data[0] if cust_res.data else {}
+
+        # 3. கிளை விபரம்
+        branch_res = supabase.table("test_branches").select("branch_name, branch_code").eq("id", visit.get("branch_id", 1)).execute()
+        branch = branch_res.data[0] if branch_res.data else {}
+
+        # 4. அந்த வருகையின் போது போடப்பட்ட நகைக் கடன்கள் மற்றும் நகைகள்
+        loans_res = (
+            supabase.table("test_gold_loans")
+            .select("*, test_gold_loan_items(*)")
+            .eq("customer_id", visit["customer_id"])
+            .order("id", desc=True)
+            .limit(5)
+            .execute()
+        )
+
+        return {
+            "status": "success",
+            "visit": visit,
+            "customer": customer,
+            "branch": branch,
+            "loans": loans_res.data or []
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/hq/approve-otp-exemption")
 def approve_otp_exemption(data: OtpExemptApprovalPayload):

@@ -726,7 +726,77 @@
         </div>
       </div>
     </div>
-    
+
+    <!-- 👁️ தலைமையக KYC முழு விபர சரிபார்ப்பு Modal -->
+    <div id="hqKycViewModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-gold">
+        
+        <!-- தலைப்பு -->
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📋</span>
+            <h3 class="text-base font-extrabold text-brand-violet">முழுமையான KYC ஆவணங்கள் சரிபார்ப்பு</h3>
+          </div>
+          <button type="button" onclick="closeHqKycViewModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <!-- 3 ஆவணப் படங்கள் (புகைப்படம், கையொப்பம், அடையாள அட்டை) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-purple-50/70 p-3 rounded-2xl border border-purple-100 text-center">
+          <div class="space-y-1">
+            <span class="text-[11px] font-bold text-brand-violet block">1. வாடிக்கையாளர் படம் 📷</span>
+            <div class="w-full h-32 bg-white rounded-xl border border-purple-200 overflow-hidden flex items-center justify-center shadow-inner">
+              <img id="vkyc_img_photo" src="" class="w-full h-full object-contain cursor-pointer" onclick="window.open(this.src)" alt="Customer Photo">
+              <span id="vkyc_no_photo" class="text-xs text-slate-400 hidden">படம் இல்லை</span>
+            </div>
+          </div>
+          <div class="space-y-1">
+            <span class="text-[11px] font-bold text-brand-violet block">2. கையொப்பம் ✍️</span>
+            <div class="w-full h-32 bg-white rounded-xl border border-purple-200 overflow-hidden flex items-center justify-center shadow-inner">
+              <img id="vkyc_img_sign" src="" class="w-full h-full object-contain cursor-pointer" onclick="window.open(this.src)" alt="Signature">
+              <span id="vkyc_no_sign" class="text-xs text-slate-400 hidden">கையொப்பம் இல்லை</span>
+            </div>
+          </div>
+          <div class="space-y-1">
+            <span class="text-[11px] font-bold text-brand-violet block">3. அடையாள அட்டை ஆவணம் 🪪</span>
+            <div class="w-full h-32 bg-white rounded-xl border border-purple-200 overflow-hidden flex items-center justify-center shadow-inner">
+              <img id="vkyc_img_proof" src="" class="w-full h-full object-contain cursor-pointer" onclick="window.open(this.src)" alt="ID Proof">
+              <span id="vkyc_no_proof" class="text-xs text-slate-400 hidden">ஆவணம் இல்லை</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- அடிப்படை சுயவிவர விபரங்கள் -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs">
+          <div><span class="text-slate-500 block">பெயர்:</span><b id="vkyc_name" class="text-brand-violet font-extrabold text-sm">-</b></div>
+          <div><span class="text-slate-500 block">முதன்மை மொபைல்:</span><b id="vkyc_mobile" class="font-mono text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">மாற்று மொபைல்:</span><b id="vkyc_alt_mobile" class="font-mono text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">உறவு / காப்பாளர்:</span><b id="vkyc_guardian" class="text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">சான்று வகை & எண்:</span><b id="vkyc_proof_info" class="text-brand-violet font-bold">-</b></div>
+          <div><span class="text-slate-500 block">நாமினி விபரம்:</span><b id="vkyc_nominee" class="text-slate-800">-</b></div>
+          <div class="col-span-2 sm:col-span-3"><span class="text-slate-500 block">முழு முகவரி:</span><b id="vkyc_address" class="text-slate-700 leading-relaxed">-</b></div>
+        </div>
+
+        <!-- ரெபரன்ஸ் நபர்கள் -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-yellow-50/60 p-3 rounded-2xl border border-yellow-200 text-xs">
+          <div><span class="text-amber-900 font-bold block">ரெபரன்ஸ் 1:</span><span id="vkyc_ref1" class="text-slate-700">-</span></div>
+          <div><span class="text-amber-900 font-bold block">ரெபரன்ஸ் 2:</span><span id="vkyc_ref2" class="text-slate-700">-</span></div>
+        </div>
+
+        <!-- செயல் பட்டன்கள் (Modal-க்குள்ளேயே ஒப்புதல் / நிராகரிப்பு செய்யும் வசதி) -->
+        <div class="flex justify-between items-center pt-2 border-t border-purple-100">
+          <button type="button" onclick="closeHqKycViewModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">மூடு (Close)</button>
+          <div class="flex gap-2">
+            <button type="button" id="btnModalRejectKyc" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow">
+              ✕ நிராகரி
+            </button>
+            <button type="button" id="btnModalApproveKyc" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow">
+              ✓ சரிபார்த்து ஒப்புதல் அளி (Approve)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
     <!-- Modals -->
     <!-- 1. புதிய முழு KYC Modal -->
     <div id="fullKycModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
@@ -2768,6 +2838,60 @@
       }
     }
 
+    // 👁️ KYC முழு ஆவணங்களை பாப்-அப் சாளரத்தில் காட்டும் செயல்பாடு
+    function openHqKycViewModal(customerId) {
+      const kList = window.pendingKycDataCache || [];
+      const k = kList.find(x => x.id === customerId);
+      if (!k) return alert("வாடிக்கையாளர் விபரம் கிடைக்கவில்லை.");
+
+      // 1. விபரங்களை நிரப்புதல்
+      document.getElementById('vkyc_name').innerText = k.name || '-';
+      document.getElementById('vkyc_mobile').innerText = k.mobile || '-';
+      document.getElementById('vkyc_alt_mobile').innerText = k.alt_mobile || 'இல்லை';
+      document.getElementById('vkyc_guardian').innerText = `${k.relation_type || 'உறவினர்'}: ${k.guardian_name || '-'}`;
+      document.getElementById('vkyc_proof_info').innerText = `${k.id_proof_type || 'சான்று'}: ${k.id_proof_no || '-'}`;
+      document.getElementById('vkyc_nominee').innerText = `${k.nominee_name || 'இல்லை'} (${k.nominee_relation || '-'}) - ${k.nominee_mobile || ''}`;
+      document.getElementById('vkyc_address').innerText = k.address || 'முகவரி இல்லை';
+
+      document.getElementById('vkyc_ref1').innerText = `${k.ref1_name || 'இல்லை'} - ${k.ref1_mobile || ''}`;
+      document.getElementById('vkyc_ref2').innerText = `${k.ref2_name || 'இல்லை'} - ${k.ref2_mobile || ''}`;
+
+      // 2. ஆவணப் படங்கள் (Photos)
+      setupDocImage('vkyc_img_photo', 'vkyc_no_photo', k.customer_photo);
+      setupDocImage('vkyc_img_sign', 'vkyc_no_sign', k.signature_photo);
+      setupDocImage('vkyc_img_proof', 'vkyc_no_proof', k.id_proof_photo);
+
+      // 3. Modal-ல் உள்ள ஒப்புதல் / நிராகரிப்பு பட்டன்களுக்கு செயல் அமைத்தல்
+      document.getElementById('btnModalApproveKyc').onclick = () => {
+        closeHqKycViewModal();
+        actionKyc(k.id, 'APPROVE');
+      };
+      document.getElementById('btnModalRejectKyc').onclick = () => {
+        closeHqKycViewModal();
+        actionKyc(k.id, 'REJECT');
+      };
+
+      document.getElementById('hqKycViewModal').classList.remove('hidden');
+    }
+
+    function setupDocImage(imgId, noId, src) {
+      const img = document.getElementById(imgId);
+      const noTxt = document.getElementById(noId);
+      if (src && src.length > 50) {
+        img.src = src;
+        img.classList.remove('hidden');
+        noTxt.classList.add('hidden');
+      } else {
+        img.classList.add('hidden');
+        noTxt.classList.remove('hidden');
+      }
+    }
+
+    function closeHqKycViewModal() {
+      const m = document.getElementById('hqKycViewModal');
+      if (m) m.classList.add('hidden');
+    }
+    
     async function actionUpdate(id, action) {
       if (!confirm(`இந்த சுயவிவர மாற்றக் கோரிக்கையை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
       
@@ -2969,6 +3093,8 @@
         if (kBody) {
           kBody.innerHTML = '';
           const kycList = data.pending_kyc || [];
+          window.pendingKycDataCache = kycList; // தரவை சேமித்து வைக்கிறோம்
+
           if (kycList.length === 0) {
             kBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">KYC நிலுவைகள் இல்லை</td></tr>`;
           } else {
@@ -2977,7 +3103,14 @@
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td class="p-2.5">${photoThumb}</td>
-                <td class="p-2.5 font-bold text-brand-violet">${k.name}</td>
+                <td class="p-2.5">
+                  <!-- 👇 வாடிக்கையாளர் பெயர் கிளிக் லிங்காக மாற்றப்பட்டுள்ளது 👇 -->
+                  <button type="button" onclick="openHqKycViewModal(${k.id})" 
+                          title="முழு ஆவணங்களையும் பார்க்க கிளிக் செய்யவும்" 
+                          class="font-extrabold text-brand-violet hover:underline text-left cursor-pointer flex items-center gap-1">
+                    <span>${k.name}</span> <span class="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded">👁️ பார்</span>
+                  </button>
+                </td>
                 <td class="p-2.5 font-mono">${k.mobile}</td>
                 <td class="p-2.5 text-xs">${k.id_proof_type || ''}: ${k.id_proof_no || '-'}</td>
                 <td class="p-2.5 text-xs">${k.nominee_name || '-'}</td>

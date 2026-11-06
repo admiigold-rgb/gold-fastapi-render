@@ -701,15 +701,30 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 "total_calculated_cash": data.cash_amount
             }).execute()
 
-        if data.visit_id:
+        # visit_id இருந்தால் அதை நேரடியாக மாற்றுதல், இல்லாவிட்டால் வாடிக்கையாளரின் நடப்பு வருகையைத் தேடி மாற்றுதல்
+        target_visit_id = data.visit_id
+        if not target_visit_id:
+            last_visit = (
+                supabase.table("test_customer_visits")
+                .select("id")
+                .eq("customer_id", data.customer_id)
+                .eq("branch_id", data.branch_id)
+                .order("id", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if last_visit.data:
+                target_visit_id = last_visit.data[0]["id"]
+
+        if target_visit_id:
             supabase.table("test_customer_visits").update({
                 "status": "PENDING_HQ",
                 "net_amount": data.net_amount,
                 "cash_amount": data.cash_amount,
                 "bank_amount": data.bank_amount,
                 "direction": data.direction,
-                "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை"
-            }).eq("id", data.visit_id).execute()
+                "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை நிறைவுற்றது"
+            }).eq("id", target_visit_id).execute()
 
         return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
     except HTTPException:

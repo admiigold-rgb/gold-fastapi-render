@@ -117,23 +117,43 @@
           <input type="date" id="txn_date" onchange="onDateChanged()" class="border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-purple-50 font-bold text-brand-violet focus:outline-none">
           <span id="cashDayStatusBadge" class="px-2.5 py-1 rounded-lg font-bold text-[10px] bg-slate-100 text-slate-600 shadow-sm">நிலை அறியப்படுகிறது...</span>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <button type="button" onclick="openCashDayModal('OPEN')" id="btnOpenDay" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition">
-            ☀️ காலை தொடக்க இருப்பு (Day Open)
-          </button>
-          <button type="button" onclick="openDaySummaryReportModal()" class="brand-gradient-violet-btn px-3.5 py-1.5 rounded-xl font-bold shadow transition">
-            📊 அன்றைய நடவடிக்கைகள்
-          </button>
-          <button type="button" onclick="openExpenseModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition text-xs">
-            🧾 செலவுப் பதிவு (Expense)
-          </button>
-          <button type="button" onclick="openTreasuryModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition text-xs flex items-center gap-1 cursor-pointer">
-            <span>🔄</span> உள்-பணப் பரிமாற்றம்
-          </button>
-          <button type="button" onclick="openCashDayModal('CLOSE')" id="btnCloseDay" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition">
-            🌙 மாலை நாள் பூட்டுதல் (Day Close)
-          </button>
-        </div>
+        <!-- கவுண்ட்டர் செயல்பாட்டு பட்டன்கள் வரிசை -->
+          <div class="flex items-center gap-2.5 flex-wrap pt-1">
+            <!-- 1. காலை தொடக்க இருப்பு -->
+            <button type="button" onclick="openCashDayModal('OPEN')" id="btnOpenDay" 
+                    style="background-color: #059669 !important; color: #ffffff !important;" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+              <span>☀️</span> காலை தொடக்க இருப்பு
+            </button>
+
+            <!-- 2. அன்றைய நடவடிக்கைகள் அறிக்கை -->
+            <button type="button" onclick="openDaySummaryReportModal()" 
+                    style="background-color: #4c1d95 !important; color: #ffffff !important;" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+              <span>📊</span> அன்றைய நடவடிக்கைகள்
+            </button>
+
+            <!-- 3. கிளை செலவுப் பதிவு -->
+            <button type="button" onclick="openExpenseModal()" 
+                    style="background-color: #d97706 !important; color: #ffffff !important;" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+              <span>🧾</span> செலவுப் பதிவு (Expense)
+            </button>
+
+            <!-- 4. உள்-பணப் பரிமாற்றம் -->
+            <button type="button" onclick="openTreasuryModal()" 
+                    style="background-color: #4338ca !important; color: #ffffff !important;" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+              <span>🔄</span> உள்-பணப் பரிமாற்றம்
+            </button>
+
+            <!-- 5. மாலை கணக்கு முடிவு -->
+            <button type="button" onclick="openCashDayModal('CLOSE')" id="btnCloseDay" 
+                    style="background-color: #e11d48 !important; color: #ffffff !important;" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+              <span>🌙</span> மாலை கணக்கு முடிவு (Day Close)
+            </button>
+          </div>
       </div>
 
       <!-- வங்கி அறிவிப்பு பட்டை -->

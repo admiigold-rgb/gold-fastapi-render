@@ -643,22 +643,36 @@ def get_visit_details_for_hq(visit_id: int):
         branch_res = supabase.table("test_branches").select("branch_name, branch_code").eq("id", visit.get("branch_id", 1)).execute()
         branch = branch_res.data[0] if branch_res.data else {}
 
-        # 4. அந்த வருகையின் போது போடப்பட்ட நகைக் கடன்கள் மற்றும் நகைகள்
+        # 4. அந்த குறிப்பிட்ட வருகையில் (visit_id) மட்டுமே வைக்கப்பட்ட கடன்களை எடுத்தல்
         loans_res = (
             supabase.table("test_gold_loans")
             .select("*, test_gold_loan_items(*)")
-            .eq("customer_id", visit["customer_id"])
+            .eq("visit_id", visit_id)
             .order("id", desc=True)
-            .limit(5)
             .execute()
         )
+        
+        loans_data = loans_res.data or []
+
+        # ஒருவேளை பழைய பதிவுகளில் visit_id காலியாக இருந்தால், அந்த வருகையின் நேரத்திற்கு இணையான கடனை மட்டும் எடுத்தல் (Fallback)
+        if not loans_data and visit.get("created_at"):
+            fallback_res = (
+                supabase.table("test_gold_loans")
+                .select("*, test_gold_loan_items(*)")
+                .eq("customer_id", visit["customer_id"])
+                .gte("created_at", visit["created_at"])
+                .order("id", desc=True)
+                .limit(2)
+                .execute()
+            )
+            loans_data = fallback_res.data or []
 
         return {
             "status": "success",
             "visit": visit,
             "customer": customer,
             "branch": branch,
-            "loans": loans_res.data or []
+            "loans": loans_data
         }
     except HTTPException:
         raise

@@ -625,7 +625,6 @@ def get_pending_otp_exemptions():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OTP விலக்கு பட்டியல் பிழை: {str(e)}")
 
-
 @app.get("/api/hq/visit-details/{visit_id}")
 def get_visit_details_for_hq(visit_id: int):
     try:
@@ -643,42 +642,53 @@ def get_visit_details_for_hq(visit_id: int):
         branch_res = supabase.table("test_branches").select("branch_name, branch_code").eq("id", visit.get("branch_id", 1)).execute()
         branch = branch_res.data[0] if branch_res.data else {}
 
-        # 4. அந்த குறிப்பிட்ட வருகையில் (visit_id) மட்டுமே வைக்கப்பட்ட கடன்களை எடுத்தல்
-        loans_res = (
+        # 4. நகைக் கடன்கள் விபரம் (அந்த வருகை நேரத்தில் உருவான கடன்)
+        loans_query = (
             supabase.table("test_gold_loans")
             .select("*, test_gold_loan_items(*)")
-            .eq("visit_id", visit_id)
-            .order("id", desc=True)
-            .execute()
+            .eq("customer_id", visit["customer_id"])
         )
-        
+        if visit.get("created_at"):
+            loans_query = loans_query.gte("created_at", visit["created_at"])
+            
+        loans_res = loans_query.order("id", desc=True).limit(2).execute()
         loans_data = loans_res.data or []
 
-        # ஒருவேளை பழைய பதிவுகளில் visit_id காலியாக இருந்தால், அந்த வருகையின் நேரத்திற்கு இணையான கடனை மட்டும் எடுத்தல் (Fallback)
-        if not loans_data and visit.get("created_at"):
-            fallback_res = (
-                supabase.table("test_gold_loans")
-                .select("*, test_gold_loan_items(*)")
-                .eq("customer_id", visit["customer_id"])
-                .gte("created_at", visit["created_at"])
-                .order("id", desc=True)
-                .limit(2)
-                .execute()
-            )
-            loans_data = fallback_res.data or []
+        # 5. பணத் தீர்வு மற்றும் ரொக்கத் தாள்கள் (Denominations) விபரம்
+        settle_res = (
+            supabase.table("test_transaction_settlements")
+            .select("*, test_cash_denominations(*)")
+            .eq("customer_id", visit["customer_id"])
+            .order("id", desc=True)
+            .limit(1)
+            .execute()
+        )
+        settlement = settle_res.data[0] if settle_res.data else {}
+
+        # 6. அனுப்பப்பட்ட OTP விபரம்
+        otp_res = (
+            supabase.table("test_transaction_otps")
+            .select("*")
+            .eq("customer_id", visit["customer_id"])
+            .order("id", desc=True)
+            .limit(1)
+            .execute()
+        )
+        otp_info = otp_res.data[0] if otp_res.data else {}
 
         return {
             "status": "success",
             "visit": visit,
             "customer": customer,
             "branch": branch,
-            "loans": loans_data
+            "loans": loans_data,
+            "settlement": settlement,
+            "otp_info": otp_info
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/api/hq/approve-otp-exemption")
 def approve_otp_exemption(data: OtpExemptApprovalPayload):
     try:

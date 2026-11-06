@@ -1247,3 +1247,121 @@ def request_customer_update(data: CustomerUpdateRequest):
         return {"status": "success", "message": "விபர மாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data or []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கோரிக்கை பதிவு பிழை: {str(e)}")
+
+# ==========================================
+# 🔄 உள்-பணப் பரிமாற்றம் & கருவூல மேலாண்மை (Treasury Transfers)
+# ==========================================
+
+class TreasuryTransferRequest(BaseModel):
+    transfer_type: str  # BRANCH_TO_HQ, HQ_TO_BRANCH, CASH_TO_BANK, BANK_TO_CASH
+    branch_id: int
+    company_bank_id: Optional[int] = None
+    amount: float
+    carrier_person: Optional[str] = None
+    reference_no: Optional[str] = None
+    proof_doc: Optional[str] = None
+    notes: Optional[str] = None
+    staff_id: int
+
+class TreasuryApprovalPayload(BaseModel):
+    transfer_id: int
+    action: str  # APPROVE / REJECT
+    admin_id: int
+
+@app.post("/api/treasury/transfer-request")
+def create_treasury_transfer(data: TreasuryTransferRequest):
+    try:
+        from_src = "BRANCH_CASH"
+        to_dest = "HQ_VAULT"
+
+        if data.transfer_type == "HQ_TO_BRANCH":
+            from_src = "HQ_VAULT"
+            to_dest = "BRANCH_CASH"
+        elif data.transfer_type == "CASH_TO_BANK":
+            from_src = "BRANCH_CASH"
+            to_dest = "COMPANY_BANK"
+        elif data.transfer_type == "BANK_TO_CASH":
+            from_src = "COMPANY_BANK"
+            to_dest = "BRANCH_CASH"
+
+        rec = {
+            "transfer_type": data.transfer_type,
+            "from_source": from_src,
+            "to_destination": to_dest,
+            "branch_id": data.branch_id,
+            "company_bank_id": data.company_bank_id,
+            "amount": data.amount,
+            "carrier_person": data.carrier_person,
+            "reference_no": data.reference_no,
+            "proof_doc": data.proof_doc,
+            "notes": data.notes,
+            "status": "PENDING",
+            "created_by": data.staff_id
+        }
+        res = supabase.table("test_treasury_transfers").insert(rec).execute()
+        return {"status": "success", "message": "பணப் பரிமாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"பரிமாற்றப் பதிவு பிழை: {str(e)}")
+
+@app.get("/api/hq/pending-treasury-transfers")
+def get_pending_treasury_transfers():
+    try:
+        branch_res = supabase.table("test_branches").select("id, branch_name").execute()
+        b_map = {b["id"]: b.get("branch_name") for b in (branch_res.data or [])}
+
+        bank_res = supabase.table("test_company_banks").select("id, bank_name, account_no").execute()
+        bk_map = {b["id"]: f"{b['bank_name']} ({b['account_no']})" for b in (bank_res.data or [])}
+
+        res = (
+            supabase.table("test_treasury_transfers")
+            .select("*")
+            .eq("status", "PENDING")
+            .order("id", desc=True)
+            .execute()
+        )
+        data = res.data or []
+        for x in data:
+            x["branch_name"] = b_map.get(x.get("branch_id"), f"கிளை #{x.get('branch_id')}")
+            if x.get("company_bank_id"):
+                x["company_bank_label"] = bk_map.get(x.get("company_bank_id"), "-")
+
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/approve-treasury-transfer")
+def approve_treasury_transfer(data: TreasuryApprovalPayload):
+    try:
+        status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
+        
+        t_res = supabase.table("test_treasury_transfers").select("*").eq("id", data.transfer_id).execute()
+        if not t_res.data:
+            raise HTTPException(status_code=404, detail="பரிமாற்ற விபரம் கிடைக்கவில்லை")
+        transfer = t_res.data[0]
+
+        # வங்கி சம்பந்தப்பட்டிருந்தால் நிறுவன வங்கி இருப்பைப் புதுப்பித்தல்
+        if status == "APPROVED" and transfer.get("company_bank_id"):
+            amt = float(transfer.get("amount") or 0.0)
+            bk_res = supabase.table("test_company_banks").select("*").eq("id", transfer["company_bank_id"]).execute()
+            if bk_res.data:
+                comp_bank = bk_res.data[0]
+                cur_bal = float(comp_bank.get("current_balance") or comp_bank.get("opening_balance") or 0.0)
+                
+                if transfer.get("transfer_type") == "CASH_TO_BANK":
+                    new_bal = cur_bal + amt  # வங்கியில் ரொக்கம் சேர்ந்தது
+                elif transfer.get("transfer_type") == "BANK_TO_CASH":
+                    new_bal = cur_bal - amt  # வங்கியிலிருந்து ரொக்கம் எடுக்கப்பட்டது
+                else:
+                    new_bal = cur_bal
+
+                supabase.table("test_company_banks").update({"current_balance": new_bal}).eq("id", transfer["company_bank_id"]).execute()
+
+        supabase.table("test_treasury_transfers").update({
+            "status": status,
+            "approved_by": data.admin_id,
+            "approved_at": "now()"
+        }).eq("id", data.transfer_id).execute()
+
+        return {"status": "success", "message": f"பரிமாற்றம் வெற்றிகரமாக '{status}' செய்யப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -127,6 +127,9 @@
           <button type="button" onclick="openExpenseModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition text-xs">
             🧾 செலவுப் பதிவு (Expense)
           </button>
+          <button type="button" onclick="openTreasuryModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition text-xs flex items-center gap-1 cursor-pointer">
+            <span>🔄</span> உள்-பணப் பரிமாற்றம்
+          </button>
           <button type="button" onclick="openCashDayModal('CLOSE')" id="btnCloseDay" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition">
             🌙 மாலை நாள் பூட்டுதல் (Day Close)
           </button>
@@ -501,6 +504,29 @@
 
       </div>
     </div> <!-- 👈 TAB B: தலைமையக ஒப்புதல்கள் மையம் (hqApprovalTab) இங்கு மட்டுமே சரியாக முடிகிறது -->
+
+    <div class="space-y-2 pt-4 border-t border-purple-100">
+          <h3 class="text-xs font-extrabold text-indigo-900 uppercase flex items-center gap-1.5">
+            <span>🔄</span> 7. உள்-பணப் பரிமாற்ற ஒப்புதல் கோரிக்கைகள் (Treasury Hub):
+          </h3>
+          <div class="overflow-x-auto border-2 border-indigo-200 rounded-xl bg-white">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-indigo-100 text-indigo-950 border-b border-indigo-200">
+                <tr>
+                  <th class="p-2.5 font-bold">கிளை</th>
+                  <th class="p-2.5 font-bold">பரிமாற்ற வகை</th>
+                  <th class="p-2.5 font-bold">தொகை</th>
+                  <th class="p-2.5 font-bold">கொண்டு செல்பவர் / வங்கி</th>
+                  <th class="p-2.5 font-bold">ஆவணம்</th>
+                  <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
+                </tr>
+              </thead>
+              <tbody id="pendingTreasuryTableBody" class="divide-y divide-indigo-100 text-slate-700">
+                <tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">பணப் பரிமாற்றக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
     <!-- TAB C: நிர்வாகம் -->
     <div id="adminPanelTab" class="hidden space-y-6">
@@ -1018,6 +1044,68 @@
           <button type="button" onclick="closeExpenseModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
           <button type="button" onclick="submitBranchExpense()" id="btnSubmitExpense" class="brand-gradient-gold-btn px-6 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">
             ஒப்புதலுக்கு அனுப்பு
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🔄 உள்-பணப் பரிமாற்ற Modal -->
+    <div id="treasuryTransferModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-4 border-2 border-indigo-500">
+        <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
+          <h3 class="text-base font-extrabold text-indigo-950 flex items-center gap-1.5">
+            <span>🔄</span> உள்-பணப் பரிமாற்றம் (Treasury Transfer)
+          </h3>
+          <button type="button" onclick="closeTreasuryModal()" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">பரிமாற்ற வகை *</label>
+            <select id="tt_type" onchange="toggleTreasuryFields()" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold text-indigo-950">
+              <option value="BRANCH_TO_HQ">கிளையிலிருந்து ➔ தலைமையகத்திற்கு ரொக்கம் அனுப்புதல்</option>
+              <option value="HQ_TO_BRANCH">தலைமையகத்திலிருந்து ➔ கிளைக்கு ரொக்கம் பெறுதல்</option>
+              <option value="CASH_TO_BANK">கிளை ரொக்கத்தை ➔ நமது நிறுவன வங்கியில் செலுத்துதல் (Deposit)</option>
+              <option value="BANK_TO_CASH">நமது நிறுவன வங்கியிலிருந்து ➔ கிளைக்கு ரொக்கம் எடுத்தல் (Withdrawal)</option>
+            </select>
+          </div>
+
+          <div id="tt_bank_container" class="hidden">
+            <label class="block font-bold text-slate-700 mb-1">நிறுவன வங்கிக் கணக்கு *</label>
+            <select id="tt_company_bank" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold text-brand-violet"></select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">பரிமாற்றத் தொகை (₹) *</label>
+              <input type="number" id="tt_amount" placeholder="எ.கா: 50000" class="w-full border-2 border-indigo-200 p-2 rounded-xl font-black text-rose-600 bg-white">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">கொண்டு செல்பவர் பெயர்</label>
+              <input type="text" id="tt_carrier" placeholder="பணியாளர் / ஓட்டுநர் பெயர்" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-medium">
+            </div>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">வங்கி சலான் / ரசீது எண் (UTR / Challan No)</label>
+            <input type="text" id="tt_ref_no" placeholder="வங்கிப் பரிவர்த்தனை எனில் மட்டும்" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-mono">
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">குறிப்புகள் / நோக்கம்</label>
+            <input type="text" id="tt_notes" placeholder="விவரக் குறிப்பு..." class="w-full border border-indigo-200 p-2 rounded-xl bg-white">
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">வங்கி சலான் / ரசீது புகைப்படம் 📄</label>
+            <input type="file" id="tt_file_doc" accept="image/*" class="w-full text-xs">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-indigo-100">
+          <button type="button" onclick="closeTreasuryModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-slate-800 rounded-xl text-xs font-bold cursor-pointer">ரத்து</button>
+          <button type="button" onclick="submitTreasuryTransfer()" id="btnSubmitTreasury" style="background-color: #4f46e5; color: #ffffff;" class="px-6 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
+            ஒப்புதலுக்கு அனுப்பு ➔
           </button>
         </div>
       </div>
@@ -3273,6 +3361,164 @@
       }
     }
 
+    // ==========================================
+    // 🔄 உள்-பணப் பரிமாற்ற ஜாவாஸ்கிரிப்ட் தர்க்கங்கள்
+    // ==========================================
+
+    function openTreasuryModal() {
+      document.getElementById('tt_amount').value = '';
+      document.getElementById('tt_carrier').value = '';
+      document.getElementById('tt_ref_no').value = '';
+      document.getElementById('tt_notes').value = '';
+      const docInput = document.getElementById('tt_file_doc');
+      if (docInput) docInput.value = '';
+
+      // நிறுவன வங்கிகளை ஏற்றுதல்
+      const bkSelect = document.getElementById('tt_company_bank');
+      bkSelect.innerHTML = '';
+      (companyBanksCache || []).forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.innerText = `${b.bank_name} - ${b.account_no}`;
+        bkSelect.appendChild(opt);
+      });
+
+      toggleTreasuryFields();
+      document.getElementById('treasuryTransferModal').classList.remove('hidden');
+    }
+
+    function closeTreasuryModal() {
+      document.getElementById('treasuryTransferModal').classList.add('hidden');
+    }
+
+    function toggleTreasuryFields() {
+      const type = document.getElementById('tt_type').value;
+      const bankBox = document.getElementById('tt_bank_container');
+      if (type === 'CASH_TO_BANK' || type === 'BANK_TO_CASH') {
+        bankBox.classList.remove('hidden');
+      } else {
+        bankBox.classList.add('hidden');
+      }
+    }
+
+    async function submitTreasuryTransfer() {
+      const amt = parseFloat(document.getElementById('tt_amount').value);
+      const type = document.getElementById('tt_type').value;
+      const carrier = document.getElementById('tt_carrier').value.trim();
+      const refNo = document.getElementById('tt_ref_no').value.trim();
+      const notes = document.getElementById('tt_notes').value.trim();
+      const bankId = document.getElementById('tt_company_bank').value;
+      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
+
+      if (!amt || amt <= 0) return alert("சரியான தொகையை உள்ளிடவும்.");
+
+      const btn = document.getElementById('btnSubmitTreasury');
+      btn.innerText = "அனுப்பப்படுகிறது...";
+      btn.disabled = true;
+
+      const docBase64 = await readFileAsBase64(document.getElementById('tt_file_doc'));
+
+      try {
+        const res = await fetch('/api/treasury/transfer-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transfer_type: type,
+            branch_id: branchId,
+            company_bank_id: (type === 'CASH_TO_BANK' || type === 'BANK_TO_CASH') ? parseInt(bankId) : null,
+            amount: amt,
+            carrier_person: carrier,
+            reference_no: refNo,
+            proof_doc: docBase64,
+            notes: notes,
+            staff_id: currentUser ? currentUser.id : 1
+          })
+        });
+        const data = await res.json();
+        btn.innerText = "ஒப்புதலுக்கு அனுப்பு ➔";
+        btn.disabled = false;
+
+        if (res.ok) {
+          alert("✅ " + data.message);
+          closeTreasuryModal();
+        } else {
+          alert("❌ பிழை: " + data.detail);
+        }
+      } catch (err) {
+        btn.innerText = "ஒப்புதலுக்கு அனுப்பு ➔";
+        btn.disabled = false;
+        alert("❌ இணைப்புப் பிழை: " + err.message);
+      }
+    }
+
+    async function loadPendingTreasuryTransfersHQ() {
+      const tbody = document.getElementById('pendingTreasuryTableBody');
+      if (!tbody) return;
+
+      try {
+        const res = await fetch('/api/hq/pending-treasury-transfers');
+        const data = await res.json();
+        tbody.innerHTML = '';
+
+        if (!data.data || data.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">பணப் பரிமாற்றக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>`;
+          return;
+        }
+
+        const typeLabels = {
+          'BRANCH_TO_HQ': '🏢 கிளை ➔ தலைமை அலுவலகம்',
+          'HQ_TO_BRANCH': '🏛️ தலைமை அலுவலகம் ➔ கிளை',
+          'CASH_TO_BANK': '🏦 ரொக்கம் ➔ நிறுவன வங்கி',
+          'BANK_TO_CASH': '💵 வங்கி ➔ கிளை ரொக்கம்'
+        };
+
+        data.data.forEach(x => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-2.5 font-bold text-brand-violet">${x.branch_name}</td>
+            <td class="p-2.5 font-bold text-indigo-900">${typeLabels[x.transfer_type] || x.transfer_type}</td>
+            <td class="p-2.5 font-black text-rose-600">₹${parseFloat(x.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            <td class="p-2.5 text-xs text-slate-700">
+              ${x.carrier_person ? `கொண்டு செல்பவர்: <b>${x.carrier_person}</b><br>` : ''}
+              ${x.company_bank_label ? `வங்கி: <b>${x.company_bank_label}</b>` : ''}
+              ${x.reference_no ? `<br>Ref: <span class="font-mono">${x.reference_no}</span>` : ''}
+            </td>
+            <td class="p-2.5 text-xs">
+              ${x.proof_doc ? `<button type="button" onclick="previewDocImage('${x.proof_doc}')" class="text-blue-600 font-bold underline bg-blue-50 px-2 py-0.5 rounded cursor-pointer">ஆவணம்</button>` : 'இல்லை'}
+            </td>
+            <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+              <button type="button" onclick="actionTreasuryHQ(${x.id}, 'APPROVE')" style="background-color: #059669 !important; color: #ffffff !important;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90 cursor-pointer">✓ அனுமதி</button>
+              <button type="button" onclick="actionTreasuryHQ(${x.id}, 'REJECT')" style="background-color: #dc2626 !important; color: #ffffff !important;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90 cursor-pointer">✕ நிராகரி</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error("பரிமாற்றப் பட்டியல் பிழை:", e);
+      }
+    }
+
+    async function actionTreasuryHQ(transferId, action) {
+      if (!confirm(`இந்தப் பணப் பரிமாற்றத்தை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+      try {
+        const res = await fetch('/api/hq/approve-treasury-transfer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transfer_id: transferId,
+            action: action,
+            admin_id: currentUser ? currentUser.id : 1
+          })
+        });
+        const data = await res.json();
+        alert(data.message);
+        loadPendingTreasuryTransfersHQ();
+        if (typeof loadCompanyBanksList === 'function') loadCompanyBanksList();
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      }
+    }
+
     // 👁️ KYC முழு ஆவணங்களை பாப்-அப் சாளரத்தில் காட்டும் செயல்பாடு
     // 👁️ படத்தை முழுத் திரையில் புதிய சாளரத்தில் பிழையின்றித் திறக்கும் செயல்பாடு
     function previewDocImage(src) {
@@ -3467,6 +3713,7 @@
     async function loadAllHqApprovals() {
       await loadHqOtpExemptions();
       loadPendingExpensesHQ();
+      loadPendingTreasuryTransfersHQ();
       
       try {
         const res = await fetch('/api/hq/all-pending-approvals');

@@ -124,6 +124,9 @@
           <button type="button" onclick="openDaySummaryReportModal()" class="brand-gradient-violet-btn px-3.5 py-1.5 rounded-xl font-bold shadow transition">
             📊 அன்றைய நடவடிக்கைகள்
           </button>
+          <button type="button" onclick="openExpenseModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition text-xs">
+            🧾 செலவுப் பதிவு (Expense)
+          </button>
           <button type="button" onclick="openCashDayModal('CLOSE')" id="btnCloseDay" class="bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl font-bold shadow transition">
             🌙 மாலை நாள் பூட்டுதல் (Day Close)
           </button>
@@ -325,13 +328,16 @@
     <!-- TAB B: தலைமையக ஒப்புதல்கள் மையம் -->
     <div id="hqApprovalTab" class="hidden space-y-5">
       <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
+        
+        <!-- தலைப்பு மற்றும் புதுப்பித்தல் பட்டன் -->
         <div class="flex justify-between items-center border-b border-purple-100 pb-3">
           <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
             <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
           </h2>
-          <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition">புதுப்பி 🔄</button>
+          <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition cursor-pointer">புதுப்பி 🔄</button>
         </div>
         
+        <!-- OTP விலக்குக் கோரிக்கைகள் -->
         <div id="hqOtpExemptSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-2xl border-2 border-yellow-400 shadow-sm">
           <div class="flex justify-between items-center border-b border-yellow-200 pb-2">
             <h3 class="text-xs font-black text-amber-950 uppercase flex items-center gap-2">
@@ -356,6 +362,7 @@
           </div>
         </div>
   
+        <!-- 1. வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள் -->
         <div class="space-y-2">
           <h3 class="text-xs font-extrabold text-rose-800 uppercase flex items-center gap-1.5">
             <span>💸</span> 1. வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள்:
@@ -379,6 +386,7 @@
           </div>
         </div>
 
+        <!-- 2. வாடிக்கையாளர் வங்கி மூலம் செலுத்திய வரவு சரிபார்ப்புகள் -->
         <div class="space-y-2 pt-4 border-t border-purple-100">
           <h3 class="text-xs font-extrabold text-emerald-800 uppercase flex items-center gap-1.5">
             <span>📥</span> 2. வாடிக்கையாளர் வங்கி மூலம் செலுத்திய வரவு சரிபார்ப்புகள்:
@@ -402,6 +410,7 @@
           </div>
         </div>
 
+        <!-- 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல் -->
         <div class="space-y-2 pt-4 border-t border-purple-100">
           <h3 class="text-xs font-extrabold text-blue-800 uppercase flex items-center gap-1.5">
             <span>🚪</span> 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல்:
@@ -424,6 +433,7 @@
           </div>
         </div>
 
+        <!-- 4. புதிய வாடிக்கையாளர் KYC கோரிக்கைகள் -->
         <div class="space-y-2 pt-4 border-t border-purple-100">
           <h3 class="text-xs font-extrabold text-brand-violet uppercase">4. புதிய வாடிக்கையாளர் KYC கோரிக்கைகள்:</h3>
           <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
@@ -445,6 +455,7 @@
           </div>
         </div>
 
+        <!-- 5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் -->
         <div class="space-y-2 pt-4 border-t border-purple-100">
           <h3 class="text-xs font-extrabold text-brand-violet uppercase">5. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள்:</h3>
           <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
@@ -463,8 +474,57 @@
             </table>
           </div>
         </div>
+
+        <!-- 6. கிளைகளின் தினசரி செலவு ஒப்புதல் கோரிக்கைகள் (Expenses Hub) -->
+        <div class="space-y-2 pt-4 border-t border-purple-100">
+          <h3 class="text-xs font-extrabold text-amber-900 uppercase flex items-center gap-1.5">
+            <span>🧾</span> 6. கிளைகளின் தினசரி செலவு ஒப்புதல் கோரிக்கைகள் (Expenses Hub):
+          </h3>
+          <div class="overflow-x-auto border-2 border-amber-200 rounded-xl bg-white">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-amber-100 text-amber-950 border-b border-amber-200">
+                <tr>
+                  <th class="p-2.5 font-bold">கிளை</th>
+                  <th class="p-2.5 font-bold">வகை</th>
+                  <th class="p-2.5 font-bold">தொகை</th>
+                  <th class="p-2.5 font-bold">காரணம்</th>
+                  <th class="p-2.5 font-bold">பில் படம்</th>
+                  <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
+                </tr>
+              </thead>
+              <tbody id="pendingExpensesTableBody" class="divide-y divide-amber-100 text-slate-700">
+                <tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">செலவுக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
+
+    <!-- தலைமையக கிளை செலவு ஒப்புதல் மையம் -->
+        <div class="space-y-2 pt-4 border-t border-purple-100">
+          <h3 class="text-xs font-extrabold text-amber-900 uppercase flex items-center gap-1.5">
+            <span>🧾</span> 6. கிளைகளின் தினசரி செலவு ஒப்புதல் கோரிக்கைகள் (Expenses Hub):
+          </h3>
+          <div class="overflow-x-auto border-2 border-amber-200 rounded-xl bg-white">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-amber-100 text-amber-950 border-b border-amber-200">
+                <tr>
+                  <th class="p-2.5 font-bold">கிளை</th>
+                  <th class="p-2.5 font-bold">வகை</th>
+                  <th class="p-2.5 font-bold">தொகை</th>
+                  <th class="p-2.5 font-bold">காரணம்</th>
+                  <th class="p-2.5 font-bold">பில் படம்</th>
+                  <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
+                </tr>
+              </thead>
+              <tbody id="pendingExpensesTableBody" class="divide-y divide-amber-100 text-slate-700">
+                <tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">செலவுக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
     <!-- TAB C: நிர்வாகம் -->
     <div id="adminPanelTab" class="hidden space-y-6">
@@ -895,6 +955,53 @@
 
       </div>
     </div>
+
+    <!-- கிளை செலவு பதிவு Modal -->
+    <div id="branchExpenseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 border-2 border-amber-500">
+        <div class="flex justify-between items-center border-b border-amber-100 pb-2">
+          <h3 class="text-base font-extrabold text-amber-950">🧾 கிளை தினசரி செலவுப் பதிவு</h3>
+          <button type="button" onclick="closeExpenseModal()" class="text-slate-400 font-bold">✕</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">செலவு வகை *</label>
+            <select id="exp_category" class="w-full border-2 border-amber-200 p-2 rounded-xl bg-white font-bold">
+              <option value="TEA_SNACKS">தேநீர் & சிற்றுண்டி</option>
+              <option value="ELECTRICITY">மின்சார கட்டணம்</option>
+              <option value="STATIONERY">நோட்டு & ஸ்டேஷனரி</option>
+              <option value="MAINTENANCE">கடை பராமரிப்பு & துப்புரவு</option>
+              <option value="TRAVEL">பயணச் செலவு</option>
+              <option value="OTHER">இதர செலவுகள்</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">செலவுத் தொகை (₹) *</label>
+            <input type="number" id="exp_amount" placeholder="எ.கா: 250" class="w-full border-2 border-amber-200 p-2 rounded-xl font-bold text-rose-600 bg-white">
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">காரணம் / விவரக் குறிப்பு *</label>
+            <textarea id="exp_reason" rows="2" placeholder="எதற்கான செலவு..." class="w-full border-2 border-amber-200 p-2 rounded-xl bg-white"></textarea>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">பில் / வவுச்சர் ரசீதுப் படம் 📄</label>
+            <input type="file" id="exp_file_bill" accept="image/*" class="w-full text-xs">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-amber-100">
+          <button type="button" onclick="closeExpenseModal()" class="px-4 py-2 border rounded-xl text-xs">ரத்து</button>
+          <button type="button" onclick="submitBranchExpense()" id="btnSubmitExpense" class="brand-gradient-gold-btn px-6 py-2 rounded-xl text-xs font-black shadow border border-yellow-500">
+            ஒப்புதலுக்கு அனுப்பு
+          </button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Modals -->
     <!-- 1. புதிய முழு KYC Modal -->
     <div id="fullKycModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
@@ -3025,6 +3132,126 @@
       }
     }
 
+    // ==========================================
+    // 🧾 கிளை தினசரி செலவு மேலாண்மை செயல்பாடுகள்
+    // ==========================================
+
+    function openExpenseModal() {
+      document.getElementById('exp_amount').value = '';
+      document.getElementById('exp_reason').value = '';
+      const billInput = document.getElementById('exp_file_bill');
+      if (billInput) billInput.value = '';
+      document.getElementById('branchExpenseModal').classList.remove('hidden');
+    }
+
+    function closeExpenseModal() {
+      const modal = document.getElementById('branchExpenseModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function submitBranchExpense() {
+      const amt = parseFloat(document.getElementById('exp_amount').value);
+      const cat = document.getElementById('exp_category').value;
+      const rsn = document.getElementById('exp_reason').value.trim();
+      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
+
+      if (!amt || amt <= 0 || !rsn) {
+        return alert("செலவுத் தொகை மற்றும் காரணத்தைக் குறிப்பிடவும்.");
+      }
+
+      const btn = document.getElementById('btnSubmitExpense');
+      btn.innerText = "அனுப்பப்படுகிறது...";
+      btn.disabled = true;
+
+      const billBase64 = await readFileAsBase64(document.getElementById('exp_file_bill'));
+
+      try {
+        const res = await fetch('/api/expense/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            branch_id: branchId,
+            category: cat,
+            amount: amt,
+            payment_mode: "CASH",
+            reason: rsn,
+            bill_photo: billBase64,
+            staff_id: currentUser ? currentUser.id : 1
+          })
+        });
+        const data = await res.json();
+        btn.innerText = "ஒப்புதலுக்கு அனுப்பு";
+        btn.disabled = false;
+
+        if (res.ok) {
+          alert("✅ " + data.message);
+          closeExpenseModal();
+        } else {
+          alert("❌ பிழை: " + data.detail);
+        }
+      } catch (err) {
+        btn.innerText = "ஒப்புதலுக்கு அனுப்பு";
+        btn.disabled = false;
+        alert("❌ இணைப்புப் பிழை: " + err.message);
+      }
+    }
+
+    async function loadPendingExpensesHQ() {
+      const tbody = document.getElementById('pendingExpensesTableBody');
+      if (!tbody) return;
+
+      try {
+        const res = await fetch('/api/hq/pending-expenses');
+        const data = await res.json();
+        tbody.innerHTML = '';
+
+        if (!data.data || data.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">செலவுக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>`;
+          return;
+        }
+
+        data.data.forEach(x => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-2.5 font-bold text-brand-violet">${x.branch_name}</td>
+            <td class="p-2.5 font-bold">${x.category}</td>
+            <td class="p-2.5 font-black text-rose-600">₹${parseFloat(x.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            <td class="p-2.5 text-xs text-slate-600">${x.reason}</td>
+            <td class="p-2.5 text-xs">
+              ${x.bill_photo ? `<button type="button" onclick="previewDocImage('${x.bill_photo}')" class="text-blue-600 font-bold underline bg-blue-50 px-2 py-0.5 rounded cursor-pointer">பில் படம்</button>` : 'இல்லை'}
+            </td>
+            <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+              <button type="button" onclick="actionExpenseHQ(${x.id}, 'APPROVE')" style="background-color: #059669 !important; color: #ffffff !important;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90 cursor-pointer">✓ அனுமதி</button>
+              <button type="button" onclick="actionExpenseHQ(${x.id}, 'REJECT')" style="background-color: #dc2626 !important; color: #ffffff !important;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow hover:opacity-90 cursor-pointer">✕ நிராகரி</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error("செலவுப் பட்டியல் பிழை:", e);
+      }
+    }
+
+    async function actionExpenseHQ(expenseId, action) {
+      if (!confirm(`இந்தச் செலவை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+      try {
+        const res = await fetch('/api/hq/approve-expense', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            expense_id: expenseId,
+            action: action,
+            admin_id: currentUser ? currentUser.id : 1
+          })
+        });
+        const data = await res.json();
+        alert(data.message);
+        loadPendingExpensesHQ();
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      }
+    }
+
     // 👁️ KYC முழு ஆவணங்களை பாப்-அப் சாளரத்தில் காட்டும் செயல்பாடு
     // 👁️ படத்தை முழுத் திரையில் புதிய சாளரத்தில் பிழையின்றித் திறக்கும் செயல்பாடு
     function previewDocImage(src) {
@@ -3218,7 +3445,8 @@
 
     async function loadAllHqApprovals() {
       await loadHqOtpExemptions();
-
+      loadPendingExpensesHQ();
+      
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();

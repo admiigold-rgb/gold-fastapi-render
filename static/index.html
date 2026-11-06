@@ -740,26 +740,26 @@
           <button type="button" onclick="closeHqKycViewModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
 
-        <!-- 3 ஆவணப் படங்கள் (புகைப்படம், கையொப்பம், அடையாள அட்டை) -->
+        <!-- 3 ஆவணப் படங்கள் (படத்தை கிளிக் செய்தால் புதிய விண்டோவில் முழுமையாக விரியும்) -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-purple-50/70 p-3 rounded-2xl border border-purple-100 text-center">
           <div class="space-y-1">
             <span class="text-[11px] font-bold text-brand-violet block">1. வாடிக்கையாளர் படம் 📷</span>
             <div class="w-full h-32 bg-white rounded-xl border border-purple-200 overflow-hidden flex items-center justify-center shadow-inner">
-              <img id="vkyc_img_photo" src="" class="w-full h-full object-contain cursor-pointer" onclick="window.open(this.src)" alt="Customer Photo">
+              <img id="vkyc_img_photo" src="" class="w-full h-full object-contain cursor-pointer hover:opacity-80 transition" onclick="previewDocImage(this.src)" title="பெரிதாகப் பார்க்க கிளிக் செய்யவும்" alt="Customer Photo">
               <span id="vkyc_no_photo" class="text-xs text-slate-400 hidden">படம் இல்லை</span>
             </div>
           </div>
           <div class="space-y-1">
             <span class="text-[11px] font-bold text-brand-violet block">2. கையொப்பம் ✍️</span>
             <div class="w-full h-32 bg-white rounded-xl border border-purple-200 overflow-hidden flex items-center justify-center shadow-inner">
-              <img id="vkyc_img_sign" src="" class="w-full h-full object-contain cursor-pointer" onclick="window.open(this.src)" alt="Signature">
+              <img id="vkyc_img_sign" src="" class="w-full h-full object-contain cursor-pointer hover:opacity-80 transition" onclick="previewDocImage(this.src)" title="பெரிதாகப் பார்க்க கிளிக் செய்யவும்" alt="Signature">
               <span id="vkyc_no_sign" class="text-xs text-slate-400 hidden">கையொப்பம் இல்லை</span>
             </div>
           </div>
           <div class="space-y-1">
             <span class="text-[11px] font-bold text-brand-violet block">3. அடையாள அட்டை ஆவணம் 🪪</span>
             <div class="w-full h-32 bg-white rounded-xl border border-purple-200 overflow-hidden flex items-center justify-center shadow-inner">
-              <img id="vkyc_img_proof" src="" class="w-full h-full object-contain cursor-pointer" onclick="window.open(this.src)" alt="ID Proof">
+              <img id="vkyc_img_proof" src="" class="w-full h-full object-contain cursor-pointer hover:opacity-80 transition" onclick="previewDocImage(this.src)" title="பெரிதாகப் பார்க்க கிளிக் செய்யவும்" alt="ID Proof">
               <span id="vkyc_no_proof" class="text-xs text-slate-400 hidden">ஆவணம் இல்லை</span>
             </div>
           </div>
@@ -782,14 +782,20 @@
           <div><span class="text-amber-900 font-bold block">ரெபரன்ஸ் 2:</span><span id="vkyc_ref2" class="text-slate-700">-</span></div>
         </div>
 
-        <!-- செயல் பட்டன்கள் (Modal-க்குள்ளேயே ஒப்புதல் / நிராகரிப்பு செய்யும் வசதி) -->
-        <div class="flex justify-between items-center pt-2 border-t border-purple-100">
-          <button type="button" onclick="closeHqKycViewModal()" class="px-4 py-2 border rounded-xl text-xs font-semibold">மூடு (Close)</button>
-          <div class="flex gap-2">
-            <button type="button" id="btnModalRejectKyc" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow">
+        <!-- 👇 ஒப்புதல் & நிராகரி பட்டன்கள் தெளிவாகத் தெரியும் பகுதி 👇 -->
+        <div class="flex justify-between items-center pt-3 border-t-2 border-purple-100 mt-2">
+          <button type="button" onclick="closeHqKycViewModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">
+            மூடு (Close)
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btnModalRejectKyc" 
+                    style="background-color: #dc2626 !important; color: #ffffff !important; display: inline-block;" 
+                    class="px-4 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 cursor-pointer transition">
               ✕ நிராகரி
             </button>
-            <button type="button" id="btnModalApproveKyc" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow">
+            <button type="button" id="btnModalApproveKyc" 
+                    style="background-color: #059669 !important; color: #ffffff !important; display: inline-block;" 
+                    class="px-5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 cursor-pointer transition">
               ✓ சரிபார்த்து ஒப்புதல் அளி (Approve)
             </button>
           </div>
@@ -2839,6 +2845,31 @@
     }
 
     // 👁️ KYC முழு ஆவணங்களை பாப்-அப் சாளரத்தில் காட்டும் செயல்பாடு
+    // 👁️ படத்தை முழுத் திரையில் புதிய சாளரத்தில் பிழையின்றித் திறக்கும் செயல்பாடு
+    function previewDocImage(src) {
+      if (!src || src.length < 50) return alert("ஆவணப் படம் கிடைக்கவில்லை.");
+      const imgWindow = window.open("", "_blank");
+      if (imgWindow) {
+        imgWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>ஆவணப் பார்வை (Document View)</title>
+              <style>
+                body { margin: 0; background-color: #0f172a; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+              </style>
+            </head>
+            <body>
+              <img src="${src}" alt="Document Preview">
+            </body>
+          </html>
+        `);
+        imgWindow.document.close();
+      }
+    }
+
+    // 👁️ KYC முழு ஆவணங்களை பாப்-அப் சாளரத்தில் காட்டும் செயல்பாடு
     function openHqKycViewModal(customerId) {
       const kList = window.pendingKycDataCache || [];
       const k = kList.find(x => x.id === customerId);
@@ -2861,15 +2892,23 @@
       setupDocImage('vkyc_img_sign', 'vkyc_no_sign', k.signature_photo);
       setupDocImage('vkyc_img_proof', 'vkyc_no_proof', k.id_proof_photo);
 
-      // 3. Modal-ல் உள்ள ஒப்புதல் / நிராகரிப்பு பட்டன்களுக்கு செயல் அமைத்தல்
-      document.getElementById('btnModalApproveKyc').onclick = () => {
-        closeHqKycViewModal();
-        actionKyc(k.id, 'APPROVE');
-      };
-      document.getElementById('btnModalRejectKyc').onclick = () => {
-        closeHqKycViewModal();
-        actionKyc(k.id, 'REJECT');
-      };
+      // 3. Modal-ல் உள்ள ஒப்புதல் / நிராகரி பட்டன்களுக்கு நேரடி செயல் அமைத்தல்
+      const btnApprove = document.getElementById('btnModalApproveKyc');
+      const btnReject = document.getElementById('btnModalRejectKyc');
+
+      if (btnApprove) {
+        btnApprove.onclick = () => {
+          closeHqKycViewModal();
+          actionKyc(k.id, 'APPROVE');
+        };
+      }
+
+      if (btnReject) {
+        btnReject.onclick = () => {
+          closeHqKycViewModal();
+          actionKyc(k.id, 'REJECT');
+        };
+      }
 
       document.getElementById('hqKycViewModal').classList.remove('hidden');
     }
@@ -2882,6 +2921,7 @@
         img.classList.remove('hidden');
         noTxt.classList.add('hidden');
       } else {
+        img.src = '';
         img.classList.add('hidden');
         noTxt.classList.remove('hidden');
       }

@@ -109,6 +109,8 @@
 
     <!-- TAB A: கவுண்ட்டர் பிரிவு -->
     <div id="counterTab" class="hidden space-y-4">
+      
+      <!-- நாள் தொடக்கம் / நடவடிக்கைகள் பட்டை -->
       <div class="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-wrap justify-between items-center gap-3 text-xs">
         <div class="flex items-center gap-2">
           <span class="font-extrabold text-brand-violet flex items-center gap-1">📅 பரிவர்த்தனை தேதி:</span>
@@ -128,6 +130,7 @@
         </div>
       </div>
 
+      <!-- வங்கி அறிவிப்பு பட்டை -->
       <div class="bg-gradient-to-r from-amber-50 to-purple-50 border-2 border-amber-200 p-3 rounded-2xl flex justify-between items-center text-xs shadow-sm">
         <div>
           <span class="font-bold text-brand-violet">🔔 வங்கி பட்டுவாடா & வரவு நிலவரம்:</span>
@@ -136,6 +139,18 @@
         <button type="button" onclick="checkBranchBankStatus()" class="text-amber-900 font-extrabold hover:underline bg-yellow-200 px-2.5 py-1 rounded-lg">புதுப்பி 🔄</button>
       </div>
 
+      <!-- ⏸️ நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளர்கள் பட்டை (Held Drafts Bar) -->
+      <div id="heldDraftsContainer" class="hidden bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-yellow-400 p-3 rounded-2xl flex items-center justify-between shadow-sm">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-black text-amber-950 flex items-center gap-1.5">
+            <span>⏸️</span> நிறுத்தி வைக்கப்பட்டுள்ள வாடிக்கையாளர்கள் (Held Drafts):
+          </span>
+          <div id="heldDraftsBadges" class="flex items-center gap-2 flex-wrap"></div>
+        </div>
+        <span class="text-[10px] text-amber-900 font-bold bg-yellow-200 px-2.5 py-1 rounded-lg">கிளிக் செய்து பரிவர்த்தனையை முடிக்கலாம்</span>
+      </div>
+
+      <!-- வாடிக்கையாளர் தேடல் -->
       <div id="searchSection" class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
         <div class="flex flex-col sm:flex-row gap-2">
           <input type="text" id="searchInput" placeholder="வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்..." class="flex-1 px-4 py-2.5 border-2 border-purple-100 rounded-xl text-sm focus:border-brand-violet focus:outline-none">
@@ -167,7 +182,10 @@
               <p class="text-xs text-slate-500 truncate max-w-md mt-0.5">முகவரி: <span id="cardAddress">-</span></p>
             </div>
           </div>
-          <div class="flex gap-2 w-full md:w-auto justify-end">
+          <div class="flex gap-2 w-full md:w-auto justify-end flex-wrap">
+            <button type="button" onclick="holdCurrentCustomerDraft()" class="text-xs text-amber-950 bg-yellow-400 border-2 border-yellow-500 hover:bg-yellow-500 px-3.5 py-1.5 rounded-xl font-black shadow transition">
+              ⏸️ நிறுத்தி வை (Hold)
+            </button>
             <button type="button" onclick="openFullUpdateModal()" class="text-xs text-purple-800 bg-purple-50 border-2 border-purple-200 hover:bg-purple-100 px-3.5 py-1.5 rounded-xl font-bold transition">
               சுயவிவர மாற்றம் 📝
             </button>
@@ -178,12 +196,13 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+          <!-- அடகு படிவம் -->
+          <div id="pawnFormSection" class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
             <div class="border-b border-purple-100 pb-2 flex justify-between items-center">
               <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2">
                 <span>🪙</span> புதிய நகைக்கடன் அடகு (New Loan Entry)
               </h3>
-              <span class="text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold">படிவம்</span>
+              <span id="pawnStatusBadge" class="text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold">படிவம்</span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -206,7 +225,7 @@
                 <select id="item_purity" class="border-2 border-purple-200 p-2 rounded-xl text-xs bg-white font-bold text-purple-900"></select>
               </div>
               <div class="flex justify-end pt-1">
-                <button type="button" onclick="addOrnamentToTable()" class="brand-gradient-violet-btn text-xs px-4 py-2 rounded-xl font-bold shadow">+ நகையைச் சேர்</button>
+                <button type="button" id="btnAddOrnament" onclick="addOrnamentToTable()" class="brand-gradient-violet-btn text-xs px-4 py-2 rounded-xl font-bold shadow">+ நகையைச் சேர்</button>
               </div>
             </div>
 
@@ -255,7 +274,7 @@
             </div>
 
             <div class="flex justify-end pt-2">
-              <button type="button" onclick="submitPawnToDatabase()" class="brand-gradient-gold-btn font-black text-xs px-6 py-3 rounded-xl shadow-lg border border-yellow-500 transition transform active:scale-95">
+              <button type="button" id="btnAddToCart" onclick="submitPawnToDatabase()" class="brand-gradient-gold-btn font-black text-xs px-6 py-3 rounded-xl shadow-lg border border-yellow-500 transition transform active:scale-95">
                 கூடையில் சேர் (Add to Cart) 🛒
               </button>
             </div>
@@ -944,6 +963,7 @@
     let currentUser = null;
     let activeCustomer = null;
     let activeVisitId = null;
+    let isDraftLocked = false; // 👈 ஹோல்ட் செய்யப்பட்ட கணக்குகளை லாக் செய்ய
     let ornamentList = [];
     let cartItems = [];
     let currentNetAbs = 0;
@@ -1032,6 +1052,7 @@
       loadCompanyBanksDropdown();
       fetchAndSetupPurityDropdown();
       initTxnDate();
+      renderHeldDraftsBar(); // ஹோல்ட் செய்யப்பட்ட வாடிக்கையாளர்களை ஏற்றுதல்
 
       if (user.permissions?.can_manage_users === true) {
         loadBranchesList();
@@ -1339,6 +1360,9 @@
 
     // 4. Ornaments & LTV Calculation
     function addOrnamentToTable() {
+      if (isDraftLocked) {
+        return alert("⚠️ இந்த வருகை நிறுத்தி வைக்கப்பட்டு மீண்டும் திறக்கப்பட்டுள்ளது! இதில் புதிய நகைகளையோ கடன்களையோ சேர்க்க முடியாது.");
+      }
       const type = document.getElementById('item_type').value.trim();
       const count = parseInt(document.getElementById('item_count').value) || 1;
       const gross = parseFloat(document.getElementById('item_gross').value) || 0;
@@ -1366,6 +1390,9 @@
     }
 
     function removeOrnament(idx) {
+      if (isDraftLocked) {
+        return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் நகைகளை நீக்க முடியாது!");
+      }
       ornamentList.splice(idx, 1);
       renderOrnamentsTable();
       calculateEligibleLoanAmount();
@@ -1386,7 +1413,9 @@
           <td class="p-2.5 text-right font-mono">${item.gross_weight.toFixed(3)}</td>
           <td class="p-2.5 text-right font-mono font-bold text-brand-violet">${item.net_weight.toFixed(3)}</td>
           <td class="p-2.5 text-center font-bold text-amber-900">${item.purity}</td>
-          <td class="p-2.5 text-center"><button type="button" onclick="removeOrnament(${idx})" class="text-rose-500 font-bold hover:underline">✕</button></td>
+          <td class="p-2.5 text-center">
+            ${isDraftLocked ? '<span class="text-slate-400">🔒</span>' : `<button type="button" onclick="removeOrnament(${idx})" class="text-rose-500 font-bold hover:underline">✕</button>`}
+          </td>
         `;
         tbody.appendChild(tr);
       });
@@ -1420,10 +1449,10 @@
       document.getElementById('displayMaxEligibleLoan').innerText = `₹ ${maxEligibleLoanAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (${ltvPercent}% LTV)`;
 
       const loanInput = document.getElementById('loan_amount');
-      if (loanInput) loanInput.value = maxEligibleLoanAmount;
+      if (loanInput && !isDraftLocked) loanInput.value = maxEligibleLoanAmount;
 
       const chargesInput = document.getElementById('charges_amount');
-      if (chargesInput && currentSelectedScheme.processing_charge_type === 'PLEDGE') {
+      if (chargesInput && currentSelectedScheme.processing_charge_type === 'PLEDGE' && !isDraftLocked) {
         if (currentSelectedScheme.processing_charge_calc === 'AMOUNT') {
           chargesInput.value = currentSelectedScheme.processing_charge_value || 0;
         } else {
@@ -1524,6 +1553,7 @@
     }
 
     function resetCustomer() {
+      toggleDraftLockMode(false); // 🔓 அடுத்த வாடிக்கையாளருக்கு லாக் ரத்து செய்யப்படுகிறது
       activeCustomer = null;
       activeVisitId = null;
       ornamentList = [];
@@ -1534,8 +1564,147 @@
       document.getElementById('searchSection').classList.remove('hidden');
     }
 
+    // ==========================================
+    // ⏸️ வாடிக்கையாளர் நிறுத்திவைப்பு (Draft/Hold System)
+    // ==========================================
+    function holdCurrentCustomerDraft() {
+      if (!activeCustomer || !activeCustomer.id) {
+        return alert("நிறுத்தி வைப்பதற்கு செயலில் உள்ள வாடிக்கையாளர் இல்லை.");
+      }
+
+      const draftSession = {
+        customer: activeCustomer,
+        visit_id: activeVisitId,
+        cart: [...cartItems],
+        ornaments: [...ornamentList],
+        saved_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
+      drafts = drafts.filter(d => d.customer.id !== activeCustomer.id);
+      drafts.push(draftSession);
+      localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
+
+      alert(`✅ ${activeCustomer.name} அவர்களின் கணக்கு தற்காலிகமாக நிறுத்தி வைக்கப்பட்டது.\nஅடுத்த வாடிக்கையாளரின் சேவையைத் தொடரலாம்.`);
+
+      toggleDraftLockMode(false);
+      activeCustomer = null;
+      activeVisitId = null;
+      cartItems = [];
+      ornamentList = [];
+      renderOrnamentsTable();
+      renderCart();
+      document.getElementById('activeCustomerSection').classList.add('hidden');
+      document.getElementById('searchSection').classList.remove('hidden');
+
+      renderHeldDraftsBar();
+    }
+
+    function renderHeldDraftsBar() {
+      const container = document.getElementById('heldDraftsContainer');
+      const badgesContainer = document.getElementById('heldDraftsBadges');
+      const drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
+
+      if (!container || !badgesContainer) return;
+
+      if (drafts.length === 0) {
+        container.classList.add('hidden');
+        badgesContainer.innerHTML = '';
+        return;
+      }
+
+      container.classList.remove('hidden');
+      badgesContainer.innerHTML = '';
+
+      drafts.forEach(d => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = "flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-yellow-200 border-2 border-yellow-500 rounded-xl text-xs font-black text-amber-950 shadow-sm transition";
+        btn.innerHTML = `<span>👤 ${d.customer.name}</span> <span class="text-[10px] bg-yellow-300 text-amber-900 px-1.5 py-0.5 rounded font-mono font-bold">${d.saved_at}</span>`;
+        btn.onclick = () => restoreCustomerDraft(d.customer.id);
+        badgesContainer.appendChild(btn);
+      });
+    }
+
+    function restoreCustomerDraft(customerId) {
+      if (activeCustomer && activeCustomer.id) {
+        if (!confirm(`தற்போது திரையில் உள்ள ${activeCustomer.name} அவர்களின் விபரங்களை நிறுத்தி வைத்துவிட்டு, தேர்வு செய்த வாடிக்கையாளரைத் திறக்கவா?`)) {
+          return;
+        }
+        holdCurrentCustomerDraft();
+      }
+
+      let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
+      const target = drafts.find(d => d.customer.id === customerId);
+      if (!target) return alert("இந்த வாடிக்கையாளர் விபரம் கிடைக்கவில்லை.");
+
+      drafts = drafts.filter(d => d.customer.id !== customerId);
+      localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
+
+      activeCustomer = target.customer;
+      activeVisitId = target.visit_id;
+      cartItems = target.cart || [];
+      ornamentList = target.ornaments || [];
+
+      document.getElementById('cardName').innerText = activeCustomer.name;
+      document.getElementById('cardMobile').innerText = activeCustomer.mobile;
+      document.getElementById('cardRelation').innerText = (activeCustomer.relation_type || 'உறவினர்') + ": " + (activeCustomer.guardian_name || '-');
+      document.getElementById('cardProofNo').innerText = activeCustomer.id_proof_no || '-';
+      document.getElementById('cardAddress').innerText = activeCustomer.address || 'முகவரி இல்லை';
+
+      const imgElem = document.getElementById('cardCustomerImg');
+      const placeholder = document.getElementById('cardCustomerPlaceholder');
+      if (activeCustomer.customer_photo) {
+        imgElem.src = activeCustomer.customer_photo;
+        imgElem.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+      } else {
+        imgElem.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+      }
+
+      document.getElementById('searchSection').classList.add('hidden');
+      document.getElementById('activeCustomerSection').classList.remove('hidden');
+
+      renderOrnamentsTable();
+      renderCart();
+      renderHeldDraftsBar();
+      fetchAutoLoanNumber();
+      onSchemeSelected();
+
+      // 🔒 ஹோல்ட் செய்யப்பட்ட கணக்கின் அடகு படிவத்தை லாக் செய்தல்
+      toggleDraftLockMode(true);
+    }
+
+    function toggleDraftLockMode(lock) {
+      isDraftLocked = lock;
+      const pawnSection = document.getElementById('pawnFormSection');
+      const undoBtn = document.getElementById('btnUndoCart');
+      const statusBadge = document.getElementById('pawnStatusBadge');
+      const cartBadge = document.getElementById('cartCountBadge');
+
+      if (pawnSection) {
+        pawnSection.querySelectorAll("input, select, button").forEach(el => {
+          el.disabled = lock;
+        });
+        pawnSection.style.opacity = lock ? "0.6" : "1";
+      }
+
+      if (undoBtn && lock) {
+        undoBtn.classList.add('hidden');
+      }
+
+      if (statusBadge) {
+        statusBadge.innerText = lock ? "🔒 நிறுத்தி வைக்கப்பட்ட வருகை (லாக் செய்யப்பட்டது)" : "படிவம்";
+        statusBadge.className = lock ? "text-xs bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-lg font-black border border-amber-400" : "text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold";
+      }
+    }
+
     // 6. Cart & Loan Submission
     async function submitPawnToDatabase() {
+      if (isDraftLocked) {
+        return alert("⚠️ இந்த வருகை நிறுத்தி வைக்கப்பட்டு மீண்டும் திறக்கப்பட்டுள்ளது! இதில் புதிய நகைகளையோ கடன்களையோ சேர்க்க முடியாது. தீர்வு (Checkout) மட்டுமே செய்ய இயலும்.");
+      }
       if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
         return alert("❌ தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் புதிய அடகு வைக்க முடியாது!");
       }
@@ -1588,6 +1757,9 @@
     }
 
     async function removeLastCartItem() {
+      if (isDraftLocked) {
+        return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் கார்ட்டை மாற்ற முடியாது!");
+      }
       if (cartItems.length === 0) return;
       const lastItem = cartItems[cartItems.length - 1];
       if (confirm(`கடைசியாகச் சேர்த்த கடன் '${lastItem.loan_no}' ஐ கூடையில் இருந்து நீக்க விரும்புகிறீர்களா?`)) {
@@ -1614,7 +1786,12 @@
         return;
       }
 
-      undoBtn.classList.remove('hidden');
+      if (!isDraftLocked) {
+        undoBtn.classList.remove('hidden');
+      } else {
+        undoBtn.classList.add('hidden');
+      }
+
       let totCredit = 0, totDebit = 0;
       cartItems.forEach((item, index) => {
         totCredit += item.credit; totDebit += item.debit;
@@ -1633,7 +1810,7 @@
         container.appendChild(div);
       });
 
-      document.getElementById('cartCountBadge').innerText = `${cartItems.length} கடன்கள்`;
+      document.getElementById('cartCountBadge').innerText = `${cartItems.length} கடன்கள்` + (isDraftLocked ? " (🔒 லாக்)" : "");
       document.getElementById('cartCredit').innerText = `₹ ${totCredit.toFixed(2)}`;
       document.getElementById('cartDebit').innerText = `₹ ${totDebit.toFixed(2)}`;
 

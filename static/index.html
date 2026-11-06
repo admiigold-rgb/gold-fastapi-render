@@ -671,8 +671,9 @@
     </div>
 
     <!-- வருகை முழு விபர Modal -->
+    <!-- வருகை முழு விபர Modal (OTP மற்றும் பட்டுவாடா விபரங்களுடன்) -->
     <div id="visitDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border-2 border-brand-violet">
+      <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-violet">
         <div class="flex justify-between items-center border-b border-purple-100 pb-2">
           <div class="flex items-center gap-2">
             <span class="text-xl">🔍</span>
@@ -681,21 +682,42 @@
           <button type="button" onclick="closeVisitDetailModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
 
-        <!-- அடிப்படை விபரங்கள் -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-purple-50/60 p-3.5 rounded-2xl border border-purple-100 text-xs">
-          <div><span class="text-slate-500 block">வாடிக்கையாளர்:</span><b id="vd_cust_name" class="text-brand-violet text-sm">-</b></div>
-          <div><span class="text-slate-500 block">மொபைல்:</span><b id="vd_cust_mobile" class="font-mono text-slate-800">-</b></div>
+        <!-- 1. அடிப்படை வாடிக்கையாளர் & கிளை விபரங்கள் -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-purple-50/70 p-3 rounded-2xl border border-purple-100 text-xs">
+          <div><span class="text-slate-500 block">வாடிக்கையாளர்:</span><b id="vd_cust_name" class="text-brand-violet font-extrabold text-sm">-</b></div>
+          <div><span class="text-slate-500 block">முதன்மை மொபைல்:</span><b id="vd_cust_mobile" class="font-mono text-slate-800">-</b></div>
           <div><span class="text-slate-500 block">கிளை:</span><b id="vd_branch" class="text-slate-800">-</b></div>
-          <div><span class="text-slate-500 block">வருகை நோக்கம்:</span><b id="vd_purpose" class="text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">நோக்கம் / காரணம்:</span><b id="vd_purpose" class="text-rose-700 font-semibold">-</b></div>
           <div><span class="text-slate-500 block">நிகரத் தொகை:</span><b id="vd_net_amount" class="text-rose-600 font-black text-sm">₹ 0.00</b></div>
-          <div><span class="text-slate-500 block">பட்டுவாடா முறை:</span><b id="vd_pay_split" class="text-slate-800">-</b></div>
+          <div><span class="text-slate-500 block">தீர்வு வகை:</span><b id="vd_settle_type" class="text-brand-violet font-bold">-</b></div>
         </div>
 
-        <!-- அடகு வைக்கப்பட்ட கடன்கள் மற்றும் நகைகள் -->
+        <!-- 2. பணப் பட்டுவாடா & ரொக்கத் தாள்கள் (Denominations) விபரம் -->
+        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-3 rounded-2xl border border-emerald-200 text-xs space-y-1.5">
+          <span class="font-black text-emerald-900 block uppercase">💵 பணப் பட்டுவாடா & தாள்கள் விபரம்:</span>
+          <div class="flex justify-between items-center text-slate-700">
+            <span>ரொக்கம்: <b id="vd_cash_amt" class="text-slate-900">₹ 0.00</b> | வங்கி: <b id="vd_bank_amt" class="text-slate-900">₹ 0.00</b></span>
+            <span id="vd_bank_ref" class="font-mono text-[11px] text-slate-500"></span>
+          </div>
+          <div id="vd_denom_box" class="pt-1.5 border-t border-emerald-200/60 text-[11px] font-mono text-emerald-950 flex flex-wrap gap-2">
+            <!-- தாள்கள் இங்கே தானாக வரும் -->
+          </div>
+        </div>
+
+        <!-- 3. OTP சரிபார்ப்பு நிலவரம் -->
+        <div class="bg-yellow-50 p-3 rounded-2xl border border-yellow-300 text-xs flex justify-between items-center">
+          <div>
+            <span class="text-amber-900 block font-bold">🔐 SMS OTP நிலை:</span>
+            <span id="vd_otp_text" class="text-slate-600 font-medium">OTP உருவாக்கப்படவில்லை</span>
+          </div>
+          <span id="vd_otp_badge" class="px-2.5 py-1 rounded-lg font-black text-[11px] bg-yellow-200 text-amber-950 border border-yellow-400">NONE</span>
+        </div>
+
+        <!-- 4. அடகு வைக்கப்பட்ட கடன்கள் மற்றும் நகைகள் -->
         <div class="space-y-2">
-          <h4 class="text-xs font-black text-brand-violet uppercase">அடகு வைக்கப்பட்ட நகைகள் விபரம்:</h4>
-          <div id="vd_loans_container" class="space-y-2.5 max-h-60 overflow-y-auto">
-            <p class="text-xs text-slate-400 text-center py-4">விவரங்கள் ஏற்றப்படுகின்றன...</p>
+          <h4 class="text-xs font-black text-brand-violet uppercase">🪙 அடகு வைக்கப்பட்ட நகைகள் விபரம்:</h4>
+          <div id="vd_loans_container" class="space-y-2 max-h-52 overflow-y-auto">
+            <p class="text-xs text-slate-400 text-center py-3">விவரங்கள் ஏற்றப்படுகின்றன...</p>
           </div>
         </div>
 
@@ -2245,12 +2267,15 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    // வருகை விபர சாளரத்தைத் திறந்து தரவுகளை ஏற்றுதல்
+    // வருகை விபர சாளரத்தைத் திறந்து அனைத்துத் தரவுகளையும் ஏற்றுதல்
     async function viewVisitDetails(visitId) {
       const modal = document.getElementById('visitDetailModal');
       const container = document.getElementById('vd_loans_container');
+      const denomBox = document.getElementById('vd_denom_box');
+      
       document.getElementById('vd_title').innerText = `வருகை முழு விபரம் (#VIS-${visitId})`;
       container.innerHTML = `<p class="text-xs text-brand-violet font-bold text-center py-4">விபரங்கள் திரட்டப்படுகின்றன...</p>`;
+      denomBox.innerHTML = '';
       modal.classList.remove('hidden');
 
       try {
@@ -2264,15 +2289,58 @@
         const v = data.visit;
         const c = data.customer;
         const b = data.branch;
+        const s = data.settlement || {};
+        const otp = data.otp_info || {};
 
+        // 1. வாடிக்கையாளர் & கிளை
         document.getElementById('vd_cust_name').innerText = c.name || '-';
         document.getElementById('vd_cust_mobile').innerText = c.mobile || '-';
         document.getElementById('vd_branch').innerText = `${b.branch_name || 'கிளை'} (${b.branch_code || v.branch_id})`;
         document.getElementById('vd_purpose').innerText = v.purpose || '-';
-        document.getElementById('vd_net_amount').innerText = `₹ ${parseFloat(v.net_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-        document.getElementById('vd_pay_split').innerText = `ரொக்கம்: ₹${v.cash_amount || 0} | வங்கி: ₹${v.bank_amount || 0}`;
+        document.getElementById('vd_net_amount').innerText = `₹ ${parseFloat(v.net_amount || s.net_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('vd_settle_type').innerText = s.settlement_type || 'நேரடித் தீர்வு';
 
-        // நகைக் கடன்கள் பட்டியல்
+        // 2. ரொக்கம் மற்றும் வங்கி விபரம்
+        const cashAmt = parseFloat(v.cash_amount || s.cash_amount || 0);
+        const bankAmt = parseFloat(v.bank_amount || s.bank_amount || 0);
+        document.getElementById('vd_cash_amt').innerText = `₹ ${cashAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('vd_bank_amt').innerText = `₹ ${bankAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('vd_bank_ref').innerText = s.bank_ref_no ? `Ref: ${s.bank_ref_no} (${s.bank_name || ''})` : '';
+
+        // ரொக்கத் தாள்கள் (Denominations)
+        const dObj = (s.test_cash_denominations && s.test_cash_denominations.length > 0) ? s.test_cash_denominations[0] : null;
+        if (dObj) {
+          denomBox.innerHTML = `
+            <span><b>500:</b> ${dObj.c_500 || 0}</span> |
+            <span><b>200:</b> ${dObj.c_200 || 0}</span> |
+            <span><b>100:</b> ${dObj.c_100 || 0}</span> |
+            <span><b>50:</b> ${dObj.c_50 || 0}</span> |
+            <span><b>20:</b> ${dObj.c_20 || 0}</span> |
+            <span><b>10:</b> ${dObj.c_10 || 0}</span> |
+            <span><b>சில்லறை:</b> ₹${dObj.c_coins || 0}</span>
+          `;
+        } else {
+          denomBox.innerHTML = `<span class="text-slate-400">ரொக்கத் தாள்கள் பதிவு செய்யப்படவில்லை.</span>`;
+        }
+
+        // 3. OTP நிலை
+        const otpBadge = document.getElementById('vd_otp_badge');
+        const otpText = document.getElementById('vd_otp_text');
+        if (v.otp_exempted === true || v.otp_exemption_status === 'APPROVED') {
+          otpBadge.innerText = "விலக்கு அளிக்கப்பட்டது (EXEMPTED)";
+          otpBadge.className = "px-2.5 py-1 rounded-lg font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300";
+          otpText.innerText = "தலைமையகத்தின் சிறப்பு அனுமதியுடன் OTP விலக்கு பெற்று பரிவர்த்தனை செய்யப்படுகிறது.";
+        } else if (otp.otp_code) {
+          otpBadge.innerText = otp.is_verified ? "சரிபார்க்கப்பட்டது (VERIFIED)" : "நிலுவையில் (PENDING)";
+          otpBadge.className = otp.is_verified ? "px-2.5 py-1 rounded-lg font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300" : "px-2.5 py-1 rounded-lg font-black text-[11px] bg-amber-100 text-amber-900 border border-yellow-300";
+          otpText.innerText = `அனுப்பப்பட்ட OTP: [${otp.otp_code}] | மொபைல்: ${otp.mobile}`;
+        } else {
+          otpBadge.innerText = "இல்லை";
+          otpBadge.className = "px-2.5 py-1 rounded-lg font-black text-[11px] bg-slate-100 text-slate-600";
+          otpText.innerText = "இந்த வருகைக்கு OTP கோரிக்கை எதுவும் இன்னும் உருவாக்கப்படவில்லை.";
+        }
+
+        // 4. நகைக் கடன்கள் பட்டியல்
         container.innerHTML = '';
         if (!data.loans || data.loans.length === 0) {
           container.innerHTML = `<p class="text-xs text-slate-400 text-center py-3">நகைக் கடன் விபரங்கள் கிடைக்கவில்லை.</p>`;
@@ -2281,7 +2349,7 @@
 
         data.loans.forEach(loan => {
           const loanDiv = document.createElement('div');
-          loanDiv.className = "p-3 bg-purple-50/40 rounded-xl border border-purple-200 text-xs space-y-1.5";
+          loanDiv.className = "p-3 bg-purple-50/50 rounded-xl border border-purple-200 text-xs space-y-1.5";
           
           let itemsHtml = (loan.test_gold_loan_items || []).map(it => 
             `<span class="inline-block bg-white border border-purple-200 px-2 py-0.5 rounded text-[11px] mr-1 mb-1">
@@ -2291,8 +2359,8 @@
 
           loanDiv.innerHTML = `
             <div class="flex justify-between items-center font-bold">
-              <span class="text-brand-violet font-mono">கடன் எண்: ${loan.loan_no}</span>
-              <span class="text-rose-600 font-black">கடன் தொகை: ₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</span>
+              <span class="text-brand-violet font-mono text-sm">கடன் எண்: ${loan.loan_no}</span>
+              <span class="text-rose-600 font-black text-sm">கடன் தொகை: ₹${parseFloat(loan.loan_amount).toLocaleString('en-IN')}</span>
             </div>
             <div class="text-[11px] text-slate-600">திட்டம்: <b>${loan.scheme_name}</b> | Processing கட்டணம்: ₹${loan.charges_amount}</div>
             <div class="pt-1">${itemsHtml || '<span class="text-slate-400">நகைகள் விபரம் இல்லை</span>'}</div>
@@ -2821,7 +2889,15 @@
             visits.forEach(v => {
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td class="p-2.5 font-bold text-slate-800">${v.test_customers?.name || '-'}</td>
+                <td class="p-2.5">
+                  <span class="font-bold text-slate-800 block">${v.test_customers?.name || '-'}</span>
+                  <!-- 👇 ஒரே கிளிக்கில் விபரம் பார்க்க வருகை எண் பட்டன் 👇 -->
+                  <button type="button" onclick="viewVisitDetails(${v.id})" 
+                          title="முழு விபரங்களைப் பார்க்க கிளிக் செய்யவும்" 
+                          class="mt-0.5 font-black font-mono text-[11px] text-purple-900 underline hover:text-purple-600 cursor-pointer bg-purple-100 hover:bg-purple-200 px-2 py-0.5 rounded transition">
+                    #VIS-${v.id} 🔍
+                  </button>
+                </td>
                 <td class="p-2.5 font-mono text-xs text-slate-600">${v.test_customers?.mobile || '-'}</td>
                 <td class="p-2.5 text-xs text-slate-700">${v.actions_summary || v.purpose || 'நகைக்கடன் பரிவர்த்தனை'}</td>
                 <td class="p-2.5 font-bold text-brand-violet">${v.test_branches?.branch_name || 'கிளை #' + v.branch_id}</td>
@@ -2840,7 +2916,7 @@
               `;
               vBody.appendChild(tr);
             });
-          }
+            }
         }
 
         // 1. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல்

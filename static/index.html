@@ -448,8 +448,6 @@
 
     <!-- TAB C: நிர்வாகம் -->
     <div id="adminPanelTab" class="hidden space-y-6">
-      
-      <!-- 1. தங்க விலை நிர்ணயம் -->
       <div class="bg-gradient-to-r from-amber-50 to-purple-50 p-5 rounded-2xl border-2 border-brand-gold shadow-sm space-y-3">
         <h3 class="text-sm font-extrabold text-amber-900 flex items-center gap-2">
           <span>💰</span> அன்றைய தங்க விலை நிர்ணயம் (Today's Gold Rate per Gram)
@@ -462,7 +460,6 @@
         </div>
       </div>
 
-      <!-- 2. திட்டங்கள் -->
       <div class="space-y-4">
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
           <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2 border-b border-purple-100 pb-2">
@@ -539,7 +536,6 @@
         </div>
       </div>
 
-      <!-- 3. நிறுவன வங்கிக் கணக்குகள் -->
       <div class="space-y-4 pt-4 border-t border-purple-100">
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
           <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2 border-b border-purple-100 pb-2">
@@ -576,7 +572,6 @@
         </div>
       </div>
 
-      <!-- 4. கிளைகள் & பணியாளர்கள் மேலாண்மை -->
       <div class="space-y-4 pt-4 border-t border-purple-100">
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
           <div class="flex justify-between items-center border-b border-purple-100 pb-2">
@@ -607,7 +602,6 @@
         </div>
       </div>
 
-      <!-- 5. பணியாளர்கள் மேலாண்மை -->
       <div class="space-y-4 pt-4 border-t border-purple-100">
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
           <div class="flex justify-between items-center border-b border-purple-100 pb-2">
@@ -949,7 +943,7 @@
   <script>
     let currentUser = null;
     let activeCustomer = null;
-    let activeVisitId = null; // 👈 1. சேர்க்கப்பட்டது
+    let activeVisitId = null;
     let ornamentList = [];
     let cartItems = [];
     let currentNetAbs = 0;
@@ -1513,7 +1507,6 @@
       document.getElementById('activeCustomerSection').classList.remove('hidden');
 
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      // 👈 2. வருகைப் பதிவு ID சரியாக activeVisitId-ல் சேமிக்கப்படுகிறது
       try {
         const vRes = await fetch('/api/customer/visit', {
           method: 'POST',
@@ -1532,7 +1525,7 @@
 
     function resetCustomer() {
       activeCustomer = null;
-      activeVisitId = null; // 👈 3. வாடிக்கையாளர் வெளியேறும்போது காலியாக்கப்படுகிறது
+      activeVisitId = null;
       ornamentList = [];
       cartItems = [];
       renderOrnamentsTable();
@@ -1782,7 +1775,6 @@
       }
     }
 
-    // 👈 4. இரட்டைப் பதிவு நீக்கப்பட்டு ஒற்றை முறையாக அமைக்கப்பட்ட requestOtpFromCustomer
     async function requestOtpFromCustomer() {
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
       if (bVal > 0 && currentDirection === "COMPANY_PAYABLE") {
@@ -1826,7 +1818,6 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    // 👈 5. isExempted வசதியுடன் மேம்படுத்தப்பட்ட confirmSettleWithOtp
     async function confirmSettleWithOtp(isExempted = false) {
       let enteredOtp = null;
       if (!isExempted) {
@@ -1858,7 +1849,6 @@
         btn.disabled = true;
       }
     
-      // இணைக்கப்பட்ட புதிய settlePayload (visit_id மற்றும் actions_summary உடன்)
       const settlePayload = {
         customer_id: activeCustomer.id,
         branch_id: branchId,
@@ -2175,7 +2165,7 @@
         const res = await fetch('/api/hq/process-bank-transfer', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transfer_id: id, action, admin_id: currentUser.id, notes })
+          body: JSON.stringify({ transfer_id: id, action, admin_id: currentUser ? currentUser.id : 1, notes })
         });
         const data = await res.json();
         alert(data.message);
@@ -2185,12 +2175,13 @@
       }
     }
 
-    async function actionVisit(id, action) {
+    async function actionVisitApproval(visitId, action) {
+      if (!confirm(`இந்த கவுண்டர் வருகை ஆடிட்டை ${action === 'APPROVE' ? 'ஒப்புதல் அளிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
       try {
         const res = await fetch('/api/hq/approve-visit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: id, action, admin_id: currentUser.id })
+          body: JSON.stringify({ request_id: visitId, action, admin_id: currentUser ? currentUser.id : 1 })
         });
         const data = await res.json();
         alert(data.message);
@@ -2200,14 +2191,14 @@
       }
     }
 
-    const actionVisitApproval = actionVisit;
+    const actionVisit = actionVisitApproval;
 
     async function actionKyc(id, action) {
       try {
         const res = await fetch('/api/hq/approve-kyc', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: id, action, admin_id: currentUser.id })
+          body: JSON.stringify({ request_id: id, action, admin_id: currentUser ? currentUser.id : 1 })
         });
         const data = await res.json();
         alert(data.message);
@@ -2243,8 +2234,6 @@
       }
     }
 
-    // 👈 6. இரட்டைப் பதிவு நீக்கப்பட்டு ஒற்றை முறையாக அமைக்கப்பட்ட actionOtpExempt
-   // 1. OTP விலக்கு ஒப்புதல் / நிராகரிப்பு செயல்பாடு
     async function actionOtpExempt(visitId, action) {
       if (!confirm(`இந்த வருகைக்கு OTP விலக்கினை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
       try {
@@ -2261,7 +2250,6 @@
       }
     }
 
-    // 2. OTP விலக்குக் கோரிக்கைகளைப் பட்டியலிடும் செயல்பாடு
     async function loadHqOtpExemptions() {
       const section = document.getElementById('hqOtpExemptSection');
       const exBody = document.getElementById('hqOtpExemptTableBody');
@@ -2308,33 +2296,14 @@
       }
     }
 
-    // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல்/நிராகரிப்பு செயல்பாடு
-    async function actionVisitApproval(visitId, action) {
-      if (!confirm(`இந்த கவுண்டர் வருகை ஆடிட்டை ${action === 'APPROVE' ? 'ஒப்புதல் அளிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
-      try {
-        const res = await fetch('/api/hq/approve-visit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ request_id: visitId, action, admin_id: currentUser ? currentUser.id : 1 })
-        });
-        const data = await res.json();
-        alert(data.message);
-        loadAllHqApprovals(); // பட்டியலைப் புதுப்பிக்கிறது
-      } catch (err) {
-        alert("பிழை: " + err.message);
-      }
-    }
-
-    // 4. தலைமையகத்தின் அனைத்து நிலுவைகளையும் (OTP விலக்கு, வருகை ஆடிட் உள்ளிட்டவை) ஒருங்கிணைத்து ஏற்றிப் பட்டியலிடும் செயல்பாடு
     async function loadAllHqApprovals() {
-      // முதலில் OTP விலக்குக் கோரிக்கைகளைப் பட்டியலிடுதல்
       await loadHqOtpExemptions();
 
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
         const data = await res.json();
 
-        // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல் பட்டியல் (இணைக்கப்பட்ட பகுதி)
+        // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல் பட்டியல்
         const vBody = document.getElementById('pendingVisitsTableBody');
         if (vBody) {
           vBody.innerHTML = '';
@@ -2367,7 +2336,7 @@
           }
         }
 
-        // வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல்
+        // 1. வாடிக்கையாளர் சுயவிவர மாற்றக் கோரிக்கைகள் பட்டியல்
         const uBody = document.getElementById('pendingUpdatesTableBody');
         if (uBody) {
           uBody.innerHTML = '';
@@ -2412,7 +2381,7 @@
           }
         }
 
-        // புதிய KYC பட்டியல்
+        // 2. புதிய KYC பட்டியல்
         const kBody = document.getElementById('pendingKycTableBody');
         if (kBody) {
           kBody.innerHTML = '';
@@ -2439,7 +2408,7 @@
           }
         }
 
-        // வங்கிப் பட்டுவாடா பட்டியல்
+        // 4. வங்கிப் பட்டுவாடா பட்டியல்
         const pBody = document.getElementById('pendingPayoutsTableBody');
         if (pBody) {
           pBody.innerHTML = '';
@@ -2465,7 +2434,7 @@
           }
         }
 
-        // வங்கி வரவு சரிபார்ப்புகள் பட்டியல்
+        // 5. வங்கி வரவு சரிபார்ப்புகள் பட்டியல்
         const rBody = document.getElementById('pendingReceiptsTableBody');
         if (rBody) {
           rBody.innerHTML = '';
@@ -2769,7 +2738,6 @@
         e.stopPropagation();
       }
 
-      // 1. வாடிக்கையாளர் தேர்வு சரிபார்ப்பு
       if (!activeCustomer || !activeCustomer.id) {
         alert("⚠️ வாடிக்கையாளர் தேர்வு செய்யப்படவில்லை! தயவுசெய்து வாடிக்கையாளரைத் தேடித் தேர்ந்தெடுக்கவும்.");
         return;
@@ -2777,7 +2745,6 @@
 
       const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
 
-      // 2. வருகை எண் இல்லை எனில் உடனே உருவாக்குதல்
       if (!activeVisitId) {
         try {
           const vRes = await fetch('/api/customer/visit', {
@@ -2802,11 +2769,9 @@
         return;
       }
 
-      // 3. காரணத்தை உள்ளிடக் கோருதல்
       const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
       if (!reason || reason.trim() === "") return;
 
-      // 4. API-க்கு கோரிக்கை அனுப்புதல்
       try {
         const res = await fetch('/api/otp/request-exemption', {
           method: 'POST',
@@ -2831,7 +2796,6 @@
       }
     }
 
-    // தலைமையக ஒப்புதலைக் கவனிக்கும் லூப்
     async function listenForOtpApproval() {
       if (!activeVisitId) return;
       try {
@@ -2841,7 +2805,7 @@
         if (data.data?.otp_exempted === true) {
           alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
           closeCheckoutModal();
-          confirmSettleWithOtp(true); // 👈 OTP இன்றி தானாக முடித்தல்
+          confirmSettleWithOtp(true);
         } else if (data.data?.otp_exemption_status === 'REJECTED') {
           alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. SMS OTP அனுப்பவும்.");
         } else {

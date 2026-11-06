@@ -2454,14 +2454,23 @@
         data.data.forEach(ex => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td class="p-2.5 font-bold font-mono text-brand-violet">#VIS-${ex.id}</td>
-            <td class="p-2.5 font-bold">${ex.test_customers?.name || '-'} <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span></td>
-            <td class="p-2.5 text-rose-700 font-semibold">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
-            <td class="p-2.5 text-center space-x-1.5 whitespace-nowrap">
-              <button type="button" onclick="actionOtpExempt(${ex.id}, 'APPROVE')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow transition">
+            <td class="p-2.5 font-bold font-mono text-purple-900">#VIS-${ex.id}</td>
+            <td class="p-2.5 font-bold text-slate-800">
+              ${ex.test_customers?.name || '-'} 
+              <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span>
+            </td>
+            <td class="p-2.5 text-rose-700 font-semibold text-xs">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
+            <td class="p-2.5 text-center space-x-2 whitespace-nowrap">
+              <button type="button" 
+                      onclick="actionOtpExempt(${ex.id}, 'APPROVE')" 
+                      style="background-color: #059669 !important; color: #ffffff !important; display: inline-block;" 
+                      class="px-3 py-1.5 rounded-xl font-black text-xs shadow-md hover:opacity-90 cursor-pointer">
                 ✓ அனுமதி (Approve)
               </button>
-              <button type="button" onclick="actionOtpExempt(${ex.id}, 'REJECT')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs shadow transition">
+              <button type="button" 
+                      onclick="actionOtpExempt(${ex.id}, 'REJECT')" 
+                      style="background-color: #dc2626 !important; color: #ffffff !important; display: inline-block;" 
+                      class="px-3 py-1.5 rounded-xl font-black text-xs shadow-md hover:opacity-90 cursor-pointer">
                 ✕ நிராகரி
               </button>
             </td>

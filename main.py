@@ -1,8 +1,7 @@
 import os
 import random
 import requests
-import pytz
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +10,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from database import supabase
 
-IST = pytz.timezone("Asia/Kolkata")
+# இந்திய நேர மண்டலம் (IST = UTC + 5 மணி 30 நிமிடங்கள்)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 app = FastAPI(
     title="Muthusise Gold Loan Management - Enterprise Core",

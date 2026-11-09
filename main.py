@@ -281,7 +281,7 @@ class ExpenseApprovalPayload(BaseModel):
 @app.post("/api/expense/request")
 def create_branch_expense(data: dict):
     try:
-        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி அல்லது இந்தியத் தேதி
+        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி (விடுபட்டால் மட்டுமே IST கரண்ட் தேதி)
         trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
 
         record = {
@@ -291,13 +291,13 @@ def create_branch_expense(data: dict):
             "payment_mode": data.get("payment_mode", "CASH"),
             "reason": data.get("reason"),
             "bill_photo": data.get("bill_photo"),
-            "status": "PENDING",
+            "status": "APPROVED",
             "created_by": data.get("staff_id"),
             "transaction_date": trans_date,
             "created_at": datetime.now(IST).isoformat()
         }
         res = supabase.table("test_branch_expenses").insert(record).execute()
-        return {"status": "success", "message": "செலவுக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "செலவுக் கோரிக்கை பதியப்பட்டது.", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"செலவு பதிவு பிழை: {str(e)}")
 
@@ -1533,8 +1533,8 @@ def create_treasury_transfer(data: dict):
     try:
         from_src = "BRANCH_CASH"
         to_dest = "HQ_VAULT"
-
         transfer_type = data.get("transfer_type")
+
         if transfer_type == "HQ_TO_BRANCH":
             from_src = "HQ_VAULT"
             to_dest = "BRANCH_CASH"
@@ -1545,7 +1545,7 @@ def create_treasury_transfer(data: dict):
             from_src = "COMPANY_BANK"
             to_dest = "BRANCH_CASH"
 
-        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி அல்லது இந்தியத் தேதி
+        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி
         trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
 
         rec = {
@@ -1559,13 +1559,13 @@ def create_treasury_transfer(data: dict):
             "reference_no": data.get("reference_no"),
             "proof_doc": data.get("proof_doc"),
             "notes": data.get("notes"),
-            "status": "PENDING",
+            "status": "APPROVED",
             "created_by": data.get("staff_id"),
             "transaction_date": trans_date,
             "created_at": datetime.now(IST).isoformat()
         }
         res = supabase.table("test_treasury_transfers").insert(rec).execute()
-        return {"status": "success", "message": "பணப் பரிமாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "பணப் பரிமாற்றம் பதியப்பட்டது.", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"பரிமாற்றப் பதிவு பிழை: {str(e)}")
 

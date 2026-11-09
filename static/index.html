@@ -2475,15 +2475,30 @@
         }
       }
 
+      // 1. கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
+      const transDateInput = document.querySelector('input[type="date"]');
+      const transDate = transDateInput && transDateInput.value ? transDateInput.value : new Date().toISOString().split('T')[0];
+
+      // 2. நகைப் படம் இருந்தால் எடுத்தல் (Webcam / Upload செய்யப்பட்ட படம்)
+      let ornamentPhotoUrl = null;
+      const photoElem = document.getElementById('ornament_photo_preview') || document.getElementById('captured_ornament_photo');
+      if (photoElem && photoElem.src && !photoElem.src.includes('placeholder')) {
+        ornamentPhotoUrl = photoElem.src;
+      } else if (typeof capturedOrnamentPhoto !== 'undefined' && capturedOrnamentPhoto) {
+        ornamentPhotoUrl = capturedOrnamentPhoto;
+      }
+
       const payload = {
         customer_id: activeCustomer.id, 
         branch_id: branchId, 
-        visit_id: activeVisitId, // 👈 இந்த வரி உள்ளதா எனப் பார்க்கவும், இல்லையென்றால் சேர்த்துக்கொள்ளவும்
+        visit_id: activeVisitId,
         loan_no: loanNo, 
         scheme_name: scheme,
         loan_amount: loanAmt, 
         charges_amount: chgAmt, 
-        photo_url: null, 
+        photo_url: ornamentPhotoUrl, 
+        ornament_photo: ornamentPhotoUrl,
+        transaction_date: transDate, // 👈 கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதி
         items: ornamentList
       };
 
@@ -2508,10 +2523,13 @@
           ornamentList = [];
           renderOrnamentsTable();
           fetchAutoLoanNumber();
+          
+          // நகைப் படப் பகுதியைத் தூய்மை செய்தல்
+          if (photoElem) photoElem.src = '';
+          if (typeof capturedOrnamentPhoto !== 'undefined') capturedOrnamentPhoto = null;
         } else alert("❌ பிழை: " + data.detail);
       } catch (err) { alert("பிழை: " + err.message); }
     }
-
     async function removeLastCartItem() {
       if (isDraftLocked) {
         return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் கார்ட்டை மாற்ற முடியாது!");

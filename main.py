@@ -524,84 +524,99 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
     try:
         clean_date = date_str if (date_str and date_str.strip() and date_str != "undefined") else datetime.now().strftime("%Y-%m-%d")
 
-        # 1. தொடக்க இருப்பு (Opening Balance)
-        day_res = (
-            supabase.table("test_branch_cash_days")
-            .select("*")
-            .eq("branch_id", branch_id)
-            .order("id", desc=True)
-            .limit(1)
-            .execute()
-        )
-        day_info = day_res.data[0] if day_res.data else None
-        opening = float(day_info.get("opening_balance") or 0.0) if day_info else 0.0
+        # 1. Day Book Opening Balance (test_branch_cash_days)
+        opening = 0.0
+        try:
+            day_res = (
+                supabase.table("test_branch_cash_days")
+                .select("*")
+                .eq("branch_id", branch_id)
+                .order("id", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if day_res.data:
+                opening = float(day_res.data[0].get("opening_balance") or 0.0)
+        except Exception as e:
+            print("Opening balance error:", e)
 
-        # 2. வாடிக்கையாளர் நகைக்கடன் அடகு & வரவு (Settlements - சமீபத்திய 30 பதிவுகள்)
-        settle_res = (
-            supabase.table("test_settlements")
-            .select("*, test_visits(customer_id, test_customers(name, mobile))")
-            .eq("branch_id", branch_id)
-            .order("id", desc=True)
-            .limit(30)
-            .execute()
-        )
+        # 2. அடகு & வரவு பட்டுவாடா (test_settlements)
         total_cash_in = 0.0
         total_cash_out = 0.0
         formatted_settlements = []
+        try:
+            settle_res = (
+                supabase.table("test_settlements")
+                .select("*, test_visits(customer_id, test_customers(name, mobile))")
+                .eq("branch_id", branch_id)
+                .order("id", desc=True)
+                .limit(50)
+                .execute()
+            )
+            for s in (settle_res.data or []):
+                c_in = float(s.get("cash_in") or 0.0)
+                c_out = float(s.get("cash_out") or 0.0)
+                total_cash_in += c_in
+                total_cash_out += c_out
 
-        for s in (settle_res.data or []):
-            c_in = float(s.get("cash_in") or 0.0)
-            c_out = float(s.get("cash_out") or 0.0)
-            total_cash_in += c_in
-            total_cash_out += c_out
+                cust = s.get("test_visits", {}).get("test_customers", {}) if s.get("test_visits") else {}
+                c_at = str(s.get("created_at", ""))
+                formatted_settlements.append({
+                    "id": s.get("id"),
+                    "time": c_at[11:16] if len(c_at) >= 16 else "-",
+                    "customer_name": cust.get("name", "வாடிக்கையாளர்"),
+                    "mobile": cust.get("mobile", "-"),
+                    "payment_mode": s.get("payment_mode", "CASH"),
+                    "cash_in": c_in,
+                    "cash_out": c_out
+                })
+        except Exception as e:
+            print("Settlements fetch error:", e)
 
-            cust = s.get("test_visits", {}).get("test_customers", {}) if s.get("test_visits") else {}
-            c_at = str(s.get("created_at", ""))
-            formatted_settlements.append({
-                "id": s.get("id"),
-                "time": c_at[11:16] if len(c_at) >= 16 else "-",
-                "customer_name": cust.get("name", "வாடிக்கையாளர்"),
-                "mobile": cust.get("mobile", "-"),
-                "payment_mode": s.get("payment_mode", "CASH"),
-                "cash_in": c_in,
-                "cash_out": c_out
-            })
+        # 3. அங்கீகரிக்கப்பட்ட கிளை தினசரி செலவுகள் (test_branch_expenses)
+        raw_expenses = []
+        total_expenses = 0.0
+        try:
+            exp_res = (
+                supabase.table("test_branch_expenses")
+                .select("*")
+                .eq("branch_id", branch_id)
+                .eq("status", "APPROVED")
+                .order("id", desc=True)
+                .limit(50)
+                .execute()
+            )
+            raw_expenses = exp_res.data or []
+            total_expenses = sum(float(x.get("amount") or 0.0) for x in raw_expenses)
+        except Exception as e:
+            print("Expenses fetch error:", e)
 
-        # 3. அங்கீகரிக்கப்பட்ட கிளை செலவுகள் (Approved Expenses - சமீபத்திய 20 பதிவுகள்)
-        # குறிப்பு: கிளை எண் பொருந்தவில்லை என்றாலும் தெரியும்படி branch_id தவிர்க்கப்பட்டு சோதிக்கப்படுகிறது
-        exp_res = (
-            supabase.table("test_branch_expenses")
-            .select("*")
-            .eq("status", "APPROVED")
-            .order("id", desc=True)
-            .limit(20)
-            .execute()
-        )
-        raw_expenses = exp_res.data or []
-        total_expenses = sum(float(x.get("amount") or 0.0) for x in raw_expenses)
-
-        # 4. அங்கீகரிக்கப்பட்ட உள்-பணப் பரிமாற்றங்கள் (Approved Treasury - சமீபத்திய 20 பதிவுகள்)
-        tr_res = (
-            supabase.table("test_treasury_transfers")
-            .select("*")
-            .eq("status", "APPROVED")
-            .order("id", desc=True)
-            .limit(20)
-            .execute()
-        )
-        raw_transfers = tr_res.data or []
+        # 4. அங்கீகரிக்கப்பட்ட உள்-பணப் பரிமாற்றங்கள் (test_treasury_transfers)
+        raw_transfers = []
         treasury_in = 0.0
         treasury_out = 0.0
+        try:
+            tr_res = (
+                supabase.table("test_treasury_transfers")
+                .select("*")
+                .eq("branch_id", branch_id)
+                .eq("status", "APPROVED")
+                .order("id", desc=True)
+                .limit(50)
+                .execute()
+            )
+            raw_transfers = tr_res.data or []
+            for t in raw_transfers:
+                amt = float(t.get("amount") or 0.0)
+                t_type = t.get("transfer_type")
+                if t_type in ["HQ_TO_BRANCH", "BANK_TO_CASH"]:
+                    treasury_in += amt
+                elif t_type in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
+                    treasury_out += amt
+        except Exception as e:
+            print("Treasury fetch error:", e)
 
-        for t in raw_transfers:
-            amt = float(t.get("amount") or 0.0)
-            t_type = t.get("transfer_type")
-            if t_type in ["HQ_TO_BRANCH", "BANK_TO_CASH"]:
-                treasury_in += amt
-            elif t_type in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
-                treasury_out += amt
-
-        # 5. இறுதியான கணினி ரொக்க இருப்பு
+        # 5. இறுதியான துல்லிய கணினி ரொக்க இருப்பு
         calculated_closing = (
             opening 
             + total_cash_in 
@@ -627,7 +642,6 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அறிக்கை எடுப்பதில் பிழை: {str(e)}")
-
 # 7. Day Close
 @app.post("/api/cash-day/close")
 def close_cash_day(data: CashDayClosePayload):

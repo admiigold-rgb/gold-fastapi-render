@@ -1375,55 +1375,81 @@
     </div>
 
     <!-- 6. அன்றைய நடவடிக்கைகள் அறிக்கை Modal -->
-    <div id="dayReportModal" class="fixed inset-0 bg-slate-900 bg-opacity-60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-3xl p-5 max-w-3xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border-2 border-purple-600">
+    <!-- 📊 அன்றைய நடவடிக்கைகள் விரிவான அறிக்கை Modal (புதியது) -->
+    <div id="daySummaryReportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-4xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-violet">
         <div class="flex justify-between items-center border-b border-purple-100 pb-2">
           <div class="flex items-center gap-2">
-            <h3 class="text-base font-extrabold text-brand-violet">📊 அன்றைய ரொக்க நடவடிக்கைகள் அறிக்கை</h3>
-            <span id="repDateBadge" class="text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold">-</span>
+            <span class="text-xl">📊</span>
+            <h3 class="text-base font-extrabold text-brand-violet">அன்றைய முழுமையான ரொக்க நடவடிக்கைகள் அறிக்கை</h3>
           </div>
-          <button type="button" onclick="closeDayReportModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+          <button type="button" onclick="closeDaySummaryReportModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
         </div>
-        
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-center">
-          <div class="bg-purple-50 p-3 rounded-2xl border border-purple-200">
-            <span class="block text-slate-500 font-semibold mb-0.5">தொடக்க இருப்பு</span>
-            <b id="repOpenCash" class="text-brand-violet text-sm font-black">₹ 0.00</b>
+
+        <!-- ரொக்க சுருக்க அட்டைகள் -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+          <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-200">
+            <span class="text-slate-500 font-bold block text-[10px]">தொடக்க இருப்பு</span>
+            <span class="text-sm font-black text-brand-violet" id="rep_opening">₹0</span>
           </div>
-          <div class="bg-emerald-50 p-3 rounded-2xl border border-emerald-200">
-            <span class="block text-emerald-600 font-semibold mb-0.5">ரொக்க வரவு (+)</span>
-            <b id="repCashIn" class="text-emerald-800 text-sm font-black">₹ 0.00</b>
+          <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+            <span class="text-emerald-700 font-bold block text-[10px]">மொத்த வரவு (+பரிமாற்றம்)</span>
+            <span class="text-sm font-black text-emerald-700" id="rep_cash_in">₹0</span>
           </div>
-          <div class="bg-rose-50 p-3 rounded-2xl border border-rose-200">
-            <span class="block text-rose-600 font-semibold mb-0.5">ரொக்கப் பற்று (-)</span>
-            <b id="repCashOut" class="text-rose-800 text-sm font-black">₹ 0.00</b>
+          <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+            <span class="text-rose-700 font-bold block text-[10px]">பட்டுவாடா + செலவு + பற்று</span>
+            <span class="text-sm font-black text-rose-700" id="rep_cash_out">₹0</span>
           </div>
-          <div class="bg-amber-50 p-3 rounded-2xl border border-yellow-300">
-            <span class="block text-amber-800 font-semibold mb-0.5">கணினி ரொக்க இருப்பு</span>
-            <b id="repClosingCash" class="text-amber-900 text-sm font-black">₹ 0.00</b>
+          <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300">
+            <span class="text-amber-900 font-bold block text-[10px]">கணினி ரொக்க இருப்பு</span>
+            <span class="text-sm font-black text-amber-950" id="rep_closing">₹0</span>
           </div>
         </div>
-        
-        <div class="overflow-x-auto border-2 border-purple-100 rounded-xl text-xs">
-          <table class="w-full text-left">
-            <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
-              <tr>
-                <th class="p-2.5 font-bold">ரசீது எண்</th>
-                <th class="p-2.5 font-bold">வாடிக்கையாளர்</th>
-                <th class="p-2.5 text-center font-bold">வகை</th>
-                <th class="p-2.5 text-right font-bold">ரொக்கம் (₹)</th>
-                <th class="p-2.5 text-right font-bold">வங்கி (₹)</th>
-                <th class="p-2.5 text-right font-bold">நிகரத் தொகை (₹)</th>
-              </tr>
-            </thead>
-            <tbody id="dayReportTableBody" class="divide-y divide-purple-100 text-slate-700">
-              <tr><td colspan="6" class="p-4 text-center text-slate-400">அறிக்கை விவரங்கள் ஏற்றப்படுகின்றன...</td></tr>
-            </tbody>
-          </table>
+
+        <!-- 1. வாடிக்கையாளர் நகைப் பட்டுவாடா & வரவு -->
+        <div class="space-y-1.5">
+          <h4 class="text-xs font-bold text-slate-700 uppercase">1. அடகு & வரவு நடவடிக்கைகள்:</h4>
+          <div class="overflow-x-auto border border-purple-100 rounded-xl">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-purple-50 text-brand-violet font-bold">
+                <tr><th class="p-2">நேரம்</th><th class="p-2">வாடிக்கையாளர்</th><th class="p-2">மொபைல்</th><th class="p-2">முறை</th><th class="p-2 text-right">வரவு (+)</th><th class="p-2 text-right">பட்டுவாடா (-)</th></tr>
+              </thead>
+              <tbody id="rep_settlements_tbody" class="divide-y divide-purple-50 text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. கிளை தினசரி செலவுகள் -->
+        <div class="space-y-1.5">
+          <h4 class="text-xs font-bold text-amber-900 uppercase">2. அங்கீகரிக்கப்பட்ட கிளை செலவுகள் (Expenses):</h4>
+          <div class="overflow-x-auto border border-amber-200 rounded-xl">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-amber-100 text-amber-950 font-bold">
+                <tr><th class="p-2">வகை</th><th class="p-2">விபரம் / காரணம்</th><th class="p-2 text-right">தொகை (₹)</th></tr>
+              </thead>
+              <tbody id="rep_expenses_tbody" class="divide-y divide-amber-100 text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 3. உள்-பணப் பரிமாற்றங்கள் (Treasury Transfers) -->
+        <div class="space-y-1.5">
+          <h4 class="text-xs font-bold text-indigo-900 uppercase">3. கருவூலம் & உள்-பணப் பரிமாற்றங்கள்:</h4>
+          <div class="overflow-x-auto border border-indigo-200 rounded-xl">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-indigo-100 text-indigo-950 font-bold">
+                <tr><th class="p-2">பரிமாற்ற வகை</th><th class="p-2">கொண்டு சென்றவர் / விபரம்</th><th class="p-2 text-right">வரவு (+)</th><th class="p-2 text-right">பற்று (-)</th></tr>
+              </thead>
+              <tbody id="rep_transfers_tbody" class="divide-y divide-indigo-100 text-slate-700"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-purple-100">
+          <button type="button" onclick="closeDaySummaryReportModal()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer">மூடு</button>
         </div>
       </div>
     </div>
-  </div>
 
   <script>
     let currentUser = null;
@@ -1728,67 +1754,90 @@
     }
 
     async function openDaySummaryReportModal() {
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      const selDate = document.getElementById('txn_date').value;
-    
-      if (!selDate) return alert("தயவுசெய்து பரிவர்த்தனைத் தேதியைத் தேர்ந்தெடுக்கவும்.");
-    
-      const modal = document.getElementById('dayReportModal');
-      const tbody = document.getElementById('dayReportTableBody');
-      document.getElementById('repDateBadge').innerText = selDate;
-      tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-brand-violet font-bold">விவரங்கள் திரட்டப்படுகின்றன... தயவுசெய்து காத்திருக்கவும்.</td></tr>`;
+      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
+      const modal = document.getElementById('daySummaryReportModal');
       modal.classList.remove('hidden');
-    
+
       try {
-        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date=${selDate}`);
+        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}`);
         const data = await res.json();
-    
-        if (!res.ok) {
-          tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-600 font-bold">❌ பிழை: ${data.detail || "அறிக்கை எடுக்க முடியவில்லை"}</td></tr>`;
-          return;
+
+        // சுருக்க எண்கள்
+        document.getElementById('rep_opening').innerText = '₹' + (data.opening_balance || 0).toLocaleString('en-IN');
+        document.getElementById('rep_cash_in').innerText = '₹' + ((data.total_cash_in || 0) + (data.treasury_in || 0)).toLocaleString('en-IN');
+        document.getElementById('rep_cash_out').innerText = '₹' + ((data.total_cash_out || 0) + (data.total_expenses || 0) + (data.treasury_out || 0)).toLocaleString('en-IN');
+        document.getElementById('rep_closing').innerText = '₹' + (data.calculated_closing || 0).toLocaleString('en-IN');
+
+        // 1. நகைப் பட்டுவாடா பட்டியல்
+        const sBody = document.getElementById('rep_settlements_tbody');
+        sBody.innerHTML = '';
+        if (!data.settlements || data.settlements.length === 0) {
+          sBody.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">அடகு நடவடிக்கைகள் எதுவும் இல்லை</td></tr>`;
+        } else {
+          data.settlements.forEach(s => {
+            sBody.innerHTML += `
+              <tr>
+                <td class="p-2 font-mono text-[11px]">${s.time}</td>
+                <td class="p-2 font-bold">${s.customer_name}</td>
+                <td class="p-2 font-mono text-[11px]">${s.mobile}</td>
+                <td class="p-2 font-semibold">${s.payment_mode}</td>
+                <td class="p-2 text-right font-black text-emerald-700">${s.cash_in > 0 ? '₹' + s.cash_in.toLocaleString('en-IN') : '-'}</td>
+                <td class="p-2 text-right font-black text-rose-700">${s.cash_out > 0 ? '₹' + s.cash_out.toLocaleString('en-IN') : '-'}</td>
+              </tr>
+            `;
+          });
         }
-    
-        document.getElementById('repOpenCash').innerText = `₹ ${parseFloat(data.opening_balance || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-        document.getElementById('repCashIn').innerText = `₹ ${parseFloat(data.total_cash_in || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-        document.getElementById('repCashOut').innerText = `₹ ${parseFloat(data.total_cash_out || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-        document.getElementById('repClosingCash').innerText = `₹ ${parseFloat(data.calculated_closing || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-    
-        tbody.innerHTML = '';
-        const settlements = data.settlements || [];
-    
-        if (settlements.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-medium">இந்தத் தேதியில் (${selDate}) எந்தவொரு ரொக்கப் பரிவர்த்தனைகளும் நடைபெறவில்லை.</td></tr>`;
-          return;
+
+        // 2. கிளை செலவுகள் பட்டியல்
+        const eBody = document.getElementById('rep_expenses_tbody');
+        eBody.innerHTML = '';
+        if (!data.expenses || data.expenses.length === 0) {
+          eBody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-400">அங்கீகரிக்கப்பட்ட செலவுகள் எதுவும் இல்லை</td></tr>`;
+        } else {
+          data.expenses.forEach(e => {
+            eBody.innerHTML += `
+              <tr>
+                <td class="p-2 font-bold text-amber-950">${e.category}</td>
+                <td class="p-2">${e.reason || '-'}</td>
+                <td class="p-2 text-right font-black text-rose-700">₹${parseFloat(e.amount).toLocaleString('en-IN')}</td>
+              </tr>
+            `;
+          });
         }
-    
-        settlements.forEach(s => {
-          const isReceipt = (s.direction === 'CUSTOMER_PAYABLE');
-          const badgeClass = isReceipt ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300';
-          const typeLabel = isReceipt ? 'வரவு (Receipt)' : 'பற்று (Payout)';
-    
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="p-2.5 font-mono font-bold text-brand-violet">#SETTLE-${s.id}</td>
-            <td class="p-2.5">
-              <span class="font-bold text-slate-800 block">${s.customer_name}</span>
-              <span class="text-[10px] text-slate-500 font-mono">${s.mobile}</span>
-            </td>
-            <td class="p-2.5 text-center">
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${typeLabel}</span>
-            </td>
-            <td class="p-2.5 text-right font-bold text-slate-800">₹${parseFloat(s.cash_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-            <td class="p-2.5 text-right text-slate-600">₹${parseFloat(s.bank_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-            <td class="p-2.5 text-right font-black ${isReceipt ? 'text-emerald-700' : 'text-rose-700'}">₹${parseFloat(s.net_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-          `;
-          tbody.appendChild(tr);
-        });
+
+        // 3. கருவூலப் பரிமாற்றங்கள் பட்டியல்
+        const tBody = document.getElementById('rep_transfers_tbody');
+        tBody.innerHTML = '';
+        if (!data.transfers || data.transfers.length === 0) {
+          tBody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400">பணப் பரிமாற்றங்கள் எதுவும் இல்லை</td></tr>`;
+        } else {
+          const typeNames = {
+            'BRANCH_TO_HQ': 'கிளை ➔ தலைமை அலுவலகம்',
+            'HQ_TO_BRANCH': 'தலைமை அலுவலகம் ➔ கிளை',
+            'CASH_TO_BANK': 'ரொக்கம் ➔ வங்கி டெபாசிட்',
+            'BANK_TO_CASH': 'வங்கி வித்ராயல் ➔ கிளை'
+          };
+          data.transfers.forEach(t => {
+            const isCashIn = (t.transfer_type === 'HQ_TO_BRANCH' || t.transfer_type === 'BANK_TO_CASH');
+            const amt = parseFloat(t.amount);
+            tBody.innerHTML += `
+              <tr>
+                <td class="p-2 font-bold text-indigo-950">${typeNames[t.transfer_type] || t.transfer_type}</td>
+                <td class="p-2 text-[11px]">${t.carrier_person ? 'கொண்டு சென்றவர்: ' + t.carrier_person : (t.notes || '-')}</td>
+                <td class="p-2 text-right font-black text-emerald-700">${isCashIn ? '₹' + amt.toLocaleString('en-IN') : '-'}</td>
+                <td class="p-2 text-right font-black text-rose-700">${!isCashIn ? '₹' + amt.toLocaleString('en-IN') : '-'}</td>
+              </tr>
+            `;
+          });
+        }
+
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-600 font-bold">❌ நெட்வொர்க் பிழை: ${err.message}</td></tr>`;
+        alert("அறிக்கை எடுப்பதில் பிழை: " + err.message);
       }
     }
-    
-    function closeDayReportModal() {
-      const modal = document.getElementById('dayReportModal');
+
+    function closeDaySummaryReportModal() {
+      const modal = document.getElementById('daySummaryReportModal');
       if (modal) modal.classList.add('hidden');
     }
 

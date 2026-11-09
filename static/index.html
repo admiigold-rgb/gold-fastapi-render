@@ -114,7 +114,7 @@
       <div class="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-wrap justify-between items-center gap-3 text-xs">
         <div class="flex items-center gap-2">
           <span class="font-extrabold text-brand-violet flex items-center gap-1">📅 பரிவர்த்தனை தேதி:</span>
-          <input type="date" id="txn_date" onchange="onDateChanged()" class="border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-purple-50 font-bold text-brand-violet focus:outline-none">
+          <input type="date" id="txn_date" onchange="refreshBranchDayStatus()" class="border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-purple-50 font-bold text-brand-violet focus:outline-none">
           <span id="cashDayStatusBadge" class="px-2.5 py-1 rounded-lg font-bold text-[10px] bg-slate-100 text-slate-600 shadow-sm">நிலை அறியப்படுகிறது...</span>
         </div>
         <!-- கவுண்ட்டர் செயல்பாட்டு பட்டன்கள் வரிசை -->
@@ -1857,6 +1857,32 @@
     function closeDaySummaryReportModal() {
       const modal = document.getElementById('daySummaryReportModal');
       if (modal) modal.classList.add('hidden');
+    }
+
+    async function refreshBranchDayStatus() {
+      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
+      const dateInput = document.querySelector('input[type="date"]');
+      const selectedDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
+
+      try {
+        const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date_str=${selectedDate}`);
+        const data = await res.json();
+
+        if (data.is_closed) {
+          alert(`⚠️ கவனம்: ${selectedDate}-க்கான மாலை கணக்கு முடிக்கப்பட்டுவிட்டது! இந்தப் பழைய தேதியில் புதிய பரிவர்த்தனைகள் செய்ய முடியாது.`);
+          
+          // பட்டன்களை முடக்குதல்
+          const btnSubmit = document.getElementById('btnSubmitPledge') || document.querySelector('button[type="submit"]');
+          if (btnSubmit) btnSubmit.disabled = true;
+        } else {
+          console.log(`தேதி ${selectedDate} திறக்கப்பட்டுள்ளது. தொடக்க இருப்பு: ₹${data.opening_balance}`);
+          
+          const btnSubmit = document.getElementById('btnSubmitPledge') || document.querySelector('button[type="submit"]');
+          if (btnSubmit) btnSubmit.disabled = false;
+        }
+      } catch (err) {
+        console.error("Day status error:", err);
+      }
     }
 
     // 3. Purity & Auto Loan No

@@ -2481,8 +2481,12 @@
 
       // 2. நகைப் படம் இருந்தால் எடுத்தல் (Webcam / Upload செய்யப்பட்ட படம்)
       let ornamentPhotoUrl = null;
-      const photoElem = document.getElementById('ornament_photo_preview') || document.getElementById('captured_ornament_photo');
-      if (photoElem && photoElem.src && !photoElem.src.includes('placeholder')) {
+      const photoElem = document.getElementById('ornament_photo_preview') || 
+                        document.getElementById('captured_ornament_photo') || 
+                        document.getElementById('itemPhotoPreview') ||
+                        document.getElementById('goldPhotoPreview');
+
+      if (photoElem && photoElem.src && photoElem.src.startsWith('data:image')) {
         ornamentPhotoUrl = photoElem.src;
       } else if (typeof capturedOrnamentPhoto !== 'undefined' && capturedOrnamentPhoto) {
         ornamentPhotoUrl = capturedOrnamentPhoto;

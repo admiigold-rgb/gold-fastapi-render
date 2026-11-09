@@ -429,40 +429,52 @@ def get_next_loan_no(branch_id: int = Query(...)):
 
 # 4. New Gold Loan
 @app.post("/api/loan/new-pawn")
-def create_new_pawn(data: NewGoldLoanEntry):
+def create_new_pawn(data: dict):
     try:
+        branch_id = data.get("branch_id") or 1
+        trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
+
+        # அன்றைய நாள் லாக் செய்யப்பட்டுள்ளதா எனச் சரிபார்த்தல்
         check_day = (
             supabase.table("test_branch_cash_days")
             .select("status")
-            .eq("branch_id", data.branch_id)
-            .order("business_date", desc=True)
-            .limit(1)
+            .eq("branch_id", branch_id)
+            .eq("business_date", trans_date)
             .execute()
         )
         if check_day.data and check_day.data[0].get("status") == "CLOSED":
             raise HTTPException(status_code=400, detail="இந்த நாளுக்கான கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). புதிய அடகு வைக்க முடியாது!")
 
-        if not data.items:
+        items = data.get("items") or []
+        if not items:
             raise HTTPException(status_code=400, detail="நகைகளைச் சேர்க்கவும்.")
 
-        total_gross = sum(i.gross_weight for i in data.items)
-        total_net = sum(i.net_weight for i in data.items)
-        net_payable = data.loan_amount - data.charges_amount
+        # Dictionary-யில் இருந்து எடையைக் கணக்கிடும் சரியான முறை:
+        total_gross = sum(float(i.get("gross_weight") if isinstance(i, dict) else getattr(i, "gross_weight", 0) or 0) for i in items)
+        total_net = sum(float(i.get("net_weight") if isinstance(i, dict) else getattr(i, "net_weight", 0) or 0) for i in items)
+        
+        loan_amt = float(data.get("loan_amount") or 0.0)
+        charges_amt = float(data.get("charges_amount") or 0.0)
+        net_payable = loan_amt - charges_amt
+
+        # நகைப் படம் எடுத்தல்
+        ornament_img = data.get("ornament_photo") or data.get("photo_url")
 
         loan_record = {
-            "loan_no": data.loan_no.strip(),
-            "customer_id": data.customer_id,
-            "scheme_name": data.scheme_name,
+            "loan_no": str(data.get("loan_no") or "").strip(),
+            "customer_id": data.get("customer_id"),
+            "scheme_name": data.get("scheme_name"),
             "total_gross_weight": round(total_gross, 3),
             "total_net_weight": round(total_net, 3),
-            "loan_amount": data.loan_amount,
-            "charges_amount": data.charges_amount,
+            "loan_amount": loan_amt,
+            "charges_amount": charges_amt,
             "net_payable_amount": net_payable,
-            "photo_url": data.photo_url,
-            "ornament_photo": data.photo_url,
-            "branch_id": data.branch_id,
+            "photo_url": ornament_img,
+            "ornament_photo": ornament_img,
+            "branch_id": branch_id,
             "status": "ACTIVE",
-            "transaction_date": getattr(data, 'transaction_date', None) or datetime.now(IST).strftime("%Y-%m-%d"),
+            "visit_id": data.get("visit_id"),
+            "transaction_date": trans_date,
             "created_at": datetime.now(IST).isoformat()
         }
         res_loan = supabase.table("test_gold_loans").insert(loan_record).execute()
@@ -470,27 +482,34 @@ def create_new_pawn(data: NewGoldLoanEntry):
             raise HTTPException(status_code=500, detail="கடன் பதிவு தோல்வியடைந்தது.")
         new_loan_id = res_loan.data[0]["id"]
 
-        items_payload = [{
-            "loan_id": new_loan_id,
-            "item_type": i.item_type.strip(),
-            "item_count": i.item_count,
-            "gross_weight": i.gross_weight,
-            "net_weight": i.net_weight,
-            "purity": i.purity
-        } for i in data.items]
+        # நகை உருப்படிகள் ஒவ்வொன்றையும் Dictionary முறையில் சேர்த்தல்:
+        items_payload = []
+        for i in items:
+            if isinstance(i, dict):
+                items_payload.append({
+                    "loan_id": new_loan_id,
+                    "item_type": str(i.get("item_type") or "").strip(),
+                    "item_count": int(i.get("item_count") or 1),
+                    "gross_weight": float(i.get("gross_weight") or 0.0),
+                    "net_weight": float(i.get("net_weight") or 0.0),
+                    "purity": i.get("purity")
+                })
+            else:
+                items_payload.append({
+                    "loan_id": new_loan_id,
+                    "item_type": str(getattr(i, "item_type", "")).strip(),
+                    "item_count": int(getattr(i, "item_count", 1)),
+                    "gross_weight": float(getattr(i, "gross_weight", 0.0)),
+                    "net_weight": float(getattr(i, "net_weight", 0.0)),
+                    "purity": getattr(i, "purity", None)
+                })
+
         supabase.table("test_gold_loan_items").insert(items_payload).execute()
         return {"status": "success", "message": "நகைக்கடன் கார்ட்டில் சேர்க்கப்பட்டது.", "loan_id": new_loan_id, "net_payable": net_payable}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் உருவாக்கம் பிழை: {str(e)}")
-@app.delete("/api/loan/{loan_id}")
-def delete_cart_loan(loan_id: int):
-    try:
-        supabase.table("test_gold_loans").delete().eq("id", loan_id).execute()
-        return {"status": "success", "message": "கடன் கார்ட்டில் இருந்து நீக்கப்பட்டது."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"கடன் நீக்கல் பிழை: {str(e)}")
 
 # 5. Cash Day Status (Auto Roll-forward)
 @app.get("/api/cash-day/status")

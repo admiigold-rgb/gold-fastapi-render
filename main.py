@@ -526,7 +526,7 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
 
         # 1. தொடக்க இருப்பு (Opening Balance)
         day_res = (
-            supabase.table("test_branch_day_books")
+            supabase.table("test_branch_cash_days")
             .select("*")
             .eq("branch_id", branch_id)
             .order("id", desc=True)

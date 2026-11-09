@@ -1,6 +1,7 @@
 import os
 import random
 import requests
+import pytz
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Query
@@ -9,6 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from database import supabase
+
+IST = pytz.timezone("Asia/Kolkata")
 
 app = FastAPI(
     title="Muthusise Gold Loan Management - Enterprise Core",
@@ -456,7 +459,9 @@ def create_new_pawn(data: NewGoldLoanEntry):
             "photo_url": data.photo_url,
             "ornament_photo": data.photo_url,
             "branch_id": data.branch_id,
-            "status": "ACTIVE"
+            "status": "ACTIVE",
+            "transaction_date": getattr(data, 'transaction_date', None) or datetime.now(IST).strftime("%Y-%m-%d"),
+            "created_at": datetime.now(IST).isoformat()
         }
         res_loan = supabase.table("test_gold_loans").insert(loan_record).execute()
         if not res_loan.data:
@@ -477,7 +482,6 @@ def create_new_pawn(data: NewGoldLoanEntry):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் உருவாக்கம் பிழை: {str(e)}")
-
 @app.delete("/api/loan/{loan_id}")
 def delete_cart_loan(loan_id: int):
     try:
@@ -871,28 +875,36 @@ def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# இந்திய நேர மண்டலம் (IST)
+IST = pytz.timezone("Asia/Kolkata")
+
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     try:
-        # நாள் லாக் செய்யப்பட்டுள்ளதா எனச் சரிபார்த்தல்
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        # கவுண்ட்டரில் இருந்து வரும் தேதி அல்லது தற்போதைய இந்தியத் தேதி
+        selected_date = getattr(data, 'transaction_date', None) or datetime.now(IST).strftime("%Y-%m-%d")
+        now_ist = datetime.now(IST).isoformat()
+
+        # நாள் லாக் செய்யப்பட்டுள்ளதா எனப் பார்த்தல்
         day_check = (
             supabase.table("test_branch_cash_days")
             .select("status")
             .eq("branch_id", data.branch_id)
-            .eq("business_date", today_str)
+            .eq("business_date", selected_date)
             .execute()
         )
         if day_check.data and day_check.data[0].get("status") == "CLOSED":
             raise HTTPException(
                 status_code=400, 
-                detail=f"தேதி {today_str}-க்கான மாலை கணக்கு முடிக்கப்பட்டுவிட்டது (Day Closed). புதிய பரிவர்த்தனைகள் செய்ய முடியாது!"
+                detail=f"தேதி {selected_date}-க்கான மாலை கணக்கு முடிக்கப்பட்டுவிட்டது (Day Closed). புதிய பரிவர்த்தனைகள் செய்ய முடியாது!"
             )
 
         record = {
             "customer_id": data.customer_id,
             "branch_id": data.branch_id,
             "purpose": data.purpose,
+            "transaction_date": selected_date,
+            "created_at": now_ist,
             "status": "IN_PROGRESS",
             "audit_status": "PENDING",
             "otp_exemption_status": "NONE",

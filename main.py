@@ -551,39 +551,57 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         except Exception as e:
             print("Opening balance error:", e)
 
-        # 2. அடகு & வரவு பட்டுவாடா (test_gold_loans அட்டவணையில் இருந்து எடுத்தல்)
+        # 2. அடகு & வரவு பட்டுவாடா (நேரடி பாதுகாப்பு முறை)
         total_cash_in = 0.0
         total_cash_out = 0.0
         formatted_settlements = []
         try:
-            # அடகு கடன் அட்டவணையில் இருந்து வாடிக்கையாளர் விபரங்களுடன் எடுத்தல்
+            # அ) முதலில் அடகு கடன்களை நேரடியாக எடுத்தல்
             loans_res = (
                 supabase.table("test_gold_loans")
-                .select("*, test_customers(name, mobile)")
-                .eq("branch_id", branch_id)
+                .select("*")
                 .order("id", desc=True)
                 .limit(100)
                 .execute()
             )
             raw_loans = loans_res.data or []
 
+            # ஆ) வாடிக்கையாளர் பெயர்களை எடுத்தல்
+            cust_ids = list(set([l.get("customer_id") for l in raw_loans if l.get("customer_id")]))
+            cust_map = {}
+            if cust_ids:
+                try:
+                    c_res = supabase.table("test_customers").select("id, name, mobile").in_("id", cust_ids).execute()
+                    for c in (c_res.data or []):
+                        cust_map[c["id"]] = c
+                except Exception as ce:
+                    print("Customers map error:", ce)
+
+            # இ) கடன்களை அறிக்கைப் பட்டியலுக்கு மாற்றுதல்
             for l in raw_loans:
-                l_date = str(l.get("created_at") or "")
-                
-                # தேர்ந்தெடுக்கப்பட்ட பரிவர்த்தனை தேதிக்குரிய அடகு கடன்களை மட்டும் எடுத்தல்
-                if clean_date in l_date:
-                    # அடகுக்குக் கொடுக்கப்பட்ட நிகரப் பணம் (Cash Out / Loan Amount)
+                # கிளை எண் பொருந்துகிறதா எனப் பார்த்தல் (branch_id இருந்தால் மட்டும் சரிபார்க்கும்)
+                loan_branch = l.get("branch_id")
+                if branch_id and loan_branch and int(loan_branch) != int(branch_id):
+                    continue
+
+                # தேதியை எடுத்தல் (transaction_date அல்லது created_at)
+                t_date = str(l.get("transaction_date") or "")
+                c_at = str(l.get("created_at") or "")
+                rec_date = t_date if t_date else c_at[:10]
+
+                # நீங்கள் தேர்ந்தெடுத்த தேதியும் கடன் தேதியும் ஒன்றாக உள்ளதா எனப் பார்த்தல்
+                # (தேதி இல்லாவிட்டாலோ அல்லது பொருந்தினாலோ சேர்த்துக் கொள்ளும்)
+                if not clean_date or (clean_date in rec_date) or (rec_date in clean_date):
                     p_amt = float(l.get("net_payable_amount") or l.get("loan_amount") or 0.0)
                     total_cash_out += p_amt
 
-                    # வாடிக்கையாளர் விபரங்கள்
-                    cust = l.get("test_customers", {}) or {}
-                    cust_name = cust.get("name") or "வாடிக்கையாளர்"
-                    cust_mobile = cust.get("mobile") or "-"
+                    cust_info = cust_map.get(l.get("customer_id"), {})
+                    cust_name = cust_info.get("name") or f"Customer #{l.get('customer_id')}"
+                    cust_mobile = cust_info.get("mobile") or "-"
 
                     formatted_settlements.append({
                         "id": l.get("id"),
-                        "time": l_date[11:16] if len(l_date) >= 16 else "-",
+                        "time": c_at[11:16] if len(c_at) >= 16 else "-",
                         "customer_name": f"{cust_name} ({l.get('loan_no', '')})",
                         "mobile": cust_mobile,
                         "payment_mode": "CASH",

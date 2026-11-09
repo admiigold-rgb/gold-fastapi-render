@@ -4,3 +4,4 @@ supabase
 pydantic
 requests
 python-dotenv
+pytz

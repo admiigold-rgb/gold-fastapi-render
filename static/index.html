@@ -3565,6 +3565,10 @@
 
       if (!amt || amt <= 0) return alert("சரியான தொகையை உள்ளிடவும்.");
 
+      // 1. கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
+      const transInput = document.querySelector('input[type="date"]');
+      const transDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
+
       const btn = document.getElementById('btnSubmitTreasury');
       btn.innerText = "அனுப்பப்படுகிறது...";
       btn.disabled = true;
@@ -3584,7 +3588,8 @@
             reference_no: refNo,
             proof_doc: docBase64,
             notes: notes,
-            staff_id: currentUser ? currentUser.id : 1
+            staff_id: currentUser ? currentUser.id : 1,
+            transaction_date: transDate // 👈 கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதி
           })
         });
         const data = await res.json();

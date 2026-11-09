@@ -291,7 +291,7 @@ def create_branch_expense(data: dict):
             "payment_mode": data.get("payment_mode", "CASH"),
             "reason": data.get("reason"),
             "bill_photo": data.get("bill_photo"),
-            "status": "APPROVED",
+            "status": "PENDING",
             "created_by": data.get("staff_id"),
             "transaction_date": trans_date,
             "created_at": datetime.now(IST).isoformat()
@@ -645,14 +645,13 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         total_expenses = 0.0
         try:
             exp_res = (
-                supabase.table("test_branch_expenses")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .eq("status", "APPROVED")
-                .order("id", desc=True)
-                .limit(100)
-                .execute()
-            )
+            supabase.table("test_branch_expenses")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("transaction_date", date_str)  # 👈 transaction_date கொண்டு எடுத்தல்
+            .eq("status", "APPROVED")  # ஒப்புதல் பெற்றவை மட்டும் அறிக்கையில் வரும்
+            .execute()
+        )
             for x in (exp_res.data or []):
                 x_date = str(x.get("expense_date") or x.get("created_at") or "")
                 if clean_date in x_date:
@@ -667,14 +666,13 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         treasury_out = 0.0
         try:
             tr_res = (
-                supabase.table("test_treasury_transfers")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .eq("status", "APPROVED")
-                .order("id", desc=True)
-                .limit(100)
-                .execute()
-            )
+            supabase.table("test_treasury_transfers")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("transaction_date", date_str)  # 👈 transaction_date கொண்டு எடுத்தல்
+            .eq("status", "APPROVED")  # ஒப்புதல் பெற்றவை மட்டும் அறிக்கையில் வரும்
+            .execute()
+        )
             for t in (tr_res.data or []):
                 t_date = str(t.get("transfer_date") or t.get("created_at") or "")
                 if clean_date in t_date:
@@ -1559,7 +1557,7 @@ def create_treasury_transfer(data: dict):
             "reference_no": data.get("reference_no"),
             "proof_doc": data.get("proof_doc"),
             "notes": data.get("notes"),
-            "status": "APPROVED",
+            "status": "PENDING",
             "created_by": data.get("staff_id"),
             "transaction_date": trans_date,
             "created_at": datetime.now(IST).isoformat()

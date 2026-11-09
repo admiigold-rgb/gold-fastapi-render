@@ -1758,12 +1758,29 @@
       const modal = document.getElementById('daySummaryReportModal');
       modal.classList.remove('hidden');
 
-      // கவுண்ட்டரில் உள்ள தேர்ந்தெடுக்கப்பட்ட தேதியை எடுத்தல்
-      const dateEl = document.getElementById('cash_date') || document.getElementById('trans_date') || document.getElementById('business_date');
-      const selectedDate = dateEl ? dateEl.value : '';
+      // 1. திரையில் உள்ள தேதிப் பெட்டியைக் கண்டறிதல்
+      let rawDate = "";
+      const possibleDateInputs = document.querySelectorAll('input[type="date"], input[id*="date"]');
+      for (let input of possibleDateInputs) {
+        if (input.value) {
+          rawDate = input.value;
+          break;
+        }
+      }
+
+      // 2. தேதியை YYYY-MM-DD வடிவத்திற்கு மாற்றுதல்
+      let cleanDate = "";
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          cleanDate = d.toISOString().split('T')[0];
+        } else {
+          cleanDate = rawDate;
+        }
+      }
 
       try {
-        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selectedDate}`);
+        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${cleanDate}`);
         const data = await res.json();
 
         // சுருக்க எண்கள்

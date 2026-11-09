@@ -551,12 +551,12 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         except Exception as e:
             print("Opening balance error:", e)
 
-        # 2. அடகு & வரவு பட்டுவாடா (தேதிக்கு ஏற்ப துல்லியமாக வடிகட்டுதல்)
+        # 2. அடகு & வரவு பட்டுவாடா (நேரடி பாதுகாப்பு முறை)
         total_cash_in = 0.0
         total_cash_out = 0.0
         formatted_settlements = []
         try:
-            # Join பிழையைத் தவிர்க்க எளிய முறையில் test_settlements எடுத்தல்
+            # அ) முதலில் test_settlements அட்டவணையைச் சோதித்தல்
             settle_res = (
                 supabase.table("test_settlements")
                 .select("*")
@@ -565,18 +565,38 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
                 .limit(100)
                 .execute()
             )
-            for s in (settle_res.data or []):
-                # தேதி ஒப்பீடு (business_date அல்லது created_at)
-                s_date = str(s.get("business_date") or s.get("settlement_date") or s.get("created_at") or "")
+            raw_s = settle_res.data or []
+
+            # ஆ) ஒருவேளை test_settlements காலியாக இருந்தால், test_pledges அட்டவணையைச் சோதித்தல்
+            if not raw_s:
+                try:
+                    pledge_res = (
+                        supabase.table("test_pledges")
+                        .select("*")
+                        .eq("branch_id", branch_id)
+                        .order("id", desc=True)
+                        .limit(100)
+                        .execute()
+                    )
+                    raw_s = pledge_res.data or []
+                except Exception:
+                    pass
+
+            for s in raw_s:
+                s_date = str(s.get("business_date") or s.get("settlement_date") or s.get("pledge_date") or s.get("created_at") or "")
+                
+                # அன்றைய தேதிக்குரிய பதிவுகளை மட்டும் எடுத்தல்
                 if clean_date in s_date:
-                    c_in = float(s.get("cash_in") or 0.0)
-                    c_out = float(s.get("cash_out") or 0.0)
+                    # பண வரவு / பட்டுவாடா தொகைகளைக் கண்டறிதல்
+                    c_in = float(s.get("cash_in") or s.get("repayment_amount") or s.get("interest_amount") or 0.0)
+                    c_out = float(s.get("cash_out") or s.get("loan_amount") or s.get("principal_amount") or s.get("amount") or 0.0)
+                    
                     total_cash_in += c_in
                     total_cash_out += c_out
 
-                    # வாடிக்கையாளர் பெயர் எடுத்தல்
-                    cust_name = s.get("customer_name") or "வாடிக்கையாளர்"
-                    cust_mobile = s.get("customer_mobile") or s.get("mobile") or "-"
+                    # வாடிக்கையாளர் பெயர் & மொபைல்
+                    cust_name = s.get("customer_name") or s.get("name") or "அடகு வாடிக்கையாளர்"
+                    cust_mobile = s.get("customer_mobile") or s.get("mobile") or s.get("phone") or "-"
                     c_at = str(s.get("created_at", ""))
 
                     formatted_settlements.append({
@@ -589,7 +609,7 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
                         "cash_out": c_out
                     })
         except Exception as e:
-            print("Settlements fetch error:", e)
+            print("Settlements Error:", e)
 
         # 3. அங்கீகரிக்கப்பட்ட கிளை செலவுகள் (தேதிக்கு ஏற்ப வடிகட்டுதல்)
         raw_expenses = []

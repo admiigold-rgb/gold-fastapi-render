@@ -196,14 +196,15 @@ class OrnamentItem(BaseModel):
 
 class NewGoldLoanEntry(BaseModel):
     customer_id: int
-    branch_id: int = 1
-    visit_id: Optional[int] = None
+    branch_id: int
     loan_no: str
     scheme_name: str
     loan_amount: float
     charges_amount: float = 0.0
     photo_url: Optional[str] = None
-    items: List[OrnamentItem]
+    items: List[Any] = []
+    transaction_date: Optional[str] = None  # 👈 இந்த வரியைச் சேர்த்துக் கொள்ளவும்
+    visit_id: Optional[int] = None
 
 class DenominationCounts(BaseModel):
     c_500: int = 0

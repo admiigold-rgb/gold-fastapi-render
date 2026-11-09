@@ -279,23 +279,27 @@ class ExpenseApprovalPayload(BaseModel):
 
 # 2. கிளை செலவுக் கோரிக்கை அனுப்பும் API
 @app.post("/api/expense/request")
-def create_branch_expense(data: BranchExpenseRequest):
+def create_branch_expense(data: dict):
     try:
+        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி அல்லது இந்தியத் தேதி
+        trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
+
         record = {
-            "branch_id": data.branch_id,
-            "category": data.category,
-            "amount": data.amount,
-            "payment_mode": data.payment_mode,
-            "reason": data.reason,
-            "bill_photo": data.bill_photo,
+            "branch_id": data.get("branch_id") or 1,
+            "category": data.get("category"),
+            "amount": float(data.get("amount") or 0.0),
+            "payment_mode": data.get("payment_mode", "CASH"),
+            "reason": data.get("reason"),
+            "bill_photo": data.get("bill_photo"),
             "status": "PENDING",
-            "created_by": data.staff_id
+            "created_by": data.get("staff_id"),
+            "transaction_date": trans_date,
+            "created_at": datetime.now(IST).isoformat()
         }
         res = supabase.table("test_branch_expenses").insert(record).execute()
         return {"status": "success", "message": "செலவுக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"செலவு பதிவு பிழை: {str(e)}")
-
 
 # 3. தலைமையகத்தில் நிலுவையில் உள்ள செலவுகளை எடுக்கும் API
 @app.get("/api/hq/pending-expenses")
@@ -1525,34 +1529,40 @@ class TreasuryApprovalPayload(BaseModel):
     admin_id: int
 
 @app.post("/api/treasury/transfer-request")
-def create_treasury_transfer(data: TreasuryTransferRequest):
+def create_treasury_transfer(data: dict):
     try:
         from_src = "BRANCH_CASH"
         to_dest = "HQ_VAULT"
 
-        if data.transfer_type == "HQ_TO_BRANCH":
+        transfer_type = data.get("transfer_type")
+        if transfer_type == "HQ_TO_BRANCH":
             from_src = "HQ_VAULT"
             to_dest = "BRANCH_CASH"
-        elif data.transfer_type == "CASH_TO_BANK":
+        elif transfer_type == "CASH_TO_BANK":
             from_src = "BRANCH_CASH"
             to_dest = "COMPANY_BANK"
-        elif data.transfer_type == "BANK_TO_CASH":
+        elif transfer_type == "BANK_TO_CASH":
             from_src = "COMPANY_BANK"
             to_dest = "BRANCH_CASH"
 
+        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி அல்லது இந்தியத் தேதி
+        trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
+
         rec = {
-            "transfer_type": data.transfer_type,
+            "transfer_type": transfer_type,
             "from_source": from_src,
             "to_destination": to_dest,
-            "branch_id": data.branch_id,
-            "company_bank_id": data.company_bank_id,
-            "amount": data.amount,
-            "carrier_person": data.carrier_person,
-            "reference_no": data.reference_no,
-            "proof_doc": data.proof_doc,
-            "notes": data.notes,
+            "branch_id": data.get("branch_id") or 1,
+            "company_bank_id": data.get("company_bank_id"),
+            "amount": float(data.get("amount") or 0.0),
+            "carrier_person": data.get("carrier_person"),
+            "reference_no": data.get("reference_no"),
+            "proof_doc": data.get("proof_doc"),
+            "notes": data.get("notes"),
             "status": "PENDING",
-            "created_by": data.staff_id
+            "created_by": data.get("staff_id"),
+            "transaction_date": trans_date,
+            "created_at": datetime.now(IST).isoformat()
         }
         res = supabase.table("test_treasury_transfers").insert(rec).execute()
         return {"status": "success", "message": "பணப் பரிமாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}

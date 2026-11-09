@@ -529,19 +529,20 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
             supabase.table("test_branch_day_books")
             .select("*")
             .eq("branch_id", branch_id)
-            .eq("business_date", clean_date)
+            .order("id", desc=True)
+            .limit(1)
             .execute()
         )
         day_info = day_res.data[0] if day_res.data else None
         opening = float(day_info.get("opening_balance") or 0.0) if day_info else 0.0
 
-        # 2. அடகு & வரவு பட்டுவாடா
+        # 2. அடகு & வரவு பட்டுவாடா (Settlements)
         settle_res = (
             supabase.table("test_settlements")
             .select("*, test_visits(customer_id, test_customers(name, mobile))")
             .eq("branch_id", branch_id)
-            .gte("created_at", f"{clean_date}T00:00:00")
-            .lte("created_at", f"{clean_date}T23:59:59.999999")
+            .order("id", desc=True)
+            .limit(50)
             .execute()
         )
         raw_settlements = settle_res.data or []
@@ -550,58 +551,69 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         formatted_settlements = []
 
         for s in raw_settlements:
-            c_in = float(s.get("cash_in") or 0.0)
-            c_out = float(s.get("cash_out") or 0.0)
-            total_cash_in += c_in
-            total_cash_out += c_out
+            # அன்றைய தேதிக்குரியதை மட்டும் பிரித்தெடுத்தல்
+            c_at = str(s.get("created_at", ""))
+            if clean_date in c_at:
+                c_in = float(s.get("cash_in") or 0.0)
+                c_out = float(s.get("cash_out") or 0.0)
+                total_cash_in += c_in
+                total_cash_out += c_out
 
-            cust = s.get("test_visits", {}).get("test_customers", {}) if s.get("test_visits") else {}
-            formatted_settlements.append({
-                "id": s.get("id"),
-                "time": s.get("created_at", "")[11:16] if s.get("created_at") else "-",
-                "customer_name": cust.get("name", "வாடிக்கையாளர்"),
-                "mobile": cust.get("mobile", "-"),
-                "payment_mode": s.get("payment_mode", "CASH"),
-                "cash_in": c_in,
-                "cash_out": c_out
-            })
+                cust = s.get("test_visits", {}).get("test_customers", {}) if s.get("test_visits") else {}
+                formatted_settlements.append({
+                    "id": s.get("id"),
+                    "time": c_at[11:16] if len(c_at) >= 16 else "-",
+                    "customer_name": cust.get("name", "வாடிக்கையாளர்"),
+                    "mobile": cust.get("mobile", "-"),
+                    "payment_mode": s.get("payment_mode", "CASH"),
+                    "cash_in": c_in,
+                    "cash_out": c_out
+                })
 
-        # 3. கிளை தினசரி செலவுகள் (Approved)
+        # 3. கிளை தினசரி செலவுகள் (Approved Expenses)
         exp_res = (
             supabase.table("test_branch_expenses")
             .select("*")
             .eq("branch_id", branch_id)
             .eq("status", "APPROVED")
-            .gte("created_at", f"{clean_date}T00:00:00")
-            .lte("created_at", f"{clean_date}T23:59:59.999999")
+            .order("id", desc=True)
+            .limit(50)
             .execute()
         )
-        raw_expenses = exp_res.data or []
-        total_expenses = sum(float(x.get("amount") or 0.0) for x in raw_expenses)
+        raw_expenses = []
+        total_expenses = 0.0
+        for x in (exp_res.data or []):
+            c_at = str(x.get("created_at", ""))
+            if clean_date in c_at:
+                raw_expenses.append(x)
+                total_expenses += float(x.get("amount") or 0.0)
 
-        # 4. உள்-பணப் பரிமாற்றங்கள் (Approved)
+        # 4. உள்-பணப் பரிமாற்றங்கள் (Approved Treasury Transfers)
         tr_res = (
             supabase.table("test_treasury_transfers")
             .select("*")
             .eq("branch_id", branch_id)
             .eq("status", "APPROVED")
-            .gte("created_at", f"{clean_date}T00:00:00")
-            .lte("created_at", f"{clean_date}T23:59:59.999999")
+            .order("id", desc=True)
+            .limit(50)
             .execute()
         )
-        raw_transfers = tr_res.data or []
+        raw_transfers = []
         treasury_in = 0.0
         treasury_out = 0.0
 
-        for t in raw_transfers:
-            amt = float(t.get("amount") or 0.0)
-            t_type = t.get("transfer_type")
-            if t_type in ["HQ_TO_BRANCH", "BANK_TO_CASH"]:
-                treasury_in += amt
-            elif t_type in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
-                treasury_out += amt
+        for t in (tr_res.data or []):
+            c_at = str(t.get("created_at", ""))
+            if clean_date in c_at:
+                raw_transfers.append(t)
+                amt = float(t.get("amount") or 0.0)
+                t_type = t.get("transfer_type")
+                if t_type in ["HQ_TO_BRANCH", "BANK_TO_CASH"]:
+                    treasury_in += amt
+                elif t_type in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
+                    treasury_out += amt
 
-        # 5. இறுதியான கணினி ரொக்க இருப்பு
+        # 5. இறுதியான துல்லிய கணினி ரொக்க இருப்பு
         calculated_closing = (
             opening 
             + total_cash_in 

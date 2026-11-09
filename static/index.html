@@ -1375,79 +1375,88 @@
     </div>
 
     <!-- 6. அன்றைய நடவடிக்கைகள் அறிக்கை Modal -->
-    <!-- 📊 அன்றைய நடவடிக்கைகள் விரிவான அறிக்கை Modal (புதியது) -->
-    <div id="daySummaryReportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-3xl p-5 max-w-4xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-violet">
-        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+    <!-- 📊 அன்றைய நடவடிக்கைகள் விரிவான அறிக்கை Modal (Fixed Header & Footer உடன்) -->
+    <div id="daySummaryReportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 sm:p-5 z-50">
+      <div class="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border-2 border-brand-violet flex flex-col max-h-[90vh] overflow-hidden">
+        
+        <!-- 1. நிலையான தலைப்புப் பகுதி (Sticky Header) - எங்கும் மறையாது -->
+        <div class="flex justify-between items-center px-6 py-3.5 border-b border-purple-100 bg-purple-50/70 shrink-0">
           <div class="flex items-center gap-2">
             <span class="text-xl">📊</span>
-            <h3 class="text-base font-extrabold text-brand-violet">அன்றைய முழுமையான ரொக்க நடவடிக்கைகள் அறிக்கை</h3>
+            <h3 class="text-sm sm:text-base font-extrabold text-brand-violet">அன்றைய முழுமையான ரொக்க நடவடிக்கைகள் அறிக்கை</h3>
           </div>
-          <button type="button" onclick="closeDaySummaryReportModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+          <button type="button" onclick="closeDaySummaryReportModal()" class="w-8 h-8 rounded-full bg-white border border-purple-200 text-slate-500 hover:text-rose-600 hover:border-rose-300 flex items-center justify-center text-base font-bold shadow-sm transition">✕</button>
         </div>
 
-        <!-- ரொக்க சுருக்க அட்டைகள் -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-          <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-200">
-            <span class="text-slate-500 font-bold block text-[10px]">தொடக்க இருப்பு</span>
-            <span class="text-sm font-black text-brand-violet" id="rep_opening">₹0</span>
+        <!-- 2. உருட்டிப் பார்க்கும் நடுப்பகுதி (Scrollable Content) -->
+        <div class="p-5 space-y-4 overflow-y-auto flex-1">
+          
+          <!-- ரொக்க சுருக்க அட்டைகள் -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-200">
+              <span class="text-slate-500 font-bold block text-[10px]">தொடக்க இருப்பு</span>
+              <span class="text-sm font-black text-brand-violet" id="rep_opening">₹0</span>
+            </div>
+            <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+              <span class="text-emerald-700 font-bold block text-[10px]">மொத்த வரவு (+பரிமாற்றம்)</span>
+              <span class="text-sm font-black text-emerald-700" id="rep_cash_in">₹0</span>
+            </div>
+            <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+              <span class="text-rose-700 font-bold block text-[10px]">பட்டுவாடா + செலவு + பற்று</span>
+              <span class="text-sm font-black text-rose-700" id="rep_cash_out">₹0</span>
+            </div>
+            <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300">
+              <span class="text-amber-900 font-bold block text-[10px]">கணினி ரொக்க இருப்பு</span>
+              <span class="text-sm font-black text-amber-950" id="rep_closing">₹0</span>
+            </div>
           </div>
-          <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
-            <span class="text-emerald-700 font-bold block text-[10px]">மொத்த வரவு (+பரிமாற்றம்)</span>
-            <span class="text-sm font-black text-emerald-700" id="rep_cash_in">₹0</span>
+
+          <!-- 1. வாடிக்கையாளர் நகைப் பட்டுவாடா & வரவு -->
+          <div class="space-y-1.5">
+            <h4 class="text-xs font-bold text-slate-700 uppercase">1. அடகு & வரவு நடவடிக்கைகள்:</h4>
+            <div class="overflow-x-auto border border-purple-100 rounded-xl">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-purple-50 text-brand-violet font-bold">
+                  <tr><th class="p-2">நேரம்</th><th class="p-2">வாடிக்கையாளர்</th><th class="p-2">மொபைல்</th><th class="p-2">முறை</th><th class="p-2 text-right">வரவு (+)</th><th class="p-2 text-right">பட்டுவாடா (-)</th></tr>
+                </thead>
+                <tbody id="rep_settlements_tbody" class="divide-y divide-purple-50 text-slate-700"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200">
-            <span class="text-rose-700 font-bold block text-[10px]">பட்டுவாடா + செலவு + பற்று</span>
-            <span class="text-sm font-black text-rose-700" id="rep_cash_out">₹0</span>
+
+          <!-- 2. கிளை தினசரி செலவுகள் -->
+          <div class="space-y-1.5">
+            <h4 class="text-xs font-bold text-amber-900 uppercase">2. அங்கீகரிக்கப்பட்ட கிளை செலவுகள் (Expenses):</h4>
+            <div class="overflow-x-auto border border-amber-200 rounded-xl">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-amber-100 text-amber-950 font-bold">
+                  <tr><th class="p-2">வகை</th><th class="p-2">விபரம் / காரணம்</th><th class="p-2 text-right">தொகை (₹)</th></tr>
+                </thead>
+                <tbody id="rep_expenses_tbody" class="divide-y divide-amber-100 text-slate-700"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300">
-            <span class="text-amber-900 font-bold block text-[10px]">கணினி ரொக்க இருப்பு</span>
-            <span class="text-sm font-black text-amber-950" id="rep_closing">₹0</span>
+
+          <!-- 3. உள்-பணப் பரிமாற்றங்கள் (Treasury Transfers) -->
+          <div class="space-y-1.5">
+            <h4 class="text-xs font-bold text-indigo-900 uppercase">3. கருவூலம் & உள்-பணப் பரிமாற்றங்கள்:</h4>
+            <div class="overflow-x-auto border border-indigo-200 rounded-xl">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-indigo-100 text-indigo-950 font-bold">
+                  <tr><th class="p-2">பரிமாற்ற வகை</th><th class="p-2">கொண்டு சென்றவர் / விபரம்</th><th class="p-2 text-right">வரவு (+)</th><th class="p-2 text-right">பற்று (-)</th></tr>
+                </thead>
+                <tbody id="rep_transfers_tbody" class="divide-y divide-indigo-100 text-slate-700"></tbody>
+              </table>
+            </div>
           </div>
+
         </div>
 
-        <!-- 1. வாடிக்கையாளர் நகைப் பட்டுவாடா & வரவு -->
-        <div class="space-y-1.5">
-          <h4 class="text-xs font-bold text-slate-700 uppercase">1. அடகு & வரவு நடவடிக்கைகள்:</h4>
-          <div class="overflow-x-auto border border-purple-100 rounded-xl">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-purple-50 text-brand-violet font-bold">
-                <tr><th class="p-2">நேரம்</th><th class="p-2">வாடிக்கையாளர்</th><th class="p-2">மொபைல்</th><th class="p-2">முறை</th><th class="p-2 text-right">வரவு (+)</th><th class="p-2 text-right">பட்டுவாடா (-)</th></tr>
-              </thead>
-              <tbody id="rep_settlements_tbody" class="divide-y divide-purple-50 text-slate-700"></tbody>
-            </table>
-          </div>
+        <!-- 3. நிலையான கீழ்ப்பகுதி (Sticky Footer) - எப்போதுமே தெரியும் மூடு பட்டன் -->
+        <div class="px-6 py-3 border-t border-purple-100 bg-slate-50 flex justify-end shrink-0">
+          <button type="button" onclick="closeDaySummaryReportModal()" class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white font-black text-xs rounded-xl shadow cursor-pointer transition">மூடு (Close)</button>
         </div>
 
-        <!-- 2. கிளை தினசரி செலவுகள் -->
-        <div class="space-y-1.5">
-          <h4 class="text-xs font-bold text-amber-900 uppercase">2. அங்கீகரிக்கப்பட்ட கிளை செலவுகள் (Expenses):</h4>
-          <div class="overflow-x-auto border border-amber-200 rounded-xl">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-amber-100 text-amber-950 font-bold">
-                <tr><th class="p-2">வகை</th><th class="p-2">விபரம் / காரணம்</th><th class="p-2 text-right">தொகை (₹)</th></tr>
-              </thead>
-              <tbody id="rep_expenses_tbody" class="divide-y divide-amber-100 text-slate-700"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 3. உள்-பணப் பரிமாற்றங்கள் (Treasury Transfers) -->
-        <div class="space-y-1.5">
-          <h4 class="text-xs font-bold text-indigo-900 uppercase">3. கருவூலம் & உள்-பணப் பரிமாற்றங்கள்:</h4>
-          <div class="overflow-x-auto border border-indigo-200 rounded-xl">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-indigo-100 text-indigo-950 font-bold">
-                <tr><th class="p-2">பரிமாற்ற வகை</th><th class="p-2">கொண்டு சென்றவர் / விபரம்</th><th class="p-2 text-right">வரவு (+)</th><th class="p-2 text-right">பற்று (-)</th></tr>
-              </thead>
-              <tbody id="rep_transfers_tbody" class="divide-y divide-indigo-100 text-slate-700"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="flex justify-end pt-2 border-t border-purple-100">
-          <button type="button" onclick="closeDaySummaryReportModal()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 font-bold text-xs rounded-xl cursor-pointer">மூடு</button>
-        </div>
       </div>
     </div>
 

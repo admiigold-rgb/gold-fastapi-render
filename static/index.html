@@ -1752,14 +1752,18 @@
         else alert("❌ " + data.detail);
       }
     }
-
+    
     async function openDaySummaryReportModal() {
       const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
       const modal = document.getElementById('daySummaryReportModal');
       modal.classList.remove('hidden');
 
+      // கவுண்ட்டரில் உள்ள தேர்ந்தெடுக்கப்பட்ட தேதியை எடுத்தல்
+      const dateEl = document.getElementById('cash_date') || document.getElementById('trans_date') || document.getElementById('business_date');
+      const selectedDate = dateEl ? dateEl.value : '';
+
       try {
-        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}`);
+        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selectedDate}`);
         const data = await res.json();
 
         // சுருக்க எண்கள்

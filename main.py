@@ -876,9 +876,6 @@ def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# இந்திய நேர மண்டலம் (IST)
-IST = pytz.timezone("Asia/Kolkata")
-
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     try:

@@ -150,6 +150,7 @@ class CustomerVisitEntry(BaseModel):
     customer_id: int
     branch_id: int = 1
     purpose: Optional[str] = "REGULAR_TRANSACTION"
+    transaction_date: Optional[str] = None
 
 class CustomerUpdateRequest(BaseModel):
     customer_id: int

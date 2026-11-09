@@ -551,65 +551,47 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         except Exception as e:
             print("Opening balance error:", e)
 
-        # 2. அடகு & வரவு பட்டுவாடா (நேரடி பாதுகாப்பு முறை)
+        # 2. அடகு & வரவு பட்டுவாடா (test_gold_loans அட்டவணையில் இருந்து எடுத்தல்)
         total_cash_in = 0.0
         total_cash_out = 0.0
         formatted_settlements = []
         try:
-            # அ) முதலில் test_settlements அட்டவணையைச் சோதித்தல்
-            settle_res = (
-                supabase.table("test_settlements")
-                .select("*")
+            # அடகு கடன் அட்டவணையில் இருந்து வாடிக்கையாளர் விபரங்களுடன் எடுத்தல்
+            loans_res = (
+                supabase.table("test_gold_loans")
+                .select("*, test_customers(name, mobile)")
                 .eq("branch_id", branch_id)
                 .order("id", desc=True)
                 .limit(100)
                 .execute()
             )
-            raw_s = settle_res.data or []
+            raw_loans = loans_res.data or []
 
-            # ஆ) ஒருவேளை test_settlements காலியாக இருந்தால், test_pledges அட்டவணையைச் சோதித்தல்
-            if not raw_s:
-                try:
-                    pledge_res = (
-                        supabase.table("test_pledges")
-                        .select("*")
-                        .eq("branch_id", branch_id)
-                        .order("id", desc=True)
-                        .limit(100)
-                        .execute()
-                    )
-                    raw_s = pledge_res.data or []
-                except Exception:
-                    pass
-
-            for s in raw_s:
-                s_date = str(s.get("business_date") or s.get("settlement_date") or s.get("pledge_date") or s.get("created_at") or "")
+            for l in raw_loans:
+                l_date = str(l.get("created_at") or "")
                 
-                # அன்றைய தேதிக்குரிய பதிவுகளை மட்டும் எடுத்தல்
-                if clean_date in s_date:
-                    # பண வரவு / பட்டுவாடா தொகைகளைக் கண்டறிதல்
-                    c_in = float(s.get("cash_in") or s.get("repayment_amount") or s.get("interest_amount") or 0.0)
-                    c_out = float(s.get("cash_out") or s.get("loan_amount") or s.get("principal_amount") or s.get("amount") or 0.0)
-                    
-                    total_cash_in += c_in
-                    total_cash_out += c_out
+                # தேர்ந்தெடுக்கப்பட்ட பரிவர்த்தனை தேதிக்குரிய அடகு கடன்களை மட்டும் எடுத்தல்
+                if clean_date in l_date:
+                    # அடகுக்குக் கொடுக்கப்பட்ட நிகரப் பணம் (Cash Out / Loan Amount)
+                    p_amt = float(l.get("net_payable_amount") or l.get("loan_amount") or 0.0)
+                    total_cash_out += p_amt
 
-                    # வாடிக்கையாளர் பெயர் & மொபைல்
-                    cust_name = s.get("customer_name") or s.get("name") or "அடகு வாடிக்கையாளர்"
-                    cust_mobile = s.get("customer_mobile") or s.get("mobile") or s.get("phone") or "-"
-                    c_at = str(s.get("created_at", ""))
+                    # வாடிக்கையாளர் விபரங்கள்
+                    cust = l.get("test_customers", {}) or {}
+                    cust_name = cust.get("name") or "வாடிக்கையாளர்"
+                    cust_mobile = cust.get("mobile") or "-"
 
                     formatted_settlements.append({
-                        "id": s.get("id"),
-                        "time": c_at[11:16] if len(c_at) >= 16 else "-",
-                        "customer_name": cust_name,
+                        "id": l.get("id"),
+                        "time": l_date[11:16] if len(l_date) >= 16 else "-",
+                        "customer_name": f"{cust_name} ({l.get('loan_no', '')})",
                         "mobile": cust_mobile,
-                        "payment_mode": s.get("payment_mode", "CASH"),
-                        "cash_in": c_in,
-                        "cash_out": c_out
+                        "payment_mode": "CASH",
+                        "cash_in": 0.0,
+                        "cash_out": p_amt
                     })
         except Exception as e:
-            print("Settlements Error:", e)
+            print("Gold Loans Fetch Error:", e)
 
         # 3. அங்கீகரிக்கப்பட்ட கிளை செலவுகள் (தேதிக்கு ஏற்ப வடிகட்டுதல்)
         raw_expenses = []

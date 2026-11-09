@@ -3411,15 +3411,19 @@
       if (modal) modal.classList.add('hidden');
     }
 
+    // 1. கிளைச் செலவு சமர்ப்பித்தல்
     async function submitBranchExpense() {
-      const amt = parseFloat(document.getElementById('exp_amount').value);
-      const cat = document.getElementById('exp_category').value;
-      const rsn = document.getElementById('exp_reason').value.trim();
+      const category = document.getElementById('exp_category').value;
+      const amount = parseFloat(document.getElementById('exp_amount').value);
+      const reason = document.getElementById('exp_reason').value.trim();
       const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
 
-      if (!amt || amt <= 0 || !rsn) {
-        return alert("செலவுத் தொகை மற்றும் காரணத்தைக் குறிப்பிடவும்.");
-      }
+      if (!amount || amount <= 0) return alert("சரியான செலவுத் தொகையை உள்ளிடவும்.");
+      if (!reason) return alert("செலவிற்கான காரணத்தைக் குறிப்பிடவும்.");
+
+      // கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
+      const transInput = document.querySelector('input[type="date"]');
+      const transDate = (transInput && transInput.value) ? transInput.value : new Date().toISOString().split('T')[0];
 
       const btn = document.getElementById('btnSubmitExpense');
       btn.innerText = "அனுப்பப்படுகிறது...";
@@ -3433,12 +3437,13 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             branch_id: branchId,
-            category: cat,
-            amount: amt,
+            category: category,
+            amount: amount,
             payment_mode: "CASH",
-            reason: rsn,
+            reason: reason,
             bill_photo: billBase64,
-            staff_id: currentUser ? currentUser.id : 1
+            staff_id: (currentUser && currentUser.id) ? currentUser.id : 1,
+            transaction_date: transDate // 👈 கவுண்ட்டரின் பரிவர்த்தனை தேதி
           })
         });
         const data = await res.json();
@@ -3448,6 +3453,11 @@
         if (res.ok) {
           alert("✅ " + data.message);
           closeExpenseModal();
+          // உள்ளீடுகளைத் தூய்மை செய்தல்
+          document.getElementById('exp_amount').value = '';
+          document.getElementById('exp_reason').value = '';
+          const f = document.getElementById('exp_file_bill');
+          if (f) f.value = '';
         } else {
           alert("❌ பிழை: " + data.detail);
         }
@@ -3554,6 +3564,7 @@
       }
     }
 
+    // 2. உள்-பணப் பரிமாற்றம் சமர்ப்பித்தல்
     async function submitTreasuryTransfer() {
       const amt = parseFloat(document.getElementById('tt_amount').value);
       const type = document.getElementById('tt_type').value;
@@ -3565,9 +3576,9 @@
 
       if (!amt || amt <= 0) return alert("சரியான தொகையை உள்ளிடவும்.");
 
-      // 1. கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
+      // கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
       const transInput = document.querySelector('input[type="date"]');
-      const transDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
+      const transDate = (transInput && transInput.value) ? transInput.value : new Date().toISOString().split('T')[0];
 
       const btn = document.getElementById('btnSubmitTreasury');
       btn.innerText = "அனுப்பப்படுகிறது...";
@@ -3588,8 +3599,8 @@
             reference_no: refNo,
             proof_doc: docBase64,
             notes: notes,
-            staff_id: currentUser ? currentUser.id : 1,
-            transaction_date: transDate // 👈 கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதி
+            staff_id: (currentUser && currentUser.id) ? currentUser.id : 1,
+            transaction_date: transDate // 👈 கவுண்ட்டரின் பரிவர்த்தனை தேதி
           })
         });
         const data = await res.json();

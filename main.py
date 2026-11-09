@@ -685,6 +685,79 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அறிக்கை எடுப்பதில் பிழை: {str(e)}")
+
+# 1. மாலை கணக்கு முடித்தல் (Day Close)
+@app.post("/api/cash-day/close")
+def close_cash_day(branch_id: int, business_date: str):
+    try:
+        report_data = get_cash_day_report(branch_id=branch_id, date_str=business_date)
+        closing_cash = float(report_data.get("calculated_closing") or 0.0)
+
+        supabase.table("test_branch_cash_days").upsert({
+            "branch_id": branch_id,
+            "business_date": business_date,
+            "closing_balance": closing_cash,
+            "status": "CLOSED",
+            "closed_at": datetime.now().isoformat()
+        }, on_conflict="branch_id,business_date").execute()
+
+        return {"status": "success", "message": f"{business_date} மாலை கணக்கு வெற்றிகரமாக முடிக்கப்பட்டு லாக் செய்யப்பட்டது.", "closing_balance": closing_cash}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"மாலை கணக்கு முடிப்பதில் பிழை: {str(e)}")
+
+
+# 2. நாள் நிலையைச் சரிபார்த்தல் & தொடக்க இருப்பை முந்தைய நாளிலிருந்து தானாக எடுத்தல் (Auto Rollover)
+@app.get("/api/cash-day/status")
+def get_cash_day_status(branch_id: int, date_str: str):
+    try:
+        cur_day = (
+            supabase.table("test_branch_cash_days")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("business_date", date_str)
+            .execute()
+        )
+
+        if cur_day.data:
+            day_rec = cur_day.data[0]
+            return {
+                "business_date": date_str,
+                "status": day_rec.get("status", "OPEN"),
+                "opening_balance": float(day_rec.get("opening_balance") or 0.0),
+                "is_closed": day_rec.get("status") == "CLOSED"
+            }
+        
+        prev_day = (
+            supabase.table("test_branch_cash_days")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .lt("business_date", date_str)
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        auto_opening = 0.0
+        if prev_day.data:
+            auto_opening = float(prev_day.data[0].get("closing_balance") or prev_day.data[0].get("opening_balance") or 0.0)
+
+        supabase.table("test_branch_cash_days").insert({
+            "branch_id": branch_id,
+            "business_date": date_str,
+            "opening_balance": auto_opening,
+            "status": "OPEN",
+            "created_at": datetime.now().isoformat()
+        }).execute()
+
+        return {
+            "business_date": date_str,
+            "status": "OPEN",
+            "opening_balance": auto_opening,
+            "is_closed": False
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"நாள் நிலையை அறிவதில் பிழை: {str(e)}")
+        
 # 7. Day Close
 @app.post("/api/cash-day/close")
 def close_cash_day(data: CashDayClosePayload):
@@ -725,6 +798,63 @@ def close_cash_day(data: CashDayClosePayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# 8. நாள் நிலையைச் சரிபார்த்தல் & தொடக்க இருப்பை முந்தைய நாளிலிருந்து தானாக எடுத்தல் (Auto Rollover)
+@app.get("/api/cash-day/status")
+def get_cash_day_status(branch_id: int, date_str: str):
+    try:
+        # தற்போதைய தேதிக்கான பதிவு உள்ளதா எனப் பார்த்தல்
+        cur_day = (
+            supabase.table("test_branch_cash_days")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("business_date", date_str)
+            .execute()
+        )
+
+        if cur_day.data:
+            day_rec = cur_day.data[0]
+            return {
+                "business_date": date_str,
+                "status": day_rec.get("status", "OPEN"),
+                "opening_balance": float(day_rec.get("opening_balance") or 0.0),
+                "is_closed": day_rec.get("status") == "CLOSED"
+            }
+        
+        # தற்போதைய தேதிக்கு இன்னும் பதிவு இல்லை என்றால்:
+        # முந்தைய நாளின் கடைசிப் பதிவை எடுத்து அதிலுள்ள closing_balance-ஐ தொடக்க இருப்பாக மாற்றுதல்
+        prev_day = (
+            supabase.table("test_branch_cash_days")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .lt("business_date", date_str)
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        auto_opening = 0.0
+        if prev_day.data:
+            # முந்தைய நாள் மாலை முடிவு இருப்பை அடுத்த நாளின் தொடக்க இருப்பாக எடுத்தல்
+            auto_opening = float(prev_day.data[0].get("closing_balance") or prev_day.data[0].get("opening_balance") or 0.0)
+
+        # புதிய நாளுக்குத் தானாகவே OPEN நிலையில் பதிவு உருவாக்குதல்
+        supabase.table("test_branch_cash_days").insert({
+            "branch_id": branch_id,
+            "business_date": date_str,
+            "opening_balance": auto_opening,
+            "status": "OPEN",
+            "created_at": datetime.now().isoformat()
+        }).execute()
+
+        return {
+            "business_date": date_str,
+            "status": "OPEN",
+            "opening_balance": auto_opening,
+            "is_closed": False
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"நாள் நிலையை அறிவதில் பிழை: {str(e)}")
+
 # 8. Counter Live Visits Table
 @app.get("/api/customer/branch-visits")
 def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
@@ -744,6 +874,21 @@ def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     try:
+        # நாள் லாக் செய்யப்பட்டுள்ளதா எனச் சரிபார்த்தல்
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        day_check = (
+            supabase.table("test_branch_cash_days")
+            .select("status")
+            .eq("branch_id", data.branch_id)
+            .eq("business_date", today_str)
+            .execute()
+        )
+        if day_check.data and day_check.data[0].get("status") == "CLOSED":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"தேதி {today_str}-க்கான மாலை கணக்கு முடிக்கப்பட்டுவிட்டது (Day Closed). புதிய பரிவர்த்தனைகள் செய்ய முடியாது!"
+            )
+
         record = {
             "customer_id": data.customer_id,
             "branch_id": data.branch_id,

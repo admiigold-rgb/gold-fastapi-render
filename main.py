@@ -522,7 +522,7 @@ def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
 @app.get("/api/cash-day/report")
 def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
     try:
-        clean_date = date_str or datetime.now().strftime("%Y-%m-%d")
+        clean_date = date_str if (date_str and date_str.strip() and date_str != "undefined") else datetime.now().strftime("%Y-%m-%d")
 
         # 1. Day Book Opening Balance
         day_res = (
@@ -535,13 +535,13 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         day_info = day_res.data[0] if day_res.data else None
         opening = float(day_info.get("opening_balance") or 0.0) if day_info else 0.0
 
-        # 2. வாடிக்கையாளர் நகைக்கடன் அடகு & வரவு பட்டுவாடா (Settlements)
+        # 2. அடகு & வரவு பட்டுவாடா
         settle_res = (
             supabase.table("test_settlements")
             .select("*, test_visits(customer_id, test_customers(name, mobile))")
             .eq("branch_id", branch_id)
             .gte("created_at", f"{clean_date}T00:00:00")
-            .lte("created_at", f"{clean_date}T23:59:59")
+            .lte("created_at", f"{clean_date}T23:59:59.999999")
             .execute()
         )
         raw_settlements = settle_res.data or []
@@ -566,33 +566,32 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
                 "cash_out": c_out
             })
 
-        # 3. அங்கீகரிக்கப்பட்ட கிளை தினசரி செலவுகள் (Approved Branch Expenses)
+        # 3. கிளை தினசரி செலவுகள் (Approved)
         exp_res = (
             supabase.table("test_branch_expenses")
             .select("*")
             .eq("branch_id", branch_id)
             .eq("status", "APPROVED")
-            .eq("payment_mode", "CASH")
             .gte("created_at", f"{clean_date}T00:00:00")
-            .lte("created_at", f"{clean_date}T23:59:59")
+            .lte("created_at", f"{clean_date}T23:59:59.999999")
             .execute()
         )
         raw_expenses = exp_res.data or []
         total_expenses = sum(float(x.get("amount") or 0.0) for x in raw_expenses)
 
-        # 4. அங்கீகரிக்கப்பட்ட உள்-பணப் பரிமாற்றங்கள் (Approved Treasury Transfers)
+        # 4. உள்-பணப் பரிமாற்றங்கள் (Approved)
         tr_res = (
             supabase.table("test_treasury_transfers")
             .select("*")
             .eq("branch_id", branch_id)
             .eq("status", "APPROVED")
             .gte("created_at", f"{clean_date}T00:00:00")
-            .lte("created_at", f"{clean_date}T23:59:59")
+            .lte("created_at", f"{clean_date}T23:59:59.999999")
             .execute()
         )
         raw_transfers = tr_res.data or []
-        treasury_in = 0.0   # கிளைக்கு உள்ளே வந்த ரொக்கம் (HQ->Branch / Bank->Cash)
-        treasury_out = 0.0  # கிளையிலிருந்து வெளியே சென்ற ரொக்கம் (Branch->HQ / Cash->Bank)
+        treasury_in = 0.0
+        treasury_out = 0.0
 
         for t in raw_transfers:
             amt = float(t.get("amount") or 0.0)
@@ -602,7 +601,7 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
             elif t_type in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
                 treasury_out += amt
 
-        # 5. இறுதியான துல்லியமான கணினி ரொக்க இருப்பு (Calculated Closing Balance)
+        # 5. இறுதியான கணினி ரொக்க இருப்பு
         calculated_closing = (
             opening 
             + total_cash_in 

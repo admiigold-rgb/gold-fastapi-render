@@ -2095,13 +2095,30 @@
       document.getElementById('activeCustomerSection').classList.remove('hidden');
 
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+      
+      // 1. கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
+      const transInput = document.querySelector('input[type="date"]');
+      const transDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
+
       try {
+        // 2. பரிவர்த்தனை தேதியுடன் வருகைப் பதிவை சர்வரிற்கு அனுப்புதல்
         const vRes = await fetch('/api/customer/visit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customer_id: cust.id, branch_id: branchId, purpose: "REGULAR_TRANSACTION" })
+          body: JSON.stringify({ 
+            customer_id: cust.id, 
+            branch_id: branchId, 
+            purpose: "REGULAR_TRANSACTION",
+            transaction_date: transDate // <-- கவுண்ட்டரின் பரிவர்த்தனை தேதி
+          })
         });
         const vData = await vRes.json();
+        
+        if (!vRes.ok) {
+          alert("⚠️ " + (vData.detail || "வருகைப் பதிவு தோல்வியடைந்தது."));
+          return;
+        }
+
         activeVisitId = vData.data?.id;
       } catch (err) {
         console.error("வருகைப் பதிவு பிழை:", err);

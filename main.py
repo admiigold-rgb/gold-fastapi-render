@@ -707,6 +707,65 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அறிக்கை எடுப்பதில் பிழை: {str(e)}")
 
+@app.get("/api/cash-day/next-business-date")
+def get_next_business_date(branch_id: int):
+    try:
+        # கடைசியாகப் பூட்டப்பட்ட (CLOSED) நாளை எடுத்தல்
+        last_closed = (
+            supabase.table("test_branch_cash_days")
+            .select("business_date")
+            .eq("branch_id", branch_id)
+            .eq("status", "CLOSED")
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if last_closed.data:
+            last_date_str = last_closed.data[0]["business_date"]
+            last_dt = datetime.strptime(last_date_str, "%Y-%m-%d")
+            next_date = (last_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+            return {"status": "success", "suggested_date": next_date, "last_closed_date": last_date_str}
+        else:
+            # இதுவரை எந்த நாளும் பூட்டப்படவில்லை எனில் மிகப்பழைய பரிவர்த்தனை நாள் அல்லது இன்றைய நாள்
+            today_str = datetime.now(IST).strftime("%Y-%m-%d")
+            return {"status": "success", "suggested_date": today_str, "last_closed_date": None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"தேதி அறிவதில் பிழை: {str(e)}")
+
+@app.get("/api/cash-day/validate-date-sequence")
+def validate_date_sequence(branch_id: int, selected_date: str):
+    try:
+        # கடைசியாகப் பூட்டப்பட்ட நாள்
+        last_closed = (
+            supabase.table("test_branch_cash_days")
+            .select("business_date")
+            .eq("branch_id", branch_id)
+            .eq("status", "CLOSED")
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        
+        if last_closed.data:
+            last_date_str = last_closed.data[0]["business_date"]
+            last_dt = datetime.strptime(last_date_str, "%Y-%m-%d")
+            allowed_dt = last_dt + timedelta(days=1)
+            allowed_date_str = allowed_dt.strftime("%Y-%m-%d")
+            
+            sel_dt = datetime.strptime(selected_date, "%Y-%m-%d")
+
+            # பூட்டப்பட்ட நாளுக்கு அடுத்த நாளைத் தவிர எதிர்காலத் தேதிகளுக்குத் தாவினால் தடுத்தல்
+            if sel_dt > allowed_dt:
+                return {
+                    "is_valid": False,
+                    "allowed_date": allowed_date_str,
+                    "message": f"⚠️ தொடர் நாள் விதிமீறல்: {last_date_str} நாளுக்குப் பிறகு அடுத்த வேலை நாளான {allowed_date_str}-ஐ மட்டுமே முடிக்க முடியும். தாவிச் சென்று {selected_date}-ல் பணியாற்ற முடியாது!"
+                }
+        
+        return {"is_valid": True, "message": "அனுமதிக்கப்பட்டது"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # 1. மாலை கணக்கு முடித்தல் (Day Close)
 @app.post("/api/cash-day/close")
 def close_cash_day(data: dict):
@@ -717,7 +776,14 @@ def close_cash_day(data: dict):
         calc_sys_cash = float(data.get("calculated_system_cash") or 0.0)
         staff_id = data.get("staff_id") or 1
         denoms = data.get("denominations") or {}
-        diff = closing_balance - calc_sys_cash
+
+        # 👈 தாள்கள் தொகை கணினியின்படி சரியாக இல்லையெனில் நிராகரித்தல் (Strict Zero Difference Rule)
+        diff = round(closing_balance - calc_sys_cash, 2)
+        if diff != 0.0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"கணினியின்படி இருக்க வேண்டிய ரொக்கமும் (₹{calc_sys_cash:,.2f}) தாள்களின் தொகையும் (₹{closing_balance:,.2f}) சமமாக இல்லை! வேறுபாடு: ₹{diff:,.2f}. சமமாக இருந்தால் மட்டுமே நாளைப் பூட்ட முடியும்."
+            )
 
         # 1. முந்தைய நாளின் இறுதி இருப்பை (Closing Balance) எடுத்தல்
         opening = 0.0
@@ -762,7 +828,7 @@ def close_cash_day(data: dict):
             }
             supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
         else:
-            # 👈 காலை பதிவு இல்லையென்றாலும், புதிய பதிவை உருவாக்கி உடனே பூட்டுதல்
+            # காலை பதிவு இல்லையென்றாலும், புதிய பதிவை உருவாக்கி உடனே பூட்டுதல்
             new_record = {
                 "branch_id": branch_id,
                 "business_date": business_date,
@@ -801,7 +867,7 @@ def close_cash_day(data: dict):
             "status": "success",
             "message": f"{business_date} மாலை கணக்கு வெற்றிகரமாக முடிக்கப்பட்டு லாக் செய்யப்பட்டது!",
             "closing_balance": closing_balance,
-            "difference": diff
+            "difference": 0.0
         }
     except HTTPException:
         raise

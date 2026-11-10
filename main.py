@@ -701,7 +701,24 @@ def close_cash_day(data: dict):
         denoms = data.get("denominations") or {}
         diff = closing_balance - calc_sys_cash
 
-        # 1. அன்றைய நாள் பதிவை எடுத்தல்
+        # 1. முந்தைய நாளின் இறுதி இருப்பை (Closing Balance) எடுத்தல்
+        opening = 0.0
+        try:
+            prev_day_res = (
+                supabase.table("test_branch_cash_days")
+                .select("closing_balance, opening_balance")
+                .eq("branch_id", branch_id)
+                .lt("business_date", business_date)
+                .order("business_date", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if prev_day_res.data:
+                opening = float(prev_day_res.data[0].get("closing_balance") or prev_day_res.data[0].get("opening_balance") or 0.0)
+        except Exception as pe:
+            print("Previous closing balance fetch error:", pe)
+
+        # 2. அன்றைய நாள் பதிவு ஏற்கனவே உள்ளதா எனப் பார்த்தல்
         day_res = (
             supabase.table("test_branch_cash_days")
             .select("id, status")
@@ -710,26 +727,37 @@ def close_cash_day(data: dict):
             .execute()
         )
 
-        if not day_res.data:
-            raise HTTPException(status_code=404, detail=f"{business_date} நாளுக்கான தொடக்க இருப்புப் பதிவு கிடைக்கவில்லை.")
+        if day_res.data and day_res.data[0].get("status") == "CLOSED":
+            raise HTTPException(status_code=400, detail=f"{business_date} நாளுக்கான கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED).")
 
-        if day_res.data[0].get("status") == "CLOSED":
-            raise HTTPException(status_code=400, detail="இந்த நாளுக்கான கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED).")
+        now_time = datetime.now(IST).isoformat()
 
-        day_id = day_res.data[0]["id"]
-
-        # 2. நாள் பூட்டுதல் தரவு (IST நேரத்துடன்)
-        update_data = {
-            "closing_balance": closing_balance,
-            "calculated_system_cash": calc_sys_cash,
-            "status": "CLOSED",
-            "closed_by": staff_id,
-            "closed_at": datetime.now(IST).isoformat()
-        }
-
-        upd_res = supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
-        if not upd_res.data:
-            raise HTTPException(status_code=500, detail="நாள் பூட்டுதல் தோல்வியடைந்தது.")
+        if day_res.data:
+            # ஏற்கனவே வரிசை இருந்தால் update செய்தல்
+            day_id = day_res.data[0]["id"]
+            update_data = {
+                "closing_balance": closing_balance,
+                "calculated_system_cash": calc_sys_cash,
+                "status": "CLOSED",
+                "closed_by": staff_id,
+                "closed_at": now_time
+            }
+            supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
+        else:
+            # 👈 காலை பதிவு இல்லையென்றாலும், புதிய பதிவை உருவாக்கி உடனே பூட்டுதல்
+            new_record = {
+                "branch_id": branch_id,
+                "business_date": business_date,
+                "opening_balance": opening,
+                "closing_balance": closing_balance,
+                "calculated_system_cash": calc_sys_cash,
+                "status": "CLOSED",
+                "opened_by": staff_id,
+                "closed_by": staff_id,
+                "created_at": now_time,
+                "closed_at": now_time
+            }
+            supabase.table("test_branch_cash_days").insert(new_record).execute()
 
         # 3. தாள்கள் டினாமினேஷன் இருப்பின் சேமித்தல்
         if denoms:
@@ -753,7 +781,7 @@ def close_cash_day(data: dict):
 
         return {
             "status": "success",
-            "message": f"{business_date} மாலை கணக்கு வெற்றிகரமாக முடிக்கப்பட்டு லாக் செய்யப்பட்டது! இனி புதிய பரிவர்த்தனைகள் செய்ய முடியாது.",
+            "message": f"{business_date} மாலை கணக்கு வெற்றிகரமாக முடிக்கப்பட்டு லாக் செய்யப்பட்டது!",
             "closing_balance": closing_balance,
             "difference": diff
         }

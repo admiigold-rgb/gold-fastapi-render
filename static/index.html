@@ -2002,37 +2002,84 @@
       }
     }
 
+    async function openDaySummaryReportModal() {
+      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
+      const modal = document.getElementById('daySummaryReportModal');
+      if (modal) modal.classList.remove('hidden');
+
+      const transInput = document.getElementById('txn_date');
+      const selectedDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
+
+      try {
+        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selectedDate}`);
+        const data = await res.json();
+
+        const openBal = data.opening_balance || 0;
+        const totalIn = data.total_inward !== undefined ? data.total_inward : ((data.total_cash_in || 0) + (data.treasury_in || 0));
+        const totalOut = data.total_outward !== undefined ? data.total_outward : ((data.total_cash_out || 0) + (data.total_expenses || 0) + (data.treasury_out || 0));
+        const closeBal = data.calculated_closing !== undefined ? data.calculated_closing : (openBal + totalIn - totalOut);
+
+        const elOpen = document.getElementById('rep_opening');
+        const elIn = document.getElementById('rep_cash_in');
+        const elOut = document.getElementById('rep_cash_out');
+        const elClose = document.getElementById('rep_closing');
+
+        if (elOpen) elOpen.innerText = '₹' + openBal.toLocaleString('en-IN');
+        if (elIn) elIn.innerText = '₹' + totalIn.toLocaleString('en-IN');
+        if (elOut) elOut.innerText = '₹' + totalOut.toLocaleString('en-IN');
+        if (elClose) elClose.innerText = '₹' + closeBal.toLocaleString('en-IN');
+
+        const sBody = document.getElementById('rep_settlements_tbody');
+        const transList = data.pawn_transactions || data.settlements || [];
+
+        if (sBody) {
+          sBody.innerHTML = '';
+          if (!transList || transList.length === 0) {
+            sBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">அடகு நடவடிக்கைகள் எதுவும் இல்லை</td></tr>`;
+          } else {
+            sBody.innerHTML = transList.map(s => {
+              const modeStr = (s.mode || s.payment_mode || 'CASH').toUpperCase();
+              const isBank = modeStr.includes('BANK');
+
+              const modeBadge = isBank 
+                ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">🏦 BANK</span>`
+                : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">💵 CASH</span>`;
+
+              const cashOutVal = s.outward !== undefined ? s.outward : (s.cash_out || 0);
+              const totalVal = s.total_val !== undefined ? s.total_val : (s.net_amount || cashOutVal);
+
+              let outDisplay = '-';
+              if (isBank) {
+                outDisplay = `<span class="text-slate-400 line-through">₹${totalVal.toLocaleString('en-IN')}</span> <span class="text-[9px] text-blue-600 block font-semibold">(வங்கி மூலம்)</span>`;
+              } else if (cashOutVal > 0) {
+                outDisplay = `₹${cashOutVal.toLocaleString('en-IN')}`;
+              }
+
+              const cashInVal = s.inward !== undefined ? s.inward : (s.cash_in || 0);
+              const inDisplay = cashInVal > 0 ? `₹${cashInVal.toLocaleString('en-IN')}` : '-';
+
+              return `
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                  <td class="p-2 font-mono text-[11px]">${s.time || '--:--'}</td>
+                  <td class="p-2 font-bold text-slate-800">${s.customer_name || '-'}</td>
+                  <td class="p-2 font-mono text-[11px] text-slate-500">${s.mobile || '-'}</td>
+                  <td class="p-2">${modeBadge}</td>
+                  <td class="p-2 text-right font-black text-emerald-700">${inDisplay}</td>
+                  <td class="p-2 text-right font-black text-rose-700">${outDisplay}</td>
+                </tr>
+              `;
+            }).join('');
+          }
+        }
+      } catch (err) {
+        alert("அறிக்கை எடுப்பதில் பிழை: " + err.message);
+      }
+    }
+
     function closeDaySummaryReportModal() {
       const modal = document.getElementById('daySummaryReportModal');
       if (modal) modal.classList.add('hidden');
     }
-
-    async function refreshBranchDayStatus() {
-      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
-      const dateInput = document.querySelector('input[type="date"]');
-      const selectedDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
-
-      try {
-        const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date_str=${selectedDate}`);
-        const data = await res.json();
-
-        if (data.is_closed) {
-          alert(`⚠️ கவனம்: ${selectedDate}-க்கான மாலை கணக்கு முடிக்கப்பட்டுவிட்டது! இந்தப் பழைய தேதியில் புதிய பரிவர்த்தனைகள் செய்ய முடியாது.`);
-          
-          // பட்டன்களை முடக்குதல்
-          const btnSubmit = document.getElementById('btnSubmitPledge') || document.querySelector('button[type="submit"]');
-          if (btnSubmit) btnSubmit.disabled = true;
-        } else {
-          console.log(`தேதி ${selectedDate} திறக்கப்பட்டுள்ளது. தொடக்க இருப்பு: ₹${data.opening_balance}`);
-          
-          const btnSubmit = document.getElementById('btnSubmitPledge') || document.querySelector('button[type="submit"]');
-          if (btnSubmit) btnSubmit.disabled = false;
-        }
-      } catch (err) {
-        console.error("Day status error:", err);
-      }
-    }
-
     // 3. Purity & Auto Loan No
     async function fetchAndSetupPurityDropdown() {
       try {

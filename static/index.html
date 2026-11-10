@@ -2413,16 +2413,40 @@
       toggleDraftLockMode(true);
 
       // தலைமையகம் அனுமதி அளித்திருந்தால் உடனே செக்அவுட்டில் முடிக்க வாய்ப்பளித்தல்
+      // 3. கார்ட்டில் சேமித்து வைத்திருந்த கட்டண முறையை (BANK / CASH) மீட்டெடுத்தல்
+      if (target.selected_mode) {
+        selectedMode = target.selected_mode;
+      }
+
+      // 4. தலைமையகம் அனுமதி அளித்திருந்தால், செக்அவுட் சாளரத்தைத் திறந்து சரியான நிலையில் காட்டுதல்
       if (target.exemption_status === 'APPROVED') {
-        openCheckoutModal();
-        setTimeout(() => {
-          if (confirm("🎉 இந்த வாடிக்கையாளருக்குத் தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனையை முடிக்கலாமா?")) {
+        openCheckoutModal(selectedMode);
+        
+        // ரொக்கத் தொகையை மீண்டும் அமைத்தல்
+        if (target.pay_cash !== undefined) {
+          const pCash = document.getElementById('pay_cash');
+          const pBank = document.getElementById('pay_bank');
+          if (pCash) pCash.value = target.pay_cash;
+          if (pBank) pBank.value = target.pay_bank;
+          toggleBankSections();
+        }
+
+        // OTP பட்டனை மறைத்துவிட்டு, பச்சை நிற "பரிவர்த்தனையை நிறைவு செய்" பட்டனைக் காட்டுதல்
+        const btnOtp = document.getElementById('btn_send_otp');
+        const btnExempt = document.getElementById('btnExemptOtpTrigger');
+        if (btnExempt) btnExempt.classList.add('hidden');
+        
+        if (btnOtp) {
+          btnOtp.innerText = "✓ OTP விலக்குடன் நிறைவு செய் (Complete)";
+          btnOtp.className = "px-5 py-2 rounded-xl text-xs font-black shadow bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
+          btnOtp.onclick = () => {
+            // 🔒 தாள்களும் பணமும் பொருந்தினால் மட்டுமே முடிக்க அனுமதிக்கும்
+            if (!validatePaymentAndDenomMatch()) return;
             closeCheckoutModal();
             confirmSettleWithOtp(true);
-          }
-        }, 400);
+          };
+        }
       }
-    }
 
     // 4. படிவம் & "முடி / மாற்று" பட்டனை லாக் செய்யும் செயல்பாடு
     function toggleDraftLockMode(lock) {
@@ -2750,11 +2774,15 @@
       return true;
     }
     // 7. Checkout & Settlement
-    function openCheckoutModal() {
+    function openCheckoutModal(defaultMode = null) {
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
       document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
       updateDenomTitle();
-      setPaymentMode('FULL_CASH');
+      
+      // 👈 ஏற்கனவே தேர்வு செய்யப்பட்ட வங்கி / ஸ்பிளிட் முறை மாறாமல் இருக்க வேண்டும்
+      const modeToSet = defaultMode || selectedMode || 'FULL_CASH';
+      setPaymentMode(modeToSet);
+      
       document.getElementById('checkoutModal').classList.remove('hidden');
     }
 
@@ -3025,6 +3053,9 @@
     }
 
     async function confirmSettleWithOtp(isExempted = false) {
+      // 🔒 1. ரொக்கம் இருந்தால் தாள்கள் எண்ணாமல் எந்தப் பரிவர்த்தனையும் முடியாது
+      if (!validatePaymentAndDenomMatch()) return;
+
       let enteredOtp = null;
       if (!isExempted) {
         enteredOtp = document.getElementById('input_otp').value.trim();

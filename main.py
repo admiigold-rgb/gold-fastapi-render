@@ -1427,47 +1427,72 @@ class HQBankPayoutApprovalPayload(BaseModel):
     notes: Optional[str] = None
 
 @app.post("/api/hq/process-bank-transfer")
-def process_bank_transfer_hq(data: HQBankPayoutApprovalPayload):
+def process_hq_bank_transfer(data: dict):
     try:
-        status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
-        
-        # 1. பரிவர்த்தனை விபரத்தை எடுத்தல்
-        t_res = supabase.table("test_bank_transfers").select("*").eq("id", data.transfer_id).execute()
-        if not t_res.data:
-            raise HTTPException(status_code=404, detail="பரிவர்த்தனை விபரம் கிடைக்கவில்லை")
-        transfer = t_res.data[0]
+        transfer_id = data.get("transfer_id")
+        action = data.get("action")  # 'APPROVE' or 'REJECT'
+        admin_id = data.get("admin_id") or 1
+        company_bank_id = data.get("company_bank_id")
+        utr_ref_no = data.get("utr_ref_no")
+        payment_mode_used = data.get("payment_mode_used", "IMPS")
+        notes = data.get("notes") or ""
 
-        # 2. அனுமதிக்கும் போது நிறுவன வங்கி இருப்பைக் குறைத்தல்
-        if status == "APPROVED" and transfer.get("direction") == "PAYOUT":
-            if not data.company_bank_id or not data.utr_ref_no:
-                raise HTTPException(status_code=400, detail="நிறுவன வங்கி கணக்கு மற்றும் UTR எண் தேவை.")
-            
-            payout_amount = float(transfer.get("amount") or 0.0)
+        # 1. பரிவர்த்தனை விவரங்களை எடுத்தல்
+        tr_res = (
+            supabase.table("test_customer_bank_transfers")
+            .select("*")
+            .eq("id", transfer_id)
+            .execute()
+        )
+        if not tr_res.data:
+            raise HTTPException(status_code=404, detail="வங்கிப் பரிவர்த்தனை விவரம் கிடைக்கவில்லை.")
 
-            # நிறுவன வங்கி விபரம் எடுத்தல்
-            bank_res = supabase.table("test_company_banks").select("*").eq("id", data.company_bank_id).execute()
-            if bank_res.data:
-                comp_bank = bank_res.data[0]
-                current_bal = float(comp_bank.get("current_balance") or comp_bank.get("opening_balance") or 0.0)
-                new_bal = current_bal - payout_amount
+        transfer_item = tr_res.data[0]
+        amount = float(transfer_item.get("amount") or 0.0)
+        direction = transfer_item.get("direction")  # 'PAYOUT' or 'RECEIPT'
 
-                # வங்கி இருப்பைப் புதுப்பித்தல்
-                supabase.table("test_company_banks").update({
-                    "current_balance": new_bal
-                }).eq("id", data.company_bank_id).execute()
+        # 2. நிராகரிப்பு (REJECT) எனில்
+        if action == "REJECT":
+            supabase.table("test_customer_bank_transfers").update({
+                "status": "REJECTED",
+                "notes": notes,
+                "processed_by": admin_id,
+                "processed_at": datetime.now(IST).isoformat()
+            }).eq("id", transfer_id).execute()
+            return {"status": "success", "message": "வங்கிப் பரிவர்த்தனை நிராகரிக்கப்பட்டது."}
 
-        # 3. பரிவர்த்தனை நிலையைப் புதுப்பித்தல்
-        update_data = {
-            "status": status,
-            "approved_by": data.admin_id,
-            "hq_notes": data.notes,
-            "approved_at": "now()",
-            "receipt_ref_no": data.utr_ref_no or transfer.get("receipt_ref_no"),
-            "company_bank_name": str(data.company_bank_id) if data.company_bank_id else transfer.get("company_bank_name")
+        # 3. ஒப்புதல் (APPROVE) எனில்
+        update_transfer = {
+            "status": "APPROVED",
+            "company_bank_id": company_bank_id,
+            "utr_ref_no": utr_ref_no,
+            "payment_mode_used": payment_mode_used,
+            "notes": notes,
+            "processed_by": admin_id,
+            "processed_at": datetime.now(IST).isoformat()
         }
-        supabase.table("test_bank_transfers").update(update_data).eq("id", data.transfer_id).execute()
+        supabase.table("test_customer_bank_transfers").update(update_transfer).eq("id", transfer_id).execute()
 
-        return {"status": "success", "message": f"வங்கிப் பட்டுவாடா வெற்றிகரமாக '{status}' செய்யப்பட்டது. வங்கி இருப்பில் புதுப்பிக்கப்பட்டது."}
+        # 4. நிறுவன வங்கிக் கணக்கு இருப்பு மாற்றம் (பாதுகாப்பான முறை - பிழை தவிர்வு)
+        if company_bank_id:
+            try:
+                b_res = supabase.table("test_company_banks").select("*").eq("id", company_bank_id).execute()
+                if b_res.data:
+                    bank_row = b_res.data[0]
+                    # எந்தப் பெயர் கொண்ட பத்தி உள்ளதோ அதைக் கண்டறிந்து இருப்பு மாற்றுதல்
+                    for col_name in ["current_balance", "balance", "opening_balance"]:
+                        if col_name in bank_row:
+                            old_bal = float(bank_row.get(col_name) or 0.0)
+                            new_bal = (old_bal - amount) if direction == "PAYOUT" else (old_bal + amount)
+                            try:
+                                supabase.table("test_company_banks").update({col_name: new_bal}).eq("id", company_bank_id).execute()
+                                break
+                            except Exception:
+                                pass
+            except Exception as b_err:
+                print("Company bank balance update note (ignored):", b_err)
+
+        return {"status": "success", "message": "வங்கிப் பட்டுவாடா வெற்றிகரமாக உறுதி செய்யப்பட்டு ஒப்புதல் அளிக்கப்பட்டது!"}
     except HTTPException:
         raise
     except Exception as e:

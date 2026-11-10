@@ -1662,14 +1662,20 @@
 
     async function openCashDayModal(mode) {
       currentDayMode = mode;
-      const selDate = document.getElementById('txn_date').value;
+      const dateInput = document.getElementById('txn_date');
+      const selDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
       document.getElementById('cashDayModalDate').innerText = selDate;
 
-      ['cd_500','cd_200','cd_100','cd_50','cd_20','cd_10','cd_coins'].forEach(id => document.getElementById(id).value = 0);
+      ['cd_500','cd_200','cd_100','cd_50','cd_20','cd_10','cd_coins'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = 0;
+      });
       calcDayDenom();
 
       if (mode === 'OPEN') {
-        if (currentCashDayData) return alert("இந்த நாளுக்கான தொடக்க இருப்பு ஏற்கனவே பதிவு செய்யப்பட்டுவிட்டது.");
+        if (currentCashDayData && currentCashDayData.status === 'OPEN') {
+          return alert("இந்த நாளுக்கான தொடக்க இருப்பு ஏற்கனவே பதிவு செய்யப்பட்டுவிட்டது.");
+        }
         document.getElementById('cashDayModalTitle').innerText = "☀️ காலை தொடக்க இருப்பு பதிவு (Day Open)";
         document.getElementById('divSystemCash').classList.add('hidden');
         document.getElementById('divDiff').classList.add('hidden');
@@ -1682,13 +1688,20 @@
         document.getElementById('btnSubmitCashDay').innerText = "நாளைப் பூட்டு (Close Day)";
         
         const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date=${selDate}`);
-        const repData = await res.json();
-        currentSystemCash = repData.calculated_closing || 0;
         
-        document.getElementById('txtSystemCash').innerText = `₹ ${currentSystemCash.toFixed(2)}`;
-        document.getElementById('divSystemCash').classList.remove('hidden');
-        document.getElementById('divDiff').classList.remove('hidden');
+        // 👈 அறிக்கை அழைக்கும் அதே சரியான URL (date_str) மூலம் அன்றைய இறுதி ரொக்கம் எடுக்கப்படுகிறது
+        try {
+          const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selDate}`);
+          const repData = await res.json();
+          currentSystemCash = parseFloat(repData.calculated_closing || 0);
+          
+          document.getElementById('txtSystemCash').innerText = `₹ ${currentSystemCash.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          document.getElementById('divSystemCash').classList.remove('hidden');
+          document.getElementById('divDiff').classList.remove('hidden');
+          calcDayDenom(); // வேறுபாட்டை உடனே கணக்கிட
+        } catch (err) {
+          console.error("Day close fetch error:", err);
+        }
       }
       document.getElementById('cashDayModal').classList.remove('hidden');
     }
@@ -1767,14 +1780,9 @@
       const modal = document.getElementById('daySummaryReportModal');
       modal.classList.remove('hidden');
 
-      // கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
-      let selectedDate = "";
-      const transInput = document.querySelector('input[type="date"]');
-      if (transInput && transInput.value) {
-        selectedDate = transInput.value;
-      } else {
-        selectedDate = new Date().toISOString().split('T')[0];
-      }
+      // கவுண்ட்டரின் முதன்மைத் தேதி இன்புட்டில் இருந்து நேரடியாகத் தேதியை எடுத்தல்
+      const transInput = document.getElementById('txn_date');
+      const selectedDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
 
       try {
         const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selectedDate}`);
@@ -1785,6 +1793,8 @@
         document.getElementById('rep_cash_in').innerText = '₹' + ((data.total_cash_in || 0) + (data.treasury_in || 0)).toLocaleString('en-IN');
         document.getElementById('rep_cash_out').innerText = '₹' + ((data.total_cash_out || 0) + (data.total_expenses || 0) + (data.treasury_out || 0)).toLocaleString('en-IN');
         document.getElementById('rep_closing').innerText = '₹' + (data.calculated_closing || 0).toLocaleString('en-IN');
+
+        // ... (இதன் கீழ் உள்ள மீதி பழைய வரிகள் அப்படியே இருக்கட்டும்)
 
         // 1. நகைப் பட்டுவாடா பட்டியல்
         const sBody = document.getElementById('rep_settlements_tbody');

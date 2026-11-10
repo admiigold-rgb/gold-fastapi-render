@@ -120,12 +120,6 @@
         <!-- கவுண்ட்டர் செயல்பாட்டு பட்டன்கள் வரிசை -->
           <div class="flex items-center gap-2.5 flex-wrap pt-1">
             <!-- 1. காலை தொடக்க இருப்பு -->
-            <button type="button" onclick="openCashDayModal('OPEN')" id="btnOpenDay" 
-                    style="background-color: #059669 !important; color: #ffffff !important;" 
-                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
-              <span>☀️</span> காலை தொடக்க இருப்பு
-            </button>
-
             <!-- 2. அன்றைய நடவடிக்கைகள் அறிக்கை -->
             <button type="button" onclick="openDaySummaryReportModal()" 
                     style="background-color: #4c1d95 !important; color: #ffffff !important;" 
@@ -1626,18 +1620,18 @@
         const data = await res.json();
         currentCashDayData = data.data;
     
-        if (currentCashDayData.status === 'OPEN') {
-          badge.innerText = `திறக்கப்பட்டுள்ளது (தொடக்க இருப்பு: ₹${currentCashDayData.opening_balance.toLocaleString('en-IN')})`;
-          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
-          
-          if (btnCloseDay) btnCloseDay.classList.remove('hidden');
-          toggleFormsLock(false);
-        } else {
-          badge.innerText = `🔒 பூட்டப்பட்டது (இறுதி இருப்பு: ₹${currentCashDayData.closing_balance.toLocaleString('en-IN')})`;
+        if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
+          badge.innerText = `🔒 பூட்டப்பட்டது (இறுதி இருப்பு: ₹${(currentCashDayData.closing_balance || 0).toLocaleString('en-IN')})`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
           
           if (btnCloseDay) btnCloseDay.classList.add('hidden');
-          toggleFormsLock(true);
+          toggleFormsLock(true); // பூட்டப்பட்ட பழைய தேதியில் புதிய வரவு-செலவு செய்ய முடியாது
+        } else {
+          badge.innerText = `திறக்கப்பட்டுள்ளது (பரிவர்த்தனைக்குத் தயார்)`;
+          badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
+          
+          if (btnCloseDay) btnCloseDay.classList.remove('hidden');
+          toggleFormsLock(false); // நாள் பூட்டப்படும் வரை எப்போதும் படிவங்கள் திறந்து இருக்கும்
         }
       } catch (e) {
         console.error("நாள் நிலை பிழை:", e);

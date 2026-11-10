@@ -1617,7 +1617,6 @@
       const btnCloseDay = document.getElementById('btnCloseDay');
 
       try {
-        // date மற்றும் date_str இரண்டையுமே துல்லியமாக அனுப்புதல்
         const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date=${selDate}&date_str=${selDate}`);
         const result = await res.json();
         
@@ -1631,7 +1630,7 @@
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
 
           if (btnCloseDay) btnCloseDay.classList.add('hidden');
-          toggleFormsLock(true); // அனைத்து படிவங்களையும் முழுமையாக லாக் செய்தல்
+          toggleFormsLock(true); // அனைத்துப் படிவங்களையும் லாக் செய்தல்
         } else {
           // ☀️ நாள் திறந்திருந்தால்
           badge.innerText = `திறக்கப்பட்டுள்ளது (பரிவர்த்தனைக்குத் தயார்)`;
@@ -1641,10 +1640,9 @@
           toggleFormsLock(false); // படிவங்களை அனுமதித்தல்
         }
       } catch (e) {
-        console.error("நாள் நிலை பிழை:", e);
+        console.error("நாள் நிலை அறியும் பிழை:", e);
       }
     }
-
     function toggleFormsLock(isLocked) {
       // 1. செலவு மற்றும் உள்-பணப் பரிமாற்ற பட்டன்கள்
       const btnExpense = document.querySelector("button[onclick='openExpenseModal()']");
@@ -1700,37 +1698,29 @@
       });
       calcDayDenom();
 
-      if (mode === 'OPEN') {
-        if (currentCashDayData && currentCashDayData.status === 'OPEN') {
-          return alert("இந்த நாளுக்கான தொடக்க இருப்பு ஏற்கனவே பதிவு செய்யப்பட்டுவிட்டது.");
-        }
-        document.getElementById('cashDayModalTitle').innerText = "☀️ காலை தொடக்க இருப்பு பதிவு (Day Open)";
-        document.getElementById('divSystemCash').classList.add('hidden');
-        document.getElementById('divDiff').classList.add('hidden');
-        document.getElementById('btnSubmitCashDay').innerText = "நாளைத் திற (Open Day)";
-      } else {
-        if (!currentCashDayData || currentCashDayData.status === 'CLOSED') {
-          return alert("இந்த நாள் திறக்கப்படவில்லை அல்லது ஏற்கனவே பூட்டப்பட்டுவிட்டது.");
-        }
-        document.getElementById('cashDayModalTitle').innerText = "🌙 மாலை நாள் பூட்டுதல் & தாள்கள் சரிபார்ப்பு (Day Close)";
-        document.getElementById('btnSubmitCashDay').innerText = "நாளைப் பூட்டு (Close Day)";
-        
-        const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-        
-        // 👈 அறிக்கை அழைக்கும் அதே சரியான URL (date_str) மூலம் அன்றைய இறுதி ரொக்கம் எடுக்கப்படுகிறது
-        try {
-          const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selDate}`);
-          const repData = await res.json();
-          currentSystemCash = parseFloat(repData.calculated_closing || 0);
-          
-          document.getElementById('txtSystemCash').innerText = `₹ ${currentSystemCash.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-          document.getElementById('divSystemCash').classList.remove('hidden');
-          document.getElementById('divDiff').classList.remove('hidden');
-          calcDayDenom(); // வேறுபாட்டை உடனே கணக்கிட
-        } catch (err) {
-          console.error("Day close fetch error:", err);
-        }
+      // 👈 ஏற்கனவே பூட்டப்பட்டிருந்தால் மட்டுமே தடுக்க வேண்டும்
+      if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
+        return alert(`⚠️ ${selDate} நாளுக்கான கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED).`);
       }
+
+      document.getElementById('cashDayModalTitle').innerText = "🌙 மாலை நாள் பூட்டுதல் & தாள்கள் சரிபார்ப்பு (Day Close)";
+      document.getElementById('btnSubmitCashDay').innerText = "நாளைப் பூட்டு (Close Day)";
+      
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
+      
+      try {
+        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selDate}`);
+        const repData = await res.json();
+        currentSystemCash = parseFloat(repData.calculated_closing || 0);
+        
+        document.getElementById('txtSystemCash').innerText = `₹ ${currentSystemCash.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById('divSystemCash').classList.remove('hidden');
+        document.getElementById('divDiff').classList.remove('hidden');
+        calcDayDenom();
+      } catch (err) {
+        console.error("Day close fetch error:", err);
+      }
+
       document.getElementById('cashDayModal').classList.remove('hidden');
     }
 

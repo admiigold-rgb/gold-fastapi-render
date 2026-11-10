@@ -1916,12 +1916,10 @@
               const modeStr = (s.mode || s.payment_mode || 'CASH').toUpperCase();
               const isBank = modeStr.includes('BANK');
 
-              // வங்கி எனில் நீல நிற பேட்ஜ், ரொக்கம் எனில் பச்சை பேட்ஜ்
               const modeBadge = isBank 
                 ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">🏦 BANK</span>`
                 : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">💵 CASH</span>`;
 
-              // பட்டுவாடா தொகை காட்சி: வங்கி வழி எனில் ஸ்ட்ரைக் அவுட் மற்றும் வங்கி குறிப்பு
               const cashOutVal = s.outward !== undefined ? s.outward : (s.cash_out || 0);
               const totalVal = s.total_val !== undefined ? s.total_val : (s.net_amount || cashOutVal);
 
@@ -1949,52 +1947,51 @@
           }
         }
 
-      } catch (err) {
-        alert("அறிக்கை எடுப்பதில் பிழை: " + err.message);
-      }
-    }
-
         // 2. கிளை செலவுகள் பட்டியல்
         const eBody = document.getElementById('rep_expenses_tbody');
-        eBody.innerHTML = '';
-        if (!data.expenses || data.expenses.length === 0) {
-          eBody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-400">அங்கீகரிக்கப்பட்ட செலவுகள் எதுவும் இல்லை</td></tr>`;
-        } else {
-          data.expenses.forEach(e => {
-            eBody.innerHTML += `
-              <tr>
-                <td class="p-2 font-bold text-amber-950">${e.category}</td>
-                <td class="p-2">${e.reason || '-'}</td>
-                <td class="p-2 text-right font-black text-rose-700">₹${parseFloat(e.amount).toLocaleString('en-IN')}</td>
-              </tr>
-            `;
-          });
+        if (eBody) {
+          eBody.innerHTML = '';
+          if (!data.expenses || data.expenses.length === 0) {
+            eBody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-slate-400">அங்கீகரிக்கப்பட்ட செலவுகள் எதுவும் இல்லை</td></tr>`;
+          } else {
+            data.expenses.forEach(e => {
+              eBody.innerHTML += `
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                  <td class="p-2 font-bold text-amber-950">${e.category}</td>
+                  <td class="p-2">${e.reason || '-'}</td>
+                  <td class="p-2 text-right font-black text-rose-700">₹${parseFloat(e.amount).toLocaleString('en-IN')}</td>
+                </tr>
+              `;
+            });
+          }
         }
 
         // 3. கருவூலப் பரிமாற்றங்கள் பட்டியல்
         const tBody = document.getElementById('rep_transfers_tbody');
-        tBody.innerHTML = '';
-        if (!data.transfers || data.transfers.length === 0) {
-          tBody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400">பணப் பரிமாற்றங்கள் எதுவும் இல்லை</td></tr>`;
-        } else {
-          const typeNames = {
-            'BRANCH_TO_HQ': 'கிளை ➔ தலைமை அலுவலகம்',
-            'HQ_TO_BRANCH': 'தலைமை அலுவலகம் ➔ கிளை',
-            'CASH_TO_BANK': 'ரொக்கம் ➔ வங்கி டெபாசிட்',
-            'BANK_TO_CASH': 'வங்கி வித்ராயல் ➔ கிளை'
-          };
-          data.transfers.forEach(t => {
-            const isCashIn = (t.transfer_type === 'HQ_TO_BRANCH' || t.transfer_type === 'BANK_TO_CASH');
-            const amt = parseFloat(t.amount);
-            tBody.innerHTML += `
-              <tr>
-                <td class="p-2 font-bold text-indigo-950">${typeNames[t.transfer_type] || t.transfer_type}</td>
-                <td class="p-2 text-[11px]">${t.carrier_person ? 'கொண்டு சென்றவர்: ' + t.carrier_person : (t.notes || '-')}</td>
-                <td class="p-2 text-right font-black text-emerald-700">${isCashIn ? '₹' + amt.toLocaleString('en-IN') : '-'}</td>
-                <td class="p-2 text-right font-black text-rose-700">${!isCashIn ? '₹' + amt.toLocaleString('en-IN') : '-'}</td>
-              </tr>
-            `;
-          });
+        if (tBody) {
+          tBody.innerHTML = '';
+          if (!data.transfers || data.transfers.length === 0) {
+            tBody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400">பணப் பரிமாற்றங்கள் எதுவும் இல்லை</td></tr>`;
+          } else {
+            const typeNames = {
+              'BRANCH_TO_HQ': 'கிளை ➔ தலைமை அலுவலகம்',
+              'HQ_TO_BRANCH': 'தலைமை அலுவலகம் ➔ கிளை',
+              'CASH_TO_BANK': 'ரொக்கம் ➔ வங்கி டெபாசிட்',
+              'BANK_TO_CASH': 'வங்கி வித்ராயல் ➔ கிளை'
+            };
+            data.transfers.forEach(t => {
+              const isCashIn = (t.transfer_type === 'HQ_TO_BRANCH' || t.transfer_type === 'BANK_TO_CASH' || t.inward > 0);
+              const amt = parseFloat(t.amount || t.inward || t.outward || 0);
+              tBody.innerHTML += `
+                <tr class="border-b border-slate-100 hover:bg-slate-50">
+                  <td class="p-2 font-bold text-indigo-950">${typeNames[t.transfer_type] || t.type || t.transfer_type}</td>
+                  <td class="p-2 text-[11px]">${t.carrier_person ? 'கொண்டு சென்றவர்: ' + t.carrier_person : (t.carrier || t.notes || '-')}</td>
+                  <td class="p-2 text-right font-black text-emerald-700">${isCashIn ? '₹' + amt.toLocaleString('en-IN') : '-'}</td>
+                  <td class="p-2 text-right font-black text-rose-700">${!isCashIn ? '₹' + amt.toLocaleString('en-IN') : '-'}</td>
+                </tr>
+              `;
+            });
+          }
         }
 
       } catch (err) {
@@ -2002,11 +1999,10 @@
       }
     }
 
-    async function openDaySummaryReportModal() {
-      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
+    function closeDaySummaryReportModal() {
       const modal = document.getElementById('daySummaryReportModal');
-      if (modal) modal.classList.remove('hidden');
-
+      if (modal) modal.classList.add('hidden');
+    }
       const transInput = document.getElementById('txn_date');
       const selectedDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
 

@@ -569,6 +569,15 @@ def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Op
 @app.get("/api/cash-day/report")
 def get_cash_day_report(branch_id: int, date_str: str):
     try:
+        # 0. கிளை விவரம் எடுத்தல்
+        branch_name = "கிளை"
+        try:
+            br_res = supabase.table("test_branches").select("name").eq("id", branch_id).execute()
+            if br_res.data:
+                branch_name = br_res.data[0].get("name") or "கிளை"
+        except Exception:
+            pass
+
         # 1. தொடக்க இருப்பு எடுத்தல்
         opening_bal = 0.0
         prev_closed = (
@@ -584,64 +593,98 @@ def get_cash_day_report(branch_id: int, date_str: str):
         if prev_closed.data:
             opening_bal = float(prev_closed.data[0].get("closing_balance") or 0.0)
 
-        # 2. அன்றைய செட்டில்மென்ட்கள் (அடகு, வரவு போன்றவை)
         day_start = f"{date_str}T00:00:00"
         day_end = f"{date_str}T23:59:59"
-
-        settle_res = (
-            supabase.table("test_settlements")
-            .select("*, test_customers(name, mobile)")
-            .eq("branch_id", branch_id)
-            .gte("created_at", day_start)
-            .lte("created_at", day_end)
-            .order("created_at", desc=False)
-            .execute()
-        )
-
-        pawn_trans = []
+        
+        unified_entries = []
         tot_cash_in = 0.0
         tot_cash_out = 0.0
+        tot_bank_in = 0.0
+        tot_bank_out = 0.0
+
+        # 2. வாடிக்கையாளர் செட்டில்மென்ட்கள் (பாதுகாப்பான முறையில் விசிட் எண் எடுத்தல்)
+        try:
+            settle_res = (
+                supabase.table("test_settlements")
+                .select("*, test_customers(name, mobile)")
+                .eq("branch_id", branch_id)
+                .gte("created_at", day_start)
+                .lte("created_at", day_end)
+                .order("created_at", desc=False)
+                .execute()
+            )
+        except Exception:
+            settle_res = (
+                supabase.table("test_settlements")
+                .select("*")
+                .eq("branch_id", branch_id)
+                .gte("created_at", day_start)
+                .lte("created_at", day_end)
+                .order("created_at", desc=False)
+                .execute()
+            )
 
         for s in (settle_res.data or []):
             cust = s.get("test_customers") or {}
             c_name = cust.get("name") or "வாடிக்கையாளர்"
-            c_mobile = cust.get("mobile") or "-"
-            v_id = s.get("visit_id") or s.get("id")
             
-            # கட்டண முறை (CASH / BANK / SPLIT)
-            mode = (s.get("payment_mode") or "CASH").upper()
+            # வருகை எண் அமைத்தல் (test_customer_visits தேடுதல் அல்லது இயல்புநிலை அமைத்தல்)
+            v_id = s.get("visit_id") or s.get("id")
+            visit_no = f"VST-{branch_id:02d}-{v_id}"
+            if s.get("visit_id"):
+                try:
+                    v_res = supabase.table("test_customer_visits").select("visit_no").eq("id", s.get("visit_id")).limit(1).execute()
+                    if v_res.data and v_res.data[0].get("visit_no"):
+                        visit_no = v_res.data[0].get("visit_no")
+                except Exception:
+                    pass
+
+            # நடவடிக்கைகள் வகை
+            action_desc = s.get("settlement_type") or "Pledge (புதிய நகைக் கடன்)"
+            
+            net_amt = float(s.get("net_amount") or 0.0)
             pay_cash = float(s.get("pay_cash") or 0.0)
             pay_bank = float(s.get("pay_bank") or 0.0)
-            net_amt = float(s.get("net_amount") or 0.0)
-
-            # நாம் கொடுத்த தொகையா (பட்டுவாடா) அல்லது பெற்ற தொகையா (வரவு)
+            mode = (s.get("payment_mode") or "CASH").upper()
             direction = s.get("direction") or ("OUTWARD" if net_amt > 0 else "INWARD")
 
-            # ரொக்க இருப்புக் கணக்கீடு: ரொக்கப் பகுதி மட்டுமே கிளை ரொக்கத்தைக் கூட்டும்/குறைக்கும்
-            actual_cash_part = pay_cash if (pay_cash > 0 or pay_bank > 0) else (net_amt if "CASH" in mode else 0.0)
+            # தொகைகள் பிரித்தல்
+            cash_val = pay_cash if (pay_cash > 0 or pay_bank > 0) else (net_amt if "CASH" in mode else 0.0)
+            bank_val = pay_bank if (pay_cash > 0 or pay_bank > 0) else (net_amt if "BANK" in mode else 0.0)
+
+            c_in = 0.0
+            c_out = 0.0
+            b_in = 0.0
+            b_out = 0.0
 
             if direction in ["OUTWARD", "COMPANY_PAYABLE"]:
-                tot_cash_out += actual_cash_part
+                c_out = cash_val
+                b_out = bank_val
+                tot_cash_out += cash_val
+                tot_bank_out += bank_val
             else:
-                tot_cash_in += actual_cash_part
+                c_in = cash_val
+                b_in = bank_val
+                tot_cash_in += cash_val
+                tot_bank_in += bank_val
 
             created_t = s.get("created_at", "")
             t_str = created_t[11:16] if len(created_t) >= 16 else "--:--"
 
-            pawn_trans.append({
+            unified_entries.append({
                 "time": t_str,
-                "visit_id": v_id,
-                "customer_name": f"{c_name} (விசிட் #{v_id})",
-                "mobile": c_mobile,
-                "mode": mode,
-                "cash_part": actual_cash_part,
-                "bank_part": pay_bank if pay_bank > 0 else (net_amt if "BANK" in mode else 0.0),
-                "inward": actual_cash_part if direction not in ["OUTWARD", "COMPANY_PAYABLE"] else 0.0,
-                "outward": actual_cash_part if direction in ["OUTWARD", "COMPANY_PAYABLE"] else 0.0,
-                "total_val": net_amt
+                "visit_no": visit_no,
+                "entry_type": "வணிக வருகை",
+                "party_name": c_name,
+                "activity": action_desc,
+                "gross_in": (c_in + b_in) if (c_in + b_in) > 0 else 0.0,
+                "gross_out": (c_out + b_out) if (c_out + b_out) > 0 else 0.0,
+                "cash_change": (-c_out) if c_out > 0 else (c_in if c_in > 0 else 0.0),
+                "bank_change": (-b_out) if b_out > 0 else (b_in if b_in > 0 else 0.0),
+                "raw_time": created_t
             })
 
-        # 3. அங்கீகரிக்கப்பட்ட கிளைச் செலவுகள் (CASH மட்டும்)
+        # 3. கிளை செலவுகள் (Expenses)
         exp_res = (
             supabase.table("test_branch_expenses")
             .select("*")
@@ -650,19 +693,35 @@ def get_cash_day_report(branch_id: int, date_str: str):
             .eq("transaction_date", date_str)
             .execute()
         )
-        expenses = []
         for e in (exp_res.data or []):
-            e_amt = float(e.get("amount") or 0.0)
-            if (e.get("payment_mode") or "CASH").upper() == "CASH":
-                tot_cash_out += e_amt
-            expenses.append({
-                "category": e.get("category"),
-                "reason": e.get("reason"),
-                "amount": e_amt,
-                "mode": e.get("payment_mode", "CASH")
+            amt = float(e.get("amount") or 0.0)
+            e_mode = (e.get("payment_mode") or "CASH").upper()
+            e_time = e.get("created_at", "")
+            t_str = e_time[11:16] if len(e_time) >= 16 else "--:--"
+            
+            if e_mode == "CASH":
+                tot_cash_out += amt
+                c_chg = -amt
+                b_chg = 0.0
+            else:
+                tot_bank_out += amt
+                b_chg = -amt
+                c_chg = 0.0
+
+            unified_entries.append({
+                "time": t_str,
+                "visit_no": "-",
+                "entry_type": "கிளை செலவு",
+                "party_name": e.get("category", "செலவு"),
+                "activity": e.get("reason") or "அங்கீகரிக்கப்பட்ட செலவு",
+                "gross_in": 0.0,
+                "gross_out": amt,
+                "cash_change": c_chg,
+                "bank_change": b_chg,
+                "raw_time": e_time
             })
 
-        # 4. கருவூல பரிமாற்றங்கள்
+        # 4. கருவூல பரிமாற்றங்கள் (Treasury / HQ Trans)
         tr_res = (
             supabase.table("test_treasury_transfers")
             .select("*")
@@ -671,38 +730,60 @@ def get_cash_day_report(branch_id: int, date_str: str):
             .eq("transaction_date", date_str)
             .execute()
         )
-        transfers = []
+        type_names = {
+            'BRANCH_TO_HQ': ('HQ பணப் பட்டுவாடா', 'கிளை ➔ தலைமை அலுவலகம்'),
+            'HQ_TO_BRANCH': ('HQ நிதி ஒதுக்கீடு', 'தலைமையக நிதி வரவு'),
+            'CASH_TO_BANK': ('வங்கி டெபாசிட்', 'ரொக்கம் ➔ வங்கி'),
+            'BANK_TO_CASH': ('வங்கி வித்ராயல்', 'வங்கி ➔ கிளை ரொக்கம்')
+        }
         for t in (tr_res.data or []):
             amt = float(t.get("amount") or 0.0)
             ttype = t.get("transfer_type")
-            inw = 0.0
-            outw = 0.0
-            if ttype == "HQ_TO_BRANCH":
-                inw = amt
-                tot_cash_in += amt
-            elif ttype in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
-                outw = amt
-                tot_cash_out += amt
+            t_time = t.get("created_at", "")
+            t_str = t_time[11:16] if len(t_time) >= 16 else "--:--"
+            t_title, t_desc = type_names.get(ttype, ('பணப் பரிமாற்றம்', ttype))
 
-            transfers.append({
-                "type": ttype,
-                "carrier": t.get("carrier_person") or "-",
-                "inward": inw,
-                "outward": outw
+            c_chg = 0.0
+            g_in = 0.0
+            g_out = 0.0
+
+            if ttype in ['HQ_TO_BRANCH', 'BANK_TO_CASH']:
+                tot_cash_in += amt
+                c_chg = amt
+                g_in = amt
+            else:
+                tot_cash_out += amt
+                c_chg = -amt
+                g_out = amt
+
+            unified_entries.append({
+                "time": t_str,
+                "visit_no": "-",
+                "entry_type": t_title,
+                "party_name": t.get("carrier_person") or "பணப் பரிமாற்றம்",
+                "activity": t_desc,
+                "gross_in": g_in,
+                "gross_out": g_out,
+                "cash_change": c_chg,
+                "bank_change": 0.0,
+                "raw_time": t_time
             })
 
-        # கணினியின்படி இருக்க வேண்டிய உண்மையான ரொக்க இருப்பு
-        calculated_closing = opening_bal + tot_cash_in - tot_cash_out
+        # நேரத்தின் அடிப்படையில் வரிசைப்படுத்துதல்
+        unified_entries.sort(key=lambda x: x["raw_time"])
+
+        calc_closing = opening_bal + tot_cash_in - tot_cash_out
 
         return {
             "status": "success",
+            "branch_name": branch_name,
             "opening_balance": opening_bal,
-            "total_inward": tot_cash_in,
-            "total_outward": tot_cash_out,
-            "calculated_closing": calculated_closing,
-            "pawn_transactions": pawn_trans,
-            "expenses": expenses,
-            "transfers": transfers
+            "total_cash_in": tot_cash_in,
+            "total_cash_out": tot_cash_out,
+            "total_bank_in": tot_bank_in,
+            "total_bank_out": tot_bank_out,
+            "calculated_closing": calc_closing,
+            "entries": unified_entries
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"அறிக்கை கணக்கீட்டுப் பிழை: {str(e)}")

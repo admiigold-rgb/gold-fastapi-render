@@ -277,7 +277,7 @@ class ExpenseApprovalPayload(BaseModel):
     admin_id: int
 
 
-# 2. கிளை செலவுக் கோரிக்கை அனுப்பும் API
+# 2. கிளை செலவுக் கோரிக்கை  அனுப்பும் API
 @app.post("/api/expense/request")
 def create_branch_expense(data: dict):
     try:

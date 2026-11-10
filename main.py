@@ -281,11 +281,27 @@ class ExpenseApprovalPayload(BaseModel):
 @app.post("/api/expense/request")
 def create_branch_expense(data: dict):
     try:
-        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி (விடுபட்டால் மட்டுமே IST கரண்ட் தேதி)
+        # 1. கிளை எண் மற்றும் கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதியை முதலில் எடுத்தல்
+        branch_id = data.get("branch_id") or 1
         trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
 
+        # 2. நாள் பூட்டப்பட்டுள்ளதா (CLOSED) எனச் சரிபார்த்தல்
+        day_chk = (
+            supabase.table("test_branch_cash_days")
+            .select("status")
+            .eq("branch_id", branch_id)
+            .eq("business_date", trans_date)
+            .execute()
+        )
+        if day_chk.data and day_chk.data[0].get("status") == "CLOSED":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"⚠️ {trans_date} நாளுக்கான மாலை கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது! இந்தப் பழைய தேதியில் புதிய செலவுகளைப் பதிவு செய்ய முடியாது."
+            )
+
+        # 3. செலவுப் பதிவு விவரங்கள்
         record = {
-            "branch_id": data.get("branch_id") or 1,
+            "branch_id": branch_id,
             "category": data.get("category"),
             "amount": float(data.get("amount") or 0.0),
             "payment_mode": data.get("payment_mode", "CASH"),
@@ -297,7 +313,9 @@ def create_branch_expense(data: dict):
             "created_at": datetime.now(IST).isoformat()
         }
         res = supabase.table("test_branch_expenses").insert(record).execute()
-        return {"status": "success", "message": "செலவுக் கோரிக்கை பதியப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "செலவுக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"செலவு பதிவு பிழை: {str(e)}")
 
@@ -1547,6 +1565,23 @@ class TreasuryApprovalPayload(BaseModel):
 @app.post("/api/treasury/transfer-request")
 def create_treasury_transfer(data: dict):
     try:
+        branch_id = data.get("branch_id") or 1
+        trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
+
+        # நாள் பூட்டப்பட்டுள்ளதா எனச் சரிபார்த்தல்
+        day_chk = (
+            supabase.table("test_branch_cash_days")
+            .select("status")
+            .eq("branch_id", branch_id)
+            .eq("business_date", trans_date)
+            .execute()
+        )
+        if day_chk.data and day_chk.data[0].get("status") == "CLOSED":
+            raise HTTPException(
+                status_code=400, 
+                detail=f"⚠️ {trans_date} நாளுக்கான மாலை கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது! இந்தப் பழைய தேதியில் புதிய பணப் பரிமாற்றம் செய்ய முடியாது."
+            )
+
         from_src = "BRANCH_CASH"
         to_dest = "HQ_VAULT"
         transfer_type = data.get("transfer_type")
@@ -1561,14 +1596,11 @@ def create_treasury_transfer(data: dict):
             from_src = "COMPANY_BANK"
             to_dest = "BRANCH_CASH"
 
-        # கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதி
-        trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
-
         rec = {
             "transfer_type": transfer_type,
             "from_source": from_src,
             "to_destination": to_dest,
-            "branch_id": data.get("branch_id") or 1,
+            "branch_id": branch_id,
             "company_bank_id": data.get("company_bank_id"),
             "amount": float(data.get("amount") or 0.0),
             "carrier_person": data.get("carrier_person"),
@@ -1581,7 +1613,9 @@ def create_treasury_transfer(data: dict):
             "created_at": datetime.now(IST).isoformat()
         }
         res = supabase.table("test_treasury_transfers").insert(rec).execute()
-        return {"status": "success", "message": "பணப் பரிமாற்றம் பதியப்பட்டது.", "data": res.data}
+        return {"status": "success", "message": "பணப் பரிமாற்றக் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது.", "data": res.data}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"பரிமாற்றப் பதிவு பிழை: {str(e)}")
 

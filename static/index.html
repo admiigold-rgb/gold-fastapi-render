@@ -1369,118 +1369,102 @@
     </div>
 
     <!-- 6. அன்றைய நடவடிக்கைகள் அறிக்கை Modal -->
-    <!-- Day Summary Report Modal (Modern & High-Density UI) -->
-    <div id="daySummaryReportModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
-      <div class="bg-white rounded-2xl shadow-2xl max-w-7xl w-full h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+    <!-- Day Summary Report Modal (Ultra Clear High-Density Fintech UI) -->
+    <div id="daySummaryReportModal" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.75); backdrop-filter:blur(6px); z-index:99999; align-items:center; justify-content:center; padding:15px; font-family:system-ui, -apple-system, sans-serif;">
+      <div style="background:#ffffff; width:100%; max-width:1250px; height:92vh; border-radius:18px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); display:flex; flex-direction:column; overflow:hidden; border:1px solid #cbd5e1;">
         
         <!-- Modal Header -->
-        <div class="px-6 py-3.5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border-b border-indigo-900/40 flex items-center justify-between text-white shadow-sm flex-shrink-0">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 text-base font-bold shadow-inner">
-              📖
-            </div>
+        <div style="background:#1e1b4b; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; border-bottom:2px solid #312e81;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:22px; background:rgba(255,255,255,0.1); padding:6px 10px; border-radius:10px;">📖</span>
             <div>
-              <h3 class="text-sm font-black tracking-wide text-white flex items-center gap-2">
-                <span id="rep_branch_date_title">Aundivilai | நிதி நிலை அறிக்கை</span>
-              </h3>
-              <p class="text-[10px] text-indigo-200/80 font-medium">ஒருங்கிணைந்த தினசரி நாள் ஏடு & பணப்புழக்க தணிக்கை விவரம்</p>
+              <h2 id="rep_branch_date_title" style="color:#ffffff; font-size:16px; font-weight:800; margin:0; letter-spacing:0.5px;">Aundivilai | நிதி நிலை அறிக்கை</h2>
+              <span style="color:#a5b4fc; font-size:11px; font-weight:500;">ஒருங்கிணைந்த தினசரி நாள் ஏடு & பணப்புழக்க அறிக்கை</span>
             </div>
           </div>
-          
-          <!-- மூடும் பட்டன் -->
-          <button type="button" onclick="closeDaySummaryReportModal()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-500 text-slate-200 hover:text-white flex items-center justify-center transition-all cursor-pointer font-bold text-sm shadow">
-            ✕
-          </button>
+          <button type="button" onclick="closeDaySummaryReportModal()" style="background:rgba(255,255,255,0.15); border:none; color:#ffffff; width:34px; height:34px; border-radius:50%; font-size:16px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s;" onmouseover="this.style.background='#ef4444'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">✕</button>
         </div>
     
-        <!-- Top Summary Dashboard (Cards) -->
-        <div class="p-4 bg-slate-50 border-b border-slate-200 flex-shrink-0 space-y-3">
+        <!-- Cards Dashboard (Flexbox Layout with Big Bold Text) -->
+        <div style="background:#f8fafc; padding:14px 20px; border-bottom:1px solid #e2e8f0; flex-shrink:0; display:flex; flex-direction:column; gap:12px;">
           
-          <!-- 4 Primary Stat Cards -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <!-- 4 Primary Cards -->
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
             
-            <!-- Card 1: தொடக்க இருப்பு -->
-            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-amber-400 transition">
-              <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
-              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pl-1.5 flex items-center gap-1">
+            <!-- காலை தொடக்க இருப்பு -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #f59e0b; border-radius:12px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size:12px; font-weight:700; color:#b45309; display:flex; align-items:center; gap:6px;">
                 <span>🌅</span> காலை தொடக்க இருப்பு
               </div>
-              <div class="text-lg font-black text-slate-900 mt-1 pl-1.5 font-mono" id="rep_card_opening">₹0.00</div>
+              <div id="rep_card_opening" style="font-size:20px; font-weight:900; color:#0f172a; margin-top:6px; font-family:monospace;">₹0.00</div>
             </div>
     
-            <!-- Card 2: மொத்த ரொக்க வரவு -->
-            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-emerald-400 transition">
-              <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
-              <div class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider pl-1.5 flex items-center gap-1">
+            <!-- மொத்த ரொக்க வரவு -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #10b981; border-radius:12px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size:12px; font-weight:700; color:#047857; display:flex; align-items:center; gap:6px;">
                 <span>📥</span> மொத்த ரொக்க வரவு (Cash IN)
               </div>
-              <div class="text-lg font-black text-emerald-600 mt-1 pl-1.5 font-mono" id="rep_card_cash_in">₹0.00</div>
+              <div id="rep_card_cash_in" style="font-size:20px; font-weight:900; color:#059669; margin-top:6px; font-family:monospace;">₹0.00</div>
             </div>
     
-            <!-- Card 3: மொத்த ரொக்கப் பற்று -->
-            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-rose-400 transition">
-              <div class="absolute top-0 left-0 w-1.5 h-full bg-rose-500"></div>
-              <div class="text-[10px] font-bold text-rose-700 uppercase tracking-wider pl-1.5 flex items-center gap-1">
+            <!-- மொத்த ரொக்கப் பற்று -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #ef4444; border-radius:12px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+              <div style="font-size:12px; font-weight:700; color:#b91c1c; display:flex; align-items:center; gap:6px;">
                 <span>📤</span> மொத்த ரொக்கப் பற்று (Cash OUT)
               </div>
-              <div class="text-lg font-black text-rose-600 mt-1 pl-1.5 font-mono" id="rep_card_cash_out">₹0.00</div>
+              <div id="rep_card_cash_out" style="font-size:20px; font-weight:900; color:#dc2626; margin-top:6px; font-family:monospace;">₹0.00</div>
             </div>
     
-            <!-- Card 4: கணினி இறுதி இருப்பு -->
-            <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-sm relative overflow-hidden group hover:border-blue-400 transition">
-              <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-600"></div>
-              <div class="flex items-center justify-between pl-1.5">
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">🔒 கணினி இறுதி இருப்பு</span>
-                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono" id="rep_card_net_change">0.00</span>
+            <!-- கணினி இறுதி இருப்பு -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:5px solid #3b82f6; border-radius:12px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:12px; font-weight:700; color:#1d4ed8;">🔒 கணினி இறுதி இருப்பு</div>
+                <span id="rep_card_net_change" style="font-size:10px; font-weight:800; padding:2px 6px; border-radius:6px; background:#f1f5f9; color:#475569;">+ 0.00</span>
               </div>
-              <div class="text-lg font-black text-blue-700 mt-1 pl-1.5 font-mono" id="rep_card_closing">₹0.00</div>
+              <div id="rep_card_closing" style="font-size:20px; font-weight:900; color:#1e40af; margin-top:6px; font-family:monospace;">₹0.00</div>
             </div>
     
           </div>
     
-          <!-- Bank Strip (Slim & Clear) -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
-            <div class="bg-gradient-to-r from-blue-50/80 to-indigo-50/50 px-3.5 py-2 rounded-xl border border-blue-200/70 flex items-center justify-between shadow-sm">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                <span class="text-[11px] font-bold text-blue-900">அன்றைய மொத்த வங்கி வரவு (Bank IN):</span>
+          <!-- Bank Strip -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 16px; display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:12px; font-weight:800; color:#1e40af; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">🏦</span> அன்றைய மொத்த வங்கி வரவு (Bank IN):
               </div>
-              <span class="text-xs font-black text-blue-700 font-mono" id="rep_bank_in">₹0.00</span>
+              <div id="rep_bank_in" style="font-size:15px; font-weight:900; color:#1d4ed8; font-family:monospace;">₹0.00</div>
             </div>
     
-            <div class="bg-gradient-to-r from-purple-50/80 to-fuchsia-50/50 px-3.5 py-2 rounded-xl border border-purple-200/70 flex items-center justify-between shadow-sm">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
-                <span class="text-[11px] font-bold text-purple-900">அன்றைய மொத்த வங்கிப் பற்று (Bank OUT):</span>
+            <div style="background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px 16px; display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:12px; font-weight:800; color:#6b21a8; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:16px;">🏛️</span> அன்றைய மொத்த வங்கிப் பற்று (Bank OUT):
               </div>
-              <span class="text-xs font-black text-purple-700 font-mono" id="rep_bank_out">₹0.00</span>
+              <div id="rep_bank_out" style="font-size:15px; font-weight:900; color:#7e22ce; font-family:monospace;">₹0.00</div>
             </div>
           </div>
     
         </div>
     
         <!-- Scrollable Unified Day Book Table Area -->
-        <div class="flex-1 overflow-y-auto px-4 py-2.5 bg-slate-100/50">
-          <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div style="flex:1; overflow-y:auto; overflow-x:hidden; padding:16px; background:#f1f5f9;">
+          <div style="background:#ffffff; border-radius:12px; border:1px solid #cbd5e1; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); overflow:hidden;">
             
-            <table class="w-full text-[11px] text-left border-collapse">
-              <!-- Sticky Header -->
-              <thead class="bg-slate-800 text-white font-semibold text-[11px] sticky top-0 z-10 shadow-sm">
+            <table style="width:100%; border-collapse:collapse; text-align:left; font-size:12px; table-layout:fixed;">
+              <!-- Clear High-Contrast Sticky Header -->
+              <thead style="background:#334155; color:#ffffff; position:sticky; top:0; z-index:10; font-size:12px; font-weight:800; letter-spacing:0.3px;">
                 <tr>
-                  <th class="py-2.5 px-3 w-[65px] text-center border-r border-slate-700">நேரம்</th>
-                  <th class="py-2.5 px-3 w-[125px] border-r border-slate-700">வருகை எண்</th>
-                  <th class="py-2.5 px-3 w-[100px] border-r border-slate-700">வகை</th>
-                  <th class="py-2.5 px-3 w-[140px] border-r border-slate-700">விவரம்</th>
-                  <th class="py-2.5 px-3 border-r border-slate-700">நடவடிக்கை</th>
-                  <th class="py-2.5 px-3 w-[95px] text-right border-r border-slate-700">வரவு (IN)</th>
-                  <th class="py-2.5 px-3 w-[105px] text-right border-r border-slate-700">பற்று (OUT)</th>
-                  <th class="py-2.5 px-3 w-[120px] text-right border-r border-slate-700 bg-slate-900/60">ரொக்கம் (Cash)</th>
-                  <th class="py-2.5 px-3 w-[115px] text-right bg-indigo-950/80">வங்கி (Bank)</th>
+                  <th style="padding:12px 10px; width:65px; text-align:center; border-right:1px solid #475569;">நேரம்</th>
+                  <th style="padding:12px 10px; width:125px; border-right:1px solid #475569;">வருகை எண்</th>
+                  <th style="padding:12px 10px; width:95px; border-right:1px solid #475569;">வகை</th>
+                  <th style="padding:12px 12px; width:140px; border-right:1px solid #475569;">விவரம்</th>
+                  <th style="padding:12px 12px; border-right:1px solid #475569;">நடவடிக்கை</th>
+                  <th style="padding:12px 12px; width:100px; text-align:right; border-right:1px solid #475569;">வரவு (IN)</th>
+                  <th style="padding:12px 12px; width:110px; text-align:right; border-right:1px solid #475569;">பற்று (OUT)</th>
+                  <th style="padding:12px 12px; width:135px; text-align:right; border-right:1px solid #475569; background:#1e293b;">ரொக்கம் (Cash)</th>
+                  <th style="padding:12px 12px; width:125px; text-align:right; background:#1e1b4b;">வங்கி (Bank)</th>
                 </tr>
               </thead>
-              
-              <!-- Table Body with Alternating Colors -->
-              <tbody id="rep_unified_daybook_tbody" class="divide-y divide-slate-100 font-sans">
+              <tbody id="rep_unified_daybook_tbody">
                 <!-- JS வழியாக வரிசைகள் நிரப்பப்படும் -->
               </tbody>
             </table>
@@ -1489,17 +1473,17 @@
         </div>
     
         <!-- Bottom Cash Reconciliation Bar -->
-        <div class="px-4 py-2.5 bg-amber-50/90 border-t border-amber-200 flex-shrink-0 flex items-center justify-center text-[11px] text-amber-950 font-medium shadow-inner">
-          <div class="flex flex-wrap items-center justify-center gap-2">
-            <span class="font-bold text-amber-900 flex items-center gap-1"><span>⚖️</span> கல்லா சமநிலை:</span>
-            <span>தொடக்க இருப்பு: <strong id="recon_open" class="font-mono text-slate-800">₹0.00</strong></span>
-            <span class="text-amber-500 font-bold">+</span>
-            <span>மொத்த ரொக்க வரவு: <strong id="recon_in" class="font-mono text-emerald-700">₹0.00</strong></span>
-            <span class="text-amber-500 font-bold">-</span>
-            <span>மொத்த ரொக்கப் பற்று: <strong id="recon_out" class="font-mono text-rose-700">₹0.00</strong></span>
-            <span class="text-amber-500 font-bold">=</span>
-            <span class="bg-amber-200/60 px-2 py-0.5 rounded-md font-bold text-slate-900">
-              கணினி இறுதி ரொக்கம்: <strong id="recon_close" class="font-mono text-blue-900 text-xs">₹0.00</strong>
+        <div style="background:#fef3c7; border-top:1px solid #fde68a; padding:12px 20px; flex-shrink:0; display:flex; justify-content:center; align-items:center; font-size:12px; font-weight:700; color:#78350f;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:14px;">⚖️</span> <span>கல்லா சமநிலை:</span>
+            <span>தொடக்க இருப்பு: <strong id="recon_open" style="font-family:monospace; color:#0f172a;">₹0.00</strong></span>
+            <span style="color:#d97706;">+</span>
+            <span>மொத்த ரொக்க வரவு: <strong id="recon_in" style="font-family:monospace; color:#047857;">₹0.00</strong></span>
+            <span style="color:#d97706;">-</span>
+            <span>மொத்த ரொக்கப் பற்று: <strong id="recon_out" style="font-family:monospace; color:#b91c1c;">₹0.00</strong></span>
+            <span style="color:#d97706;">=</span>
+            <span style="background:#fde68a; padding:4px 10px; border-radius:8px; color:#451a03;">
+              கணினி இறுதி ரொக்கம்: <strong id="recon_close" style="font-family:monospace; color:#1e3a8a; font-size:14px;">₹0.00</strong>
             </span>
           </div>
         </div>
@@ -2026,14 +2010,14 @@
 
     function closeDaySummaryReportModal() {
       const modal = document.getElementById('daySummaryReportModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.style.display = 'none';
+      }
     }
 
-    // விசைப்பலகை Esc அழுத்தினால் சாளரத்தை மூடுதல்
+    // விசைப்பலகை Esc அழுத்தினால் மூடுதல்
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        closeDaySummaryReportModal();
-      }
+      if (e.key === 'Escape') closeDaySummaryReportModal();
     });
 
     async function openDaySummaryReportModal() {
@@ -2041,12 +2025,13 @@
       const branchName = (currentUser && currentUser.branch_name) ? currentUser.branch_name : 'Aundivilai';
       
       const modal = document.getElementById('daySummaryReportModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
 
       const transInput = document.getElementById('txn_date');
       const selectedDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
 
-      // தலைப்பு
       const titleElem = document.getElementById('rep_branch_date_title');
       if (titleElem) {
         titleElem.innerText = `${branchName} | ${selectedDate} நிதி நிலை அறிக்கை`;
@@ -2062,7 +2047,7 @@
         const closeBal = data.calculated_closing || (openBal + totalCashIn - totalCashOut);
         const netCashChange = totalCashIn - totalCashOut;
 
-        // 1. கார்டுகள்
+        // 1. கார்டுகள் விவரம்
         document.getElementById('rep_card_opening').innerText = '₹' + openBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_card_cash_in').innerText = '₹' + totalCashIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_card_cash_out').innerText = '₹' + totalCashOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
@@ -2071,7 +2056,8 @@
         const netElem = document.getElementById('rep_card_net_change');
         if (netElem) {
           const sign = netCashChange >= 0 ? '+ ' : '- ';
-          netElem.className = `text-[9px] font-bold px-1.5 py-0.5 rounded font-mono ${netCashChange >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`;
+          netElem.style.background = netCashChange >= 0 ? '#dcfce7' : '#fee2e2';
+          netElem.style.color = netCashChange >= 0 ? '#15803d' : '#b91c1c';
           netElem.innerText = `${sign}₹${Math.abs(netCashChange).toLocaleString('en-IN', {minimumFractionDigits: 2})} மாற்றம்`;
         }
 
@@ -2090,53 +2076,58 @@
         tbody.innerHTML = '';
 
         if (!data.entries || data.entries.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400 font-bold bg-white">இன்றைய நடவடிக்கைகள் எதுவும் பதிவு செய்யப்படவில்லை</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9" style="padding:40px; text-align:center; color:#94a3b8; font-weight:bold; font-size:14px; background:#ffffff;">இன்றைய நடவடிக்கைகள் எதுவும் பதிவு செய்யப்படவில்லை</td></tr>`;
           return;
         }
 
         tbody.innerHTML = data.entries.map((e, idx) => {
           // ரொக்கம் பத்தி
-          let cashCell = '-';
+          let cashCell = '<span style="color:#cbd5e1;">-</span>';
           if (e.cash_change > 0) {
-            cashCell = `<span class="text-emerald-700 font-black font-mono whitespace-nowrap">(+) ₹${e.cash_change.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
+            cashCell = `<span style="color:#047857; font-weight:900; font-family:monospace; white-space:nowrap;">(+) ₹${e.cash_change.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
           } else if (e.cash_change < 0) {
-            cashCell = `<span class="text-rose-600 font-black font-mono whitespace-nowrap">(-) ₹${Math.abs(e.cash_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
+            cashCell = `<span style="color:#dc2626; font-weight:900; font-family:monospace; white-space:nowrap;">(-) ₹${Math.abs(e.cash_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
           }
 
           // வங்கி பத்தி
-          let bankCell = '-';
+          let bankCell = '<span style="color:#cbd5e1;">-</span>';
           if (e.bank_change !== 0) {
             const bSign = e.bank_change > 0 ? '(+) ' : '(-) ';
-            const bColor = e.bank_change > 0 ? 'text-blue-700' : 'text-purple-700';
-            bankCell = `<span class="${bColor} font-black font-mono whitespace-nowrap">${bSign}₹${Math.abs(e.bank_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
+            const bColor = e.bank_change > 0 ? '#1d4ed8' : '#7e22ce';
+            bankCell = `<span style="color:${bColor}; font-weight:900; font-family:monospace; white-space:nowrap;">${bSign}₹${Math.abs(e.bank_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
           }
 
-          const inCell = e.gross_in > 0 ? `<span class="font-mono text-slate-800 font-bold">₹${e.gross_in.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span class="text-slate-300">-</span>';
-          const outCell = e.gross_out > 0 ? `<span class="font-mono text-slate-800 font-bold">₹${e.gross_out.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span class="text-slate-300">-</span>';
+          const inCell = e.gross_in > 0 ? `<span style="font-family:monospace; font-weight:700; color:#0f172a;">₹${e.gross_in.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span style="color:#cbd5e1;">-</span>';
+          const outCell = e.gross_out > 0 ? `<span style="font-family:monospace; font-weight:700; color:#0f172a;">₹${e.gross_out.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span style="color:#cbd5e1;">-</span>';
 
-          // வகைக்கு ஏற்ப சிறிய பேட்ஜ் நிறம்
-          let typeBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">${e.entry_type}</span>`;
+          // பேட்ஜ் பாணி
+          let badgeBg = '#f1f5f9';
+          let badgeColor = '#334155';
           if (e.entry_type.includes("செலவு")) {
-            typeBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">செலவு</span>`;
+            badgeBg = '#fef3c7';
+            badgeColor = '#92400e';
           } else if (e.entry_type.includes("HQ") || e.entry_type.includes("நிதி")) {
-            typeBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">கருவூலம்</span>`;
+            badgeBg = '#e0e7ff';
+            badgeColor = '#3730a3';
           } else if (e.entry_type.includes("வணிக")) {
-            typeBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200">வணிகம்</span>`;
+            badgeBg = '#e0f2fe';
+            badgeColor = '#0369a1';
           }
+          const typeBadge = `<span style="background:${badgeBg}; color:${badgeColor}; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px; white-space:nowrap;">${e.entry_type}</span>`;
 
-          const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
+          const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
           return `
-            <tr class="${rowBg} hover:bg-amber-50/40 transition-colors border-b border-slate-100">
-              <td class="py-2 px-3 font-mono text-slate-500 border-r border-slate-100 text-center font-medium">${e.time}</td>
-              <td class="py-2 px-3 font-mono font-bold text-indigo-700 border-r border-slate-100 whitespace-nowrap">${e.visit_no}</td>
-              <td class="py-2 px-3 border-r border-slate-100">${typeBadge}</td>
-              <td class="py-2 px-3 font-bold text-slate-900 border-r border-slate-100 leading-tight">${e.party_name}</td>
-              <td class="py-2 px-3 text-slate-600 border-r border-slate-100 leading-snug">${e.activity}</td>
-              <td class="py-2 px-3 text-right border-r border-slate-100">${inCell}</td>
-              <td class="py-2 px-3 text-right border-r border-slate-100">${outCell}</td>
-              <td class="py-2 px-3 text-right border-r border-slate-100 bg-amber-50/20">${cashCell}</td>
-              <td class="py-2 px-3 text-right bg-blue-50/20">${bankCell}</td>
+            <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0; transition:background 0.15s;" onmouseover="this.style.background='#fef9c3'" onmouseout="this.style.background='${rowBg}'">
+              <td style="padding:10px 8px; font-family:monospace; color:#64748b; text-align:center; border-right:1px solid #f1f5f9; font-weight:600;">${e.time}</td>
+              <td style="padding:10px 10px; font-family:monospace; font-weight:800; color:#4338ca; border-right:1px solid #f1f5f9; white-space:nowrap;">${e.visit_no}</td>
+              <td style="padding:10px 8px; border-right:1px solid #f1f5f9;">${typeBadge}</td>
+              <td style="padding:10px 12px; font-weight:800; color:#0f172a; border-right:1px solid #f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${e.party_name}">${e.party_name}</td>
+              <td style="padding:10px 12px; color:#475569; border-right:1px solid #f1f5f9; line-height:1.4;">${e.activity}</td>
+              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9;">${inCell}</td>
+              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9;">${outCell}</td>
+              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9; background:#fffbeb;">${cashCell}</td>
+              <td style="padding:10px 12px; text-align:right; background:#f0fdf4;">${bankCell}</td>
             </tr>
           `;
         }).join('');

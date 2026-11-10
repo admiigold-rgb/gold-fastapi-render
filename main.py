@@ -553,31 +553,23 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
     try:
         clean_date = date_str if (date_str and date_str.strip() and date_str != "undefined") else datetime.now(IST).strftime("%Y-%m-%d")
 
-        # 1. Day Book Opening Balance (தேர்ந்தெடுக்கப்பட்ட தேதிக்குரிய தொடக்க இருப்பு)
+        # 1. Day Book Opening Balance (முந்தைய நாள் மாலை முடித்த இருப்பு மட்டுமே தொடக்க இருப்பு)
         opening = 0.0
         try:
-            day_res = (
+            prev_day_res = (
                 supabase.table("test_branch_cash_days")
-                .select("*")
+                .select("closing_balance, opening_balance")
                 .eq("branch_id", branch_id)
-                .eq("business_date", clean_date)
+                .lt("business_date", clean_date)
+                .order("business_date", desc=True)
+                .limit(1)
                 .execute()
             )
-            if day_res.data:
-                opening = float(day_res.data[0].get("opening_balance") or 0.0)
-            else:
-                last_day = (
-                    supabase.table("test_branch_cash_days")
-                    .select("*")
-                    .eq("branch_id", branch_id)
-                    .order("id", desc=True)
-                    .limit(1)
-                    .execute()
-                )
-                if last_day.data:
-                    opening = float(last_day.data[0].get("opening_balance") or 0.0)
+            if prev_day_res.data:
+                # முந்தைய நாள் மாலை முடித்த இருப்பு (closing_balance) தானாக அடுத்த நாளின் தொடக்க இருப்பாக மாறும்
+                opening = float(prev_day_res.data[0].get("closing_balance") or prev_day_res.data[0].get("opening_balance") or 0.0)
         except Exception as e:
-            print("Opening balance error:", e)
+            print("Opening balance auto-fetch error:", e)
 
         # 2. அடகு & வரவு பட்டுவாடா
         total_cash_in = 0.0
@@ -605,7 +597,6 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
                     print("Customers map error:", ce)
 
             for l in raw_loans:
-                # தேர்ந்தெடுக்கப்பட்ட தேதியும் கடன் transaction_date-ம் ஒன்றாக உள்ளதா எனப் பார்த்தல்
                 t_date = str(l.get("transaction_date") or "")
                 c_at = str(l.get("created_at") or "")
                 rec_date = t_date if t_date else c_at[:10]
@@ -630,7 +621,7 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         except Exception as e:
             print("Gold Loans Fetch Error:", e)
 
-        # 3. அங்கீகரிக்கப்பட்ட கிளை செலவுகள் (நேரடியாக transaction_date கொண்டு எடுத்தல்)
+        # 3. அங்கீகரிக்கப்பட்ட கிளை செலவுகள்
         raw_expenses = []
         total_expenses = 0.0
         try:
@@ -638,8 +629,8 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
                 supabase.table("test_branch_expenses")
                 .select("*")
                 .eq("branch_id", branch_id)
-                .eq("transaction_date", clean_date)  # 👈 clean_date பயன்படுத்தப்பட்டுள்ளது
-                .eq("status", "APPROVED")            # ஒப்புதல் பெற்றவை மட்டும்
+                .eq("transaction_date", clean_date)
+                .eq("status", "APPROVED")
                 .execute()
             )
             raw_expenses = exp_res.data or []
@@ -647,7 +638,7 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
         except Exception as e:
             print("Expenses fetch error:", e)
 
-        # 4. அங்கீகரிக்கப்பட்ட உள்-பணப் பரிமாற்றங்கள் (நேரடியாக transaction_date கொண்டு எடுத்தல்)
+        # 4. அங்கீகரிக்கப்பட்ட உள்-பணப் பரிமாற்றங்கள்
         raw_transfers = []
         treasury_in = 0.0
         treasury_out = 0.0
@@ -656,8 +647,8 @@ def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
                 supabase.table("test_treasury_transfers")
                 .select("*")
                 .eq("branch_id", branch_id)
-                .eq("transaction_date", clean_date)  # 👈 clean_date பயன்படுத்தப்பட்டுள்ளது
-                .eq("status", "APPROVED")            # ஒப்புதல் பெற்றவை மட்டும்
+                .eq("transaction_date", clean_date)
+                .eq("status", "APPROVED")
                 .execute()
             )
             raw_transfers = tr_res.data or []

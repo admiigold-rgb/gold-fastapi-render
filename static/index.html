@@ -1734,8 +1734,10 @@
 
     async function submitCashDayAction() {
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      const selDate = document.getElementById('txn_date').value;
+      const dateInput = document.getElementById('txn_date');
+      const selDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
       const countedTotal = parseFloat(document.getElementById('txtDayDenomTotal').innerText.replace(/[^\d.]/g, '')) || 0;
+      
       const denoms = {
         c_500: parseInt(document.getElementById('cd_500').value) || 0,
         c_200: parseInt(document.getElementById('cd_200').value) || 0,
@@ -1747,31 +1749,64 @@
       };
 
       if (currentDayMode === 'OPEN') {
-        const res = await fetch('/api/cash-day/open', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            branch_id: branchId, business_date: selDate,
-            opening_balance: countedTotal, denominations: denoms,
-            staff_id: currentUser ? currentUser.id : 1
-          })
-        });
-        const data = await res.json();
-        if (res.ok) { alert("✅ " + data.message); closeCashDayModal(); checkCurrentDateStatus(); }
-        else alert("❌ " + data.detail);
+        try {
+          const res = await fetch('/api/cash-day/open', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              branch_id: branchId,
+              business_date: selDate,
+              opening_balance: countedTotal,
+              denominations: denoms,
+              staff_id: currentUser ? currentUser.id : 1
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert("✅ " + data.message);
+            closeCashDayModal();
+            checkCurrentDateStatus();
+          } else {
+            const errMsg = typeof data.detail === 'object' ? JSON.stringify(data.detail) : data.detail;
+            alert("❌ பிழை: " + errMsg);
+          }
+        } catch (err) {
+          alert("❌ இணைப்புப் பிழை: " + err.message);
+        }
       } else {
-        const res = await fetch('/api/cash-day/close', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            cash_day_id: currentCashDayData.id, closing_balance: countedTotal,
-            denominations: denoms, calculated_system_cash: currentSystemCash,
-            staff_id: currentUser ? currentUser.id : 1
-          })
-        });
-        const data = await res.json();
-        if (res.ok) { alert("✅ " + data.message); closeCashDayModal(); checkCurrentDateStatus(); }
-        else alert("❌ " + data.detail);
+        // மாலை நாள் பூட்டுதல் (Day Close)
+        try {
+          const res = await fetch('/api/cash-day/close', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              cash_day_id: (currentCashDayData && currentCashDayData.id) ? currentCashDayData.id : null,
+              branch_id: branchId,
+              business_date: selDate,
+              closing_balance: countedTotal,
+              denominations: denoms,
+              calculated_system_cash: currentSystemCash,
+              staff_id: currentUser ? currentUser.id : 1
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert("✅ " + data.message);
+            closeCashDayModal();
+            checkCurrentDateStatus();
+          } else {
+            // பிழை இருந்தால் தெளிவாகத் திரையில் காட்டப்படும்
+            let errMsg = data.detail;
+            if (Array.isArray(data.detail)) {
+              errMsg = data.detail.map(d => `${d.loc ? d.loc.join('.') : ''}: ${d.msg}`).join('\n');
+            } else if (typeof data.detail === 'object') {
+              errMsg = JSON.stringify(data.detail);
+            }
+            alert("❌ நாள் பூட்டுதல் பிழை:\n" + errMsg);
+          }
+        } catch (err) {
+          alert("❌ இணைப்புப் பிழை: " + err.message);
+        }
       }
     }
     

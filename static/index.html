@@ -114,7 +114,7 @@
       <div class="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-wrap justify-between items-center gap-3 text-xs">
         <div class="flex items-center gap-2">
           <span class="font-extrabold text-brand-violet flex items-center gap-1">📅 பரிவர்த்தனை தேதி:</span>
-          <input type="date" id="txn_date" onchange="refreshBranchDayStatus()" class="border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-purple-50 font-bold text-brand-violet focus:outline-none">
+          <input type="date" id="txn_date" onchange="checkCurrentDateStatus()" class="border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-purple-50 font-bold text-brand-violet focus:outline-none">
           <span id="cashDayStatusBadge" class="px-2.5 py-1 rounded-lg font-bold text-[10px] bg-slate-100 text-slate-600 shadow-sm">நிலை அறியப்படுகிறது...</span>
         </div>
         <!-- கவுண்ட்டர் செயல்பாட்டு பட்டன்கள் வரிசை -->
@@ -1617,23 +1617,28 @@
       const btnCloseDay = document.getElementById('btnCloseDay');
 
       try {
-        const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date_str=${selDate}`);
-        const data = await res.json();
-        currentCashDayData = data.data;
+        // date மற்றும் date_str இரண்டையுமே துல்லியமாக அனுப்புதல்
+        const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date=${selDate}&date_str=${selDate}`);
+        const result = await res.json();
+        
+        currentCashDayData = result.data;
+        const isClosed = result.is_closed || (currentCashDayData && currentCashDayData.status === 'CLOSED');
 
-        // நாள் பூட்டப்பட்டிருந்தால் (CLOSED)
-        if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
-          badge.innerText = `🔒 பூட்டப்பட்டது (இறுதி இருப்பு: ₹${(currentCashDayData.closing_balance || 0).toLocaleString('en-IN')})`;
+        if (isClosed) {
+          // 🔒 நாள் பூட்டப்பட்டிருந்தால்
+          const closingAmt = currentCashDayData ? parseFloat(currentCashDayData.closing_balance || 0) : 0;
+          badge.innerText = `🔒 மூடப்பட்டுள்ளது (இறுதி இருப்பு: ₹${closingAmt.toLocaleString('en-IN')})`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
 
           if (btnCloseDay) btnCloseDay.classList.add('hidden');
-          toggleFormsLock(true); // 👈 அனைத்துப் படிவங்களையும் முழுமையாக முடக்குகிறது
+          toggleFormsLock(true); // அனைத்து படிவங்களையும் முழுமையாக லாக் செய்தல்
         } else {
+          // ☀️ நாள் திறந்திருந்தால்
           badge.innerText = `திறக்கப்பட்டுள்ளது (பரிவர்த்தனைக்குத் தயார்)`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
 
           if (btnCloseDay) btnCloseDay.classList.remove('hidden');
-          toggleFormsLock(false); // 👈 பரிவர்த்தனைகளை அனுமதிக்கிறது
+          toggleFormsLock(false); // படிவங்களை அனுமதித்தல்
         }
       } catch (e) {
         console.error("நாள் நிலை பிழை:", e);

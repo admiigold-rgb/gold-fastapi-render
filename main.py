@@ -1437,9 +1437,9 @@ def process_hq_bank_transfer(data: dict):
         payment_mode_used = data.get("payment_mode_used", "IMPS")
         notes = data.get("notes") or ""
 
-        # 1. பரிவர்த்தனை விவரங்களை எடுத்தல்
+        # 1. பரிவர்த்தனை விவரங்களை எடுத்தல் (சரியான அட்டவணை: test_bank_transfers)
         tr_res = (
-            supabase.table("test_customer_bank_transfers")
+            supabase.table("test_bank_transfers")
             .select("*")
             .eq("id", transfer_id)
             .execute()
@@ -1453,7 +1453,7 @@ def process_hq_bank_transfer(data: dict):
 
         # 2. நிராகரிப்பு (REJECT) எனில்
         if action == "REJECT":
-            supabase.table("test_customer_bank_transfers").update({
+            supabase.table("test_bank_transfers").update({
                 "status": "REJECTED",
                 "notes": notes,
                 "processed_by": admin_id,
@@ -1471,15 +1471,14 @@ def process_hq_bank_transfer(data: dict):
             "processed_by": admin_id,
             "processed_at": datetime.now(IST).isoformat()
         }
-        supabase.table("test_customer_bank_transfers").update(update_transfer).eq("id", transfer_id).execute()
+        supabase.table("test_bank_transfers").update(update_transfer).eq("id", transfer_id).execute()
 
-        # 4. நிறுவன வங்கிக் கணக்கு இருப்பு மாற்றம் (பாதுகாப்பான முறை - பிழை தவிர்வு)
+        # 4. நிறுவன வங்கிக் கணக்கு இருப்பு மாற்றம் (இருப்புப் பத்தி இருந்தால் மட்டும் பாதுகாப்பாக மாற்றுதல்)
         if company_bank_id:
             try:
                 b_res = supabase.table("test_company_banks").select("*").eq("id", company_bank_id).execute()
                 if b_res.data:
                     bank_row = b_res.data[0]
-                    # எந்தப் பெயர் கொண்ட பத்தி உள்ளதோ அதைக் கண்டறிந்து இருப்பு மாற்றுதல்
                     for col_name in ["current_balance", "balance", "opening_balance"]:
                         if col_name in bank_row:
                             old_bal = float(bank_row.get(col_name) or 0.0)
@@ -1490,7 +1489,7 @@ def process_hq_bank_transfer(data: dict):
                             except Exception:
                                 pass
             except Exception as b_err:
-                print("Company bank balance update note (ignored):", b_err)
+                print("Company bank balance update note:", b_err)
 
         return {"status": "success", "message": "வங்கிப் பட்டுவாடா வெற்றிகரமாக உறுதி செய்யப்பட்டு ஒப்புதல் அளிக்கப்பட்டது!"}
     except HTTPException:

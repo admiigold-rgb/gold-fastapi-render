@@ -1611,49 +1611,78 @@
 
     async function checkCurrentDateStatus() {
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      const selDate = document.getElementById('txn_date').value;
+      const dateInput = document.getElementById('txn_date');
+      const selDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
       const badge = document.getElementById('cashDayStatusBadge');
       const btnCloseDay = document.getElementById('btnCloseDay');
-    
+
       try {
-        const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date=${selDate}`);
+        const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date_str=${selDate}`);
         const data = await res.json();
         currentCashDayData = data.data;
-    
+
+        // நாள் பூட்டப்பட்டிருந்தால் (CLOSED)
         if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
           badge.innerText = `🔒 பூட்டப்பட்டது (இறுதி இருப்பு: ₹${(currentCashDayData.closing_balance || 0).toLocaleString('en-IN')})`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
-          
+
           if (btnCloseDay) btnCloseDay.classList.add('hidden');
-          toggleFormsLock(true); // பூட்டப்பட்ட பழைய தேதியில் புதிய வரவு-செலவு செய்ய முடியாது
+          toggleFormsLock(true); // 👈 அனைத்துப் படிவங்களையும் முழுமையாக முடக்குகிறது
         } else {
           badge.innerText = `திறக்கப்பட்டுள்ளது (பரிவர்த்தனைக்குத் தயார்)`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
-          
+
           if (btnCloseDay) btnCloseDay.classList.remove('hidden');
-          toggleFormsLock(false); // நாள் பூட்டப்படும் வரை எப்போதும் படிவங்கள் திறந்து இருக்கும்
+          toggleFormsLock(false); // 👈 பரிவர்த்தனைகளை அனுமதிக்கிறது
         }
       } catch (e) {
         console.error("நாள் நிலை பிழை:", e);
       }
     }
-    
+
     function toggleFormsLock(isLocked) {
-      const pawnBtn = document.querySelector("button[onclick='submitPawnToDatabase()']");
-      const checkoutBtn = document.querySelector("button[onclick='openCheckoutModal()']");
+      // 1. செலவு மற்றும் உள்-பணப் பரிமாற்ற பட்டன்கள்
+      const btnExpense = document.querySelector("button[onclick='openExpenseModal()']");
+      const btnTreasury = document.querySelector("button[onclick='openTreasuryModal()']");
       
+      [btnExpense, btnTreasury].forEach(btn => {
+        if (btn) {
+          btn.disabled = isLocked;
+          btn.style.opacity = isLocked ? "0.4" : "1";
+          btn.style.cursor = isLocked ? "not-allowed" : "pointer";
+          btn.title = isLocked ? "நாள் பூட்டப்பட்டுவிட்டது! புதிய பதிவுகள் செய்ய முடியாது." : "";
+        }
+      });
+
+      // 2. வாடிக்கையாளர் தேடல் மற்றும் புதிய KYC பட்டன்கள்
+      const searchInput = document.getElementById('searchInput');
+      const btnSearch = document.querySelector("button[onclick='handleSearch()']");
+      const btnNewKyc = document.querySelector("button[onclick='openNewKycModal()']");
+
+      if (searchInput) searchInput.disabled = isLocked;
+      [btnSearch, btnNewKyc].forEach(btn => {
+        if (btn) {
+          btn.disabled = isLocked;
+          btn.style.opacity = isLocked ? "0.4" : "1";
+          btn.style.cursor = isLocked ? "not-allowed" : "pointer";
+        }
+      });
+
+      // 3. அடகு மற்றும் Checkout பட்டன்கள்
+      const pawnBtn = document.getElementById('btnAddToCart') || document.querySelector("button[onclick='submitPawnToDatabase()']");
+      const checkoutBtn = document.querySelector("button[onclick='openCheckoutModal()']");
+
       if (pawnBtn) {
         pawnBtn.disabled = isLocked;
-        pawnBtn.style.opacity = isLocked ? "0.5" : "1";
+        pawnBtn.style.opacity = isLocked ? "0.4" : "1";
         pawnBtn.style.cursor = isLocked ? "not-allowed" : "pointer";
       }
       if (checkoutBtn) {
         checkoutBtn.disabled = isLocked;
-        checkoutBtn.style.opacity = isLocked ? "0.5" : "1";
+        checkoutBtn.style.opacity = isLocked ? "0.4" : "1";
         checkoutBtn.style.cursor = isLocked ? "not-allowed" : "pointer";
       }
     }
-
     async function openCashDayModal(mode) {
       currentDayMode = mode;
       const dateInput = document.getElementById('txn_date');

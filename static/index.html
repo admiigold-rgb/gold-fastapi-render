@@ -1910,20 +1910,35 @@
       }
     }
     
-    async function () {
+    // சாளரத்தை மூடும் செயல்பாடு
+    function closeDaySummaryReportModal() {
+      const modal = document.getElementById('daySummaryReportModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // விசைப்பலகை Esc அழுத்தினால் மூடுதல்
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeDaySummaryReportModal();
+    });
+
+    // அறிக்கையைத் திறந்து ஏற்றும் சரியான செயல்பாடு
+    async function openDaySummaryReportModal() {
       const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
-      const branchName = (currentUser && currentUser.branch_name) ? currentUser.branch_name : 'கிளை';
+      const branchName = (currentUser && currentUser.branch_name) ? currentUser.branch_name : 'Aundivilai';
       
       const modal = document.getElementById('daySummaryReportModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.style.display = 'flex';
+      }
 
       const transInput = document.getElementById('txn_date');
       const selectedDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
 
-      // தலைப்பு அமைத்தல்: [கிளைப் பெயர்] | [தேதி] நிதி நிலை
       const titleElem = document.getElementById('rep_branch_date_title');
       if (titleElem) {
-        titleElem.innerText = `${branchName} | ${selectedDate} நிதி நிலை`;
+        titleElem.innerText = `${branchName} | ${selectedDate} நிதி நிலை அறிக்கை`;
       }
 
       try {
@@ -1936,22 +1951,21 @@
         const closeBal = data.calculated_closing || (openBal + totalCashIn - totalCashOut);
         const netCashChange = totalCashIn - totalCashOut;
 
-        // 1. முதன்மை 4 கார்டுகளைப் பூர்த்தி செய்தல்
+        // 1. கார்டுகள் விவரம்
         document.getElementById('rep_card_opening').innerText = '₹' + openBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_card_cash_in').innerText = '₹' + totalCashIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_card_cash_out').innerText = '₹' + totalCashOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_card_closing').innerText = '₹' + closeBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
 
-        // நிகர மாற்றம் (Net Change)
         const netElem = document.getElementById('rep_card_net_change');
         if (netElem) {
-          const sign = netCashChange >= 0 ? '↑ ' : '↓ ';
-          const signColor = netCashChange >= 0 ? 'text-emerald-600' : 'text-rose-600';
-          netElem.className = `text-[10px] font-bold ${signColor} mt-0.5`;
-          netElem.innerText = `${sign}₹${Math.abs(netCashChange).toLocaleString('en-IN', {minimumFractionDigits: 2})} நிகர ரொக்க மாற்றம்`;
+          const sign = netCashChange >= 0 ? '+ ' : '- ';
+          netElem.style.background = netCashChange >= 0 ? '#f5f3ff' : '#fee2e2';
+          netElem.style.color = netCashChange >= 0 ? '#6b21a8' : '#b91c1c';
+          netElem.innerText = `${sign}₹${Math.abs(netCashChange).toLocaleString('en-IN', {minimumFractionDigits: 2})} மாற்றம்`;
         }
 
-        // 2. வங்கி கார்டுகள்
+        // 2. வங்கிப் பட்டைகள்
         document.getElementById('rep_bank_in').innerText = '₹' + (data.total_bank_in || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_bank_out').innerText = '₹' + (data.total_bank_out || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
 
@@ -1961,44 +1975,66 @@
         document.getElementById('recon_out').innerText = '₹' + totalCashOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('recon_close').innerText = '₹' + closeBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
 
-        // 4. ஒருங்கிணைந்த நாள் ஏடு அட்டவணை
+        // 4. அட்டவணை வரிசைகள்
         const tbody = document.getElementById('rep_unified_daybook_tbody');
         tbody.innerHTML = '';
 
         if (!data.entries || data.entries.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-bold">இன்றைய நடவடிக்கைகள் எதுவும் இல்லை</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" style="padding:40px; text-align:center; color:#94a3b8; font-weight:bold; font-size:14px; background:#ffffff;">இன்றைய நடவடிக்கைகள் எதுவும் பதிவு செய்யப்படவில்லை</td></tr>`;
           return;
         }
 
-        tbody.innerHTML = data.entries.map(e => {
-          let cashCell = '-';
+        tbody.innerHTML = data.entries.map((e, idx) => {
+          let cashCell = '<span style="color:#cbd5e1;">-</span>';
           if (e.cash_change > 0) {
-            cashCell = `<span class="text-emerald-700 font-bold">(+) ₹${e.cash_change.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
+            cashCell = `<span style="color:#047857; font-weight:900; font-family:monospace; white-space:nowrap;">(+) ₹${e.cash_change.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
           } else if (e.cash_change < 0) {
-            cashCell = `<span class="text-rose-700 font-bold">(-) ₹${Math.abs(e.cash_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
+            cashCell = `<span style="color:#dc2626; font-weight:900; font-family:monospace; white-space:nowrap;">(-) ₹${Math.abs(e.cash_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
           }
 
-          let bankCell = '-';
+          let bankCell = '<span style="color:#cbd5e1;">-</span>';
           if (e.bank_change !== 0) {
             const bSign = e.bank_change > 0 ? '(+) ' : '(-) ';
-            const bColor = e.bank_change > 0 ? 'text-blue-700' : 'text-purple-700';
-            bankCell = `<span class="${bColor} font-bold">${bSign}₹${Math.abs(e.bank_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
+            const bColor = e.bank_change > 0 ? '#1d4ed8' : '#723a91';
+            bankCell = `<span style="color:${bColor}; font-weight:900; font-family:monospace; white-space:nowrap;">${bSign}₹${Math.abs(e.bank_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
           }
 
-          const inCell = e.gross_in > 0 ? `₹${e.gross_in.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '-';
-          const outCell = e.gross_out > 0 ? `₹${e.gross_out.toLocaleString('en-IN', {minimumFractionDigits: 2})}` : '-';
+          const inCell = e.gross_in > 0 ? `<span style="font-family:monospace; font-weight:700; color:#0f172a;">₹${e.gross_in.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span style="color:#cbd5e1;">-</span>';
+          const outCell = e.gross_out > 0 ? `<span style="font-family:monospace; font-weight:700; color:#0f172a;">₹${e.gross_out.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span style="color:#cbd5e1;">-</span>';
+
+          let badgeBg = '#f3e8ff';
+          let badgeColor = '#6b21a8';
+          if (e.entry_type.includes("செலவு")) {
+            badgeBg = '#fef3c7';
+            badgeColor = '#92400e';
+          } else if (e.entry_type.includes("HQ") || e.entry_type.includes("நிதி")) {
+            badgeBg = '#e0e7ff';
+            badgeColor = '#3730a3';
+          } else if (e.entry_type.includes("வணிக")) {
+            badgeBg = '#e0f2fe';
+            badgeColor = '#0369a1';
+          }
+
+          // வகையை விவரத்தின் கீழே பேட்ஜாகக் கொண்டு வருதல்
+          const partyAndType = `
+            <div style="display:flex; flex-direction:column; gap:4px;">
+              <span style="font-weight:800; color:#0f172a; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${e.party_name}">${e.party_name}</span>
+              <span style="align-self:flex-start; background:${badgeBg}; color:${badgeColor}; padding:2px 7px; border-radius:4px; font-weight:700; font-size:10px; letter-spacing:0.2px;">${e.entry_type}</span>
+            </div>
+          `;
+
+          const rowBg = idx % 2 === 0 ? '#ffffff' : '#faf5ff';
 
           return `
-            <tr class="hover:bg-slate-50 border-b border-slate-100">
-              <td class="p-2 font-mono text-slate-500 border-r border-slate-100">${e.time}</td>
-              <td class="p-2 font-mono text-indigo-700 font-semibold border-r border-slate-100">${e.visit_no}</td>
-              <td class="p-2 font-medium text-slate-700 border-r border-slate-100">${e.entry_type}</td>
-              <td class="p-2 font-bold text-slate-900 border-r border-slate-100">${e.party_name}</td>
-              <td class="p-2 text-slate-600 border-r border-slate-100">${e.activity}</td>
-              <td class="p-2 text-right font-medium text-slate-800 border-r border-slate-100">${inCell}</td>
-              <td class="p-2 text-right font-medium text-slate-800 border-r border-slate-100">${outCell}</td>
-              <td class="p-2 text-right border-r border-slate-100 bg-slate-50/50">${cashCell}</td>
-              <td class="p-2 text-right bg-blue-50/20">${bankCell}</td>
+            <tr style="background:${rowBg}; border-bottom:1px solid #f1f5f9; transition:background 0.15s;" onmouseover="this.style.background='#fdf4ff'" onmouseout="this.style.background='${rowBg}'">
+              <td style="padding:10px 8px; font-family:monospace; color:#64748b; text-align:center; border-right:1px solid #f1f5f9; font-weight:600;">${e.time}</td>
+              <td style="padding:10px 12px; font-family:monospace; font-weight:800; color:#723a91; border-right:1px solid #f1f5f9; white-space:nowrap;">${e.visit_no}</td>
+              <td style="padding:10px 14px; border-right:1px solid #f1f5f9;">${partyAndType}</td>
+              <td style="padding:10px 14px; color:#475569; border-right:1px solid #f1f5f9; line-height:1.4;">${e.activity}</td>
+              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9;">${inCell}</td>
+              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9;">${outCell}</td>
+              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9; background:#fffbeb;">${cashCell}</td>
+              <td style="padding:10px 12px; text-align:right; background:#f0fdf4;">${bankCell}</td>
             </tr>
           `;
         }).join('');

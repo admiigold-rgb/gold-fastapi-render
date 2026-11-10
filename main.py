@@ -602,54 +602,50 @@ def get_cash_day_report(branch_id: int, date_str: str):
         tot_bank_in = 0.0
         tot_bank_out = 0.0
 
-        # 2. test_customer_visits அட்டவணையை அடிப்படையாக வைத்து வணிக வருகைகளை எடுத்தல்
+        # 2. test_customer_visits அட்டவணையில் இருந்து முழுமையாக எடுத்தல்
+        # தேதி வடிகட்டுதலை மிகவும் நம்பகமான முறையில் செய்தல்
+        all_visits = []
         try:
-            # transaction_date அல்லது created_at இரண்டில் எது பொருந்தினாலும் எடுக்குமாறு வினவல்
-            visits_res = (
-                supabase.table("test_customer_visits")
-                .select("*, test_customers(name, mobile)")
-                .eq("branch_id", branch_id)
-                .or_(f"transaction_date.eq.{date_str},created_at.ilike.{date_str}%")
-                .neq("status", "CANCELLED")
-                .order("id", desc=False)
-                .execute()
-            )
-        except Exception:
-            # Foreign key இல்லையெனில் நேரடியாக எடுத்தல்
-            visits_res = (
-                supabase.table("test_customer_visits")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .or_(f"transaction_date.eq.{date_str},created_at.ilike.{date_str}%")
-                .neq("status", "CANCELLED")
-                .order("id", desc=False)
-                .execute()
-            )
-
-        for v in (visits_res.data or []):
-            cust = v.get("test_customers") or {}
-            c_name = cust.get("name")
+            # விசிட்களை branch_id மற்றும் transaction_date மூலம் எடுத்தல்
+            v_res = supabase.table("test_customer_visits").select("*").eq("branch_id", branch_id).execute()
             
-            # test_customers தனியாக எடுக்க வேண்டியிருந்தால்
-            if not c_name and v.get("customer_id"):
-                try:
-                    c_data = supabase.table("test_customers").select("name").eq("id", v.get("customer_id")).limit(1).execute()
-                    if c_data.data:
-                        c_name = c_data.data[0].get("name")
-                except Exception:
-                    pass
-            c_name = c_name or "வாடிக்கையாளர்"
+            for row in (v_res.data or []):
+                # தேதி பொருத்தம் பார்த்தல் (transaction_date அல்லது created_at தொடக்கம்)
+                r_date = str(row.get("transaction_date") or "")
+                c_date = str(row.get("created_at") or "")[:10]
+                
+                if r_date == date_str or c_date == date_str:
+                    all_visits.append(row)
+        except Exception as v_err:
+            print("Visits fetch error:", v_err)
 
-            # வருகை எண் வடிவம் (எ.கா: VST-AUN-0005)
-            v_code = f"VST-{branch_id:02d}-{int(v['id']):04d}" if str(v.get('id', '')).isdigit() else f"VST-{v.get('id')}"
+        # வாடிக்கையாளர் பெயர்களை எடுத்தல்
+        cust_ids = [v["customer_id"] for v in all_visits if v.get("customer_id")]
+        cust_map = {}
+        if cust_ids:
+            try:
+                c_res = supabase.table("test_customers").select("id, name, mobile").in_("id", cust_ids).execute()
+                for c in (c_res.data or []):
+                    cust_map[c["id"]] = c
+            except Exception:
+                pass
+
+        for v in all_visits:
+            cid = v.get("customer_id")
+            cust_info = cust_map.get(cid, {})
+            c_name = cust_info.get("name") or "வாடிக்கையாளர்"
+            
+            # வருகை எண் வடிவம் (எ.கா: VST-AUN-0012)
+            v_id_val = v.get("id")
+            v_code = f"VST-AUN-{int(v_id_val):04d}" if str(v_id_val).isdigit() else f"VST-{v_id_val}"
 
             # தொகைகள்
             net_amt = float(v.get("net_amount") or 0.0)
             cash_val = float(v.get("cash_amount") or 0.0)
             bank_val = float(v.get("bank_amount") or 0.0)
-            direction = (v.get("direction") or "OUTWARD").upper()
+            direction = str(v.get("direction") or "OUTWARD").upper()
 
-            # cash_amount / bank_amount இல்லையெனில் net_amount வைத்துப் பொருத்துதல்
+            # cash_amount / bank_amount தனித்துக் குறிப்பிடப்படவில்லை எனில்
             if cash_val == 0.0 and bank_val == 0.0 and net_amt > 0.0:
                 cash_val = net_amt
 
@@ -682,59 +678,48 @@ def get_cash_day_report(branch_id: int, date_str: str):
                 "gross_out": (c_out + b_out) if (c_out + b_out) > 0 else 0.0,
                 "cash_change": (-c_out) if c_out > 0 else (c_in if c_in > 0 else 0.0),
                 "bank_change": (-b_out) if b_out > 0 else (b_in if b_in > 0 else 0.0),
-                "raw_time": created_t or str(v.get("id"))
+                "raw_time": created_t or str(v_id_val)
             })
 
-        # 3. கிளை செலவுகள் (Expenses)
+        # 3. கிளை செலவுகள்
         try:
-            exp_res = (
-                supabase.table("test_branch_expenses")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .eq("status", "APPROVED")
-                .or_(f"transaction_date.eq.{date_str},created_at.ilike.{date_str}%")
-                .execute()
-            )
+            exp_res = supabase.table("test_branch_expenses").select("*").eq("branch_id", branch_id).eq("status", "APPROVED").execute()
             for e in (exp_res.data or []):
-                amt = float(e.get("amount") or 0.0)
-                e_mode = (e.get("payment_mode") or "CASH").upper()
-                e_time = str(e.get("created_at") or "")
-                t_str = e_time[11:16] if len(e_time) >= 16 else "--:--"
-                
-                if e_mode == "CASH":
-                    tot_cash_out += amt
-                    c_chg = -amt
-                    b_chg = 0.0
-                else:
-                    tot_bank_out += amt
-                    b_chg = -amt
-                    c_chg = 0.0
+                e_date = str(e.get("transaction_date") or "")
+                e_created = str(e.get("created_at") or "")[:10]
+                if e_date == date_str or e_created == date_str:
+                    amt = float(e.get("amount") or 0.0)
+                    e_mode = str(e.get("payment_mode") or "CASH").upper()
+                    e_time = str(e.get("created_at") or "")
+                    t_str = e_time[11:16] if len(e_time) >= 16 else "--:--"
+                    
+                    if e_mode == "CASH":
+                        tot_cash_out += amt
+                        c_chg = -amt
+                        b_chg = 0.0
+                    else:
+                        tot_bank_out += amt
+                        b_chg = -amt
+                        c_chg = 0.0
 
-                unified_entries.append({
-                    "time": t_str,
-                    "visit_no": "-",
-                    "entry_type": "கிளை செலவு",
-                    "party_name": e.get("category", "செலவு"),
-                    "activity": e.get("reason") or "அங்கீகரிக்கப்பட்ட செலவு",
-                    "gross_in": 0.0,
-                    "gross_out": amt,
-                    "cash_change": c_chg,
-                    "bank_change": b_chg,
-                    "raw_time": e_time
-                })
+                    unified_entries.append({
+                        "time": t_str,
+                        "visit_no": "-",
+                        "entry_type": "கிளை செலவு",
+                        "party_name": e.get("category", "செலவு"),
+                        "activity": e.get("reason") or "அங்கீகரிக்கப்பட்ட செலவு",
+                        "gross_in": 0.0,
+                        "gross_out": amt,
+                        "cash_change": c_chg,
+                        "bank_change": b_chg,
+                        "raw_time": e_time
+                    })
         except Exception as e_err:
             print("Expenses report err:", e_err)
 
-        # 4. கருவூலப் பரிமாற்றங்கள் (Treasury Transfers)
+        # 4. கருவூலப் பரிமாற்றங்கள்
         try:
-            tr_res = (
-                supabase.table("test_treasury_transfers")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .eq("status", "APPROVED")
-                .or_(f"transaction_date.eq.{date_str},created_at.ilike.{date_str}%")
-                .execute()
-            )
+            tr_res = supabase.table("test_treasury_transfers").select("*").eq("branch_id", branch_id).eq("status", "APPROVED").execute()
             type_names = {
                 'BRANCH_TO_HQ': ('HQ பணப் பட்டுவாடா', 'கிளை ➔ தலைமை அலுவலகம்'),
                 'HQ_TO_BRANCH': ('HQ நிதி ஒதுக்கீடு', 'தலைமையக நிதி வரவு'),
@@ -742,41 +727,43 @@ def get_cash_day_report(branch_id: int, date_str: str):
                 'BANK_TO_CASH': ('வங்கி வித்ராயல்', 'வங்கி ➔ கிளை ரொக்கம்')
             }
             for t in (tr_res.data or []):
-                amt = float(t.get("amount") or 0.0)
-                ttype = t.get("transfer_type")
-                t_time = str(t.get("created_at") or "")
-                t_str = t_time[11:16] if len(t_time) >= 16 else "--:--"
-                t_title, t_desc = type_names.get(ttype, ('பணப் பரிமாற்றம்', ttype))
+                t_date = str(t.get("transaction_date") or "")
+                t_created = str(t.get("created_at") or "")[:10]
+                if t_date == date_str or t_created == date_str:
+                    amt = float(t.get("amount") or 0.0)
+                    ttype = t.get("transfer_type")
+                    t_time = str(t.get("created_at") or "")
+                    t_str = t_time[11:16] if len(t_time) >= 16 else "--:--"
+                    t_title, t_desc = type_names.get(ttype, ('பணப் பரிமாற்றம்', ttype))
 
-                c_chg = 0.0
-                g_in = 0.0
-                g_out = 0.0
+                    c_chg = 0.0
+                    g_in = 0.0
+                    g_out = 0.0
 
-                if ttype in ['HQ_TO_BRANCH', 'BANK_TO_CASH']:
-                    tot_cash_in += amt
-                    c_chg = amt
-                    g_in = amt
-                else:
-                    tot_cash_out += amt
-                    c_chg = -amt
-                    g_out = amt
+                    if ttype in ['HQ_TO_BRANCH', 'BANK_TO_CASH']:
+                        tot_cash_in += amt
+                        c_chg = amt
+                        g_in = amt
+                    else:
+                        tot_cash_out += amt
+                        c_chg = -amt
+                        g_out = amt
 
-                unified_entries.append({
-                    "time": t_str,
-                    "visit_no": "-",
-                    "entry_type": t_title,
-                    "party_name": t.get("carrier_person") or "பணப் பரிமாற்றம்",
-                    "activity": t_desc,
-                    "gross_in": g_in,
-                    "gross_out": g_out,
-                    "cash_change": c_chg,
-                    "bank_change": 0.0,
-                    "raw_time": t_time
-                })
+                    unified_entries.append({
+                        "time": t_str,
+                        "visit_no": "-",
+                        "entry_type": t_title,
+                        "party_name": t.get("carrier_person") or "பணப் பரிமாற்றம்",
+                        "activity": t_desc,
+                        "gross_in": g_in,
+                        "gross_out": g_out,
+                        "cash_change": c_chg,
+                        "bank_change": 0.0,
+                        "raw_time": t_time
+                    })
         except Exception as t_err:
             print("Treasury report err:", t_err)
 
-        # நேரத்தின் அடிப்படையில் வரிசைப்படுத்துதல்
         unified_entries.sort(key=lambda x: str(x.get("raw_time") or ""))
         calc_closing = opening_bal + tot_cash_in - tot_cash_out
 

@@ -567,145 +567,145 @@ def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Op
 
 # 6. Day Report
 @app.get("/api/cash-day/report")
-def get_cash_day_report(branch_id: int, date_str: Optional[str] = None):
+def get_cash_day_report(branch_id: int, date_str: str):
     try:
-        clean_date = date_str if (date_str and date_str.strip() and date_str != "undefined") else datetime.now(IST).strftime("%Y-%m-%d")
-
-        # 1. Day Book Opening Balance (முந்தைய நாள் மாலை முடித்த இருப்பு மட்டுமே தொடக்க இருப்பு)
-        opening = 0.0
-        try:
-            prev_day_res = (
-                supabase.table("test_branch_cash_days")
-                .select("closing_balance, opening_balance")
-                .eq("branch_id", branch_id)
-                .lt("business_date", clean_date)
-                .order("business_date", desc=True)
-                .limit(1)
-                .execute()
-            )
-            if prev_day_res.data:
-                # முந்தைய நாள் மாலை முடித்த இருப்பு (closing_balance) தானாக அடுத்த நாளின் தொடக்க இருப்பாக மாறும்
-                opening = float(prev_day_res.data[0].get("closing_balance") or prev_day_res.data[0].get("opening_balance") or 0.0)
-        except Exception as e:
-            print("Opening balance auto-fetch error:", e)
-
-        # 2. அடகு & வரவு பட்டுவாடா
-        total_cash_in = 0.0
-        total_cash_out = 0.0
-        formatted_settlements = []
-        try:
-            loans_res = (
-                supabase.table("test_gold_loans")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .order("id", desc=True)
-                .limit(200)
-                .execute()
-            )
-            raw_loans = loans_res.data or []
-
-            cust_ids = list(set([l.get("customer_id") for l in raw_loans if l.get("customer_id")]))
-            cust_map = {}
-            if cust_ids:
-                try:
-                    c_res = supabase.table("test_customers").select("id, name, mobile").in_("id", cust_ids).execute()
-                    for c in (c_res.data or []):
-                        cust_map[c["id"]] = c
-                except Exception as ce:
-                    print("Customers map error:", ce)
-
-            for l in raw_loans:
-                t_date = str(l.get("transaction_date") or "")
-                c_at = str(l.get("created_at") or "")
-                rec_date = t_date if t_date else c_at[:10]
-
-                if not clean_date or (clean_date in rec_date) or (rec_date in clean_date):
-                    p_amt = float(l.get("net_payable_amount") or l.get("loan_amount") or 0.0)
-                    total_cash_out += p_amt
-
-                    cust_info = cust_map.get(l.get("customer_id"), {})
-                    cust_name = cust_info.get("name") or f"Customer #{l.get('customer_id')}"
-                    cust_mobile = cust_info.get("mobile") or "-"
-
-                    formatted_settlements.append({
-                        "id": l.get("id"),
-                        "time": c_at[11:16] if len(c_at) >= 16 else "-",
-                        "customer_name": f"{cust_name} ({l.get('loan_no', '')})",
-                        "mobile": cust_mobile,
-                        "payment_mode": "CASH",
-                        "cash_in": 0.0,
-                        "cash_out": p_amt
-                    })
-        except Exception as e:
-            print("Gold Loans Fetch Error:", e)
-
-        # 3. அங்கீகரிக்கப்பட்ட கிளை செலவுகள்
-        raw_expenses = []
-        total_expenses = 0.0
-        try:
-            exp_res = (
-                supabase.table("test_branch_expenses")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .eq("transaction_date", clean_date)
-                .eq("status", "APPROVED")
-                .execute()
-            )
-            raw_expenses = exp_res.data or []
-            total_expenses = sum(float(x.get("amount") or 0.0) for x in raw_expenses)
-        except Exception as e:
-            print("Expenses fetch error:", e)
-
-        # 4. அங்கீகரிக்கப்பட்ட உள்-பணப் பரிமாற்றங்கள்
-        raw_transfers = []
-        treasury_in = 0.0
-        treasury_out = 0.0
-        try:
-            tr_res = (
-                supabase.table("test_treasury_transfers")
-                .select("*")
-                .eq("branch_id", branch_id)
-                .eq("transaction_date", clean_date)
-                .eq("status", "APPROVED")
-                .execute()
-            )
-            raw_transfers = tr_res.data or []
-            for t in raw_transfers:
-                amt = float(t.get("amount") or 0.0)
-                t_type = t.get("transfer_type")
-                if t_type in ["HQ_TO_BRANCH", "BANK_TO_CASH"]:
-                    treasury_in += amt
-                elif t_type in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
-                    treasury_out += amt
-        except Exception as e:
-            print("Treasury fetch error:", e)
-
-        # 5. இறுதியான கணினி ரொக்க இருப்பு
-        calculated_closing = (
-            opening 
-            + total_cash_in 
-            + treasury_in 
-            - total_cash_out 
-            - total_expenses 
-            - treasury_out
+        # 1. தொடக்க இருப்பு எடுத்தல்
+        opening_bal = 0.0
+        prev_closed = (
+            supabase.table("test_branch_cash_days")
+            .select("closing_balance")
+            .eq("branch_id", branch_id)
+            .lt("business_date", date_str)
+            .eq("status", "CLOSED")
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
         )
+        if prev_closed.data:
+            opening_bal = float(prev_closed.data[0].get("closing_balance") or 0.0)
+
+        # 2. அன்றைய செட்டில்மென்ட்கள் (அடகு, வரவு போன்றவை)
+        day_start = f"{date_str}T00:00:00"
+        day_end = f"{date_str}T23:59:59"
+
+        settle_res = (
+            supabase.table("test_settlements")
+            .select("*, test_customers(name, mobile)")
+            .eq("branch_id", branch_id)
+            .gte("created_at", day_start)
+            .lte("created_at", day_end)
+            .order("created_at", desc=False)
+            .execute()
+        )
+
+        pawn_trans = []
+        tot_cash_in = 0.0
+        tot_cash_out = 0.0
+
+        for s in (settle_res.data or []):
+            cust = s.get("test_customers") or {}
+            c_name = cust.get("name") or "வாடிக்கையாளர்"
+            c_mobile = cust.get("mobile") or "-"
+            v_id = s.get("visit_id") or s.get("id")
+            
+            # கட்டண முறை (CASH / BANK / SPLIT)
+            mode = (s.get("payment_mode") or "CASH").upper()
+            pay_cash = float(s.get("pay_cash") or 0.0)
+            pay_bank = float(s.get("pay_bank") or 0.0)
+            net_amt = float(s.get("net_amount") or 0.0)
+
+            # நாம் கொடுத்த தொகையா (பட்டுவாடா) அல்லது பெற்ற தொகையா (வரவு)
+            direction = s.get("direction") or ("OUTWARD" if net_amt > 0 else "INWARD")
+
+            # ரொக்க இருப்புக் கணக்கீடு: ரொக்கப் பகுதி மட்டுமே கிளை ரொக்கத்தைக் கூட்டும்/குறைக்கும்
+            actual_cash_part = pay_cash if (pay_cash > 0 or pay_bank > 0) else (net_amt if "CASH" in mode else 0.0)
+
+            if direction in ["OUTWARD", "COMPANY_PAYABLE"]:
+                tot_cash_out += actual_cash_part
+            else:
+                tot_cash_in += actual_cash_part
+
+            created_t = s.get("created_at", "")
+            t_str = created_t[11:16] if len(created_t) >= 16 else "--:--"
+
+            pawn_trans.append({
+                "time": t_str,
+                "visit_id": v_id,
+                "customer_name": f"{c_name} (விசிட் #{v_id})",
+                "mobile": c_mobile,
+                "mode": mode,
+                "cash_part": actual_cash_part,
+                "bank_part": pay_bank if pay_bank > 0 else (net_amt if "BANK" in mode else 0.0),
+                "inward": actual_cash_part if direction not in ["OUTWARD", "COMPANY_PAYABLE"] else 0.0,
+                "outward": actual_cash_part if direction in ["OUTWARD", "COMPANY_PAYABLE"] else 0.0,
+                "total_val": net_amt
+            })
+
+        # 3. அங்கீகரிக்கப்பட்ட கிளைச் செலவுகள் (CASH மட்டும்)
+        exp_res = (
+            supabase.table("test_branch_expenses")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("status", "APPROVED")
+            .eq("transaction_date", date_str)
+            .execute()
+        )
+        expenses = []
+        for e in (exp_res.data or []):
+            e_amt = float(e.get("amount") or 0.0)
+            if (e.get("payment_mode") or "CASH").upper() == "CASH":
+                tot_cash_out += e_amt
+            expenses.append({
+                "category": e.get("category"),
+                "reason": e.get("reason"),
+                "amount": e_amt,
+                "mode": e.get("payment_mode", "CASH")
+            })
+
+        # 4. கருவூல பரிமாற்றங்கள்
+        tr_res = (
+            supabase.table("test_treasury_transfers")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("status", "APPROVED")
+            .eq("transaction_date", date_str)
+            .execute()
+        )
+        transfers = []
+        for t in (tr_res.data or []):
+            amt = float(t.get("amount") or 0.0)
+            ttype = t.get("transfer_type")
+            inw = 0.0
+            outw = 0.0
+            if ttype == "HQ_TO_BRANCH":
+                inw = amt
+                tot_cash_in += amt
+            elif ttype in ["BRANCH_TO_HQ", "CASH_TO_BANK"]:
+                outw = amt
+                tot_cash_out += amt
+
+            transfers.append({
+                "type": ttype,
+                "carrier": t.get("carrier_person") or "-",
+                "inward": inw,
+                "outward": outw
+            })
+
+        # கணினியின்படி இருக்க வேண்டிய உண்மையான ரொக்க இருப்பு
+        calculated_closing = opening_bal + tot_cash_in - tot_cash_out
 
         return {
             "status": "success",
-            "business_date": clean_date,
-            "opening_balance": opening,
-            "total_cash_in": total_cash_in,
-            "total_cash_out": total_cash_out,
-            "total_expenses": total_expenses,
-            "treasury_in": treasury_in,
-            "treasury_out": treasury_out,
+            "opening_balance": opening_bal,
+            "total_inward": tot_cash_in,
+            "total_outward": tot_cash_out,
             "calculated_closing": calculated_closing,
-            "settlements": formatted_settlements,
-            "expenses": raw_expenses,
-            "transfers": raw_transfers
+            "pawn_transactions": pawn_trans,
+            "expenses": expenses,
+            "transfers": transfers
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"அறிக்கை எடுப்பதில் பிழை: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"அறிக்கை கணக்கீட்டுப் பிழை: {str(e)}")
 
 @app.get("/api/cash-day/next-business-date")
 def get_next_business_date(branch_id: int):

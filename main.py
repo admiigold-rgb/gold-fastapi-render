@@ -535,35 +535,35 @@ def create_new_pawn(data: dict):
 
 # 5. Cash Day Status (Auto Roll-forward)
 @app.get("/api/cash-day/status")
-def get_cash_day_status(branch_id: int = Query(...), date: str = Query(...)):
+def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Optional[str] = None):
     try:
-        res = supabase.table("test_branch_cash_days").select("*").eq("branch_id", branch_id).eq("business_date", date).execute()
-        if res.data:
-            return {"status": "success", "data": res.data[0]}
+        # date அல்லது date_str இரண்டில் எதில் தேதி வந்தாலும் எடுத்தல்
+        target_date = date or date_str or datetime.now(IST).strftime("%Y-%m-%d")
 
-        prev_res = (
+        res = (
             supabase.table("test_branch_cash_days")
-            .select("closing_balance")
+            .select("*")
             .eq("branch_id", branch_id)
-            .lt("business_date", date)
-            .order("business_date", desc=True)
-            .limit(1)
+            .eq("business_date", target_date)
             .execute()
         )
-        carried_opening = 0.0
-        if prev_res.data and prev_res.data[0].get("closing_balance") is not None:
-            carried_opening = float(prev_res.data[0]["closing_balance"])
 
-        new_day = {
-            "branch_id": branch_id,
-            "business_date": date,
-            "opening_balance": carried_opening,
-            "status": "OPEN"
-        }
-        ins_res = supabase.table("test_branch_cash_days").insert(new_day).execute()
-        return {"status": "success", "data": ins_res.data[0]}
+        if res.data and len(res.data) > 0:
+            row = res.data[0]
+            is_closed = (row.get("status") == "CLOSED")
+            return {
+                "status": "success",
+                "is_closed": is_closed,
+                "data": row
+            }
+        else:
+            return {
+                "status": "success",
+                "is_closed": False,
+                "data": None
+            }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"நாள் நிலை அறியும் பிழை: {str(e)}")
 
 # 6. Day Report
 @app.get("/api/cash-day/report")

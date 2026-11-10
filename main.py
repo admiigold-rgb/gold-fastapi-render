@@ -1434,62 +1434,61 @@ def process_hq_bank_transfer(data: dict):
         admin_id = data.get("admin_id") or 1
         company_bank_id = data.get("company_bank_id")
         utr_ref_no = data.get("utr_ref_no")
-        payment_mode_used = data.get("payment_mode_used", "IMPS")
         notes = data.get("notes") or ""
 
-        # 1. பரிவர்த்தனை விவரங்களை எடுத்தல் (சரியான அட்டவணை: test_bank_transfers)
-        tr_res = (
-            supabase.table("test_bank_transfers")
-            .select("*")
-            .eq("id", transfer_id)
-            .execute()
-        )
-        if not tr_res.data:
-            raise HTTPException(status_code=404, detail="வங்கிப் பரிவர்த்தனை விவரம் கிடைக்கவில்லை.")
+        # 1. நிறுவன வங்கியின் பெயரை எடுத்தல் (ID-யிலிருந்து bank_name பெறுதல்)
+        company_bank_name = None
+        if company_bank_id:
+            try:
+                b_res = supabase.table("test_company_banks").select("bank_name, account_no").eq("id", company_bank_id).execute()
+                if b_res.data:
+                    b_row = b_res.data[0]
+                    company_bank_name = f"{b_row.get('bank_name', '')} ({b_row.get('account_no', '')})"
+            except Exception as be:
+                print("Bank name fetch error:", be)
 
-        transfer_item = tr_res.data[0]
-        amount = float(transfer_item.get("amount") or 0.0)
-        direction = transfer_item.get("direction")  # 'PAYOUT' or 'RECEIPT'
+        now_time = datetime.now(IST).isoformat()
 
-        # 2. நிராகரிப்பு (REJECT) எனில்
+        # 2. நிராகரிப்பு (REJECT)
         if action == "REJECT":
             supabase.table("test_bank_transfers").update({
                 "status": "REJECTED",
-                "notes": notes,
-                "processed_by": admin_id,
-                "processed_at": datetime.now(IST).isoformat()
+                "hq_notes": notes,
+                "approved_by": admin_id,
+                "approved_at": now_time
             }).eq("id", transfer_id).execute()
             return {"status": "success", "message": "வங்கிப் பரிவர்த்தனை நிராகரிக்கப்பட்டது."}
 
-        # 3. ஒப்புதல் (APPROVE) எனில்
-        update_transfer = {
+        # 3. ஒப்புதல் (APPROVE) - அட்டவணையின் சரியான பத்திகளுக்கு மட்டும் சேமித்தல்
+        update_payload = {
             "status": "APPROVED",
-            "company_bank_id": company_bank_id,
-            "utr_ref_no": utr_ref_no,
-            "payment_mode_used": payment_mode_used,
-            "notes": notes,
-            "processed_by": admin_id,
-            "processed_at": datetime.now(IST).isoformat()
+            "company_bank_name": company_bank_name,
+            "receipt_ref_no": utr_ref_no,
+            "hq_notes": notes,
+            "approved_by": admin_id,
+            "approved_at": now_time
         }
-        supabase.table("test_bank_transfers").update(update_transfer).eq("id", transfer_id).execute()
+        supabase.table("test_bank_transfers").update(update_payload).eq("id", transfer_id).execute()
 
-        # 4. நிறுவன வங்கிக் கணக்கு இருப்பு மாற்றம் (இருப்புப் பத்தி இருந்தால் மட்டும் பாதுகாப்பாக மாற்றுதல்)
+        # 4. நிறுவன வங்கிக் கணக்கு இருப்பைக் குறைத்தல் (பட்டுவாடா தொகை)
         if company_bank_id:
             try:
-                b_res = supabase.table("test_company_banks").select("*").eq("id", company_bank_id).execute()
-                if b_res.data:
-                    bank_row = b_res.data[0]
-                    for col_name in ["current_balance", "balance", "opening_balance"]:
-                        if col_name in bank_row:
-                            old_bal = float(bank_row.get(col_name) or 0.0)
-                            new_bal = (old_bal - amount) if direction == "PAYOUT" else (old_bal + amount)
-                            try:
-                                supabase.table("test_company_banks").update({col_name: new_bal}).eq("id", company_bank_id).execute()
+                tr_chk = supabase.table("test_bank_transfers").select("amount, direction").eq("id", transfer_id).execute()
+                if tr_chk.data:
+                    amount = float(tr_chk.data[0].get("amount") or 0.0)
+                    direction = tr_chk.data[0].get("direction")
+                    
+                    cb_res = supabase.table("test_company_banks").select("*").eq("id", company_bank_id).execute()
+                    if cb_res.data:
+                        cb_row = cb_res.data[0]
+                        for bal_col in ["current_balance", "balance", "opening_balance"]:
+                            if bal_col in cb_row:
+                                old_bal = float(cb_row.get(bal_col) or 0.0)
+                                new_bal = (old_bal - amount) if direction == "PAYOUT" else (old_bal + amount)
+                                supabase.table("test_company_banks").update({bal_col: new_bal}).eq("id", company_bank_id).execute()
                                 break
-                            except Exception:
-                                pass
             except Exception as b_err:
-                print("Company bank balance update note:", b_err)
+                print("Company bank balance note (ignored):", b_err)
 
         return {"status": "success", "message": "வங்கிப் பட்டுவாடா வெற்றிகரமாக உறுதி செய்யப்பட்டு ஒப்புதல் அளிக்கப்பட்டது!"}
     except HTTPException:

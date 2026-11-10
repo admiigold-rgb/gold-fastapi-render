@@ -2008,6 +2008,7 @@
       }
     }
 
+    // சாளரத்தை மூடும் செயல்பாடு
     function closeDaySummaryReportModal() {
       const modal = document.getElementById('daySummaryReportModal');
       if (modal) {
@@ -2015,11 +2016,14 @@
       }
     }
 
-    // விசைப்பலகை Esc அழுத்தினால் மூடுதல்
+    // விசைப்பலகை Esc அழுத்தினால் சாளரத்தை மூடுதல்
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeDaySummaryReportModal();
+      if (e.key === 'Escape') {
+        closeDaySummaryReportModal();
+      }
     });
 
+    // அறிக்கையைத் திறந்து தரவுகளை ஏற்றும் செயல்பாடு
     async function openDaySummaryReportModal() {
       const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
       const branchName = (currentUser && currentUser.branch_name) ? currentUser.branch_name : 'Aundivilai';
@@ -2056,8 +2060,8 @@
         const netElem = document.getElementById('rep_card_net_change');
         if (netElem) {
           const sign = netCashChange >= 0 ? '+ ' : '- ';
-          netElem.style.background = netCashChange >= 0 ? '#dcfce7' : '#fee2e2';
-          netElem.style.color = netCashChange >= 0 ? '#15803d' : '#b91c1c';
+          netElem.style.background = netCashChange >= 0 ? '#f5f3ff' : '#fee2e2';
+          netElem.style.color = netCashChange >= 0 ? '#6b21a8' : '#b91c1c';
           netElem.innerText = `${sign}₹${Math.abs(netCashChange).toLocaleString('en-IN', {minimumFractionDigits: 2})} மாற்றம்`;
         }
 
@@ -2076,7 +2080,7 @@
         tbody.innerHTML = '';
 
         if (!data.entries || data.entries.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" style="padding:40px; text-align:center; color:#94a3b8; font-weight:bold; font-size:14px; background:#ffffff;">இன்றைய நடவடிக்கைகள் எதுவும் பதிவு செய்யப்படவில்லை</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" style="padding:40px; text-align:center; color:#94a3b8; font-weight:bold; font-size:14px; background:#ffffff;">இன்றைய நடவடிக்கைகள் எதுவும் பதிவு செய்யப்படவில்லை</td></tr>`;
           return;
         }
 

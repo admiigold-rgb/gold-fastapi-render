@@ -1597,17 +1597,26 @@
       }
     }
 
-    // 2. Cash Day & Transaction Date
-    function initTxnDate() {
-      const todayStr = new Date().toISOString().split('T')[0];
+    // கவுண்ட்டரின் பரிவர்த்தனை தேதியை கடைசியாகப் பூட்டிய நாளுக்கு அடுத்த நாளாக இயல்பாக அமைத்தல்
+    async function initTxnDate() {
+      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
       const dateInput = document.getElementById('txn_date');
-      if (dateInput && !dateInput.value) {
-        dateInput.value = todayStr;
+
+      try {
+        const res = await fetch(`/api/cash-day/next-business-date?branch_id=${branchId}`);
+        const data = await res.json();
+        
+        if (res.ok && data.suggested_date) {
+          dateInput.value = data.suggested_date;
+        } else {
+          dateInput.value = new Date().toISOString().split('T')[0];
+        }
+      } catch (err) {
+        dateInput.value = new Date().toISOString().split('T')[0];
       }
+
       checkCurrentDateStatus();
     }
-
-    function onDateChanged() { checkCurrentDateStatus(); }
 
     async function checkCurrentDateStatus() {
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
@@ -1616,6 +1625,19 @@
       const badge = document.getElementById('cashDayStatusBadge');
       const btnCloseDay = document.getElementById('btnCloseDay');
 
+      // 1. தொடர் நாள் விதி சரிபார்ப்பு (தாவிச் சென்று பணிபுரிய முடியாது)
+      try {
+        const seqRes = await fetch(`/api/cash-day/validate-date-sequence?branch_id=${branchId}&selected_date=${selDate}`);
+        const seqData = await seqRes.json();
+
+        if (seqRes.ok && !seqData.is_valid) {
+          alert(seqData.message);
+          dateInput.value = seqData.allowed_date; // தானாக அனுமதிக்கப்பட்ட தொடர் நாளுக்கு மாற்றுதல்
+          return checkCurrentDateStatus(); // மீண்டும் சரிபார்த்தல்
+        }
+      } catch(e) {}
+
+      // 2. நாளின் பூட்டுதல் நிலை அறிதல்
       try {
         const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date=${selDate}&date_str=${selDate}`);
         const result = await res.json();
@@ -1624,20 +1646,18 @@
         const isClosed = result.is_closed || (currentCashDayData && currentCashDayData.status === 'CLOSED');
 
         if (isClosed) {
-          // 🔒 நாள் பூட்டப்பட்டிருந்தால்
           const closingAmt = currentCashDayData ? parseFloat(currentCashDayData.closing_balance || 0) : 0;
           badge.innerText = `🔒 மூடப்பட்டுள்ளது (இறுதி இருப்பு: ₹${closingAmt.toLocaleString('en-IN')})`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
 
           if (btnCloseDay) btnCloseDay.classList.add('hidden');
-          toggleFormsLock(true); // அனைத்துப் படிவங்களையும் லாக் செய்தல்
+          toggleFormsLock(true); // பூட்டப்பட்ட நாளில் புதிய செலவு/அடகு எதுவும் செய்ய முடியாது
         } else {
-          // ☀️ நாள் திறந்திருந்தால்
           badge.innerText = `திறக்கப்பட்டுள்ளது (பரிவர்த்தனைக்குத் தயார்)`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
 
           if (btnCloseDay) btnCloseDay.classList.remove('hidden');
-          toggleFormsLock(false); // படிவங்களை அனுமதித்தல்
+          toggleFormsLock(false);
         }
       } catch (e) {
         console.error("நாள் நிலை அறியும் பிழை:", e);
@@ -1737,15 +1757,32 @@
       const total = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
       document.getElementById('txtDayDenomTotal').innerText = `₹ ${total.toFixed(2)}`;
 
+      const submitBtn = document.getElementById('btnSubmitCashDay');
+
       if (currentDayMode === 'CLOSE') {
-        const diff = total - currentSystemCash;
+        const diff = Math.round((total - currentSystemCash) * 100) / 100;
         const diffElem = document.getElementById('txtDiff');
-        if (diff === 0) {
+        
+        // 👈 வேறுபாடு சரியாக 0 ஆக இருந்தால் மட்டுமே பட்டன் உயிர்ப்பிக்கப்படும்
+        if (diff === 0 && total > 0) {
           diffElem.innerText = "சரியாகப் பொருந்தியது (Match: ₹0.00)";
           diffElem.className = "text-right text-xs font-bold text-emerald-600";
+          
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.style.cursor = "pointer";
+          }
         } else {
           diffElem.innerText = diff > 0 ? `கூடுதல்: +₹${diff.toFixed(2)}` : `குறைவு: -₹${Math.abs(diff).toFixed(2)}`;
           diffElem.className = "text-right text-xs font-bold text-rose-600";
+          
+          // சமமாக இல்லாத வரை பட்டன் முடக்கப்பட்டிருக்கும்
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = "0.4";
+            submitBtn.style.cursor = "not-allowed";
+          }
         }
       }
     }
@@ -1755,7 +1792,7 @@
       const dateInput = document.getElementById('txn_date');
       const selDate = dateInput && dateInput.value ? dateInput.value : new Date().toISOString().split('T')[0];
       const countedTotal = parseFloat(document.getElementById('txtDayDenomTotal').innerText.replace(/[^\d.]/g, '')) || 0;
-      
+    
       const denoms = {
         c_500: parseInt(document.getElementById('cd_500').value) || 0,
         c_200: parseInt(document.getElementById('cd_200').value) || 0,
@@ -1765,7 +1802,7 @@
         c_10: parseInt(document.getElementById('cd_10').value) || 0,
         c_coins: parseInt(document.getElementById('cd_coins').value) || 0
       };
-
+    
       if (currentDayMode === 'OPEN') {
         try {
           const res = await fetch('/api/cash-day/open', {
@@ -1793,6 +1830,13 @@
         }
       } else {
         // மாலை நாள் பூட்டுதல் (Day Close)
+    
+        // சமர்ப்பிக்கும் முன் தாள்கள் மற்றும் கணினி ரொக்கம் சமமாக உள்ளதா என உறுதிசெய்தல்
+        const diff = Math.round((countedTotal - currentSystemCash) * 100) / 100;
+        if (diff !== 0.0) {
+          return alert(`⚠️ தாள்கள் தொகை சமமாக இல்லை!\nகணினியின் தொகை: ₹${currentSystemCash.toLocaleString('en-IN')}\nஎண்ணிய தொகை: ₹${countedTotal.toLocaleString('en-IN')}\nவேறுபாடு: ₹${diff}\nதொகை சரியாகப் பொருந்தினால் மட்டுமே நாளைப் பூட்ட முடியும்.`);
+        }
+    
         try {
           const res = await fetch('/api/cash-day/close', {
             method: 'POST',
@@ -1811,7 +1855,9 @@
           if (res.ok) {
             alert("✅ " + data.message);
             closeCashDayModal();
-            checkCurrentDateStatus();
+    
+            // நாள் முடிந்ததும் தானாகவே அதன் அடுத்த நாளுக்கு கவுண்ட்டர் நகர்ந்துவிடும்
+            await initTxnDate();
           } else {
             // பிழை இருந்தால் தெளிவாகத் திரையில் காட்டப்படும்
             let errMsg = data.detail;

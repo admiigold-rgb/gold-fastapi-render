@@ -512,6 +512,8 @@ def create_new_pawn(data: dict):
             "status": "ACTIVE",
             "visit_id": data.get("visit_id"),
             "transaction_date": trans_date,
+            "outstanding_principal": loan_amt,
+            "last_interest_paid_date": trans_date,
             "created_at": datetime.now(IST).isoformat()
         }
         res_loan = supabase.table("test_gold_loans").insert(loan_record).execute()

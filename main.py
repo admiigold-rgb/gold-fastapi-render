@@ -448,6 +448,20 @@ def get_next_loan_no(branch_id: int = Query(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் எண் பிழை: {str(e)}")
+        
+# வாடிக்கையாளரின் நடப்பு நகைக்கடன்களை எடுக்கும் API
+@app.get("/api/customer/{customer_id}/active-loans")
+def get_customer_active_loans(customer_id: int):
+    try:
+        res = supabase.table("test_gold_loans") \
+            .select("*, test_gold_loan_items(*)") \
+            .eq("customer_id", customer_id) \
+            .eq("status", "ACTIVE") \
+            .order("id", desc=False) \
+            .execute()
+        return {"status": "success", "data": res.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 4. New Gold Loan
 @app.post("/api/loan/new-pawn")

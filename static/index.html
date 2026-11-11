@@ -2154,161 +2154,6 @@
       }
     });
 
-    // ==========================================
-    // 🛒 MULTI-ACTION VISIT CART ENGINE
-    // ==========================================
-    let activeVisitCart = [];
-
-    // கூடைக்குள் புதிய நடவடிக்கையைச் சேர்க்கும் செயல்பாடு
-    function addActionToVisitCart(item) {
-      // item = { id, loan_no, type_code, title, direction: 'IN' | 'OUT', amount: number, details: object }
-      activeVisitCart.push({
-        uid: Date.now() + Math.random(),
-        loan_no: item.loan_no || '-',
-        type_code: item.type_code,
-        title: item.title,
-        direction: item.direction,
-        amount: parseFloat(item.amount) || 0,
-        details: item.details || {}
-      });
-      renderVisitCart();
-    }
-
-    // கூடையிலிருந்து ஒரு உருப்படியை நீக்கும் செயல்பாடு
-    function removeActionFromVisitCart(uid) {
-      activeVisitCart = activeVisitCart.filter(x => x.uid !== uid);
-      renderVisitCart();
-    }
-
-    // கூடையைத் திரையில் புதுப்பித்து நிகரக் கணக்கிடும் செயல்பாடு
-    function renderVisitCart() {
-      const container = document.getElementById('visitCartItemsContainer');
-      const badge = document.getElementById('cartItemCountBadge');
-      if (!container) return;
-
-      if (badge) badge.innerText = activeVisitCart.length;
-
-      if (activeVisitCart.length === 0) {
-        container.innerHTML = `
-          <div class="py-10 text-center text-slate-400 text-xs font-bold space-y-1">
-            <div class="text-2xl opacity-50">🛍️</div>
-            <div>கூடையில் நடவடிக்கைகள் எதுவும் இல்லை</div>
-            <div class="text-[10px] font-normal">வட்டி, பகுதி அசல் அல்லது புதிய அடகினைச் சேர்க்கவும்</div>
-          </div>
-        `;
-        updateCartTotals(0, 0);
-        return;
-      }
-
-      let totIn = 0;
-      let totOut = 0;
-
-      container.innerHTML = activeVisitCart.map(item => {
-        if (item.direction === 'IN') totIn += item.amount;
-        else totOut += item.amount;
-
-        const isIn = item.direction === 'IN';
-        const dirBadge = isIn
-          ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800">வரவு IN (+)</span>`
-          : `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800">பற்று OUT (-)</span>`;
-
-        const amtColor = isIn ? 'text-emerald-700' : 'text-rose-600';
-
-        return `
-          <div class="bg-white p-2.5 rounded-xl border border-purple-200 shadow-sm flex items-center justify-between gap-2">
-            <div class="space-y-0.5 overflow-hidden">
-              <div class="flex items-center gap-1.5">
-                <span class="font-mono text-xs font-black text-purple-900">${item.loan_no}</span>
-                ${dirBadge}
-              </div>
-              <div class="text-[11px] font-bold text-slate-600 truncate">${item.title}</div>
-            </div>
-            <div class="flex items-center gap-2 flex-shrink-0">
-              <span class="font-mono text-xs font-black ${amtColor}">₹${item.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-              <button type="button" onclick="removeActionFromVisitCart(${item.uid})" class="w-6 h-6 rounded-full bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 font-bold text-xs flex items-center justify-center transition cursor-pointer">✕</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      updateCartTotals(totIn, totOut);
-    }
-
-    function updateCartTotals(totIn, totOut) {
-      document.getElementById('cartTotalIn').innerText = '₹ ' + totIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
-      document.getElementById('cartTotalOut').innerText = '₹ ' + totOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
-
-      const netBox = document.getElementById('cartNetResultBox');
-      const netLabel = document.getElementById('cartNetLabel');
-      const netAmtElem = document.getElementById('cartNetAmount');
-      const netHint = document.getElementById('cartNetDirectionHint');
-      const cashInput = document.getElementById('cartPayCash');
-      const bankInput = document.getElementById('cartPayBank');
-
-      const diff = totIn - totOut;
-      const absNet = Math.abs(diff);
-
-      if (diff > 0) {
-        // வாடிக்கையாளர் கம்பெனிக்குத் தர வேண்டும் (INWARD)
-        netBox.className = "p-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 flex flex-col gap-1";
-        netLabel.className = "text-xs font-extrabold text-emerald-900";
-        netLabel.innerText = "நிகர வசூல் (Receivable):";
-        netAmtElem.className = "font-mono text-base font-black text-emerald-700";
-        netAmtElem.innerText = "(+) ₹ " + absNet.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        netHint.className = "text-[10px] font-bold text-emerald-800";
-        netHint.innerText = "வாடிக்கையாளரிடமிருந்து பெற வேண்டிய தொகை";
-      } else if (diff < 0) {
-        // கம்பெனி வாடிக்கையாளருக்குத் தர வேண்டும் (OUTWARD)
-        netBox.className = "p-3 rounded-xl border-2 border-rose-300 bg-rose-50 flex flex-col gap-1";
-        netLabel.className = "text-xs font-extrabold text-rose-900";
-        netLabel.innerText = "நிகர பட்டுவாடா (Payable):";
-        netAmtElem.className = "font-mono text-base font-black text-rose-600";
-        netAmtElem.innerText = "(-) ₹ " + absNet.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        netHint.className = "text-[10px] font-bold text-rose-800";
-        netHint.innerText = "வாடிக்கையாளருக்கு வழங்க வேண்டிய தொகை";
-      } else {
-        netBox.className = "p-3 rounded-xl border-2 border-purple-200 bg-purple-50 flex flex-col gap-1";
-        netLabel.className = "text-xs font-extrabold text-purple-900";
-        netLabel.innerText = "நிகர தொகை (Net):";
-        netAmtElem.className = "font-mono text-base font-black text-purple-950";
-        netAmtElem.innerText = "₹ 0.00";
-        netHint.className = "text-[10px] font-bold text-purple-700";
-        netHint.innerText = "சமநிலை (பணம் கொடுக்க/வாங்க தேவையில்லை)";
-      }
-
-      // இயல்பாக முழு நிகரத் தொகையையும் ரொக்கத்தில் நிரப்புதல்
-      if (cashInput && bankInput) {
-        cashInput.value = absNet.toFixed(2);
-        bankInput.value = "0";
-      }
-    }
-
-    function validateCartSplit(changedField) {
-      const totIn = activeVisitCart.filter(x => x.direction === 'IN').reduce((s, x) => s + x.amount, 0);
-      const totOut = activeVisitCart.filter(x => x.direction === 'OUT').reduce((s, x) => s + x.amount, 0);
-      const absNet = Math.abs(totIn - totOut);
-
-      const cashEl = document.getElementById('cartPayCash');
-      const bankEl = document.getElementById('cartPayBank');
-      let cVal = parseFloat(cashEl.value) || 0;
-      let bVal = parseFloat(bankEl.value) || 0;
-
-      if (changedField === 'CASH') {
-        if (cVal > absNet) { cVal = absNet; cashEl.value = cVal.toFixed(2); }
-        bankEl.value = Math.max(0, absNet - cVal).toFixed(2);
-      } else {
-        if (bVal > absNet) { bVal = absNet; bankEl.value = bVal.toFixed(2); }
-        cashEl.value = Math.max(0, absNet - bVal).toFixed(2);
-      }
-    }
-
-    async function completeMultiActionCheckout() {
-      if (activeVisitCart.length === 0) {
-        return alert("⚠️ கூடையில் குறைந்தபட்சம் ஒரு நடவடிக்கையையாவது சேர்க்கவும்!");
-      }
-      alert("✅ கூடை செட்டில்மென்ட் தயார் நிலையில் உள்ளது! மொத்த உருப்படிகள்: " + activeVisitCart.length);
-    }
-
     // அறிக்கையைத் திறந்து தரவுகளை ஏற்றும் செயல்பாடு
     async function openDaySummaryReportModal() {
       const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
@@ -3112,14 +2957,16 @@
       }
       if (cartItems.length === 0) return;
       const lastItem = cartItems[cartItems.length - 1];
-      if (confirm(`கடைசியாகச் சேர்த்த கடன் '${lastItem.loan_no}' ஐ கூடையில் இருந்து நீக்க விரும்புகிறீர்களா?`)) {
-        try { await fetch(`/api/loan/${lastItem.loan_id}`, { method: 'DELETE' }); } catch(e) {}
+      if (confirm(`கடைசியாகச் சேர்த்த '${lastItem.title}' ஐ கூடையில் இருந்து நீக்க விரும்புகிறீர்களா?`)) {
+        // புதிய அடகுக் கடனாக இருந்தால் மட்டுமே சர்வரில் இருந்து நீக்க வேண்டும்
+        if (!lastItem.is_repayment) {
+          try { await fetch(`/api/loan/${lastItem.loan_id}`, { method: 'DELETE' }); } catch(e) {}
+          fetchAutoLoanNumber();
+        }
         cartItems.pop();
         renderCart();
-        fetchAutoLoanNumber();
       }
     }
-
     function renderCart() {
       const container = document.getElementById('cartItemsList');
       const undoBtn = document.getElementById('btnUndoCart');
@@ -4926,104 +4773,6 @@
       } else alert("❌ பிழை: " + data.detail);
     }
 
-    // ==========================================
-    // ⚡ OTP விலக்கு நேரடி இயக்கம் (Direct Trigger)
-    // ==========================================
-    // ⚡ OTP விலக்குக் கோரியவுடன் சரிபார்த்து ஆட்டோ-ஹோல்டு செய்யும் முழுமையான செயல்பாடு
-    async function triggerOtpExemptDirectly(e) {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-
-      // 🔒 1. பணம் & தாள்கள் சமமாகப் பொருந்தினால் மட்டுமே OTP விலக்குக் கோர அனுமதித்தல்
-      if (!validatePaymentAndDenomMatch()) return;
-
-      // 2. வாடிக்கையாளர் தேர்வு சரிபார்ப்பு
-      if (!activeCustomer || !activeCustomer.id) {
-        alert("⚠️ வாடிக்கையாளர் தேர்வு செய்யப்படவில்லை! தயவுசெய்து வாடிக்கையாளரைத் தேடித் தேர்ந்தெடுக்கவும்.");
-        return;
-      }
-
-      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
-
-      // 3. வருகை எண் இல்லை எனில் உருவாக்குதல்
-      if (!activeVisitId) {
-        try {
-          const vRes = await fetch('/api/customer/visit', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              customer_id: activeCustomer.id,
-              branch_id: branchId,
-              purpose: "REGULAR_TRANSACTION"
-            })
-          });
-          const vData = await vRes.json();
-          activeVisitId = vData.data?.id;
-        } catch (err) {
-          alert("❌ வருகை பதிவு செய்வதில் பிழை: " + err.message);
-          return;
-        }
-      }
-
-      if (!activeVisitId) {
-        alert("⚠️ வருகை எண் கிடைக்கவில்லை. பக்கத்தை ரீஃப்ரெஷ் செய்யவும்.");
-        return;
-      }
-
-      // 4. விலக்குக்கான காரணத்தைக் கேட்டல்
-      const reason = window.prompt("OTP விலக்கு கோருவதற்கான காரணத்தைக் குறிப்பிடவும்:\n(எ.கா: சிக்னல் இல்லை / நெட்வொர்க் பிழை)");
-      if (!reason || reason.trim() === "") return;
-
-      // 5. API-க்கு விலக்குக் கோரிக்கை அனுப்புதல்
-      try {
-        const res = await fetch('/api/otp/request-exemption', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            visit_id: activeVisitId,
-            branch_id: branchId,
-            reason: reason.trim(),
-            staff_id: currentUser ? currentUser.id : 1
-          })
-        });
-        const data = await res.json();
-
-        if (res.ok) {
-          alert("✅ கோரிக்கை அனுப்பப்பட்டது! வாடிக்கையாளர் கணக்கு தானாகவே நிறுத்தி வைக்கப்படுகிறது (Auto-Hold).\nஅடுத்த வாடிக்கையாளர் சேவையைத் தொடரலாம்.");
-          closeCheckoutModal();
-
-          // ⏸️ ஆட்டோ-ஹோல்டு செய்தல் (WAITING_HQ நிலையுடன் மேற்பட்டைக்கு அனுப்புதல்)
-          holdCurrentCustomerDraft("WAITING_HQ");
-        } else {
-          alert("❌ பிழை: " + (data.detail || data.message || "கோரிக்கை தோல்வியடைந்தது"));
-        }
-      } catch (err) {
-        alert("❌ இணைப்புப் பிழை: " + err.message);
-      }
-    }
-
-    async function listenForOtpApproval() {
-      if (!activeVisitId) return;
-      try {
-        const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
-        const data = await res.json();
-
-        if (data.data?.otp_exempted === true) {
-          alert("🎉 தலைமையகம் OTP விலக்கு அளித்துவிட்டது! இப்போது OTP இன்றியே பரிவர்த்தனை நிறைவடைகிறது.");
-          closeCheckoutModal();
-          confirmSettleWithOtp(true);
-        } else if (data.data?.otp_exemption_status === 'REJECTED') {
-          alert("❌ தலைமையகம் OTP விலக்குக் கோரிக்கையை நிராகரித்துவிட்டது. SMS OTP அனுப்பவும்.");
-        } else {
-          setTimeout(listenForOtpApproval, 3000);
-        }
-      } catch (e) {
-        console.error("Exemption loop error:", e);
-      }
-    }
-
     // =========================================================================
     // 💰 நடப்பு நகைக்கடன்கள் பட்டியல் & வட்டி/பகுதி அசல்/முடிப்பு கணக்கீட்டு இயந்திரம்
     // =========================================================================
@@ -5048,7 +4797,7 @@
 
         container.innerHTML = customerActiveLoansCache.map(loan => {
           const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
-          const loanDate = loan.loan_date || (loan.created_at ? loan.created_at.split('T')[0] : '-');
+          const loanDate = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : '-');
           const itemsSummary = (loan.test_gold_loan_items || []).map(i => `${i.item_type} (${i.net_weight}g)`).join(', ');
 
           return `
@@ -5105,7 +4854,7 @@
 
       // 1. கவுண்ட்டர் தேதியிலிருந்து கடந்த நாட்களைக் கணக்கிடுதல்
       const txnDateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
-      const lastDateStr = loan.last_interest_paid_date || loan.loan_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
+      const lastDateStr = loan.last_interest_paid_date || loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
 
       const d1 = new Date(lastDateStr);
       const d2 = new Date(txnDateStr);

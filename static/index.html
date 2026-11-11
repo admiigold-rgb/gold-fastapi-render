@@ -216,6 +216,19 @@
           </div>
         </div>
 
+        <!-- 🪙 வாடிக்கையாளரின் நடப்பு நகைக்கடன்கள் பட்டியல் (Active Loans) -->
+        <div id="customerActiveLoansSection" class="bg-white p-5 rounded-2xl shadow-sm border-2 border-amber-200 space-y-3">
+          <div class="flex justify-between items-center border-b border-amber-100 pb-2">
+            <h3 class="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+              <span>📋</span> நடப்பில் உள்ள அடமானக் கடன்கள் (Active Loans)
+            </h3>
+            <button type="button" onclick="loadCustomerActiveLoans()" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-950 px-3 py-1 rounded-lg font-bold transition">புதுப்பி 🔄</button>
+          </div>
+          <div id="activeLoansListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <p class="text-xs text-slate-400 col-span-2 text-center py-4">நடப்புக் கடன்கள் ஏற்றப்படுகின்றன...</p>
+          </div>
+        </div>
+        
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <!-- நகை அடகு படிவம் -->
           <div id="pawnFormSection" class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
@@ -1214,6 +1227,88 @@
       </div>
     </div>
 
+    <!-- 💰 வட்டி / பகுதி அசல் / கடன் முடித்தல் கணக்கீட்டு Modal -->
+    <div id="loanRepaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
+      <div class="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-4 border-2 border-brand-violet">
+        
+        <div class="flex justify-between items-center border-b border-purple-100 pb-2">
+          <div>
+            <h3 class="text-base font-extrabold text-brand-violet" id="repModalTitle">நகைக்கடன் வட்டி & தீர்வு</h3>
+            <p class="text-[11px] text-slate-500 font-mono" id="repModalSubTitle">கடன் எண்: -</p>
+          </div>
+          <button type="button" onclick="closeLoanRepaymentModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+        </div>
+
+        <input type="hidden" id="rep_loan_id">
+        <input type="hidden" id="rep_loan_no">
+        <input type="hidden" id="rep_action_type">
+
+        <!-- கடன் & வட்டி விவரப் பலகை -->
+        <div class="bg-purple-50/80 p-3.5 rounded-2xl border border-purple-200 grid grid-cols-2 gap-2.5 text-xs">
+          <div>
+            <span class="text-slate-500 block">நிலுவை அசல் (Principal):</span>
+            <b id="rep_outstanding_principal" class="text-sm font-black text-slate-900 font-mono">₹ 0.00</b>
+          </div>
+          <div>
+            <span class="text-slate-500 block">கடந்த நாட்கள் & வட்டி விகிதம்:</span>
+            <b id="rep_days_and_rate" class="text-brand-violet font-bold">- நாட்கள் (12%)</b>
+          </div>
+          <div>
+            <span class="text-slate-500 block">அடகு தேதி / கடைசி வட்டி தேதி:</span>
+            <b id="rep_last_date" class="text-slate-700 font-mono">-</b>
+          </div>
+          <div>
+            <span class="text-slate-500 block">இன்று வரையிலான வட்டி:</span>
+            <b id="rep_calculated_interest" class="text-sm font-black text-rose-600 font-mono">₹ 0.00</b>
+          </div>
+        </div>
+
+        <!-- நடவடிக்கை தேர்வு பட்டன்கள் -->
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" id="tab_rep_interest" onclick="switchRepaymentTab('INTEREST')" class="py-2 text-xs font-black rounded-xl border-2 bg-purple-100 border-brand-violet text-brand-violet">வட்டி மட்டும்</button>
+          <button type="button" id="tab_rep_part" onclick="switchRepaymentTab('PART_PRINCIPAL')" class="py-2 text-xs font-bold rounded-xl border-2 bg-white border-slate-200 text-slate-600">பகுதி அசல்</button>
+          <button type="button" id="tab_rep_close" onclick="switchRepaymentTab('FULL_CLOSURE')" class="py-2 text-xs font-bold rounded-xl border-2 bg-white border-slate-200 text-slate-600">முழு கணக்கு முடிவு</button>
+        </div>
+
+        <!-- உள்ளீட்டுப் பகுதி -->
+        <div class="space-y-3 text-xs bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">செலுத்தும் வட்டி (₹) *</label>
+              <input type="number" id="rep_input_interest" oninput="recalcRepaymentTotal()" class="w-full border-2 border-purple-200 p-2 rounded-xl font-mono font-black text-rose-600 bg-white">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">குறைக்கும் அசல் (₹)</label>
+              <input type="number" id="rep_input_principal" oninput="recalcRepaymentTotal()" class="w-full border-2 border-purple-200 p-2 rounded-xl font-mono font-black text-emerald-700 bg-white">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">வட்டி தள்ளுபடி (Rebate ₹)</label>
+              <input type="number" id="rep_input_discount" value="0" oninput="recalcRepaymentTotal()" class="w-full border border-slate-300 p-2 rounded-xl font-mono font-bold text-slate-700 bg-white">
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2 flex flex-col justify-center text-right">
+              <span class="text-[10px] font-bold text-emerald-800">கூடையில் சேரும் வரவு (+):</span>
+              <span id="rep_total_payable" class="text-base font-black text-emerald-700 font-mono">₹ 0.00</span>
+            </div>
+          </div>
+
+          <div id="rep_new_balance_preview" class="text-[11px] font-bold text-indigo-800 text-right">
+            புதிய நிலுவை அசல்: ₹ 0.00
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
+          <button type="button" onclick="closeLoanRepaymentModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து</button>
+          <button type="button" onclick="addRepaymentItemToCart()" class="brand-gradient-gold-btn px-6 py-2.5 rounded-xl text-xs font-black shadow border border-yellow-500">
+            கூடையில் சேர் (Add to Cart) 🛒
+          </button>
+        </div>
+
+      </div>
+    </div>
+    
     <!-- 3. Checkout Modal -->
     <div id="checkoutModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
       <div class="bg-white rounded-3xl p-5 max-w-xl w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto border-2 border-brand-gold">
@@ -2578,6 +2673,7 @@
 
       fetchAutoLoanNumber();
       onSchemeSelected();
+      loadCustomerActiveLoans();
     }
 
     function resetCustomer() {
@@ -4662,8 +4758,8 @@
       document.getElementById('perm_updates').checked = !!s.can_approve_updates;
       document.getElementById('perm_admin').checked = !!s.can_manage_users;
       document.getElementById('perm_otp_exempt').checked = !!s.can_approve_otp_exempt;
-      document.getElementById('perm_expenses').checked = !!staff.can_approve_expenses;
-      document.getElementById('perm_treasury').checked = !!staff.can_manage_treasury;
+      document.getElementById('perm_expenses').checked = !!s.can_approve_expenses;
+      document.getElementById('perm_treasury').checked = !!s.can_manage_treasury;
       document.getElementById('staffFormTitle').innerText = "✏️ பணியாளர் திருத்துதல்";
       document.getElementById('btnSubmitStaff').innerText = "புதுப்பி";
       document.getElementById('btnCancelStaffEdit').classList.remove('hidden');
@@ -4925,6 +5021,241 @@
       } catch (e) {
         console.error("Exemption loop error:", e);
       }
+    }
+
+    // =========================================================================
+    // 💰 நடப்பு நகைக்கடன்கள் பட்டியல் & வட்டி/பகுதி அசல்/முடிப்பு கணக்கீட்டு இயந்திரம்
+    // =========================================================================
+    let customerActiveLoansCache = [];
+    let currentRepayLoanObj = null;
+
+    async function loadCustomerActiveLoans() {
+      const container = document.getElementById('activeLoansListContainer');
+      if (!container || !activeCustomer) return;
+
+      container.innerHTML = `<p class="text-xs text-brand-violet font-bold col-span-2 text-center py-4">நடப்புக் கடன்கள் ஏற்றப்படுகின்றன...</p>`;
+
+      try {
+        const res = await fetch(`/api/customer/${activeCustomer.id}/active-loans`);
+        const result = await res.json();
+        customerActiveLoansCache = result.data || [];
+
+        if (customerActiveLoansCache.length === 0) {
+          container.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-4">இந்த வாடிக்கையாளருக்கு நடப்பில் அடமானக் கடன்கள் எதுவும் இல்லை.</p>`;
+          return;
+        }
+
+        container.innerHTML = customerActiveLoansCache.map(loan => {
+          const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
+          const loanDate = loan.loan_date || (loan.created_at ? loan.created_at.split('T')[0] : '-');
+          const itemsSummary = (loan.test_gold_loan_items || []).map(i => `${i.item_type} (${i.net_weight}g)`).join(', ');
+
+          return `
+            <div class="p-3.5 rounded-2xl border-2 border-purple-100 bg-purple-50/40 flex flex-col justify-between gap-2.5 shadow-sm">
+              <div>
+                <div class="flex justify-between items-center">
+                  <span class="font-mono text-sm font-black text-brand-violet">${loan.loan_no}</span>
+                  <span class="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300">${loan.scheme_name}</span>
+                </div>
+                <div class="mt-1.5 flex justify-between items-baseline">
+                  <span class="text-xs text-slate-500">நிலுவை அசல்:</span>
+                  <span class="text-base font-black text-slate-900 font-mono">₹ ${principal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                </div>
+                <div class="text-[11px] text-slate-600 mt-1">தேதி: <b>${loanDate}</b> | நகைகள்: ${itemsSummary || '-'}</div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-purple-100">
+                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'INTEREST')" class="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
+                  + வட்டி
+                </button>
+                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'PART_PRINCIPAL')" class="py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
+                  + பகுதி அசல்
+                </button>
+                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'FULL_CLOSURE')" class="py-1.5 px-2 bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
+                  + கடன் முடிவு
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-rose-600 col-span-2 text-center py-4">கடன்கள் விபரம் எடுப்பதில் பிழை: ${err.message}</p>`;
+      }
+    }
+
+    function openLoanRepaymentModal(loanId, actionType) {
+      if (isDraftLocked) {
+        return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் புதிய நடவடிக்கைகளைச் சேர்க்க முடியாது!");
+      }
+
+      const loan = customerActiveLoansCache.find(l => l.id === loanId);
+      if (!loan) return alert("கடன் விபரம் கிடைக்கவில்லை.");
+
+      // ஏற்கனவே இதே கடன் கூடையில் உள்ளதா எனச் சரிபார்த்தல்
+      if (cartItems.some(c => c.loan_id === loan.id && c.is_repayment)) {
+        return alert(`⚠️ கடன் எண் ${loan.loan_no} ஏற்கனவே கூடையில் சேர்க்கப்பட்டுள்ளது!`);
+      }
+
+      currentRepayLoanObj = loan;
+      document.getElementById('rep_loan_id').value = loan.id;
+      document.getElementById('rep_loan_no').value = loan.loan_no;
+      document.getElementById('repModalSubTitle').innerText = `கடன் எண்: ${loan.loan_no} | திட்டம்: ${loan.scheme_name}`;
+
+      // 1. கவுண்ட்டர் தேதியிலிருந்து கடந்த நாட்களைக் கணக்கிடுதல்
+      const txnDateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
+      const lastDateStr = loan.last_interest_paid_date || loan.loan_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
+
+      const d1 = new Date(lastDateStr);
+      const d2 = new Date(txnDateStr);
+      let diffDays = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
+
+      // 2. திட்டத்தின் விதிப்படி (Scheme Slabs & Min Days) வட்டி விகிதம் கண்டறிதல்
+      const schemeObj = schemesCache.find(s => s.scheme_name === loan.scheme_name);
+      const minDays = schemeObj?.min_interest_days || 7;
+      const calcDays = Math.max(diffDays, minDays);
+
+      let annualRate = 12.0; // இயல்புநிலை வட்டி
+      if (schemeObj && Array.isArray(schemeObj.interest_slabs) && schemeObj.interest_slabs.length > 0) {
+        const matchedSlab = schemeObj.interest_slabs.find(sl => calcDays >= sl.from_days && calcDays <= sl.to_days);
+        if (matchedSlab) {
+          annualRate = parseFloat(matchedSlab.rate_percent);
+        } else {
+          // கடைசி அதிகபட்ச ஸ்லேப் விகிதம்
+          annualRate = parseFloat(schemeObj.interest_slabs[schemeObj.interest_slabs.length - 1].rate_percent);
+        }
+      }
+
+      const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
+      const calcInterest = Math.round((principal * annualRate * calcDays) / (365 * 100));
+
+      currentRepayLoanObj._calcInterest = calcInterest;
+      currentRepayLoanObj._principal = principal;
+      currentRepayLoanObj._calcDays = calcDays;
+      currentRepayLoanObj._annualRate = annualRate;
+
+      document.getElementById('rep_outstanding_principal').innerText = `₹ ${principal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+      document.getElementById('rep_days_and_rate').innerText = `${calcDays} நாட்கள் (${annualRate}% p.a.)`;
+      document.getElementById('rep_last_date').innerText = lastDateStr;
+      document.getElementById('rep_calculated_interest').innerText = `₹ ${calcInterest.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+      document.getElementById('rep_input_discount').value = 0;
+      switchRepaymentTab(actionType);
+      document.getElementById('loanRepaymentModal').classList.remove('hidden');
+    }
+
+    function closeLoanRepaymentModal() {
+      const m = document.getElementById('loanRepaymentModal');
+      if (m) m.classList.add('hidden');
+    }
+
+    function switchRepaymentTab(actionType) {
+      document.getElementById('rep_action_type').value = actionType;
+
+      const tabs = {
+        'INTEREST': document.getElementById('tab_rep_interest'),
+        'PART_PRINCIPAL': document.getElementById('tab_rep_part'),
+        'FULL_CLOSURE': document.getElementById('tab_rep_close')
+      };
+
+      Object.keys(tabs).forEach(k => {
+        if (tabs[k]) {
+          tabs[k].className = (k === actionType)
+            ? "py-2 text-xs font-black rounded-xl border-2 bg-purple-100 border-brand-violet text-brand-violet shadow-sm"
+            : "py-2 text-xs font-bold rounded-xl border-2 bg-white border-slate-200 text-slate-600 cursor-pointer";
+        }
+      });
+
+      const intInput = document.getElementById('rep_input_interest');
+      const prinInput = document.getElementById('rep_input_principal');
+
+      const calcInt = currentRepayLoanObj._calcInterest || 0;
+      const prin = currentRepayLoanObj._principal || 0;
+
+      if (actionType === 'INTEREST') {
+        document.getElementById('repModalTitle').innerText = "வட்டி செலுத்துதல் (Interest Payment)";
+        intInput.value = calcInt;
+        prinInput.value = 0;
+        prinInput.readOnly = true;
+      } else if (actionType === 'PART_PRINCIPAL') {
+        document.getElementById('repModalTitle').innerText = "வட்டியுடன் பகுதி அசல் செலுத்துதல் (Part Payment)";
+        intInput.value = calcInt;
+        prinInput.value = '';
+        prinInput.placeholder = "அசல் தொகை உள்ளிடவும்";
+        prinInput.readOnly = false;
+      } else {
+        document.getElementById('repModalTitle').innerText = "முழு கடன் கணக்கு முடித்தல் / மீட்டல் (Full Closure)";
+        intInput.value = calcInt;
+        prinInput.value = prin;
+        prinInput.readOnly = true;
+      }
+
+      recalcRepaymentTotal();
+    }
+
+    function recalcRepaymentTotal() {
+      const intVal = parseFloat(document.getElementById('rep_input_interest').value) || 0;
+      let prinVal = parseFloat(document.getElementById('rep_input_principal').value) || 0;
+      const discVal = parseFloat(document.getElementById('rep_input_discount').value) || 0;
+      const maxPrin = currentRepayLoanObj?._principal || 0;
+
+      if (prinVal > maxPrin) {
+        alert(`நிலுவை அசல் தொகைக்கு (₹${maxPrin}) மேல் செலுத்த முடியாது!`);
+        prinVal = maxPrin;
+        document.getElementById('rep_input_principal').value = maxPrin;
+      }
+
+      const netCredit = Math.max(0, (intVal + prinVal) - discVal);
+      const newBalance = Math.max(0, maxPrin - prinVal);
+
+      document.getElementById('rep_total_payable').innerText = `₹ ${netCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+      document.getElementById('rep_new_balance_preview').innerText = `புதிய நிலுவை அசல்: ₹ ${newBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+    }
+
+    function addRepaymentItemToCart() {
+      const actionType = document.getElementById('rep_action_type').value;
+      const loanId = parseInt(document.getElementById('rep_loan_id').value);
+      const loanNo = document.getElementById('rep_loan_no').value;
+
+      const intPaid = parseFloat(document.getElementById('rep_input_interest').value) || 0;
+      const prinPaid = parseFloat(document.getElementById('rep_input_principal').value) || 0;
+      const discount = parseFloat(document.getElementById('rep_input_discount').value) || 0;
+      const totalCredit = Math.max(0, (intPaid + prinPaid) - discount);
+
+      if (totalCredit <= 0) {
+        return alert("சரியான தொகையை உள்ளிடவும்.");
+      }
+
+      if (actionType === 'PART_PRINCIPAL' && prinPaid <= 0) {
+        return alert("பகுதி அசல் தொகையை உள்ளிடவும்.");
+      }
+
+      let labelTitle = "";
+      if (actionType === 'INTEREST') labelTitle = `வட்டி வரவு (${loanNo})`;
+      else if (actionType === 'PART_PRINCIPAL') labelTitle = `பகுதி அசல் + வட்டி (${loanNo})`;
+      else labelTitle = `முழு கடன் முடிப்பு (${loanNo})`;
+
+      // ஏற்கனவே உள்ள உங்கள் cartItems பட்டியலில் வரவாக (Credit +) சேர்த்தல்
+      cartItems.push({
+        is_repayment: true,
+        action_type: actionType,
+        loan_id: loanId,
+        loan_no: loanNo,
+        title: labelTitle,
+        details: `வட்டி: ₹${intPaid} | அசல்: ₹${prinPaid}` + (discount > 0 ? ` | தள்ளுபடி: ₹${discount}` : ''),
+        debit: 0,
+        credit: totalCredit,
+        repayment_meta: {
+          interest_paid: intPaid,
+          principal_paid: prinPaid,
+          discount_amount: discount,
+          days_calculated: currentRepayLoanObj?._calcDays || 0,
+          rate_applied: currentRepayLoanObj?._annualRate || 12
+        }
+      });
+
+      renderCart();
+      closeLoanRepaymentModal();
     }
   </script>
 </body>

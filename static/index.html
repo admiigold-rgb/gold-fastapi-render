@@ -3540,7 +3540,8 @@
         bank_name: document.getElementById('receipt_company_bank')?.value || null,
         denominations: denomPayload,
         transaction_date: selDate,
-        actions_summary: cartItems.map(c => c.title).join(", ")
+        actions_summary: cartItems.map(c => c.title).join(", "),
+        cart_items: cartItems
       };
     
       const resSettle = await fetch('/api/transaction/settle-with-otp', {

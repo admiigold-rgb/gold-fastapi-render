@@ -238,6 +238,7 @@ class SettleWithOtpPayload(BaseModel):
     denominations: Optional[DenominationCounts] = None
     transaction_date: Optional[str] = None
     actions_summary: Optional[str] = None
+    cart_items: Optional[List[Dict[str, Any]]] = []
 
 class OtpExemptRequestPayload(BaseModel):
     visit_id: int
@@ -1298,7 +1299,7 @@ def trigger_otp_sms(payload: SendOtpPayload):
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
     try:
-        txn_date = data.transaction_date or "now()"
+        txn_date = data.transaction_date or datetime.now(IST).strftime("%Y-%m-%d")
         day_status_res = supabase.table("test_branch_cash_days").select("status").eq("branch_id", data.branch_id).eq("business_date", txn_date).execute()
         if day_status_res.data and day_status_res.data[0]["status"] == "CLOSED":
             raise HTTPException(status_code=400, detail="தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் பணப் பரிவர்த்தனை செய்ய முடியாது!")
@@ -1372,12 +1373,55 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை நிறைவுற்றது"
             }).eq("id", target_visit_id).execute()
 
+        # கூடையில் உள்ள வட்டி, பகுதி அசல் மற்றும் கடன் முடிப்பு நடவடிக்கைகளைச் செயல்படுத்துதல்
+        for item in (data.cart_items or []):
+            if item.get("is_repayment") is True:
+                loan_id = item.get("loan_id")
+                action_type = item.get("action_type")
+                meta = item.get("repayment_meta") or {}
+
+                int_paid = float(meta.get("interest_paid", 0))
+                prin_paid = float(meta.get("principal_paid", 0))
+                disc_amt = float(meta.get("discount_amount", 0))
+
+                # 1. பரிவர்த்தனை வரலாற்றில் பதிவு செய்தல்
+                supabase.table("test_loan_repayments").insert({
+                    "visit_id": target_visit_id,
+                    "loan_id": loan_id,
+                    "customer_id": data.customer_id,
+                    "branch_id": data.branch_id,
+                    "action_type": action_type,
+                    "interest_paid": int_paid,
+                    "principal_paid": prin_paid,
+                    "discount_amount": disc_amt,
+                    "days_calculated": meta.get("days_calculated", 0),
+                    "rate_applied": meta.get("rate_applied", 0),
+                    "transaction_date": txn_date
+                }).execute()
+
+                # 2. கடனின் தற்போதைய நிலுவை & நிலையைப் புதுப்பித்தல்
+                loan_res = supabase.table("test_gold_loans").select("*").eq("id", loan_id).execute()
+                if loan_res.data:
+                    loan_row = loan_res.data[0]
+                    curr_prin = float(loan_row.get("outstanding_principal") or loan_row.get("loan_amount") or 0)
+                    new_prin = max(0.0, curr_prin - prin_paid)
+
+                    update_fields = {
+                        "outstanding_principal": new_prin,
+                        "last_interest_paid_date": txn_date
+                    }
+                    if action_type == "FULL_CLOSURE" or new_prin <= 0:
+                        update_fields["status"] = "CLOSED"
+                        update_fields["closed_date"] = txn_date
+
+                    supabase.table("test_gold_loans").update(update_fields).eq("id", loan_id).execute()
+
         return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தீர்வுப் பிழை: {str(e)}")
-
+        
 # Schemes, Banks, Gold Rate, Branches, Staff
 @app.get("/api/admin/schemes")
 def get_loan_schemes():

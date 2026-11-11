@@ -2059,6 +2059,161 @@
       }
     });
 
+    // ==========================================
+    // 🛒 MULTI-ACTION VISIT CART ENGINE
+    // ==========================================
+    let activeVisitCart = [];
+
+    // கூடைக்குள் புதிய நடவடிக்கையைச் சேர்க்கும் செயல்பாடு
+    function addActionToVisitCart(item) {
+      // item = { id, loan_no, type_code, title, direction: 'IN' | 'OUT', amount: number, details: object }
+      activeVisitCart.push({
+        uid: Date.now() + Math.random(),
+        loan_no: item.loan_no || '-',
+        type_code: item.type_code,
+        title: item.title,
+        direction: item.direction,
+        amount: parseFloat(item.amount) || 0,
+        details: item.details || {}
+      });
+      renderVisitCart();
+    }
+
+    // கூடையிலிருந்து ஒரு உருப்படியை நீக்கும் செயல்பாடு
+    function removeActionFromVisitCart(uid) {
+      activeVisitCart = activeVisitCart.filter(x => x.uid !== uid);
+      renderVisitCart();
+    }
+
+    // கூடையைத் திரையில் புதுப்பித்து நிகரக் கணக்கிடும் செயல்பாடு
+    function renderVisitCart() {
+      const container = document.getElementById('visitCartItemsContainer');
+      const badge = document.getElementById('cartItemCountBadge');
+      if (!container) return;
+
+      if (badge) badge.innerText = activeVisitCart.length;
+
+      if (activeVisitCart.length === 0) {
+        container.innerHTML = `
+          <div class="py-10 text-center text-slate-400 text-xs font-bold space-y-1">
+            <div class="text-2xl opacity-50">🛍️</div>
+            <div>கூடையில் நடவடிக்கைகள் எதுவும் இல்லை</div>
+            <div class="text-[10px] font-normal">வட்டி, பகுதி அசல் அல்லது புதிய அடகினைச் சேர்க்கவும்</div>
+          </div>
+        `;
+        updateCartTotals(0, 0);
+        return;
+      }
+
+      let totIn = 0;
+      let totOut = 0;
+
+      container.innerHTML = activeVisitCart.map(item => {
+        if (item.direction === 'IN') totIn += item.amount;
+        else totOut += item.amount;
+
+        const isIn = item.direction === 'IN';
+        const dirBadge = isIn
+          ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800">வரவு IN (+)</span>`
+          : `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800">பற்று OUT (-)</span>`;
+
+        const amtColor = isIn ? 'text-emerald-700' : 'text-rose-600';
+
+        return `
+          <div class="bg-white p-2.5 rounded-xl border border-purple-200 shadow-sm flex items-center justify-between gap-2">
+            <div class="space-y-0.5 overflow-hidden">
+              <div class="flex items-center gap-1.5">
+                <span class="font-mono text-xs font-black text-purple-900">${item.loan_no}</span>
+                ${dirBadge}
+              </div>
+              <div class="text-[11px] font-bold text-slate-600 truncate">${item.title}</div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span class="font-mono text-xs font-black ${amtColor}">₹${item.amount.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+              <button type="button" onclick="removeActionFromVisitCart(${item.uid})" class="w-6 h-6 rounded-full bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 font-bold text-xs flex items-center justify-center transition cursor-pointer">✕</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateCartTotals(totIn, totOut);
+    }
+
+    function updateCartTotals(totIn, totOut) {
+      document.getElementById('cartTotalIn').innerText = '₹ ' + totIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
+      document.getElementById('cartTotalOut').innerText = '₹ ' + totOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
+
+      const netBox = document.getElementById('cartNetResultBox');
+      const netLabel = document.getElementById('cartNetLabel');
+      const netAmtElem = document.getElementById('cartNetAmount');
+      const netHint = document.getElementById('cartNetDirectionHint');
+      const cashInput = document.getElementById('cartPayCash');
+      const bankInput = document.getElementById('cartPayBank');
+
+      const diff = totIn - totOut;
+      const absNet = Math.abs(diff);
+
+      if (diff > 0) {
+        // வாடிக்கையாளர் கம்பெனிக்குத் தர வேண்டும் (INWARD)
+        netBox.className = "p-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 flex flex-col gap-1";
+        netLabel.className = "text-xs font-extrabold text-emerald-900";
+        netLabel.innerText = "நிகர வசூல் (Receivable):";
+        netAmtElem.className = "font-mono text-base font-black text-emerald-700";
+        netAmtElem.innerText = "(+) ₹ " + absNet.toLocaleString('en-IN', {minimumFractionDigits: 2});
+        netHint.className = "text-[10px] font-bold text-emerald-800";
+        netHint.innerText = "வாடிக்கையாளரிடமிருந்து பெற வேண்டிய தொகை";
+      } else if (diff < 0) {
+        // கம்பெனி வாடிக்கையாளருக்குத் தர வேண்டும் (OUTWARD)
+        netBox.className = "p-3 rounded-xl border-2 border-rose-300 bg-rose-50 flex flex-col gap-1";
+        netLabel.className = "text-xs font-extrabold text-rose-900";
+        netLabel.innerText = "நிகர பட்டுவாடா (Payable):";
+        netAmtElem.className = "font-mono text-base font-black text-rose-600";
+        netAmtElem.innerText = "(-) ₹ " + absNet.toLocaleString('en-IN', {minimumFractionDigits: 2});
+        netHint.className = "text-[10px] font-bold text-rose-800";
+        netHint.innerText = "வாடிக்கையாளருக்கு வழங்க வேண்டிய தொகை";
+      } else {
+        netBox.className = "p-3 rounded-xl border-2 border-purple-200 bg-purple-50 flex flex-col gap-1";
+        netLabel.className = "text-xs font-extrabold text-purple-900";
+        netLabel.innerText = "நிகர தொகை (Net):";
+        netAmtElem.className = "font-mono text-base font-black text-purple-950";
+        netAmtElem.innerText = "₹ 0.00";
+        netHint.className = "text-[10px] font-bold text-purple-700";
+        netHint.innerText = "சமநிலை (பணம் கொடுக்க/வாங்க தேவையில்லை)";
+      }
+
+      // இயல்பாக முழு நிகரத் தொகையையும் ரொக்கத்தில் நிரப்புதல்
+      if (cashInput && bankInput) {
+        cashInput.value = absNet.toFixed(2);
+        bankInput.value = "0";
+      }
+    }
+
+    function validateCartSplit(changedField) {
+      const totIn = activeVisitCart.filter(x => x.direction === 'IN').reduce((s, x) => s + x.amount, 0);
+      const totOut = activeVisitCart.filter(x => x.direction === 'OUT').reduce((s, x) => s + x.amount, 0);
+      const absNet = Math.abs(totIn - totOut);
+
+      const cashEl = document.getElementById('cartPayCash');
+      const bankEl = document.getElementById('cartPayBank');
+      let cVal = parseFloat(cashEl.value) || 0;
+      let bVal = parseFloat(bankEl.value) || 0;
+
+      if (changedField === 'CASH') {
+        if (cVal > absNet) { cVal = absNet; cashEl.value = cVal.toFixed(2); }
+        bankEl.value = Math.max(0, absNet - cVal).toFixed(2);
+      } else {
+        if (bVal > absNet) { bVal = absNet; bankEl.value = bVal.toFixed(2); }
+        cashEl.value = Math.max(0, absNet - bVal).toFixed(2);
+      }
+    }
+
+    async function completeMultiActionCheckout() {
+      if (activeVisitCart.length === 0) {
+        return alert("⚠️ கூடையில் குறைந்தபட்சம் ஒரு நடவடிக்கையையாவது சேர்க்கவும்!");
+      }
+      alert("✅ கூடை செட்டில்மென்ட் தயார் நிலையில் உள்ளது! மொத்த உருப்படிகள்: " + activeVisitCart.length);
+    }
+
     // அறிக்கையைத் திறந்து தரவுகளை ஏற்றும் செயல்பாடு
     async function openDaySummaryReportModal() {
       const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;

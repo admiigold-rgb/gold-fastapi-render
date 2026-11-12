@@ -86,6 +86,7 @@ class StaffPayload(BaseModel):
     can_approve_otp_exempt: bool = False
     can_approve_expenses: bool = False  
     can_manage_treasury: bool = False
+    can_approve_rebate: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -407,7 +408,8 @@ def staff_unified_login(data: LoginRequest):
                 "can_manage_users": True if is_admin_role else bool(user.get("can_manage_users", False)),
                 "can_approve_otp_exempt": True if is_admin_role else bool(user.get("can_approve_otp_exempt", False)),
                 "can_approve_expenses": True if is_admin_role else bool(user.get("can_approve_expenses", False)),
-                "can_manage_treasury": True if is_admin_role else bool(user.get("can_manage_treasury", False))
+                "can_manage_treasury": True if is_admin_role else bool(user.get("can_manage_treasury", False)),
+                "can_approve_rebate": True if is_admin_role else bool(user.get("can_approve_rebate", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -1396,6 +1398,8 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     "interest_paid": int_paid,
                     "principal_paid": prin_paid,
                     "discount_amount": disc_amt,
+                    "other_charges": float(meta.get("other_charges", 0)),
+                    "auction_notice_charges": float(meta.get("auction_charges", 0)),
                     "days_calculated": meta.get("days_calculated", 0),
                     "rate_applied": meta.get("rate_applied", 0),
                     "transaction_date": txn_date
@@ -1521,7 +1525,8 @@ def update_staff(staff_id: int, data: StaffPayload):
         "can_manage_users": data.can_manage_users,
         "can_approve_otp_exempt": data.can_approve_otp_exempt,
         "can_approve_expenses": data.can_approve_expenses,
-        "can_manage_treasury": data.can_manage_treasury
+        "can_manage_treasury": data.can_manage_treasury,
+        "can_approve_rebate": data.can_approve_rebate
     }
     if data.password:
         update_dict["password"] = data.password
@@ -1902,5 +1907,76 @@ def approve_treasury_transfer(data: TreasuryApprovalPayload):
         }).eq("id", data.transfer_id).execute()
 
         return {"status": "success", "message": f"பரிமாற்றம் வெற்றிகரமாக '{status}' செய்யப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+# ==========================================
+# 🏷️ வட்டி தள்ளுபடி (Interest Rebate) ஒப்புதல் மையம்
+# ==========================================
+
+@app.post("/api/rebate/request")
+def request_interest_rebate(data: dict):
+    try:
+        rec = {
+            "visit_id": data.get("visit_id"),
+            "loan_id": data.get("loan_id"),
+            "loan_no": data.get("loan_no"),
+            "customer_id": data.get("customer_id"),
+            "branch_id": data.get("branch_id") or 1,
+            "calculated_interest": float(data.get("calculated_interest") or 0),
+            "requested_rebate": float(data.get("requested_rebate") or 0),
+            "reason": data.get("reason") or "வட்டி தள்ளுபடி கோரிக்கை",
+            "status": "PENDING",
+            "requested_by": data.get("staff_id") or 1
+        }
+        res = supabase.table("test_rebate_approvals").insert(rec).execute()
+        req_id = res.data[0]["id"] if res.data else None
+        return {"status": "success", "request_id": req_id, "message": "வட்டி தள்ளுபடி ஒப்புதலுக்கு அனுப்பப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/rebate/status/{req_id}")
+def check_rebate_status(req_id: int):
+    try:
+        res = supabase.table("test_rebate_approvals").select("status").eq("id", req_id).execute()
+        status = res.data[0]["status"] if res.data else "PENDING"
+        return {"status": "success", "approval_status": status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/hq/pending-rebates")
+def get_pending_rebates():
+    try:
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        c_map = {c["id"]: c for c in (cust_res.data or [])}
+
+        br_res = supabase.table("test_branches").select("id, branch_name").execute()
+        b_map = {b["id"]: b.get("branch_name") for b in (br_res.data or [])}
+
+        res = supabase.table("test_rebate_approvals").select("*").eq("status", "PENDING").order("id", desc=True).execute()
+        data = res.data or []
+        for r in data:
+            c = c_map.get(r.get("customer_id"), {})
+            r["customer_name"] = c.get("name", "-")
+            r["customer_mobile"] = c.get("mobile", "-")
+            r["branch_name"] = b_map.get(r.get("branch_id"), f"கிளை #{r.get('branch_id')}")
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/approve-rebate")
+def approve_rebate_request(data: dict):
+    try:
+        req_id = data.get("request_id")
+        action = data.get("action") # APPROVE / REJECT
+        admin_id = data.get("admin_id") or 1
+        new_status = "APPROVED" if action == "APPROVE" else "REJECTED"
+
+        supabase.table("test_rebate_approvals").update({
+            "status": new_status,
+            "approved_by": admin_id,
+            "approved_at": datetime.now(IST).isoformat()
+        }).eq("id", req_id).execute()
+
+        return {"status": "success", "message": f"வட்டி தள்ளுபடி கோரிக்கை '{new_status}' செய்யப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

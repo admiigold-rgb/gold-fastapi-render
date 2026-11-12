@@ -2527,6 +2527,7 @@
       activeVisitId = null;
       ornamentList = [];
       cartItems = [];
+      selectedMode = "FULL_CASH"; // 👈 அடுத்த வாடிக்கையாளருக்கு இயல்புநிலை கட்டண முறை
       renderOrnamentsTable();
       renderCart();
       document.getElementById('activeCustomerSection').classList.add('hidden');
@@ -3064,8 +3065,24 @@
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
       document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
       updateDenomTitle();
+
+      // 🔄 1. OTP மற்றும் விலக்கு பட்டன்களை எப்போதும் இயல்பு நிலைக்கு மீட்டமைத்தல்
+      const btnOtp = document.getElementById('btn_send_otp');
+      const btnExempt = document.getElementById('btnExemptOtpTrigger');
+      if (btnExempt) btnExempt.classList.remove('hidden');
+      if (btnOtp) {
+        btnOtp.innerText = "SMS OTP அனுப்பு 📲";
+        btnOtp.disabled = false;
+        btnOtp.className = "brand-gradient-gold-btn px-5 py-2 rounded-xl text-xs font-black shadow border border-yellow-500 cursor-pointer";
+        btnOtp.onclick = requestOtpFromCustomer;
+      }
+
+      // 🔄 2. முந்தைய வருகையின் ரூபாய் தாள்கள் எண்ணிக்கையை 0 ஆக்குதல்
+      ['d500', 'd200', 'd100', 'd50', 'd20', 'd10', 'dcoins'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = 0;
+      });
       
-      // 👈 ஏற்கனவே தேர்வு செய்யப்பட்ட வங்கி / ஸ்பிளிட் முறை மாறாமல் இருக்க வேண்டும்
       const modeToSet = defaultMode || selectedMode || 'FULL_CASH';
       setPaymentMode(modeToSet);
       

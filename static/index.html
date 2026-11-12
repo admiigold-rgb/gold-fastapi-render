@@ -4994,6 +4994,7 @@
       document.getElementById('rep_input_discount').value = 0;
       switchRepaymentTab(actionType);
       document.getElementById('loanRepaymentModal').classList.remove('hidden');
+      document.getElementById('loanRepaymentModal').style.display = 'flex';
     }
 
     function switchRepaymentTab(actionType) {
@@ -5090,11 +5091,23 @@
       document.getElementById('rep_total_payable').innerText = `₹ ${netCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
       document.getElementById('rep_new_balance_preview').innerText = `புதிய நிலுவை அசல்: ₹ ${newBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     }
-
+    function closeLoanRepaymentModal() {
+      const m = document.getElementById('loanRepaymentModal');
+      if (m) {
+        m.classList.add('hidden');
+        m.style.display = 'none';
+      }
+    }
     async function addRepaymentItemToCart() {
       const actionType = document.getElementById('rep_action_type').value;
       const loanId = parseInt(document.getElementById('rep_loan_id').value);
       const loanNo = document.getElementById('rep_loan_no').value;
+
+      // 🔒 1. ஏற்கனவே இதே கடன் கூடையில் இருந்தால் மீண்டும் சேர்ப்பதைத் தடுத்தல்
+      if (cartItems.some(c => Number(c.loan_id) === Number(loanId) && c.is_repayment === true)) {
+        closeLoanRepaymentModal();
+        return alert(`⚠️ கடன் எண் ${loanNo} ஏற்கனவே கூடையில் சேர்க்கப்பட்டுள்ளது!`);
+      }
 
       const intPaid = parseFloat(document.getElementById('rep_input_interest').value) || 0;
       const discount = parseFloat(document.getElementById('rep_input_discount').value) || 0;
@@ -5132,7 +5145,6 @@
           const data = await res.json();
           if (!res.ok) return alert("❌ பிழை: " + data.detail);
 
-          // கூடையில் தற்காலிகமாகச் சேர்த்துவிட்டு Auto-Hold செய்தல்
           cartItems.push({
             is_repayment: true,
             action_type: actionType,

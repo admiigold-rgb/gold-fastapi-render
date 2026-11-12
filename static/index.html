@@ -366,6 +366,32 @@
           </h2>
           <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition cursor-pointer">புதுப்பி 🔄</button>
         </div>
+
+        <!-- 🏷️ வட்டி தள்ளுபடி (Interest Rebate) ஒப்புதல் கோரிக்கைகள் -->
+        <div id="hqRebateSection" class="space-y-2 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl border-2 border-purple-400 shadow-sm">
+          <div class="flex justify-between items-center border-b border-purple-200 pb-2">
+            <h3 class="text-xs font-black text-purple-950 uppercase flex items-center gap-2">
+              <span>🏷️</span> வட்டி தள்ளுபடி ஒப்புதல் கோரிக்கைகள் (Interest Rebate Approval):
+            </h3>
+            <span class="text-[10px] bg-purple-200 text-purple-950 px-2 py-0.5 rounded font-black border border-purple-300">சிறப்பு அனுமதி</span>
+          </div>
+          <div class="overflow-x-auto border-2 border-purple-200 rounded-xl bg-white">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-purple-100 text-purple-950 border-b border-purple-200">
+                <tr>
+                  <th class="p-2.5 font-bold">கிளை & கடன் எண்</th>
+                  <th class="p-2.5 font-bold">வாடிக்கையாளர்</th>
+                  <th class="p-2.5 font-bold">அசல் வட்டி vs தள்ளுபடி</th>
+                  <th class="p-2.5 font-bold">காரணம்</th>
+                  <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
+                </tr>
+              </thead>
+              <tbody id="hqRebateTableBody" class="divide-y divide-purple-100 text-slate-700">
+                <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">வட்டி தள்ளுபடி கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
         
         <!-- OTP விலக்குக் கோரிக்கைகள் -->
         <div id="hqOtpExemptSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-2xl border-2 border-yellow-400 shadow-sm">
@@ -769,6 +795,11 @@
               <label class="flex items-center space-x-2 font-bold text-amber-900 col-span-1 sm:col-span-2 bg-yellow-100/80 p-2 rounded-xl border border-yellow-300 hover:bg-yellow-100 cursor-pointer">
                 <input type="checkbox" id="perm_otp_exempt" class="w-4 h-4 text-yellow-600 rounded">
                 <span>⚡ 7. அவசர OTP விலக்கு ஒப்புதல் உரிமை (HQ Exemption Authority)</span>
+              </label>
+              <!-- சிறப்பு அனுமதி: வட்டி தள்ளுபடி ஒப்புதல் -->
+              <label class="flex items-center space-x-2 font-bold text-purple-950 col-span-1 sm:col-span-2 bg-purple-100/80 p-2 rounded-xl border border-purple-300 hover:bg-purple-100 cursor-pointer">
+                <input type="checkbox" id="perm_rebate" class="w-4 h-4 text-purple-700 rounded">
+                <span>🏷️ 8. வட்டி தள்ளுபடி ஒப்புதல் உரிமை (Approve Interest Rebate)</span>
               </label>
             </div>
         
@@ -1229,7 +1260,7 @@
 
     <!-- 💰 வட்டி / பகுதி அசல் / கடன் முடித்தல் கணக்கீட்டு Modal -->
     <div id="loanRepaymentModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-3 z-50">
-      <div class="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-4 border-2 border-brand-violet">
+      <div class="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-3.5 max-h-[94vh] overflow-y-auto border-2 border-brand-violet">
         
         <div class="flex justify-between items-center border-b border-purple-100 pb-2">
           <div>
@@ -1244,7 +1275,7 @@
         <input type="hidden" id="rep_action_type">
 
         <!-- கடன் & வட்டி விவரப் பலகை -->
-        <div class="bg-purple-50/80 p-3.5 rounded-2xl border border-purple-200 grid grid-cols-2 gap-2.5 text-xs">
+        <div class="bg-purple-50/80 p-3 rounded-2xl border border-purple-200 grid grid-cols-2 gap-2 text-xs">
           <div>
             <span class="text-slate-500 block">நிலுவை அசல் (Principal):</span>
             <b id="rep_outstanding_principal" class="text-sm font-black text-slate-900 font-mono">₹ 0.00</b>
@@ -1270,38 +1301,56 @@
           <button type="button" id="tab_rep_close" onclick="switchRepaymentTab('FULL_CLOSURE')" class="py-2 text-xs font-bold rounded-xl border-2 bg-white border-slate-200 text-slate-600">முழு கணக்கு முடிவு</button>
         </div>
 
-        <!-- உள்ளீட்டுப் பகுதி -->
-        <div class="space-y-3 text-xs bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">செலுத்தும் வட்டி (₹) *</label>
-              <input type="number" id="rep_input_interest" oninput="recalcRepaymentTotal()" class="w-full border-2 border-purple-200 p-2 rounded-xl font-mono font-black text-rose-600 bg-white">
-            </div>
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">குறைக்கும் அசல் (₹)</label>
-              <input type="number" id="rep_input_principal" oninput="recalcRepaymentTotal()" class="w-full border-2 border-purple-200 p-2 rounded-xl font-mono font-black text-emerald-700 bg-white">
-            </div>
+        <!-- நீங்கள் கேட்ட சரியான வரிசையில் உள்ளீட்டுப் பெட்டிகள் -->
+        <div class="space-y-2.5 text-xs bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+          
+          <!-- 1. செலுத்தும் வட்டி (₹) - Auto / ReadOnly -->
+          <div class="flex items-center justify-between gap-3">
+            <label class="font-bold text-slate-700 w-1/2">1. செலுத்தும் வட்டி (₹) 🔒</label>
+            <input type="number" id="rep_input_interest" readonly class="w-1/2 border-2 border-slate-200 p-2 rounded-xl font-mono font-black text-rose-600 bg-slate-100 text-right cursor-not-allowed">
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block font-bold text-slate-700 mb-1">வட்டி தள்ளுபடி (Rebate ₹)</label>
-              <input type="number" id="rep_input_discount" value="0" oninput="recalcRepaymentTotal()" class="w-full border border-slate-300 p-2 rounded-xl font-mono font-bold text-slate-700 bg-white">
-            </div>
-            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2 flex flex-col justify-center text-right">
-              <span class="text-[10px] font-bold text-emerald-800">கூடையில் சேரும் வரவு (+):</span>
-              <span id="rep_total_payable" class="text-base font-black text-emerald-700 font-mono">₹ 0.00</span>
-            </div>
+          <!-- 2. வட்டி தள்ளுபடி (Rebate ₹) - Always Editable (Needs Approval if > 0) -->
+          <div class="flex items-center justify-between gap-3">
+            <label class="font-bold text-amber-900 w-1/2">2. வட்டி தள்ளுபடி (Rebate ₹) ✏️</label>
+            <input type="number" id="rep_input_discount" value="0" min="0" oninput="recalcRepaymentTotal()" class="w-1/2 border-2 border-amber-400 p-2 rounded-xl font-mono font-black text-amber-950 bg-yellow-50 text-right focus:outline-none">
           </div>
 
-          <div id="rep_new_balance_preview" class="text-[11px] font-bold text-indigo-800 text-right">
-            புதிய நிலுவை அசல்: ₹ 0.00
+          <!-- 3. இதர கட்டணம் (₹) - Auto / ReadOnly -->
+          <div class="flex items-center justify-between gap-3">
+            <label class="font-bold text-slate-700 w-1/2">3. இதர கட்டணம் (₹) 🔒</label>
+            <input type="number" id="rep_input_other_charges" readonly value="0" class="w-1/2 border-2 border-slate-200 p-2 rounded-xl font-mono font-bold text-slate-700 bg-slate-100 text-right cursor-not-allowed">
+          </div>
+
+          <!-- 4. தகவல் & ஏல கட்டணம் (₹) - Auto / ReadOnly -->
+          <div class="flex items-center justify-between gap-3">
+            <label class="font-bold text-slate-700 w-1/2">4. தகவல் & ஏல கட்டணம் (₹) 🔒</label>
+            <input type="number" id="rep_input_auction_charges" readonly value="0" class="w-1/2 border-2 border-slate-200 p-2 rounded-xl font-mono font-bold text-slate-700 bg-slate-100 text-right cursor-not-allowed">
+          </div>
+
+          <!-- 5. குறைக்கும் அசல் (₹) - Editable ONLY in Part Principal -->
+          <div class="flex items-center justify-between gap-3 pt-1 border-t border-slate-200">
+            <label id="lbl_rep_principal" class="font-bold text-slate-700 w-1/2">5. குறைக்கும் அசல் (₹)</label>
+            <input type="number" id="rep_input_principal" oninput="recalcRepaymentTotal()" class="w-1/2 border-2 border-purple-200 p-2 rounded-xl font-mono font-black text-emerald-700 bg-white text-right">
+          </div>
+
+          <!-- மொத்த வரவு & புதிய நிலுவை -->
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex justify-between items-center mt-2">
+            <div>
+              <span class="text-[10px] font-bold text-emerald-800 block">கூடையில் சேரும் நிகர வரவு (+):</span>
+              <span id="rep_new_balance_preview" class="text-[11px] font-bold text-indigo-800">புதிய நிலுவை அசல்: ₹ 0.00</span>
+            </div>
+            <span id="rep_total_payable" class="text-base font-black text-emerald-700 font-mono">₹ 0.00</span>
+          </div>
+
+          <div id="rebateApprovalNotice" class="hidden p-2 rounded-xl bg-amber-100 border border-amber-400 text-[11px] font-bold text-amber-950 text-center">
+            ⚠️ வட்டி தள்ளுபடி உள்ளிடப்பட்டுள்ளது! இதற்கு அங்கீகரிக்கப்பட்ட அதிகாரியின் ஒப்புதல் அவசியம் (Auto-Hold ஆகும்).
           </div>
         </div>
 
         <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
           <button type="button" onclick="closeLoanRepaymentModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து</button>
-          <button type="button" onclick="addRepaymentItemToCart()" class="brand-gradient-gold-btn px-6 py-2.5 rounded-xl text-xs font-black shadow border border-yellow-500">
+          <button type="button" id="btnRepaymentSubmitAction" onclick="addRepaymentItemToCart()" class="brand-gradient-gold-btn px-6 py-2.5 rounded-xl text-xs font-black shadow border border-yellow-500">
             கூடையில் சேர் (Add to Cart) 🛒
           </button>
         </div>
@@ -1644,7 +1693,7 @@
       const activeTabs = [];
 
       if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
-      if (p.can_approve_kyc === true || p.can_approve_updates === true || p.can_approve_otp_exempt === true) {
+      if (p.can_approve_kyc === true || p.can_approve_updates === true || p.can_approve_otp_exempt === true || p.can_approve_rebate === true) {
         activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
       }
       if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
@@ -2846,18 +2895,36 @@
       let updated = false;
 
       for (let d of drafts) {
-        if (d.exemption_status === 'WAITING_HQ' && d.visit_id) {
-          try {
-            const res = await fetch(`/api/otp/exemption-status?visit_id=${d.visit_id}`);
-            const data = await res.json();
-            if (data.data?.otp_exempted === true) {
-              d.exemption_status = 'APPROVED';
-              updated = true;
-            } else if (data.data?.otp_exemption_status === 'REJECTED') {
-              d.exemption_status = 'NONE';
-              updated = true;
-            }
-          } catch(e) {}
+        if (d.exemption_status === 'WAITING_HQ') {
+          // 1. வட்டி தள்ளுபடி கோரிக்கை உள்ளதா எனப் பார்த்தல்
+          const rebateItem = (d.cart || []).find(item => item.rebate_req_id);
+          if (rebateItem) {
+            try {
+              const rRes = await fetch(`/api/rebate/status/${rebateItem.rebate_req_id}`);
+              const rData = await rRes.json();
+              if (rData.approval_status === 'APPROVED') {
+                d.exemption_status = 'APPROVED';
+                updated = true;
+              } else if (rData.approval_status === 'REJECTED') {
+                d.exemption_status = 'NONE';
+                updated = true;
+              }
+            } catch(e) {}
+          } 
+          // 2. இல்லையெனில் அவசர OTP விலக்கு கோரிக்கையைப் பார்த்தல்
+          else if (d.visit_id) {
+            try {
+              const res = await fetch(`/api/otp/exemption-status?visit_id=${d.visit_id}`);
+              const data = await res.json();
+              if (data.data?.otp_exempted === true) {
+                d.exemption_status = 'APPROVED';
+                updated = true;
+              } else if (data.data?.otp_exemption_status === 'REJECTED') {
+                d.exemption_status = 'NONE';
+                updated = true;
+              }
+            } catch(e) {}
+          }
         }
       }
 
@@ -4324,6 +4391,7 @@
     }
 
     async function loadAllHqApprovals() {
+      await loadPendingRebatesHQ();
       await loadHqOtpExemptions();
       loadPendingExpensesHQ();
       loadPendingTreasuryTransfersHQ();
@@ -4859,7 +4927,6 @@
       const loan = customerActiveLoansCache.find(l => l.id === loanId);
       if (!loan) return alert("கடன் விபரம் கிடைக்கவில்லை.");
 
-      // ஏற்கனவே இதே கடன் கூடையில் உள்ளதா எனச் சரிபார்த்தல்
       if (cartItems.some(c => c.loan_id === loan.id && c.is_repayment)) {
         return alert(`⚠️ கடன் எண் ${loan.loan_no} ஏற்கனவே கூடையில் சேர்க்கப்பட்டுள்ளது!`);
       }
@@ -4869,37 +4936,55 @@
       document.getElementById('rep_loan_no').value = loan.loan_no;
       document.getElementById('repModalSubTitle').innerText = `கடன் எண்: ${loan.loan_no} | திட்டம்: ${loan.scheme_name}`;
 
-      // 1. கவுண்ட்டர் தேதியிலிருந்து கடந்த நாட்களைக் கணக்கிடுதல்
+      // 1. கடன் ஆரம்பத் தேதி & கடைசி வட்டி தேதி கணக்கீடு
       const txnDateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
-      const lastDateStr = loan.last_interest_paid_date || loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
+      const origLoanDateStr = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
+      const lastDateStr = loan.last_interest_paid_date || origLoanDateStr;
 
       const d1 = new Date(lastDateStr);
       const d2 = new Date(txnDateStr);
       let diffDays = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
 
-      // 2. திட்டத்தின் விதிப்படி (Scheme Slabs & Min Days) வட்டி விகிதம் கண்டறிதல்
+      // கடன் தொடங்கியதிலிருந்து மொத்த நாட்கள் (ஏலக் கட்டணம் சரிபார்க்க)
+      const totalLoanDays = Math.max(1, Math.ceil((d2 - new Date(origLoanDateStr)) / (1000 * 60 * 60 * 24)));
+
       const schemeObj = schemesCache.find(s => s.scheme_name === loan.scheme_name);
       const minDays = schemeObj?.min_interest_days || 7;
       const calcDays = Math.max(diffDays, minDays);
 
-      let annualRate = 12.0; // இயல்புநிலை வட்டி
+      let annualRate = 12.0;
       if (schemeObj && Array.isArray(schemeObj.interest_slabs) && schemeObj.interest_slabs.length > 0) {
         const matchedSlab = schemeObj.interest_slabs.find(sl => calcDays >= sl.from_days && calcDays <= sl.to_days);
-        if (matchedSlab) {
-          annualRate = parseFloat(matchedSlab.rate_percent);
-        } else {
-          // கடைசி அதிகபட்ச ஸ்லேப் விகிதம்
-          annualRate = parseFloat(schemeObj.interest_slabs[schemeObj.interest_slabs.length - 1].rate_percent);
-        }
+        annualRate = matchedSlab ? parseFloat(matchedSlab.rate_percent) : parseFloat(schemeObj.interest_slabs[schemeObj.interest_slabs.length - 1].rate_percent);
       }
 
       const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
       const calcInterest = Math.round((principal * annualRate * calcDays) / (365 * 100));
 
+      // 2. இதர கட்டணம் (RELEASE Processing Charge) & தகவல்/ஏல கட்டணம் (Auction Notice Charge)
+      let otherChg = 0;
+      if (schemeObj && schemeObj.processing_charge_type === 'RELEASE') {
+        if (schemeObj.processing_charge_calc === 'AMOUNT') {
+          otherChg = parseFloat(schemeObj.processing_charge_value || 0);
+        } else {
+          otherChg = Math.round((principal * parseFloat(schemeObj.processing_charge_value || 0)) / 100);
+        }
+      }
+
+      let auctionChg = 0;
+      if (schemeObj) {
+        const tenureDays = ((schemeObj.tenure_months || 12) * 30) + (schemeObj.auction_grace_days || 30);
+        if (totalLoanDays > tenureDays) {
+          auctionChg = parseFloat(schemeObj.auction_charge_amount || 0);
+        }
+      }
+
       currentRepayLoanObj._calcInterest = calcInterest;
       currentRepayLoanObj._principal = principal;
       currentRepayLoanObj._calcDays = calcDays;
       currentRepayLoanObj._annualRate = annualRate;
+      currentRepayLoanObj._otherChg = otherChg;
+      currentRepayLoanObj._auctionChg = auctionChg;
 
       document.getElementById('rep_outstanding_principal').innerText = `₹ ${principal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
       document.getElementById('rep_days_and_rate').innerText = `${calcDays} நாட்கள் (${annualRate}% p.a.)`;
@@ -4909,11 +4994,6 @@
       document.getElementById('rep_input_discount').value = 0;
       switchRepaymentTab(actionType);
       document.getElementById('loanRepaymentModal').classList.remove('hidden');
-    }
-
-    function closeLoanRepaymentModal() {
-      const m = document.getElementById('loanRepaymentModal');
-      if (m) m.classList.add('hidden');
     }
 
     function switchRepaymentTab(actionType) {
@@ -4934,27 +5014,41 @@
       });
 
       const intInput = document.getElementById('rep_input_interest');
+      const otherInput = document.getElementById('rep_input_other_charges');
+      const auctionInput = document.getElementById('rep_input_auction_charges');
       const prinInput = document.getElementById('rep_input_principal');
+      const prinLabel = document.getElementById('lbl_rep_principal');
 
       const calcInt = currentRepayLoanObj._calcInterest || 0;
       const prin = currentRepayLoanObj._principal || 0;
+      const otherChg = currentRepayLoanObj._otherChg || 0;
+      const auctionChg = currentRepayLoanObj._auctionChg || 0;
+
+      intInput.value = calcInt;
+      auctionInput.value = auctionChg;
 
       if (actionType === 'INTEREST') {
         document.getElementById('repModalTitle').innerText = "வட்டி செலுத்துதல் (Interest Payment)";
-        intInput.value = calcInt;
+        otherInput.value = 0;
         prinInput.value = 0;
         prinInput.readOnly = true;
+        prinInput.className = "w-1/2 border-2 border-slate-200 p-2 rounded-xl font-mono font-black text-slate-500 bg-slate-100 text-right cursor-not-allowed";
+        if (prinLabel) prinLabel.innerText = "5. குறைக்கும் அசல் (₹) 🔒";
       } else if (actionType === 'PART_PRINCIPAL') {
         document.getElementById('repModalTitle').innerText = "வட்டியுடன் பகுதி அசல் செலுத்துதல் (Part Payment)";
-        intInput.value = calcInt;
+        otherInput.value = 0;
         prinInput.value = '';
-        prinInput.placeholder = "அசல் தொகை உள்ளிடவும்";
+        prinInput.placeholder = "தொகை உள்ளிடவும்";
         prinInput.readOnly = false;
+        prinInput.className = "w-1/2 border-2 border-purple-400 p-2 rounded-xl font-mono font-black text-emerald-700 bg-white text-right focus:outline-none";
+        if (prinLabel) prinLabel.innerText = "5. குறைக்கும் அசல் (₹) ✏️";
       } else {
         document.getElementById('repModalTitle').innerText = "முழு கடன் கணக்கு முடித்தல் / மீட்டல் (Full Closure)";
-        intInput.value = calcInt;
+        otherInput.value = otherChg;
         prinInput.value = prin;
         prinInput.readOnly = true;
+        prinInput.className = "w-1/2 border-2 border-slate-200 p-2 rounded-xl font-mono font-black text-emerald-700 bg-slate-100 text-right cursor-not-allowed";
+        if (prinLabel) prinLabel.innerText = "5. குறைக்கும் அசல் (₹) 🔒";
       }
 
       recalcRepaymentTotal();
@@ -4962,8 +5056,10 @@
 
     function recalcRepaymentTotal() {
       const intVal = parseFloat(document.getElementById('rep_input_interest').value) || 0;
-      let prinVal = parseFloat(document.getElementById('rep_input_principal').value) || 0;
       const discVal = parseFloat(document.getElementById('rep_input_discount').value) || 0;
+      const otherVal = parseFloat(document.getElementById('rep_input_other_charges').value) || 0;
+      const auctionVal = parseFloat(document.getElementById('rep_input_auction_charges').value) || 0;
+      let prinVal = parseFloat(document.getElementById('rep_input_principal').value) || 0;
       const maxPrin = currentRepayLoanObj?._principal || 0;
 
       if (prinVal > maxPrin) {
@@ -4972,29 +5068,99 @@
         document.getElementById('rep_input_principal').value = maxPrin;
       }
 
-      const netCredit = Math.max(0, (intVal + prinVal) - discVal);
+      if (discVal > intVal) {
+        alert(`வட்டித் தொகைக்கு (₹${intVal}) மேல் தள்ளுபடி வழங்க முடியாது!`);
+        document.getElementById('rep_input_discount').value = intVal;
+        return recalcRepaymentTotal();
+      }
+
+      const noticeBox = document.getElementById('rebateApprovalNotice');
+      const actionBtn = document.getElementById('btnRepaymentSubmitAction');
+      if (discVal > 0) {
+        if (noticeBox) noticeBox.classList.remove('hidden');
+        if (actionBtn) actionBtn.innerText = "🏷️ தள்ளுபடி ஒப்புதலுக்கு அனுப்பு & Hold";
+      } else {
+        if (noticeBox) noticeBox.classList.add('hidden');
+        if (actionBtn) actionBtn.innerText = "கூடையில் சேர் (Add to Cart) 🛒";
+      }
+
+      const netCredit = Math.max(0, (intVal - discVal) + otherVal + auctionVal + prinVal);
       const newBalance = Math.max(0, maxPrin - prinVal);
 
       document.getElementById('rep_total_payable').innerText = `₹ ${netCredit.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
       document.getElementById('rep_new_balance_preview').innerText = `புதிய நிலுவை அசல்: ₹ ${newBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
     }
 
-    function addRepaymentItemToCart() {
+    async function addRepaymentItemToCart() {
       const actionType = document.getElementById('rep_action_type').value;
       const loanId = parseInt(document.getElementById('rep_loan_id').value);
       const loanNo = document.getElementById('rep_loan_no').value;
 
       const intPaid = parseFloat(document.getElementById('rep_input_interest').value) || 0;
-      const prinPaid = parseFloat(document.getElementById('rep_input_principal').value) || 0;
       const discount = parseFloat(document.getElementById('rep_input_discount').value) || 0;
-      const totalCredit = Math.max(0, (intPaid + prinPaid) - discount);
+      const otherChg = parseFloat(document.getElementById('rep_input_other_charges').value) || 0;
+      const auctionChg = parseFloat(document.getElementById('rep_input_auction_charges').value) || 0;
+      const prinPaid = parseFloat(document.getElementById('rep_input_principal').value) || 0;
 
-      if (totalCredit <= 0) {
-        return alert("சரியான தொகையை உள்ளிடவும்.");
-      }
+      const totalCredit = Math.max(0, (intPaid - discount) + otherChg + auctionChg + prinPaid);
 
-      if (actionType === 'PART_PRINCIPAL' && prinPaid <= 0) {
-        return alert("பகுதி அசல் தொகையை உள்ளிடவும்.");
+      if (totalCredit <= 0) return alert("சரியான தொகையை உள்ளிடவும்.");
+      if (actionType === 'PART_PRINCIPAL' && prinPaid <= 0) return alert("பகுதி அசல் தொகையை உள்ளிடவும்.");
+
+      // வட்டி தள்ளுபடி > 0 எனில் கட்டாய ஒப்புதலுக்கு அனுப்பி Auto-Hold செய்தல்
+      if (discount > 0) {
+        const reason = window.prompt(`₹${discount} வட்டி தள்ளுபடி வழங்குவதற்கான காரணத்தைக் குறிப்பிடவும்:`);
+        if (!reason || reason.trim() === "") return;
+
+        const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+        try {
+          const res = await fetch('/api/rebate/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              visit_id: activeVisitId,
+              loan_id: loanId,
+              loan_no: loanNo,
+              customer_id: activeCustomer.id,
+              branch_id: branchId,
+              calculated_interest: intPaid,
+              requested_rebate: discount,
+              reason: reason.trim(),
+              staff_id: currentUser ? currentUser.id : 1
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) return alert("❌ பிழை: " + data.detail);
+
+          // கூடையில் தற்காலிகமாகச் சேர்த்துவிட்டு Auto-Hold செய்தல்
+          cartItems.push({
+            is_repayment: true,
+            action_type: actionType,
+            loan_id: loanId,
+            loan_no: loanNo,
+            title: `வட்டி/கடன் தீர்வு (${loanNo})`,
+            details: `வட்டி: ₹${intPaid} | தள்ளுபடி: ₹${discount} | கட்டணம்: ₹${otherChg + auctionChg} | அசல்: ₹${prinPaid}`,
+            debit: 0,
+            credit: totalCredit,
+            rebate_req_id: data.request_id,
+            repayment_meta: {
+              interest_paid: intPaid,
+              principal_paid: prinPaid,
+              discount_amount: discount,
+              other_charges: otherChg,
+              auction_charges: auctionChg,
+              days_calculated: currentRepayLoanObj?._calcDays || 0,
+              rate_applied: currentRepayLoanObj?._annualRate || 12
+            }
+          });
+          renderCart();
+          closeLoanRepaymentModal();
+          alert("✅ வட்டி தள்ளுபடி ஒப்புதலுக்கு அனுப்பப்பட்டது! வாடிக்கையாளர் கணக்கு நிறுத்தி வைக்கப்படுகிறது (Auto-Hold).");
+          holdCurrentCustomerDraft("WAITING_HQ");
+          return;
+        } catch (err) {
+          return alert("❌ இணைப்புப் பிழை: " + err.message);
+        }
       }
 
       let labelTitle = "";
@@ -5002,20 +5168,21 @@
       else if (actionType === 'PART_PRINCIPAL') labelTitle = `பகுதி அசல் + வட்டி (${loanNo})`;
       else labelTitle = `முழு கடன் முடிப்பு (${loanNo})`;
 
-      // ஏற்கனவே உள்ள உங்கள் cartItems பட்டியலில் வரவாக (Credit +) சேர்த்தல்
       cartItems.push({
         is_repayment: true,
         action_type: actionType,
         loan_id: loanId,
         loan_no: loanNo,
         title: labelTitle,
-        details: `வட்டி: ₹${intPaid} | அசல்: ₹${prinPaid}` + (discount > 0 ? ` | தள்ளுபடி: ₹${discount}` : ''),
+        details: `வட்டி: ₹${intPaid} | கட்டணம்: ₹${otherChg + auctionChg} | அசல்: ₹${prinPaid}`,
         debit: 0,
         credit: totalCredit,
         repayment_meta: {
           interest_paid: intPaid,
           principal_paid: prinPaid,
-          discount_amount: discount,
+          discount_amount: 0,
+          other_charges: otherChg,
+          auction_charges: auctionChg,
           days_calculated: currentRepayLoanObj?._calcDays || 0,
           rate_applied: currentRepayLoanObj?._annualRate || 12
         }
@@ -5023,6 +5190,54 @@
 
       renderCart();
       closeLoanRepaymentModal();
+    }
+    async function loadPendingRebatesHQ() {
+      const section = document.getElementById('hqRebateSection');
+      const tbody = document.getElementById('hqRebateTableBody');
+      const isAuthorized = currentUser?.permissions?.can_approve_rebate === true || currentUser?.role_key === 'HQ_ADMIN';
+
+      if (!isAuthorized) {
+        if (section) section.classList.add('hidden');
+        return;
+      }
+      if (section) section.classList.remove('hidden');
+      if (!tbody) return;
+
+      try {
+        const res = await fetch('/api/hq/pending-rebates');
+        const data = await res.json();
+        tbody.innerHTML = '';
+        if (!data.data || data.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">வட்டி தள்ளுபடி கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>`;
+          return;
+        }
+        data.data.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="p-2.5 font-bold text-brand-violet">${r.branch_name}<br><span class="font-mono text-xs text-slate-700">${r.loan_no}</span></td>
+            <td class="p-2.5 font-bold">${r.customer_name}<br><span class="font-mono text-[11px] text-slate-500">${r.customer_mobile}</span></td>
+            <td class="p-2.5 text-xs">வட்டி: <b>₹${r.calculated_interest}</b><br><span class="text-rose-600 font-black">தள்ளுபடி: ₹${r.requested_rebate}</span></td>
+            <td class="p-2.5 text-xs text-slate-600">${r.reason}</td>
+            <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+              <button type="button" onclick="actionRebateHQ(${r.id}, 'APPROVE')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow">✓ அனுமதி</button>
+              <button type="button" onclick="actionRebateHQ(${r.id}, 'REJECT')" style="background-color:#dc2626;color:#fff;" class="px-2.5 py-1 rounded-lg font-bold text-xs shadow">✕ நிராகரி</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    async function actionRebateHQ(reqId, action) {
+      if (!confirm(`இந்த வட்டி தள்ளுபடியை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+      const res = await fetch('/api/hq/approve-rebate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request_id: reqId, action, admin_id: currentUser ? currentUser.id : 1 })
+      });
+      const data = await res.json();
+      alert(data.message);
+      loadPendingRebatesHQ();
     }
   </script>
 </body>

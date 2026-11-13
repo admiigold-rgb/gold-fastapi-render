@@ -1667,7 +1667,78 @@
         reader.readAsDataURL(fileInput.files[0]);
       });
     }
+    // 💾 நடப்பு வாடிக்கையாளர் & கூடையை உலாவியில் பாதுகாப்பாகச் சேமித்தல் (Refresh பாதுகாப்பு)
+    function saveActiveSessionToStorage() {
+      if (!activeCustomer || !activeCustomer.id) {
+        localStorage.removeItem('active_counter_session');
+        return;
+      }
+      const sessionData = {
+        customer: activeCustomer,
+        visit_id: activeVisitId,
+        cart: cartItems,
+        ornaments: ornamentList,
+        is_locked: isDraftLocked,
+        selected_mode: selectedMode,
+        exemption_status: window.currentActiveExemptionStatus || "NONE"
+      };
+      localStorage.setItem('active_counter_session', JSON.stringify(sessionData));
+    }
 
+    function restoreActiveSessionOnLoad() {
+      const savedSession = localStorage.getItem('active_counter_session');
+      if (!savedSession) return;
+
+      try {
+        const target = JSON.parse(savedSession);
+        if (!target || !target.customer) return;
+
+        activeCustomer = target.customer;
+        activeVisitId = target.visit_id;
+        cartItems = target.cart || [];
+        ornamentList = target.ornaments || [];
+        selectedMode = target.selected_mode || "FULL_CASH";
+        window.currentActiveExemptionStatus = target.exemption_status || "NONE";
+
+        document.getElementById('cardName').innerText = activeCustomer.name;
+        document.getElementById('cardMobile').innerText = activeCustomer.mobile;
+        document.getElementById('cardRelation').innerText = (activeCustomer.relation_type || 'உறவினர்') + ": " + (activeCustomer.guardian_name || '-');
+        document.getElementById('cardProofNo').innerText = activeCustomer.id_proof_no || '-';
+        document.getElementById('cardAddress').innerText = activeCustomer.address || 'முகவரி இல்லை';
+
+        const imgElem = document.getElementById('cardCustomerImg');
+        const placeholder = document.getElementById('cardCustomerPlaceholder');
+        if (activeCustomer.customer_photo) {
+          imgElem.src = activeCustomer.customer_photo;
+          imgElem.classList.remove('hidden');
+          placeholder.classList.add('hidden');
+        } else {
+          imgElem.classList.add('hidden');
+          placeholder.classList.remove('hidden');
+        }
+
+        const badge = document.getElementById('cardKycBadge');
+        badge.innerText = activeCustomer.kyc_status || 'VERIFIED';
+        badge.className = (activeCustomer.kyc_status === 'VERIFIED') 
+          ? "text-[10px] px-2 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 border border-emerald-300" 
+          : "text-[10px] px-2 py-0.5 rounded font-black bg-amber-100 text-amber-900 border border-yellow-300";
+
+        document.getElementById('searchSection').classList.add('hidden');
+        document.getElementById('activeCustomerSection').classList.remove('hidden');
+
+        renderOrnamentsTable();
+        renderCart();
+        fetchAutoLoanNumber();
+        onSchemeSelected();
+        loadCustomerActiveLoans();
+
+        if (target.is_locked) {
+          toggleDraftLockMode(true);
+        }
+      } catch (e) {
+        console.error("Session restore error:", e);
+      }
+    }
     // 1. Auth & Navigation
     async function handleLogin() {
       const u = document.getElementById('login_username').value.trim();
@@ -1728,7 +1799,8 @@
       fetchAndSetupPurityDropdown();
       initTxnDate();
       renderHeldDraftsBar(); // ஹோல்ட் செய்யப்பட்ட வாடிக்கையாளர் பட்டையை ஏற்றுதல்
-
+      restoreActiveSessionOnLoad();
+      
       if (user.permissions?.can_manage_users === true) {
         loadBranchesList();
         loadSchemesList();
@@ -2568,11 +2640,13 @@
       fetchAutoLoanNumber();
       onSchemeSelected();
       loadCustomerActiveLoans();
+      saveActiveSessionToStorage();
     }
 
     function resetCustomer() {
       toggleDraftLockMode(false); // 🔓 அடுத்த வாடிக்கையாளருக்கு லாக் ரத்து செய்யப்படுகிறது
       activeCustomer = null;
+      localStorage.removeItem('active_counter_session');
       activeVisitId = null;
       ornamentList = [];
       cartItems = [];
@@ -2648,6 +2722,7 @@
       localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
 
       toggleDraftLockMode(false);
+      localStorage.removeItem('active_counter_session');
       activeCustomer = null;
       activeVisitId = null;
       cartItems = [];
@@ -2745,6 +2820,8 @@
 
       // 🔒 அடகு படிவம் மற்றும் "முடி / மாற்று" பட்டனை முடக்குதல்
       toggleDraftLockMode(true);
+      window.currentActiveExemptionStatus = target.exemption_status || "NONE";
+      saveActiveSessionToStorage();
 
       // தலைமையகம் அனுமதி அளித்திருந்தால் உடனே செக்அவுட்டில் முடிக்க வாய்ப்பளித்தல்
       // 3. கார்ட்டில் சேமித்து வைத்திருந்த கட்டண முறையை (BANK / CASH) மீட்டெடுத்தல்
@@ -3095,6 +3172,7 @@
         netElem.className = "text-sm font-black text-emerald-600";
         statusElem.innerText = "(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய தொகை)";
       }
+      saveActiveSessionToStorage();
     }
     // பணம் மற்றும் ரூபாய் தாள்கள் கச்சிதமாகப் பொருந்துகிறதா எனச் சரிபார்க்கும் செயல்பாடு
     function validatePaymentAndDenomMatch() {

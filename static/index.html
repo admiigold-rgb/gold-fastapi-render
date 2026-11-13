@@ -346,7 +346,7 @@
               </div>
               <p class="text-[10px] text-slate-500 text-right" id="cartStatusText">-</p>
 
-              <button type="button" onclick="openCheckoutModal()" class="w-full mt-2 brand-gradient-violet-btn text-xs font-black py-3 rounded-xl shadow-lg border border-purple-700 transition transform active:scale-95">
+              <button type="button" id="mainCheckoutBtn" onclick="openCheckoutModal()" class="w-full mt-2 brand-gradient-violet-btn text-xs font-black py-3 rounded-xl shadow-lg border border-purple-700 transition transform active:scale-95 cursor-pointer">
                 பணம் செலுத்துதல் / நிறைவு (Checkout) 💳
               </button>
             </div>
@@ -3209,13 +3209,18 @@
   
     // 7. Checkout & Settlement
     async function openCheckoutModal(defaultMode = null) {
-      if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
+      if (!cartItems || cartItems.length === 0 || currentNetAbs <= 0) {
+        return alert("⚠️ பரிவர்த்தனை கூடையில் உருப்படிகள் இல்லை (သို့) தொகை 0 ஆக உள்ளது.");
+      }
       
       const sumSummary = document.getElementById('modalDirectionSummary');
       if (sumSummary) {
         sumSummary.innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
       }
-      updateDenomTitle();
+      
+      if (typeof updateDenomTitle === 'function') {
+        updateDenomTitle();
+      }
 
       const btnOtp = document.getElementById('btn_send_otp');
       const btnExempt = document.getElementById('btnExemptOtpTrigger');
@@ -3236,9 +3241,11 @@
       });
       
       const modeToSet = defaultMode || selectedMode || 'FULL_CASH';
-      setPaymentMode(modeToSet);
+      if (typeof setPaymentMode === 'function') {
+        setPaymentMode(modeToSet);
+      }
       
-      // 3. சாளரத்தைத் திறத்தல் (Flex & Hidden class நீக்குதல்)
+      // 3. சாளரத்தை (Modal) உடனடியாகத் திறத்தல்
       const modalEl = document.getElementById('checkoutModal');
       if (modalEl) {
         modalEl.classList.remove('hidden');

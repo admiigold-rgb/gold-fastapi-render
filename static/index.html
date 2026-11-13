@@ -3206,10 +3206,15 @@
 
       return true;
     }
+  
     // 7. Checkout & Settlement
     async function openCheckoutModal(defaultMode = null) {
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
-      document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
+      
+      const sumSummary = document.getElementById('modalDirectionSummary');
+      if (sumSummary) {
+        sumSummary.innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
+      }
       updateDenomTitle();
 
       const btnOtp = document.getElementById('btn_send_otp');
@@ -3232,9 +3237,15 @@
       
       const modeToSet = defaultMode || selectedMode || 'FULL_CASH';
       setPaymentMode(modeToSet);
-      document.getElementById('checkoutModal').classList.remove('hidden');
+      
+      // 3. சாளரத்தைத் திறத்தல் (Flex & Hidden class நீக்குதல்)
+      const modalEl = document.getElementById('checkoutModal');
+      if (modalEl) {
+        modalEl.classList.remove('hidden');
+        modalEl.style.display = 'flex';
+      }
 
-      // 3. இந்த வருகைக்கு ஏற்கனவே OTP விலக்கு / தள்ளுபடி ஒப்புதல் கிடைத்துள்ளதா எனச் சரிபார்த்தல்
+      // 4. இந்த வருகைக்கு ஏற்கனவே OTP விலக்கு / தள்ளுபடி ஒப்புதல் கிடைத்துள்ளதா எனச் சரிபார்த்தல்
       let isAlreadyApproved = (window.currentActiveExemptionStatus === 'APPROVED');
 
       if (!isAlreadyApproved && activeVisitId) {
@@ -3262,7 +3273,7 @@
         } catch(e) {}
       }
 
-      // 4. ஒப்புதல் கிடைத்திருந்தால் உடனடியாக நிறைவு செய்யும் பட்டனைக் காட்டுதல்
+      // 5. ஒப்புதல் கிடைத்திருந்தால் உடனடியாக நிறைவு செய்யும் பட்டனைக் காட்டுதல்
       if (isAlreadyApproved) {
         if (btnExempt) btnExempt.classList.add('hidden');
         if (btnOtp) {

@@ -5180,6 +5180,13 @@
 
       recalcRepaymentTotal();
     }
+    function closeCheckoutModal() {
+      const modal = document.getElementById('checkoutModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+      }
+    }
 
     function recalcRepaymentTotal() {
       const intVal = parseFloat(document.getElementById('rep_input_interest').value) || 0;

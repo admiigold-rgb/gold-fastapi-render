@@ -2650,7 +2650,8 @@
       activeVisitId = null;
       ornamentList = [];
       cartItems = [];
-      selectedMode = "FULL_CASH"; // 👈 அடுத்த வாடிக்கையாளருக்கு இயல்புநிலை கட்டண முறை
+      selectedMode = "FULL_CASH"; // 👈 அடுத்த வாடிக்கையாளருக்கு இயல்புநிலை கட்டண முற
+      window.currentActiveExemptionStatus = "NONE";
       renderOrnamentsTable();
       renderCart();
       document.getElementById('activeCustomerSection').classList.add('hidden');
@@ -3206,14 +3207,15 @@
       return true;
     }
     // 7. Checkout & Settlement
-    function openCheckoutModal(defaultMode = null) {
+    async function openCheckoutModal(defaultMode = null) {
       if (cartItems.length === 0 || currentNetAbs <= 0) return alert("கார்ட்டில் உருப்படிகள் இல்லை.");
       document.getElementById('modalDirectionSummary').innerText = `நிகர தொகை: ₹${currentNetAbs.toFixed(2)} (${currentDirection === 'COMPANY_PAYABLE' ? 'நாம் கொடுக்க வேண்டியது' : 'நாம் பெறுவது'})`;
       updateDenomTitle();
 
-      // 🔄 1. OTP மற்றும் விலக்கு பட்டன்களை எப்போதும் இயல்பு நிலைக்கு மீட்டமைத்தல்
       const btnOtp = document.getElementById('btn_send_otp');
       const btnExempt = document.getElementById('btnExemptOtpTrigger');
+
+      // 1. முதலில் இயல்பு நிலைக்கு அமைத்தல்
       if (btnExempt) btnExempt.classList.remove('hidden');
       if (btnOtp) {
         btnOtp.innerText = "SMS OTP அனுப்பு 📲";
@@ -3222,7 +3224,7 @@
         btnOtp.onclick = requestOtpFromCustomer;
       }
 
-      // 🔄 2. முந்தைய வருகையின் ரூபாய் தாள்கள் எண்ணிக்கையை 0 ஆக்குதல்
+      // 2. ரூபாய் தாள்கள் எண்ணிக்கையை 0 ஆக்குதல்
       ['d500', 'd200', 'd100', 'd50', 'd20', 'd10', 'dcoins'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = 0;
@@ -3230,19 +3232,47 @@
       
       const modeToSet = defaultMode || selectedMode || 'FULL_CASH';
       setPaymentMode(modeToSet);
-      
       document.getElementById('checkoutModal').classList.remove('hidden');
-    }
 
-    function closeCheckoutModal() { document.getElementById('checkoutModal').classList.add('hidden'); }
+      // 3. இந்த வருகைக்கு ஏற்கனவே OTP விலக்கு / தள்ளுபடி ஒப்புதல் கிடைத்துள்ளதா எனச் சரிபார்த்தல்
+      let isAlreadyApproved = (window.currentActiveExemptionStatus === 'APPROVED');
 
-    function updateDenomTitle() {
-      const title = document.getElementById('denomTitleText');
-      if (title) {
-        if (currentDirection === "COMPANY_PAYABLE") {
-          title.innerText = "வாடிக்கையாளருக்கு நாம் கொடுக்கும் தாள்கள் (Outward Cash):";
-        } else {
-          title.innerText = "வாடிக்கையாளரிடம் நாம் பெறும் சில்லறை & தாள்கள் (Inward Cash):";
+      if (!isAlreadyApproved && activeVisitId) {
+        try {
+          const res = await fetch(`/api/otp/exemption-status?visit_id=${activeVisitId}`);
+          const data = await res.json();
+          if (data.data?.otp_exempted === true) {
+            isAlreadyApproved = true;
+            window.currentActiveExemptionStatus = 'APPROVED';
+            saveActiveSessionToStorage();
+          }
+        } catch(e) {}
+      }
+
+      const rebateItem = (cartItems || []).find(item => item.rebate_req_id);
+      if (!isAlreadyApproved && rebateItem) {
+        try {
+          const rRes = await fetch(`/api/rebate/status/${rebateItem.rebate_req_id}`);
+          const rData = await rRes.json();
+          if (rData.approval_status === 'APPROVED') {
+            isAlreadyApproved = true;
+            window.currentActiveExemptionStatus = 'APPROVED';
+            saveActiveSessionToStorage();
+          }
+        } catch(e) {}
+      }
+
+      // 4. ஒப்புதல் கிடைத்திருந்தால் உடனடியாக நிறைவு செய்யும் பட்டனைக் காட்டுதல்
+      if (isAlreadyApproved) {
+        if (btnExempt) btnExempt.classList.add('hidden');
+        if (btnOtp) {
+          btnOtp.innerText = "✓ ஒப்புதலுடன் நிறைவு செய் (Complete)";
+          btnOtp.className = "px-5 py-2 rounded-xl text-xs font-black shadow bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
+          btnOtp.onclick = () => {
+            if (!validatePaymentAndDenomMatch()) return;
+            closeCheckoutModal();
+            confirmSettleWithOtp(true);
+          };
         }
       }
     }

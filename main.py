@@ -2250,6 +2250,49 @@ def get_next_gss_no(branch_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GSS எண் பிழை: {str(e)}")
 
+@app.get("/api/admin/gss-schemes")
+def get_gss_schemes():
+    try:
+        res = supabase.table("test_savings_schemes").select("*").eq("is_active", True).order("id", desc=True).execute()
+        return {"status": "success", "data": res.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/gss-scheme/create")
+def create_gss_scheme(data: dict):
+    try:
+        code = str(data.get("scheme_code") or "").strip().upper()
+        check = supabase.table("test_savings_schemes").select("id").eq("scheme_code", code).execute()
+        if check.data:
+            raise HTTPException(status_code=400, detail="இந்தத் திட்டக் குறியீடு ஏற்கனவே உள்ளது.")
+
+        rec = {
+            "scheme_code": code,
+            "scheme_name": str(data.get("scheme_name") or "").strip(),
+            "calculation_type": data.get("calculation_type", "FIXED_AMOUNT"),
+            "frequency": data.get("frequency", "MONTHLY"),
+            "installment_amount": float(data.get("installment_amount") or 0),
+            "tenure_limit_type": data.get("tenure_limit_type", "LIMITED"),
+            "tenure_count": int(data.get("tenure_count") or 12),
+            "grace_period_days": int(data.get("grace_period_days") or 5),
+            "penalty_per_thousand": float(data.get("penalty_per_thousand") if data.get("penalty_per_thousand") is not None else 1.0),
+            "is_active": True
+        }
+        res = supabase.table("test_savings_schemes").insert(rec).execute()
+        return {"status": "success", "message": "புதிய நகை சேமிப்புத் திட்டம் உருவாக்கப்பட்டது!", "data": res.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/gss-scheme/{scheme_id}")
+def delete_gss_scheme(scheme_id: int):
+    try:
+        supabase.table("test_savings_schemes").delete().eq("id", scheme_id).execute()
+        return {"status": "success", "message": "திட்டம் நீக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ==========================================
 # 📦 GP நகை இருப்பு & தலைமையக ஒதுக்கீடு (Stock Flow APIs)
 # ==========================================

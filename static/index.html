@@ -3548,19 +3548,21 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    async function confirmSettleWithOtp(isExempted = false) {
-      // 🔒 0. வட்டி தள்ளுபடி கோரிக்கை உள்ளதா எனச் சோதித்து, தலைமையக அனுமதி பெறப்பட்டுள்ளதா என உறுதிசெய்தல்
+    aasync function confirmSettleWithOtp(isExempted = false) {
+      // 🔒 தீவிரமான வட்டி தள்ளுபடி ஒப்புதல் சரிபார்ப்பு
       const rebateItem = (cartItems || []).find(item => item.rebate_req_id);
       if (rebateItem && rebateItem.rebate_req_id) {
         try {
           const rRes = await fetch(`/api/rebate/status/${rebateItem.rebate_req_id}`);
           const rData = await rRes.json();
+          
+          // தலைமையகம் ஒப்புதல் (APPROVED) அளித்தால் மட்டுமே அனுமதி
           if (rData.approval_status !== 'APPROVED') {
-            alert("❌ வட்டி தள்ளுபடிக்குத் தலைமையக ஒப்புதல் (HQ Rebate Approval) இன்னும் பெறப்படவில்லை! ஒப்புதல் கிடைத்த பிறகு மட்டுமே பரிவர்த்தனையை நிறைவு செய்ய முடியும்.");
-            return; // 👈 அனுமதி இன்றி पुढे செல்ல விடாமல் தடுத்தல்
+            alert(`❌ தள்ளுபடி அனுமதி வழங்கப்படவில்லை!\nதற்போதைய நிலை: [${rData.approval_status || 'PENDING'}]\n\nதலைமையகம் 'APPROVED' (அனுமதி) அளித்த பிறகு மட்டுமே இந்தப் பரிவர்த்தனையை நிறைவு செய்ய முடியும்.`);
+            return; 
           }
         } catch (e) {
-          alert("❌ தள்ளுபடி ஒப்புதல் நிலையைச் சரிபார்ப்பதில் பிழை ஏற்பட்டது.");
+          alert("❌ தள்ளுபடி ஒப்புதல் நிலையைச் சரிபார்ப்பதில் பிழை ஏற்பட்டது. பரிவர்த்தனை ரத்து செய்யப்படுகிறது.");
           return;
         }
       }

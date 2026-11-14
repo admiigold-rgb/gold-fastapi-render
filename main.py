@@ -1480,6 +1480,17 @@ def update_loan_scheme(scheme_id: int, data: LoanSchemePayload):
         raise HTTPException(status_code=404, detail="திட்டம் கண்டறியப்படவில்லை.")
     return {"status": "success", "message": "திட்ட விவரங்கள் வெற்றிகரமாகப் புதுப்பிக்கப்பட்டன!", "data": res.data}
 
+@app.patch("/api/admin/scheme/{scheme_id}/toggle-active")
+def toggle_loan_scheme_active(scheme_id: int):
+    curr = supabase.table("test_loan_schemes").select("is_active").eq("id", scheme_id).execute()
+    if not curr.data:
+        raise HTTPException(status_code=404, detail="திட்டம் கண்டறியப்படவில்லை.")
+    current_status = curr.data[0].get("is_active")
+    new_status = False if current_status is not False else True
+    res = supabase.table("test_loan_schemes").update({"is_active": new_status}).eq("id", scheme_id).execute()
+    status_text = "Active (செயலில்)" if new_status else "Deactive (நிறுத்தப்பட்டது)"
+    return {"status": "success", "message": f"திட்டத்தின் நிலை '{status_text}' என மாற்றப்பட்டது!", "is_active": new_status}
+
 @app.get("/api/admin/company-banks")
 def get_company_banks():
     res = supabase.table("test_company_banks").select("*").eq("is_active", True).order("id", desc=True).execute()

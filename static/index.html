@@ -3549,6 +3549,22 @@
     }
 
     async function confirmSettleWithOtp(isExempted = false) {
+      // 🔒 0. வட்டி தள்ளுபடி கோரிக்கை உள்ளதா எனச் சோதித்து, தலைமையக அனுமதி பெறப்பட்டுள்ளதா என உறுதிசெய்தல்
+      const rebateItem = (cartItems || []).find(item => item.rebate_req_id);
+      if (rebateItem && rebateItem.rebate_req_id) {
+        try {
+          const rRes = await fetch(`/api/rebate/status/${rebateItem.rebate_req_id}`);
+          const rData = await rRes.json();
+          if (rData.approval_status !== 'APPROVED') {
+            alert("❌ வட்டி தள்ளுபடிக்குத் தலைமையக ஒப்புதல் (HQ Rebate Approval) இன்னும் பெறப்படவில்லை! ஒப்புதல் கிடைத்த பிறகு மட்டுமே பரிவர்த்தனையை நிறைவு செய்ய முடியும்.");
+            return; // 👈 அனுமதி இன்றி पुढे செல்ல விடாமல் தடுத்தல்
+          }
+        } catch (e) {
+          alert("❌ தள்ளுபடி ஒப்புதல் நிலையைச் சரிபார்ப்பதில் பிழை ஏற்பட்டது.");
+          return;
+        }
+      }
+
       // 🔒 1. ரொக்கம் இருந்தால் தாள்கள் எண்ணாமல் எந்தப் பரிவர்த்தனையும் முடியாது
       if (!validatePaymentAndDenomMatch()) return;
 

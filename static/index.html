@@ -3038,7 +3038,8 @@
       if (ornamentList.length === 0) return alert("நகைகளைச் சேர்க்கவும்.");
 
       // 📸 நகையின் புகைப்படம் இணைக்கப்பட்டுள்ளதா எனச் சரிபார்த்தல்
-      const ornamentPhotoFile = document.getElementById('ornament_photo_input')?.files[0];
+      const ornamentPhotoInput = document.getElementById('ornament_photo_input');
+      const ornamentPhotoFile = ornamentPhotoInput?.files[0];
       if (!ornamentPhotoFile) {
         return alert("📸 தயவுசெய்து நகையின் புகைப்படத்தை இணைக்கவும்!");
       }
@@ -3057,17 +3058,19 @@
       const transDateInput = document.querySelector('input[type="date"]');
       const transDate = transDateInput && transDateInput.value ? transDateInput.value : new Date().toISOString().split('T')[0];
 
-      // 2. நகைப் படம் இருந்தால் எடுத்தல் (Webcam / Upload செய்யப்பட்ட படம்)
-      let ornamentPhotoUrl = null;
-      const photoElem = document.getElementById('ornament_photo_preview') || 
-                        document.getElementById('captured_ornament_photo') || 
-                        document.getElementById('itemPhotoPreview') ||
-                        document.getElementById('goldPhotoPreview');
+      // 2. நகைப் படத்தைத் தயார் செய்தல் (File upload அல்லது Webcam படம்)
+      let ornamentPhotoUrl = ornamentPhotoBase64;
+      if (!ornamentPhotoUrl) {
+        const photoElem = document.getElementById('ornament_photo_preview') || 
+                          document.getElementById('captured_ornament_photo') || 
+                          document.getElementById('itemPhotoPreview') || 
+                          document.getElementById('goldPhotoPreview');
 
-      if (photoElem && photoElem.src && photoElem.src.startsWith('data:image')) {
-        ornamentPhotoUrl = photoElem.src;
-      } else if (typeof capturedOrnamentPhoto !== 'undefined' && capturedOrnamentPhoto) {
-        ornamentPhotoUrl = capturedOrnamentPhoto;
+        if (photoElem && photoElem.src && photoElem.src.startsWith('data:image')) {
+          ornamentPhotoUrl = photoElem.src;
+        } else if (typeof capturedOrnamentPhoto !== 'undefined' && capturedOrnamentPhoto) {
+          ornamentPhotoUrl = capturedOrnamentPhoto;
+        }
       }
 
       const payload = {
@@ -3080,7 +3083,7 @@
         charges_amount: chgAmt, 
         photo_url: ornamentPhotoUrl, 
         ornament_photo: ornamentPhotoUrl,
-        transaction_date: transDate, // 👈 கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதி
+        transaction_date: transDate, 
         items: ornamentList
       };
 
@@ -3106,7 +3109,9 @@
           renderOrnamentsTable();
           fetchAutoLoanNumber();
           
-          // நகைப் படப் பகுதியைத் தூய்மை செய்தல்
+          // நகைப் படப் பகுதியை அடுத்த கடனுக்காகத் தூய்மை செய்தல்
+          if (ornamentPhotoInput) ornamentPhotoInput.value = '';
+          const photoElem = document.getElementById('ornament_photo_preview');
           if (photoElem) photoElem.src = '';
           if (typeof capturedOrnamentPhoto !== 'undefined') capturedOrnamentPhoto = null;
         } else alert("❌ பிழை: " + data.detail);

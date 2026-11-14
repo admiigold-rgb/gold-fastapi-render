@@ -5047,13 +5047,21 @@
           const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
           const loanDate = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : '-');
           const itemsSummary = (loan.test_gold_loan_items || []).map(i => `${i.item_type} (${i.net_weight}g)`).join(', ');
+          const hasPhoto = Boolean(loan.ornament_photo || loan.photo_url);
 
           return `
             <div class="p-3.5 rounded-2xl border-2 border-purple-100 bg-purple-50/40 flex flex-col justify-between gap-2.5 shadow-sm">
               <div>
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center gap-1">
                   <span class="font-mono text-sm font-black text-brand-violet">${loan.loan_no}</span>
-                  <span class="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300">${loan.scheme_name}</span>
+                  <div class="flex items-center gap-1.5">
+                    ${hasPhoto ? `
+                      <button type="button" onclick="viewLoanOrnamentPhotoById(${loan.id})" class="text-[10px] font-extrabold bg-white hover:bg-purple-100 text-brand-violet px-2 py-0.5 rounded-md border border-purple-300 shadow-sm cursor-pointer transition">
+                        📸 நகை படம்
+                      </button>
+                    ` : ''}
+                    <span class="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300">${loan.scheme_name}</span>
+                  </div>
                 </div>
                 <div class="mt-1.5 flex justify-between items-baseline">
                   <span class="text-xs text-slate-500">நிலுவை அசல்:</span>

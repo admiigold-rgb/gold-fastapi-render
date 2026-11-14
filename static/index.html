@@ -3879,16 +3879,26 @@
         tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">திட்டங்கள் எதுவும் இல்லை</td></tr>`;
       } else {
         schemesCache.forEach(s => {
+          const isActive = s.is_active !== false; // Default true
           const slabsStr = (s.interest_slabs || []).map(x => `${x.from_days}-${x.to_days} நாள்: ${x.rate_percent}%`).join('<br>');
           const tr = document.createElement('tr');
+          tr.className = isActive ? '' : 'bg-slate-50 opacity-70';
           tr.innerHTML = `
-            <td class="p-2.5 font-mono font-bold text-brand-violet">${s.scheme_code}</td>
+            <td class="p-2.5 font-mono font-bold text-brand-violet">
+              ${s.scheme_code}
+              <span class="block text-[9px] font-sans ${isActive ? 'text-emerald-600' : 'text-rose-600'}">
+                ${isActive ? '● Active' : '○ Deactive'}
+              </span>
+            </td>
             <td class="p-2.5 font-bold">${s.scheme_name}</td>
             <td class="p-2.5">${s.tenure_months} மாதம்</td>
             <td class="p-2.5">₹${s.min_loan_amount} - ₹${s.max_loan_amount}</td>
             <td class="p-2.5 font-bold text-rose-600">₹${s.auction_charge_amount}</td>
             <td class="p-2.5 text-[11px]">${slabsStr}</td>
             <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+              <button type="button" onclick="toggleSchemeStatus(${s.id})" class="px-2 py-0.5 ${isActive ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-400'} border rounded font-bold text-[11px] cursor-pointer">
+                ${isActive ? '✅ Active' : '⛔ Deactive'}
+              </button>
               <button type="button" onclick="editScheme(${s.id})" class="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded font-bold text-[11px] cursor-pointer">✏️ எடிட்</button>
               <button type="button" onclick="deleteScheme(${s.id})" class="px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-bold text-[11px] cursor-pointer">டிலீட்</button>
             </td>
@@ -3898,13 +3908,33 @@
       }
     }
 
+    async function toggleSchemeStatus(id) {
+      try {
+        const res = await fetch(`/api/admin/scheme/${id}/toggle-active`, { method: 'PATCH' });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ " + data.message);
+          loadSchemesList();
+          loadSchemesDropdown();
+        } else {
+          alert("❌ பிழை: " + data.detail);
+        }
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      }
+    }
+
     async function loadSchemesDropdown() {
       const res = await fetch('/api/admin/schemes');
       const data = await res.json();
       schemesCache = data.data || [];
       const sSelect = document.getElementById('scheme_name');
       sSelect.innerHTML = '';
-      schemesCache.forEach(s => {
+      
+      // Active ஆக உள்ள திட்டங்களை மட்டும் வடிகட்டி டிராப்-டவுன் மெனுவில் காட்டுதல்
+      const activeSchemes = schemesCache.filter(s => s.is_active !== false);
+      
+      activeSchemes.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.scheme_name;
         opt.innerText = `${s.scheme_name} (${s.scheme_code} - LTV ${s.max_ltv_percentage}%)`;
@@ -3912,7 +3942,6 @@
       });
       onSchemeSelected();
     }
-
     async function submitCompanyBankForm() {
       const bName = document.getElementById('bank_acc_name').value.trim();
       const bBranch = document.getElementById('bank_acc_branch').value.trim();

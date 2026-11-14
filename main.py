@@ -1465,85 +1465,85 @@ def settle_with_otp(data: SettleWithOtpPayload):
 
                     supabase.table("test_gold_loans").update(update_fields).eq("id", loan_id).execute()
 
-                # 🪙 3. நகை வாங்குதல் (GOLD_PURCHASE - GP) கூடையில் இருந்தால் சேமித்தல்
-                elif item.get("is_gold_purchase") is True:
-                    gp_meta = item.get("gp_meta") or {}
-                    gp_items = gp_meta.get("items") or []
-                    if gp_items:
-                        br_res = supabase.table("test_branches").select("branch_code").eq("id", data.branch_id).execute()
-                        b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
-                        cnt_res = supabase.table("test_gold_purchases").select("id", count="exact").eq("branch_id", data.branch_id).execute()
-                        next_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
-                        final_gp_no = f"{b_code}/GP/{next_seq:04d}"
-    
-                        tot_gross = sum(float(x.get("gross_weight") or 0) for x in gp_items)
-                        tot_net = sum(float(x.get("net_weight") or 0) for x in gp_items)
-                        tot_amt = sum(float(x.get("item_amount") or 0) for x in gp_items)
-    
-                        gp_master = {
-                            "gp_no": final_gp_no,
-                            "branch_id": data.branch_id,
-                            "customer_id": data.customer_id,
-                            "visit_id": target_visit_id,
-                            "transaction_date": txn_date,
-                            "total_items": len(gp_items),
-                            "total_gross_weight": round(tot_gross, 3),
-                            "total_net_weight": round(tot_net, 3),
-                            "total_purchase_amount": round(tot_amt, 2),
-                            "handover_photo_url": gp_meta.get("handover_photo"),
-                            "status": "COMPLETED"
-                        }
-                        gp_ins = supabase.table("test_gold_purchases").insert(gp_master).execute()
-                        if gp_ins.data:
-                            new_gp_id = gp_ins.data[0]["id"]
-                            total_cnt = len(gp_items)
-                            items_to_save = []
-                            for idx, g_item in enumerate(gp_items, start=1):
-                                # ஒவ்வொரு நகைக்கும் AVL/GP/0001/1/4 வடிவத்தில் டேக் எண்
-                                tag_no = f"{final_gp_no}/{idx}/{total_cnt}"
-                                items_to_save.append({
-                                    "purchase_id": new_gp_id,
-                                    "item_tag_no": tag_no,
-                                    "item_type": g_item.get("item_type"),
-                                    "quantity": int(g_item.get("quantity") or 1),
-                                    "gross_weight": float(g_item.get("gross_weight") or 0),
-                                    "net_weight": float(g_item.get("net_weight") or 0),
-                                    "purity": g_item.get("purity"),
-                                    "rate_per_gram": float(g_item.get("rate_per_gram") or 0),
-                                    "item_amount": float(g_item.get("item_amount") or 0),
-                                    "item_photo_url": g_item.get("item_photo"),
-                                    "stock_status": "AT_BRANCH"
-                                })
-                            supabase.table("test_gold_purchase_items").insert(items_to_save).execute()
-    
-                # 💍 4. நகை விற்பனை (GOLD_SALE - GS) கூடையில் இருந்தால் சேமித்தல்
-                elif item.get("is_gold_sale") is True:
-                    gs_meta = item.get("gs_meta") or {}
-                    stock_item_id = gs_meta.get("stock_item_id")
-                    if stock_item_id:
-                        br_res = supabase.table("test_branches").select("branch_code").eq("id", data.branch_id).execute()
-                        b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
-                        cnt_res = supabase.table("test_gold_sales").select("id", count="exact").eq("branch_id", data.branch_id).execute()
-                        next_gs_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
-                        final_gs_no = f"{b_code}/GS/{next_gs_seq:04d}"
-    
-                        gs_record = {
-                            "gs_no": final_gs_no,
-                            "branch_id": data.branch_id,
-                            "customer_id": data.customer_id,
-                            "visit_id": target_visit_id,
-                            "purchase_item_id": stock_item_id,
-                            "item_tag_no": gs_meta.get("item_tag_no", "-"),
-                            "transaction_date": txn_date,
-                            "net_weight": float(gs_meta.get("net_weight") or 0),
-                            "gold_value": float(gs_meta.get("gold_value") or 0),
-                            "making_charge": float(gs_meta.get("making_charge") or 0),
-                            "gst_amount": float(gs_meta.get("gst_amount") or 0),
-                            "total_sale_amount": float(gs_meta.get("total_sale_amount") or 0)
-                        }
-                        supabase.table("test_gold_sales").insert(gs_record).execute()
-                        # விற்கப்பட்ட நகையை இருப்பிலிருந்து SOLD என மாற்றுதல்
-                        supabase.table("test_gold_purchase_items").update({"stock_status": "SOLD"}).eq("id", stock_item_id).execute()
+            # 🪙 3. நகை வாங்குதல் (GOLD_PURCHASE - GP) கூடையில் இருந்தால் சேமித்தல்
+            elif item.get("is_gold_purchase") is True:
+                gp_meta = item.get("gp_meta") or {}
+                gp_items = gp_meta.get("items") or []
+                if gp_items:
+                    br_res = supabase.table("test_branches").select("branch_code").eq("id", data.branch_id).execute()
+                    b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
+                    cnt_res = supabase.table("test_gold_purchases").select("id", count="exact").eq("branch_id", data.branch_id).execute()
+                    next_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
+                    final_gp_no = f"{b_code}/GP/{next_seq:04d}"
+
+                    tot_gross = sum(float(x.get("gross_weight") or 0) for x in gp_items)
+                    tot_net = sum(float(x.get("net_weight") or 0) for x in gp_items)
+                    tot_amt = sum(float(x.get("item_amount") or 0) for x in gp_items)
+
+                    gp_master = {
+                        "gp_no": final_gp_no,
+                        "branch_id": data.branch_id,
+                        "customer_id": data.customer_id,
+                        "visit_id": target_visit_id,
+                        "transaction_date": txn_date,
+                        "total_items": len(gp_items),
+                        "total_gross_weight": round(tot_gross, 3),
+                        "total_net_weight": round(tot_net, 3),
+                        "total_purchase_amount": round(tot_amt, 2),
+                        "handover_photo_url": gp_meta.get("handover_photo"),
+                        "status": "COMPLETED"
+                    }
+                    gp_ins = supabase.table("test_gold_purchases").insert(gp_master).execute()
+                    if gp_ins.data:
+                        new_gp_id = gp_ins.data[0]["id"]
+                        total_cnt = len(gp_items)
+                        items_to_save = []
+                        for idx, g_item in enumerate(gp_items, start=1):
+                            # ஒவ்வொரு நகைக்கும் AVL/GP/0001/1/4 வடிவத்தில் டேக் எண்
+                            tag_no = f"{final_gp_no}/{idx}/{total_cnt}"
+                            items_to_save.append({
+                                "purchase_id": new_gp_id,
+                                "item_tag_no": tag_no,
+                                "item_type": g_item.get("item_type"),
+                                "quantity": int(g_item.get("quantity") or 1),
+                                "gross_weight": float(g_item.get("gross_weight") or 0),
+                                "net_weight": float(g_item.get("net_weight") or 0),
+                                "purity": g_item.get("purity"),
+                                "rate_per_gram": float(g_item.get("rate_per_gram") or 0),
+                                "item_amount": float(g_item.get("item_amount") or 0),
+                                "item_photo_url": g_item.get("item_photo"),
+                                "stock_status": "AT_BRANCH"
+                            })
+                        supabase.table("test_gold_purchase_items").insert(items_to_save).execute()
+
+            # 💍 4. நகை விற்பனை (GOLD_SALE - GS) கூடையில் இருந்தால் சேமித்தல்
+            elif item.get("is_gold_sale") is True:
+                gs_meta = item.get("gs_meta") or {}
+                stock_item_id = gs_meta.get("stock_item_id")
+                if stock_item_id:
+                    br_res = supabase.table("test_branches").select("branch_code").eq("id", data.branch_id).execute()
+                    b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
+                    cnt_res = supabase.table("test_gold_sales").select("id", count="exact").eq("branch_id", data.branch_id).execute()
+                    next_gs_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
+                    final_gs_no = f"{b_code}/GS/{next_gs_seq:04d}"
+
+                    gs_record = {
+                        "gs_no": final_gs_no,
+                        "branch_id": data.branch_id,
+                        "customer_id": data.customer_id,
+                        "visit_id": target_visit_id,
+                        "purchase_item_id": stock_item_id,
+                        "item_tag_no": gs_meta.get("item_tag_no", "-"),
+                        "transaction_date": txn_date,
+                        "net_weight": float(gs_meta.get("net_weight") or 0),
+                        "gold_value": float(gs_meta.get("gold_value") or 0),
+                        "making_charge": float(gs_meta.get("making_charge") or 0),
+                        "gst_amount": float(gs_meta.get("gst_amount") or 0),
+                        "total_sale_amount": float(gs_meta.get("total_sale_amount") or 0)
+                    }
+                    supabase.table("test_gold_sales").insert(gs_record).execute()
+                    # விற்கப்பட்ட நகையை இருப்பிலிருந்து SOLD என மாற்றுதல்
+                    supabase.table("test_gold_purchase_items").update({"stock_status": "SOLD"}).eq("id", stock_item_id).execute()
 
         return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
     except HTTPException:

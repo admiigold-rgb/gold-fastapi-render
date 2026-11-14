@@ -1577,6 +1577,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                         account_id = acc_row["id"]
                         old_total = float(acc_row.get("total_amount_paid") or 0)
                         old_wt = float(acc_row.get("total_accumulated_weight") or 0)
+                        old_penalty = float(acc_row.get("total_penalty_accrued") or 0)
 
                         # தவணைப் பதிவு
                         supabase.table("test_savings_transactions").insert({
@@ -1590,10 +1591,11 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             "receipt_no": f"{gss_no}/INST"
                         }).execute()
 
-                        # மொத்த தொகை & மொத்த தங்க எடையைப் புதுப்பித்தல்
+                        # மொத்த தொகை, எடை & தாமத அபராதம் சேமித்தல் (அபராதம் முதிர்வில் கழிக்கப்படும்)
                         supabase.table("test_customer_savings_accounts").update({
                             "total_amount_paid": round(old_total + init_amount, 2),
-                            "total_accumulated_weight": round(old_wt + wt_credited, 3)
+                            "total_accumulated_weight": round(old_wt + wt_credited, 3),
+                            "total_penalty_accrued": round(old_penalty + penalty_amt, 2)
                         }).eq("id", account_id).execute()
 
                     else:
@@ -1607,6 +1609,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             "maturity_option": maturity_opt,
                             "total_amount_paid": round(init_amount, 2),
                             "total_accumulated_weight": round(wt_credited, 3),
+                            "total_penalty_accrued": round(penalty_amt, 2),
                             "status": "ACTIVE"
                         }).execute()
 

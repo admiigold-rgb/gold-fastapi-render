@@ -1302,7 +1302,16 @@
             <b id="rep_calculated_interest" class="text-sm font-black text-rose-600 font-mono">₹ 0.00</b>
           </div>
         </div>
-
+        <!-- 📜 முந்தைய வட்டி & பகுதி அசல் வரலாறு -->
+        <div id="rep_history_box" class="bg-amber-50/80 border border-amber-200 rounded-xl p-2.5 text-[11px] space-y-1">
+          <div class="font-extrabold text-amber-900 flex items-center justify-between">
+            <span>📜 முந்தைய நடவடிக்கைகள் (வட்டி / பகுதி அசல்):</span>
+            <span id="rep_min_day_badge" class="text-[9px] px-1.5 py-0.5 rounded bg-white border border-amber-300 text-amber-800 font-bold"></span>
+          </div>
+          <div id="rep_history_list" class="max-h-24 overflow-y-auto divide-y divide-amber-200/60 text-slate-700">
+            <p class="text-slate-400 italic py-0.5">இதுவரை வட்டி அல்லது பகுதி அசல் கட்டப்படவில்லை (முதல் பரிவர்த்தனை).</p>
+          </div>
+        </div>
         <!-- நடவடிக்கை தேர்வு பட்டன்கள் -->
         <div class="grid grid-cols-3 gap-2">
           <button type="button" id="tab_rep_interest" onclick="switchRepaymentTab('INTEREST')" class="py-2 text-xs font-black rounded-xl border-2 bg-purple-100 border-brand-violet text-brand-violet">வட்டி மட்டும்</button>
@@ -5251,10 +5260,52 @@
       document.getElementById('rep_loan_no').value = loan.loan_no;
       document.getElementById('repModalSubTitle').innerText = `கடன் எண்: ${loan.loan_no} | திட்டம்: ${loan.scheme_name}`;
 
-      // 1. கடன் ஆரம்பத் தேதி & கடைசி வட்டி தேதி கணக்கீடு
+      // 1. முந்தைய நடவடிக்கைகள் (வட்டி / பகுதி அசல் வரலாறு) பட்டியலிடுதல்
+      const historyList = Array.isArray(loan.repayment_history) ? loan.repayment_history : [];
+      const historyEl = document.getElementById('rep_history_list');
+      if (historyEl) {
+        if (historyList.length === 0) {
+          historyEl.innerHTML = `<p class="text-slate-500 italic py-0.5">இதுவரை வட்டி அல்லது பகுதி அசல் எதுவும் கட்டப்படவில்லை.</p>`;
+        } else {
+          historyEl.innerHTML = historyList.map(h => {
+            const hDate = h.payment_date || h.transaction_date || (h.created_at ? h.created_at.split('T')[0] : '-');
+            const typeMap = {
+              'INTEREST': 'வட்டி',
+              'PART_PRINCIPAL': 'பகுதி அசல்',
+              'FULL_CLOSURE': 'கடன் முடிவு'
+            };
+            const tLabel = typeMap[h.payment_type || h.transaction_type || h.action_type] || (h.payment_type || 'வரவு');
+            const intPaid = parseFloat(h.interest_paid || h.interest_amount || 0);
+            const prinPaid = parseFloat(h.principal_paid || h.principal_amount || 0);
+            
+            let detailParts = [];
+            if (intPaid > 0) detailParts.push(`வட்டி: <b>₹${intPaid.toLocaleString('en-IN')}</b>`);
+            if (prinPaid > 0) detailParts.push(`அசல்: <b>₹${prinPaid.toLocaleString('en-IN')}</b>`);
+            if (detailParts.length === 0 && h.total_paid) detailParts.push(`மொத்தம்: <b>₹${parseFloat(h.total_paid).toLocaleString('en-IN')}</b>`);
+
+            return `
+              <div class="py-1 flex justify-between items-center text-[10px]">
+                <span>📅 <b>${hDate}</b> - <span class="text-brand-violet font-bold">${tLabel}</span></span>
+                <span>${detailParts.join(' | ')}</span>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 2. கடன் ஆரம்பத் தேதி & கடைசி வட்டி தேதி கணக்கீடு
       const txnDateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
       const origLoanDateStr = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
-      const lastDateStr = loan.last_interest_paid_date || origLoanDateStr;
+      
+      // வரலாற்றில் கடைசித் தேதி இருந்தாலோ அல்லது loan.last_interest_paid_date இருந்தாலோ அதை எடுத்தல்
+      let lastPaidDate = loan.last_interest_paid_date || null;
+      if (!lastPaidDate && historyList.length > 0) {
+        const lastRec = historyList[historyList.length - 1];
+        lastPaidDate = lastRec.payment_date || lastRec.transaction_date || (lastRec.created_at ? lastRec.created_at.split('T')[0] : null);
+      }
+
+      const isFirstTimePayment = !lastPaidDate && historyList.length === 0;
+      const lastDateStr = lastPaidDate || origLoanDateStr;
 
       const d1 = new Date(lastDateStr);
       const d2 = new Date(txnDateStr);
@@ -5265,18 +5316,32 @@
 
       const schemeObj = schemesCache.find(s => s.scheme_name === loan.scheme_name);
       const minDays = schemeObj?.min_interest_days || 7;
-      const calcDays = Math.max(diffDays, minDays);
+
+      // விதிமுறை: முதல் முறை மட்டுமே மினிமம் வட்டி நாள் செல்லுபடியாகும் (அதுவும் மினிமம் நாளை விடக் குறைவாக இருந்தால் மட்டும்).
+      // மினிமம் நாளுக்கு மேல் சென்றுவிட்டாலோ அல்லது ஏற்கனவே வட்டி/அசல் கட்டியிருந்தாலோ Actual Days மட்டுமே எடுக்கப்படும்.
+      let calcDays = diffDays;
+      let minDayNote = `Actual: ${diffDays} நாள்`;
+
+      if (isFirstTimePayment && diffDays < minDays) {
+        calcDays = minDays;
+        minDayNote = `முதல் முறை Min: ${minDays} நாள் (நடப்பு: ${diffDays})`;
+      }
+
+      const badgeEl = document.getElementById('rep_min_day_badge');
+      if (badgeEl) badgeEl.innerText = minDayNote;
 
       let annualRate = 12.0;
       if (schemeObj && Array.isArray(schemeObj.interest_slabs) && schemeObj.interest_slabs.length > 0) {
-        const matchedSlab = schemeObj.interest_slabs.find(sl => calcDays >= sl.from_days && calcDays <= sl.to_days);
+        // வட்டி அடுக்கு (Slab) கடன் தொடங்கிய மொத்த நாட்கள் அல்லது நடப்பு நாட்களுக்கு ஏற்ப
+        const slabCheckDays = Math.max(totalLoanDays, calcDays);
+        const matchedSlab = schemeObj.interest_slabs.find(sl => slabCheckDays >= sl.from_days && slabCheckDays <= sl.to_days);
         annualRate = matchedSlab ? parseFloat(matchedSlab.rate_percent) : parseFloat(schemeObj.interest_slabs[schemeObj.interest_slabs.length - 1].rate_percent);
       }
 
       const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
       const calcInterest = Math.round((principal * annualRate * calcDays) / (365 * 100));
 
-      // 2. இதர கட்டணம் (RELEASE Processing Charge) & தகவல்/ஏல கட்டணம் (Auction Notice Charge)
+      // 3. இதர கட்டணம் (RELEASE Processing Charge) & தகவல்/ஏல கட்டணம் (Auction Notice Charge)
       let otherChg = 0;
       if (schemeObj && schemeObj.processing_charge_type === 'RELEASE') {
         if (schemeObj.processing_charge_calc === 'AMOUNT') {

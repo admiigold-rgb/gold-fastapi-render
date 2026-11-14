@@ -2177,6 +2177,23 @@ def get_branch_sale_stock(branch_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/gss/next-no")
+def get_next_gss_no(branch_id: int = Query(...)):
+    try:
+        branch_res = supabase.table("test_branches").select("branch_code").eq("id", branch_id).execute()
+        branch_code = branch_res.data[0]["branch_code"].strip().upper() if branch_res.data else "BR"
+        
+        count_res = supabase.table("test_customer_savings_accounts").select("id", count="exact").eq("branch_id", branch_id).execute()
+        next_count = (count_res.count or len(count_res.data or [])) + 1
+        
+        return {
+            "status": "success",
+            "branch_code": branch_code,
+            "next_gss_no": f"{branch_code}/GSS/{next_count:04d}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"GSS எண் பிழை: {str(e)}")
+
 # ==========================================
 # 📦 GP நகை இருப்பு & தலைமையக ஒதுக்கீடு (Stock Flow APIs)
 # ==========================================

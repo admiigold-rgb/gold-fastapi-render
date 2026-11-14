@@ -5421,5 +5421,55 @@
       loadPendingRebatesHQ();
     }
   </script>
+  <!-- 📸 நகையின் புகைப்படம் பார்க்கும் சாளரம் (Ornament Photo Viewer Modal) -->
+<div id="ornamentPhotoModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center z-[9999] p-4" onclick="closeOrnamentPhotoModal()">
+  <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border-2 border-brand-gold" onclick="event.stopPropagation()">
+    <div class="bg-brand-violet text-white px-4 py-3 flex justify-between items-center">
+      <h4 id="photoModalTitle" class="text-sm font-extrabold flex items-center gap-2">
+        <span>📸</span> நகையின் புகைப்படம்
+      </h4>
+      <button type="button" onclick="closeOrnamentPhotoModal()" class="text-white hover:text-amber-300 font-black text-lg leading-none">&times;</button>
+    </div>
+    <div class="p-4 bg-slate-100 flex justify-center items-center min-h-[250px] max-h-[75vh] overflow-auto">
+      <img id="modalOrnamentImg" src="" alt="நகையின் புகைப்படம்" class="max-w-full max-h-[65vh] rounded-xl shadow border border-slate-300 object-contain">
+    </div>
+    <div class="px-4 py-3 bg-white border-t border-slate-100 flex justify-end">
+      <button type="button" onclick="closeOrnamentPhotoModal()" class="px-4 py-1.5 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-slate-700">மூடு (Close)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function viewOrnamentPhoto(photoData, loanNo = '') {
+    if (!photoData || photoData === 'null' || photoData === 'undefined') {
+      return alert("⚠️ இந்தக் கடனுக்கான நகையின் புகைப்படம் பதிவேற்றப்படவில்லை.");
+    }
+    const modal = document.getElementById('ornamentPhotoModal');
+    const imgEl = document.getElementById('modalOrnamentImg');
+    const titleEl = document.getElementById('photoModalTitle');
+    
+    if (titleEl) titleEl.innerHTML = `<span>📸</span> நகையின் புகைப்படம் ${loanNo ? `(${loanNo})` : ''}`;
+    if (imgEl) imgEl.src = photoData;
+    if (modal) {
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    }
+  }
+
+  function viewLoanOrnamentPhotoById(loanId) {
+    const loan = (typeof customerActiveLoansCache !== 'undefined' ? customerActiveLoansCache : []).find(l => l.id === loanId);
+    if (!loan) return alert("கடன் விபரம் கிடைக்கவில்லை.");
+    const photoSrc = loan.ornament_photo || loan.photo_url;
+    viewOrnamentPhoto(photoSrc, loan.loan_no);
+  }
+
+  function closeOrnamentPhotoModal() {
+    const modal = document.getElementById('ornamentPhotoModal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+  }
+</script>
 </body>
 </html>

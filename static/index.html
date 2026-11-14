@@ -1853,31 +1853,61 @@
     let currentDayMode = "OPEN";
     let currentSystemCash = 0;
 
-    function readFileAsBase64(fileInput) {
+    // 📸 புகைப்படத்தைத் தரம் குறையாமல் 100KB-க்குள் தானாகச் சுருக்கி எடுத்தல் (Quota & Speed Fix)
+    function readFileAsBase64(fileInput, maxWidth = 800, quality = 0.65) {
       return new Promise((resolve) => {
         if (!fileInput || !fileInput.files || !fileInput.files[0]) return resolve(null);
+        const file = fileInput.files[0];
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = Math.round((h * maxWidth) / w);
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          };
+          img.onerror = () => resolve(e.target.result);
+          img.src = e.target.result;
+        };
         reader.onerror = () => resolve(null);
-        reader.readAsDataURL(fileInput.files[0]);
+        reader.readAsDataURL(file);
       });
     }
-    // 💾 நடப்பு வாடிக்கையாளர் & கூடையை உலாவியில் பாதுகாப்பாகச் சேமித்தல் (Refresh பாதுகாப்பு)
+
+    // 💾 நடப்பு வாடிக்கையாளர் & கூடையை உலாவியில் பாதுகாப்பாகச் சேமித்தல் (Quota Safe)
     function saveActiveSessionToStorage() {
       if (!activeCustomer || !activeCustomer.id) {
         localStorage.removeItem('active_counter_session');
         return;
       }
-      const sessionData = {
-        customer: activeCustomer,
-        visit_id: activeVisitId,
-        cart: cartItems,
-        ornaments: ornamentList,
-        is_locked: isDraftLocked,
-        selected_mode: selectedMode,
-        exemption_status: window.currentActiveExemptionStatus || "NONE"
-      };
-      localStorage.setItem('active_counter_session', JSON.stringify(sessionData));
+      try {
+        const lightCustomer = { ...activeCustomer };
+        delete lightCustomer.customer_photo;
+        delete lightCustomer.signature_photo;
+        delete lightCustomer.id_proof_photo;
+
+        const sessionData = {
+          customer: lightCustomer,
+          visit_id: activeVisitId,
+          cart: cartItems,
+          ornaments: ornamentList,
+          is_locked: isDraftLocked,
+          selected_mode: selectedMode,
+          exemption_status: window.currentActiveExemptionStatus || "NONE"
+        };
+        localStorage.setItem('active_counter_session', JSON.stringify(sessionData));
+      } catch (e) {
+        console.warn("Session storage limit skipped:", e);
+      }
     }
 
     function restoreActiveSessionOnLoad() {
@@ -2907,8 +2937,7 @@
     // ========================================================
     // ⏸️ மேம்படுத்தப்பட்ட ஆட்டோ-ஹோல்ட், பேட்ஜ் ஸ்டேட்டஸ் & லாக்
     // ========================================================
-
-    // 1. நடப்பு வாடிக்கையாளரை நிறுத்தி வைத்தல்
+    // 1. நடப்பு வாடிக்கையாளரை நிறுத்தி வைத்தல் (Quota Safe)
     function holdCurrentCustomerDraft(exemptionStatus = "NONE") {
       if (!activeCustomer || !activeCustomer.id) {
         return alert("நிறுத்தி வைப்பதற்கு செயலில் உள்ள வாடிக்கையாளர் இல்லை.");
@@ -2917,8 +2946,13 @@
       const cVal = parseFloat(document.getElementById('pay_cash')?.value) || 0;
       const bVal = parseFloat(document.getElementById('pay_bank')?.value) || 0;
 
+      const lightCustomer = { ...activeCustomer };
+      delete lightCustomer.customer_photo;
+      delete lightCustomer.signature_photo;
+      delete lightCustomer.id_proof_photo;
+
       const draftSession = {
-        customer: activeCustomer,
+        customer: lightCustomer,
         visit_id: activeVisitId,
         cart: [...cartItems],
         ornaments: [...ornamentList],
@@ -2929,10 +2963,15 @@
         selected_mode: selectedMode
       };
 
-      let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
-      drafts = drafts.filter(d => d.customer.id !== activeCustomer.id);
-      drafts.push(draftSession);
-      localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
+      try {
+        let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
+        drafts = drafts.filter(d => d.customer.id !== activeCustomer.id);
+        drafts.push(draftSession);
+        localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
+      } catch (err) {
+        localStorage.removeItem('counter_held_drafts');
+        localStorage.setItem('counter_held_drafts', JSON.stringify([draftSession]));
+      }
 
       toggleDraftLockMode(false);
       localStorage.removeItem('active_counter_session');

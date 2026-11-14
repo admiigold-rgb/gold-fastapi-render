@@ -2173,3 +2173,101 @@ def get_branch_sale_stock(branch_id: int = Query(...)):
         return {"status": "success", "data": res.data or []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# 📦 GP நகை இருப்பு & தலைமையக ஒதுக்கீடு (Stock Flow APIs)
+# ==========================================
+
+@app.get("/api/gp/branch-purchased-stock")
+def get_branch_purchased_stock(branch_id: int = Query(...)):
+    try:
+        # கிளையில் வாங்கப்பட்டு இன்னும் தலைமையகத்திற்கு அனுப்பப்படாத நகைகள்
+        p_res = supabase.table("test_gold_purchases").select("id, gp_no, transaction_date").eq("branch_id", branch_id).execute()
+        p_map = {p["id"]: p for p in (p_res.data or [])}
+        if not p_map:
+            return {"status": "success", "data": []}
+
+        items_res = (
+            supabase.table("test_gold_purchase_items")
+            .select("*")
+            .in_("purchase_id", list(p_map.keys()))
+            .eq("stock_status", "AT_BRANCH")
+            .order("id", desc=False)
+            .execute()
+        )
+        data = items_res.data or []
+        for x in data:
+            p = p_map.get(x.get("purchase_id"), {})
+            x["gp_no"] = p.get("gp_no", "-")
+            x["purchase_date"] = p.get("transaction_date", "-")
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/gp/send-to-hq")
+def send_gp_items_to_hq(data: dict):
+    try:
+        item_ids = data.get("item_ids") or []
+        if not item_ids:
+            raise HTTPException(status_code=400, detail="அனுப்ப வேண்டிய நகைகளைத் தேர்வு செய்யவும்.")
+        supabase.table("test_gold_purchase_items").update({"stock_status": "SENT_TO_HQ"}).in_("id", item_ids).execute()
+        return {"status": "success", "message": f"{len(item_ids)} நகைகள் தலைமையகத்திற்கு வெற்றிகரமாக அனுப்பப்பட்டன!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/hq/gp-stock-list")
+def get_hq_gp_stock_list():
+    try:
+        br_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute()
+        b_map = {b["id"]: b for b in (br_res.data or [])}
+
+        p_res = supabase.table("test_gold_purchases").select("id, gp_no, branch_id, transaction_date").execute()
+        p_map = {p["id"]: p for p in (p_res.data or [])}
+
+        items_res = (
+            supabase.table("test_gold_purchase_items")
+            .select("*")
+            .in_("stock_status", ["SENT_TO_HQ", "ALLOCATED_FOR_SALE"])
+            .order("id", desc=True)
+            .execute()
+        )
+        data = items_res.data or []
+        for x in data:
+            p = p_map.get(x.get("purchase_id"), {})
+            b = b_map.get(p.get("branch_id"), {})
+            alloc_b = b_map.get(x.get("allocated_branch_id"), {})
+            x["gp_no"] = p.get("gp_no", "-")
+            x["purchase_date"] = p.get("transaction_date", "-")
+            x["from_branch_name"] = b.get("branch_name", "-")
+            x["allocated_branch_name"] = alloc_b.get("branch_name", "-")
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/allocate-stock-for-sale")
+def allocate_stock_for_sale(data: dict):
+    try:
+        item_id = data.get("item_id")
+        target_branch_id = data.get("allocated_branch_id")
+        sell_rate = float(data.get("selling_rate_per_gram") or 0)
+        making_chg = float(data.get("making_charge") or 0)
+        gst_pct = float(data.get("gst_percent") if data.get("gst_percent") is not None else 3.0)
+
+        if not item_id or not target_branch_id or sell_rate <= 0:
+            raise HTTPException(status_code=400, detail="கிளை மற்றும் விற்பனை கிராம் விலையைச் சரியாக உள்ளிடவும்.")
+
+        supabase.table("test_gold_purchase_items").update({
+            "stock_status": "ALLOCATED_FOR_SALE",
+            "allocated_branch_id": int(target_branch_id),
+            "selling_rate_per_gram": sell_rate,
+            "making_charge": making_chg,
+            "gst_percent": gst_pct
+        }).eq("id", item_id).execute()
+
+        return {"status": "success", "message": "நகை விற்பனைக்காகக் கிளைக்கு வெற்றிகரமாக ஒதுக்கப்பட்டது!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -7122,6 +7122,210 @@
     await fetch(`/api/admin/gss-scheme/${id}`, { method: 'DELETE' });
     loadGssSchemesList();
   }
+
+  <script>
+  let rdSchemesCache = [];
+  let customerRdAccountsCache = [];
+
+  async function openRdModal() {
+    if (!activeCustomer || !activeCustomer.id) {
+      return alert("தயவுசெய்து முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
+    }
+    const modal = document.getElementById('rdAccountModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    document.getElementById('rdInstallmentHistoryBox').classList.add('hidden');
+
+    const sel = document.getElementById('rd_scheme_select');
+    if (sel) {
+      sel.innerHTML = `<option value="">-- திட்டங்கள் ஏற்றப்படுகின்றன... --</option>`;
+      try {
+        const sRes = await fetch('/api/admin/rd-schemes?t=' + Date.now());
+        const sData = await sRes.json();
+        rdSchemesCache = sData.data || [];
+        sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
+          rdSchemesCache.map(s => s.map ? '' : `<option value="${s.id}">${s.scheme_name} (மாதம்: ₹${s.monthly_amount})</option>`).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    await loadCustomerRdAccounts();
+    await resetRdFormToNew();
+  }
+
+  function closeRdModal() {
+    const modal = document.getElementById('rdAccountModal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+  }
+
+  async function loadCustomerRdAccounts() {
+    const container = document.getElementById('customerActiveRdList');
+    if (!container || !activeCustomer) return;
+    try {
+      const res = await fetch(`/api/customer/${activeCustomer.id}/rd-accounts?t=` + Date.now());
+      const data = await res.json();
+      customerRdAccountsCache = data.data || [];
+      if (customerRdAccountsCache.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 italic">இந்த வாடிக்கையாளருக்கு நடப்பு தொடர்வைப்புக் கணக்குகள் இல்லை.</p>`;
+        return;
+      }
+      container.innerHTML = customerRdAccountsCache.map(acc => {
+        const paid = parseFloat(acc.total_amount_paid || 0);
+        return `
+          <div class="bg-white p-3 rounded-2xl border border-indigo-200 space-y-2 shadow-xs">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <span class="font-mono font-black text-indigo-900 text-sm">${acc.rd_no}</span>
+                <span class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold">${acc.scheme_details?.scheme_name || 'RD'}</span>
+                <span class="ml-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold">${(acc.transactions || []).length} தவணைகள்</span>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="viewRdInstallments(${acc.id})" style="background-color:#4f46e5;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">📜 தவணை விபரம்</button>
+                <button type="button" onclick="selectRdForInstallment(${acc.id})" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">+ தவணை கட்டு</button>
+                <button type="button" onclick="selectRdForMaturity(${acc.id})" style="background-color:#dc2626;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">💵 முதிர்வு முடிவு</button>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-700 bg-slate-50 p-2 rounded-xl">
+              செலுத்தியது: <b>₹${paid.toLocaleString('en-IN')}</b> | நாமினி: <b>${acc.nominee_name || 'இல்லை'} (${acc.nominee_relation || '-'})</b>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) { console.error(e); }
+  }
+
+  function viewRdInstallments(accId) {
+    const acc = customerRdAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const box = document.getElementById('rdInstallmentHistoryBox');
+    const tbody = document.getElementById('rdHistoryTbody');
+    document.getElementById('rdHistoryTitle').innerText = `📜 RD தவணை கட்டிய விபரங்கள் (${acc.rd_no}):`;
+    const txns = acc.transactions || [];
+    if (txns.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400">தவணைப் பதிவுகள் இல்லை</td></tr>`;
+    } else {
+      tbody.innerHTML = txns.map((t, idx) => `
+        <tr>
+          <td class="p-2 font-bold">#${idx + 1}</td>
+          <td class="p-2 font-mono">${t.transaction_date || '-'}</td>
+          <td class="p-2 font-mono text-indigo-800">${t.receipt_no || '-'}</td>
+          <td class="p-2 text-right font-mono font-bold text-emerald-700">₹${parseFloat(t.amount_paid || 0).toLocaleString('en-IN')}</td>
+        </tr>
+      `).join('');
+    }
+    box.classList.remove('hidden');
+  }
+
+  async function resetRdFormToNew() {
+    document.getElementById('rd_mode').value = 'NEW';
+    document.getElementById('rd_existing_acc_id').value = '';
+    document.getElementById('rdFormTitle').innerText = '➕ புதிய RD கணக்கு தொடங்குதல்:';
+    document.getElementById('rdAmountLabel').innerText = 'மாத தவணைத் தொகை (₹) *';
+    document.getElementById('rd_initial_amount').value = '';
+    document.getElementById('rd_scheme_select').disabled = false;
+    document.getElementById('rd_nominee_name').value = '';
+    document.getElementById('rd_nominee_relation').value = '';
+    document.getElementById('rd_nominee_mobile').value = '';
+
+    const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+    try {
+      const res = await fetch(`/api/rd/next-no?branch_id=${branchId}`);
+      const data = await res.json();
+      if (data.status === "success") {
+        document.getElementById('rd_account_no').value = data.next_rd_no;
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  function selectRdForInstallment(accId) {
+    const acc = customerRdAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    document.getElementById('rd_mode').value = 'INSTALLMENT';
+    document.getElementById('rd_existing_acc_id').value = acc.id;
+    document.getElementById('rdFormTitle').innerText = `💳 RD தவணை செலுத்துதல் (${acc.rd_no}):`;
+    document.getElementById('rdAmountLabel').innerText = 'செலுத்தும் தவணைத் தொகை (₹) *';
+    document.getElementById('rd_account_no').value = acc.rd_no;
+    document.getElementById('rd_scheme_select').value = acc.scheme_id;
+    document.getElementById('rd_scheme_select').disabled = true;
+    document.getElementById('rd_initial_amount').value = acc.scheme_details?.monthly_amount || '';
+  }
+
+  function selectRdForMaturity(accId) {
+    const acc = customerRdAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const totalAmt = parseFloat(acc.total_amount_paid || 0);
+
+    const cartItem = {
+      is_rd_account: true,
+      title: `💵 RD முதிர்வுப் பணம் (${acc.rd_no})`,
+      details: `கணக்கு: ${acc.rd_no} | மொத்தச் செலுத்தியது: ₹${totalAmt}`,
+      debit: totalAmt, // வாடிக்கையாளருக்குத் தர வேண்டிய பட்டுவாடா தொகை (-)
+      credit: 0,
+      rd_meta: {
+        mode: 'CLOSE',
+        account_id: acc.id,
+        rd_no: acc.rd_no,
+        maturity_amount: totalAmt
+      }
+    };
+
+    if (typeof cartItems !== 'undefined') {
+      cartItems.push(cartItem);
+      if (typeof renderCart === 'function') renderCart();
+    }
+    closeRdModal();
+    alert(`✅ ${acc.rd_no} முதிர்வுத் தொகை ₹${totalAmt.toLocaleString('en-IN')} கூடையில் சேர்க்கப்பட்டது!`);
+  }
+
+  function onRdSchemeChange() {
+    const schId = parseInt(document.getElementById('rd_scheme_select').value);
+    const sch = rdSchemesCache.find(s => s.id === schId);
+    if (sch && sch.monthly_amount > 0) {
+      document.getElementById('rd_initial_amount').value = sch.monthly_amount;
+    }
+  }
+
+  function addRdToCart() {
+    const mode = document.getElementById('rd_mode').value;
+    const accId = document.getElementById('rd_existing_acc_id').value;
+    const rdNo = document.getElementById('rd_account_no').value;
+    const schId = parseInt(document.getElementById('rd_scheme_select').value);
+    const sch = rdSchemesCache.find(s => s.id === schId);
+    const amt = parseFloat(document.getElementById('rd_initial_amount').value) || 0;
+
+    if (!schId || amt <= 0) {
+      return alert("திட்டத்தைத் தேர்ந்தெடுத்து சரியான தொகையை உள்ளிடவும்.");
+    }
+
+    const title = mode === 'NEW' ? `💰 புதிய RD கணக்கு (${rdNo})` : `💳 RD தவணை (${rdNo})`;
+    const details = `${sch.scheme_name} | தொகை: ₹${amt}`;
+
+    cartItems.push({
+      is_rd_account: true,
+      title: title,
+      details: details,
+      debit: 0,
+      credit: amt, // வாடிக்கையாளர் செலுத்தும் தொகை (+)
+      rd_meta: {
+        mode: mode,
+        account_id: accId ? parseInt(accId) : null,
+        rd_no: rdNo,
+        scheme_id: schId,
+        initial_amount: amt,
+        nominee_name: document.getElementById('rd_nominee_name').value.trim(),
+        nominee_relation: document.getElementById('rd_nominee_relation').value.trim(),
+        nominee_mobile: document.getElementById('rd_nominee_mobile').value.trim()
+      }
+    });
+
+    if (typeof renderCart === 'function') renderCart();
+    closeRdModal();
+    alert("✅ RD பரிவர்த்தனை கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
+  }
+</script>
 </script>
 </body>
 </html>

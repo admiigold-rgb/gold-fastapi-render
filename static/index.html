@@ -943,56 +943,53 @@
               <select id="new_staff_branch" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet"></select>
             </div>
         
-            <!-- அணுகல் உரிமைகள் செக்பாக்ஸ் கட்டமைப்பு -->
-            <div class="bg-purple-50 p-3.5 rounded-2xl border-2 border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+            <!-- அணுகல் உரிமைகள் செக்பாக்ஸ் கட்டமைப்பு (ஒரே சீரான எழுத்து வடிவம்) -->
+            <div class="bg-purple-50 p-4 rounded-2xl border-2 border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <label class="flex items-center space-x-2.5 font-bold text-brand-violet p-2 bg-white rounded-xl border border-purple-200 hover:bg-purple-50 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_counter" checked class="w-4 h-4 text-brand-violet rounded">
-                <span>1. கவுண்ட்டர் & அடகு அணுகல்</span>
+                <span class="text-xs font-bold">1. கவுண்ட்டர் & அடகு அனுமதி</span>
               </label>
         
-              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+              <label class="flex items-center space-x-2.5 font-bold text-brand-violet p-2 bg-white rounded-xl border border-purple-200 hover:bg-purple-50 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_kyc" class="w-4 h-4 text-brand-violet rounded">
-                <span>2. KYC ஒப்புதல் உரிமை</span>
+                <span class="text-xs font-bold">2. KYC ஒப்புதல் உரிமை</span>
               </label>
         
-              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+              <label class="flex items-center space-x-2.5 font-bold text-brand-violet p-2 bg-white rounded-xl border border-purple-200 hover:bg-purple-50 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_updates" class="w-4 h-4 text-brand-violet rounded">
-                <span>3. சுயவிவர மாற்ற ஒப்புதல்</span>
+                <span class="text-xs font-bold">3. சுயவிவர மாற்ற ஒப்புதல்</span>
               </label>
         
-              <label class="flex items-center space-x-2 font-bold text-brand-violet p-1.5 rounded-lg hover:bg-purple-100/50 cursor-pointer">
+              <label class="flex items-center space-x-2.5 font-bold text-brand-violet p-2 bg-white rounded-xl border border-purple-200 hover:bg-purple-50 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_admin" class="w-4 h-4 text-brand-violet rounded">
-                <span>4. நிர்வாக அணுகல்</span>
+                <span class="text-xs font-bold">4. நிர்வாக அணுகல்</span>
               </label>
         
-              <!-- புதிய அனுமதி 1: கிளைச் செலவுகள் -->
-              <label class="flex items-center space-x-2 font-bold text-amber-950 p-1.5 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100/60 cursor-pointer">
+              <label class="flex items-center space-x-2.5 font-bold text-amber-950 p-2 bg-amber-50 rounded-xl border border-amber-200 hover:bg-amber-100/60 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_expenses" class="w-4 h-4 text-amber-600 rounded">
-                <span>5. கிளைச் செலவுகளை அனுமதிக்கும் உரிமை (Approve Expenses)</span>
+                <span class="text-xs font-bold">5. கிளைச் செலவுகளை அனுமதிக்கும் உரிமை</span>
               </label>
         
-              <!-- புதிய அனுமதி 2: உள்-பணப் பரிமாற்றம் -->
-              <label class="flex items-center space-x-2 font-bold text-amber-950 p-1.5 bg-amber-50 rounded-lg border border-amber-200 hover:bg-amber-100/60 cursor-pointer">
+              <label class="flex items-center space-x-2.5 font-bold text-amber-950 p-2 bg-amber-50 rounded-xl border border-amber-200 hover:bg-amber-100/60 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_treasury" class="w-4 h-4 text-amber-600 rounded">
-                <span>6. உள்-பணப் பரிமாற்றம் & வங்கி மேலாண்மை (Manage Treasury)</span>
+                <span class="text-xs font-bold">6. உள்-பணப் பரிமாற்றம் & வங்கி மேலாண்மை</span>
               </label>
         
-              <!-- சிறப்பு அனுமதி: அவசர OTP விலக்கு -->
-              <label class="flex items-center space-x-2 font-bold text-amber-900 col-span-1 sm:col-span-2 bg-yellow-100/80 p-2 rounded-xl border border-yellow-300 hover:bg-yellow-100 cursor-pointer">
+              <label class="flex items-center space-x-2.5 font-bold text-amber-900 col-span-1 sm:col-span-2 bg-yellow-100/80 p-2 rounded-xl border border-yellow-300 hover:bg-yellow-100 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_otp_exempt" class="w-4 h-4 text-yellow-600 rounded">
-                <span>⚡ 7. அவசர OTP விலக்கு ஒப்புதல் உரிமை (HQ Exemption Authority)</span>
+                <span class="text-xs font-bold">⚡ 7. அவசர OTP விலக்கு ஒப்புதல் உரிமை</span>
               </label>
-              <!-- சிறப்பு அனுமதி: வட்டி தள்ளுபடி ஒப்புதல் -->
-              <label class="flex items-center space-x-2 font-bold text-purple-950 col-span-1 sm:col-span-2 bg-purple-100/80 p-2 rounded-xl border border-purple-300 hover:bg-purple-100 cursor-pointer">
+
+              <label class="flex items-center space-x-2.5 font-bold text-purple-950 col-span-1 sm:col-span-2 bg-purple-100/80 p-2 rounded-xl border border-purple-300 hover:bg-purple-100 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_rebate" class="w-4 h-4 text-purple-700 rounded">
-                <span>🏷️ 8. வட்டி தள்ளுபடி ஒப்புதல் உரிமை (Approve Interest Rebate)</span>
+                <span class="text-xs font-bold">🏷️ 8. வட்டி தள்ளுபடி ஒப்புதல் உரிமை</span>
+              </label>
+
+              <label class="flex items-center space-x-2.5 font-bold text-emerald-950 col-span-1 sm:col-span-2 bg-emerald-50 p-2 rounded-xl border border-emerald-200 hover:bg-emerald-100 cursor-pointer shadow-xs">
+                <input type="checkbox" id="perm_gp_stock" class="w-4 h-4 text-emerald-700 rounded">
+                <span class="text-xs font-bold">📦 9. தலைமையக நகை இருப்பு & கிளை விற்பனை ஒதுக்கீடு</span>
               </label>
             </div>
-              <!-- புதிய அனுமதி 9: தலைமையக நகை இருப்பு & விற்பனை ஒதுக்கீடு -->
-                <label class="flex items-center space-x-2 font-bold text-emerald-950 col-span-1 sm:col-span-2 bg-emerald-50 p-2 rounded-xl border border-emerald-200 hover:bg-emerald-100 cursor-pointer">
-                  <input type="checkbox" id="perm_gp_stock" class="w-4 h-4 text-emerald-700 rounded">
-                  <span>📦 9. தலைமையக நகை இருப்பு & கிளை விற்பனை ஒதுக்கீடு (HQ Gold Stock Allocation)</span>
-                </label>
         
             <div class="flex justify-end">
               <button type="button" onclick="submitStaffForm()" id="btnSubmitStaff" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500 cursor-pointer">+ பணியாளரை உருவாக்கு</button>

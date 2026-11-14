@@ -2303,6 +2303,61 @@ def get_customer_gss_accounts(customer_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/gss/request-maturity-benefit")
+def request_gss_maturity_benefit(data: dict):
+    try:
+        acc_id = int(data.get("account_id"))
+        proposed_amt = float(data.get("proposed_benefit") or 0)
+        supabase.table("test_customer_savings_accounts").update({
+            "proposed_benefit_amount": proposed_amt,
+            "benefit_approval_status": "PENDING"
+        }).eq("id", acc_id).execute()
+        return {"status": "success", "message": "மெச்சியுரிட்டி பெனிபிட் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/hq/pending-gss-benefits")
+def get_pending_gss_benefits():
+    try:
+        acc_res = supabase.table("test_customer_savings_accounts").select("*").eq("benefit_approval_status", "PENDING").execute()
+        accounts = acc_res.data or []
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        cust_map = {c["id"]: c for c in (cust_res.data or [])}
+        br_res = supabase.table("test_branches").select("id, branch_name").execute()
+        br_map = {b["id"]: b["branch_name"] for b in (br_res.data or [])}
+        sch_res = supabase.table("test_savings_schemes").select("id, scheme_name").execute()
+        sch_map = {s["id"]: s["scheme_name"] for s in (sch_res.data or [])}
+
+        for a in accounts:
+            c = cust_map.get(a.get("customer_id"), {})
+            a["customer_name"] = c.get("name", "-")
+            a["customer_mobile"] = c.get("mobile", "-")
+            a["branch_name"] = br_map.get(a.get("branch_id"), "-")
+            a["scheme_name"] = sch_map.get(a.get("scheme_id"), "GSS")
+        return {"status": "success", "data": accounts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/approve-gss-benefit")
+def approve_gss_benefit(data: dict):
+    try:
+        acc_id = int(data.get("account_id"))
+        action = data.get("action") # APPROVE / REJECT
+        edited_amt = float(data.get("approved_amount") or 0)
+        if action == "APPROVE":
+            supabase.table("test_customer_savings_accounts").update({
+                "approved_benefit_amount": edited_amt,
+                "benefit_approval_status": "APPROVED"
+            }).eq("id", acc_id).execute()
+            return {"status": "success", "message": f"₹{edited_amt} மெச்சியுரிட்டி பெனிபிட் அங்கீகரிக்கப்பட்டது!"}
+        else:
+            supabase.table("test_customer_savings_accounts").update({
+                "benefit_approval_status": "REJECTED"
+            }).eq("id", acc_id).execute()
+            return {"status": "success", "message": "பெனிபிட் கோரிக்கை நிராகரிக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/admin/gss-schemes")
 def get_gss_schemes():
     try:

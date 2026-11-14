@@ -1547,61 +1547,81 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     # விற்கப்பட்ட நகையை இருப்பிலிருந்து SOLD என மாற்றுதல்
                     supabase.table("test_gold_purchase_items").update({"stock_status": "SOLD"}).eq("id", stock_item_id).execute()
 
-            # 🪙 5. நகை சேமிப்புத் திட்டம் (GSS Account / Installment) கூடையில் இருந்தால் சேமித்தல்
+            # 🪙 5. நகை சேமிப்புத் திட்டம் (GSS Account / Installment / Maturity Close) கூடையில் இருந்தால் சேமித்தல்
             elif item.get("is_gss_account") is True:
                 gss_meta = item.get("gss_meta") or {}
+                mode = gss_meta.get("mode", "NEW")
                 gss_no = gss_meta.get("gss_no")
-                scheme_type = gss_meta.get("scheme_type")
+                scheme_id = int(gss_meta.get("scheme_id") or 1)
                 init_amount = float(gss_meta.get("initial_amount") or 0)
+                penalty_amt = float(gss_meta.get("penalty_amount") or 0)
+                gold_rate = float(gss_meta.get("gold_rate") or 0)
+                wt_credited = float(gss_meta.get("weight_credited") or 0)
                 maturity_opt = gss_meta.get("maturity_option", "GOLD")
 
-                # இந்த GSS கணக்கு ஏற்கனவே டேட்டாபேஸில் உள்ளதா எனச் சரிபார்த்தல்
-                acc_res = supabase.table("test_customer_savings_accounts").select("id").eq("gss_no", gss_no).execute()
-
-                if acc_res.data:
-                    # கணக்கு ஏற்கனவே இருந்தால், இது தவணைத் தொகை செலுத்துதல் (Installment Payment)
-                    account_id = acc_res.data[0]["id"]
-
-                    # தவணைப் பதிவைச் சேர்த்தல்
-                    supabase.table("test_savings_transactions").insert({
-                        "account_id": account_id,
-                        "visit_id": target_visit_id,
-                        "transaction_date": txn_date,
-                        "amount_paid": init_amount,
-                        "receipt_no": f"{gss_no}/T1"
-                    }).execute()
-
-                    # கணக்கின் மொத்த செலுத்திய தொகையைப் புதுப்பித்தல் (Update Total Paid)
-                    curr_acc = supabase.table("test_customer_savings_accounts").select("total_amount_paid").eq("id", account_id).execute()
-                    old_total = float(curr_acc.data[0].get("total_amount_paid") or 0) if curr_acc.data else 0
-
-                    supabase.table("test_customer_savings_accounts").update({
-                        "total_amount_paid": old_total + init_amount
-                    }).eq("id", account_id).execute()
+                if mode == "CLOSE":
+                    # திட்டத்தை முடித்தல் (Maturity Closure - GOLD or CASH)
+                    acc_id = gss_meta.get("account_id")
+                    if acc_id:
+                        supabase.table("test_customer_savings_accounts").update({
+                            "status": "CLOSED",
+                            "maturity_option": gss_meta.get("close_type", "GOLD")
+                        }).eq("id", acc_id).execute()
 
                 else:
-                    # புதிய GSS கணக்கைத் தொடங்குதல் (New GSS Account creation)
-                    new_acc_res = supabase.table("test_customer_savings_accounts").insert({
-                        "gss_no": gss_no,
-                        "customer_id": data.customer_id,
-                        "branch_id": data.branch_id,
-                        "scheme_id": 1,
-                        "start_date": txn_date,
-                        "maturity_option": maturity_opt,
-                        "total_amount_paid": init_amount,
-                        "status": "ACTIVE"
-                    }).execute()
+                    # புதிய கணக்கு அல்லது தவணை செலுத்துதல்
+                    acc_res = supabase.table("test_customer_savings_accounts").select("*").eq("gss_no", gss_no).execute()
 
-                    if new_acc_res.data:
-                        new_account_id = new_acc_res.data[0]["id"]
-                        # முதல் தவணைப் பதிவு
+                    if acc_res.data:
+                        acc_row = acc_res.data[0]
+                        account_id = acc_row["id"]
+                        old_total = float(acc_row.get("total_amount_paid") or 0)
+                        old_wt = float(acc_row.get("total_accumulated_weight") or 0)
+
+                        # தவணைப் பதிவு
                         supabase.table("test_savings_transactions").insert({
-                            "account_id": new_account_id,
+                            "account_id": account_id,
                             "visit_id": target_visit_id,
                             "transaction_date": txn_date,
                             "amount_paid": init_amount,
-                            "receipt_no": f"{gss_no}/NEW"
+                            "gold_rate_on_day": gold_rate,
+                            "weight_credited": wt_credited,
+                            "penalty_amount": penalty_amt,
+                            "receipt_no": f"{gss_no}/INST"
                         }).execute()
+
+                        # மொத்த தொகை & மொத்த தங்க எடையைப் புதுப்பித்தல்
+                        supabase.table("test_customer_savings_accounts").update({
+                            "total_amount_paid": round(old_total + init_amount, 2),
+                            "total_accumulated_weight": round(old_wt + wt_credited, 3)
+                        }).eq("id", account_id).execute()
+
+                    else:
+                        # புதிய GSS கணக்கைத் தொடங்குதல்
+                        new_acc_res = supabase.table("test_customer_savings_accounts").insert({
+                            "gss_no": gss_no,
+                            "customer_id": data.customer_id,
+                            "branch_id": data.branch_id,
+                            "scheme_id": scheme_id,
+                            "start_date": txn_date,
+                            "maturity_option": maturity_opt,
+                            "total_amount_paid": round(init_amount, 2),
+                            "total_accumulated_weight": round(wt_credited, 3),
+                            "status": "ACTIVE"
+                        }).execute()
+
+                        if new_acc_res.data:
+                            new_account_id = new_acc_res.data[0]["id"]
+                            supabase.table("test_savings_transactions").insert({
+                                "account_id": new_account_id,
+                                "visit_id": target_visit_id,
+                                "transaction_date": txn_date,
+                                "amount_paid": init_amount,
+                                "gold_rate_on_day": gold_rate,
+                                "weight_credited": wt_credited,
+                                "penalty_amount": penalty_amt,
+                                "receipt_no": f"{gss_no}/NEW"
+                            }).execute()
 
         return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
     except HTTPException:

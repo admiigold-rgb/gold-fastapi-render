@@ -2250,6 +2250,39 @@ def get_next_gss_no(branch_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GSS எண் பிழை: {str(e)}")
 
+@app.get("/api/customer/{customer_id}/gss-accounts")
+def get_customer_gss_accounts(customer_id: int):
+    try:
+        # திட்ட விவரங்களை எடுத்தல்
+        sch_res = supabase.table("test_savings_schemes").select("*").execute()
+        sch_map = {s["id"]: s for s in (sch_res.data or [])}
+
+        # வாடிக்கையாளரின் சேமிப்புக் கணக்குகளை எடுத்தல்
+        acc_res = (
+            supabase.table("test_customer_savings_accounts")
+            .select("*")
+            .eq("customer_id", customer_id)
+            .eq("status", "ACTIVE")
+            .order("id", desc=False)
+            .execute()
+        )
+        accounts = acc_res.data or []
+        for acc in accounts:
+            acc["scheme_details"] = sch_map.get(acc.get("scheme_id"), {})
+            # செலுத்திய தவணை வரலாறு
+            txn_res = (
+                supabase.table("test_savings_transactions")
+                .select("*")
+                .eq("account_id", acc["id"])
+                .order("id", desc=False)
+                .execute()
+            )
+            acc["transactions"] = txn_res.data or []
+
+        return {"status": "success", "data": accounts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/admin/gss-schemes")
 def get_gss_schemes():
     try:

@@ -88,6 +88,7 @@ class StaffPayload(BaseModel):
     can_manage_treasury: bool = False
     can_approve_rebate: bool = False
     can_manage_gp_stock: bool = False
+    can_approve_gss_benefit: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -411,7 +412,8 @@ def staff_unified_login(data: LoginRequest):
                 "can_approve_expenses": True if is_admin_role else bool(user.get("can_approve_expenses", False)),
                 "can_manage_treasury": True if is_admin_role else bool(user.get("can_manage_treasury", False)),
                 "can_approve_rebate": True if is_admin_role else bool(user.get("can_approve_rebate", False)),
-                "can_manage_gp_stock": True if is_admin_role else bool(user.get("can_manage_gp_stock", False))
+                "can_manage_gp_stock": True if is_admin_role else bool(user.get("can_manage_gp_stock", False)),
+                "can_approve_gss_benefit": True if is_admin_role else bool(user.get("can_approve_gss_benefit", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -1752,7 +1754,8 @@ def update_staff(staff_id: int, data: StaffPayload):
         "can_approve_expenses": data.can_approve_expenses,
         "can_manage_treasury": data.can_manage_treasury,
         "can_approve_rebate": data.can_approve_rebate,
-        "can_manage_gp_stock": data.can_manage_gp_stock
+        "can_manage_gp_stock": data.can_manage_gp_stock,
+        "can_approve_gss_benefit": data.can_approve_gss_benefit,
     }
     if data.password:
         update_dict["password"] = data.password

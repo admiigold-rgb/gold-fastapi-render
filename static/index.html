@@ -5172,8 +5172,22 @@
         container.innerHTML = customerActiveLoansCache.map(loan => {
           const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
           const loanDate = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : '-');
-          const itemsSummary = (loan.test_gold_loan_items || []).map(i => `${i.item_type} (${i.net_weight}g)`).join(', ');
           const hasPhoto = Boolean(loan.ornament_photo || loan.photo_url);
+
+          // நகையின் பெயர், எண்ணிக்கை, மொத்த எடை, நிகர எடை, பியூரிட்டி ஆகிய அனைத்தையும் உருவாக்குதல்
+          const itemsHtml = (loan.test_gold_loan_items || []).map(i => {
+            const qty = i.quantity || i.count || 1;
+            const gross = parseFloat(i.gross_weight || i.net_weight || 0).toFixed(3);
+            const net = parseFloat(i.net_weight || 0).toFixed(3);
+            const purity = i.purity || '916';
+            return `
+              <div class="bg-white border border-purple-200 rounded-lg px-2 py-1 text-[10px] text-slate-700 flex flex-wrap items-center justify-between gap-1 shadow-xs">
+                <span class="font-extrabold text-slate-900">${i.item_type} (${qty} எண்ணிக்கை)</span>
+                <span class="font-mono text-slate-600">மொத்த எடை: <b>${gross}g</b> | நிகர எடை: <b class="text-emerald-700">${net}g</b></span>
+                <span class="px-1.5 py-0.2 bg-amber-100 text-amber-900 rounded font-black text-[9px] border border-amber-300">${purity}</span>
+              </div>
+            `;
+          }).join('');
 
           return `
             <div class="p-3.5 rounded-2xl border-2 border-purple-100 bg-purple-50/40 flex flex-col justify-between gap-2.5 shadow-sm">
@@ -5193,17 +5207,22 @@
                   <span class="text-xs text-slate-500">நிலுவை அசல்:</span>
                   <span class="text-base font-black text-slate-900 font-mono">₹ ${principal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
                 </div>
-                <div class="text-[11px] text-slate-600 mt-1">தேதி: <b>${loanDate}</b> | நகைகள்: ${itemsSummary || '-'}</div>
+                <div class="text-[11px] text-slate-600 mt-1">தேதி: <b>${loanDate}</b></div>
+                
+                <div class="mt-1.5 space-y-1">
+                  <span class="text-[10px] font-bold text-slate-500 block">நகை விபரங்கள்:</span>
+                  ${itemsHtml || '<span class="text-[11px] text-slate-400">-</span>'}
+                </div>
               </div>
 
               <div class="grid grid-cols-3 gap-1.5 pt-2 border-t border-purple-100">
-                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'INTEREST')" class="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
+                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'INTEREST')" style="background-color: #059669; color: #ffffff;" class="py-1.5 px-2 hover:opacity-90 rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
                   + வட்டி
                 </button>
-                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'PART_PRINCIPAL')" class="py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
+                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'PART_PRINCIPAL')" style="background-color: #4f46e5; color: #ffffff;" class="py-1.5 px-2 hover:opacity-90 rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
                   + பகுதி அசல்
                 </button>
-                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'FULL_CLOSURE')" class="py-1.5 px-2 bg-amber-500 hover:bg-amber-600 text-amber-950 rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
+                <button type="button" onclick="openLoanRepaymentModal(${loan.id}, 'FULL_CLOSURE')" style="background-color: #f59e0b; color: #451a03;" class="py-1.5 px-2 hover:opacity-90 rounded-lg text-[11px] font-black shadow-sm cursor-pointer">
                   + கடன் முடிவு
                 </button>
               </div>
@@ -5215,7 +5234,6 @@
         container.innerHTML = `<p class="text-xs text-rose-600 col-span-2 text-center py-4">கடன்கள் விபரம் எடுப்பதில் பிழை: ${err.message}</p>`;
       }
     }
-
     function openLoanRepaymentModal(loanId, actionType) {
       if (isDraftLocked) {
         return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் புதிய நடவடிக்கைகளைச் சேர்க்க முடியாது!");

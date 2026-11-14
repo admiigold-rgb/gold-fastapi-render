@@ -949,6 +949,87 @@
               </select>
               <select id="new_staff_branch" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet"></select>
             </div>
+            <!-- 🪙 நகை சேமிப்புத் திட்டங்கள் (Gold Savings Schemes - GSS) மேலாண்மை -->
+            <div class="bg-white p-6 rounded-3xl shadow-md border-2 border-purple-200 space-y-4 mt-6">
+              <div class="flex justify-between items-center border-b border-purple-100 pb-3">
+                <h3 class="text-base font-black text-purple-900">🪙 நகை சேமிப்புத் திட்டங்கள் உருவாக்கம் (Gold Savings Schemes)</h3>
+                <button type="button" onclick="loadGssSchemesList()" class="px-3 py-1 bg-purple-100 text-purple-900 rounded-xl text-xs font-bold">🔄 புதுப்பி</button>
+              </div>
+    
+              <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">திட்டக் குறியீடு (Code) *</label>
+                  <input type="text" id="gss_adm_code" placeholder="எ.கா: GSS-FIX-12" class="w-full border p-2.5 rounded-xl font-mono uppercase">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">திட்டத்தின் பெயர் *</label>
+                  <input type="text" id="gss_adm_name" placeholder="எ.கா: 12 மாத தங்க சேமிப்பு" class="w-full border p-2.5 rounded-xl">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">திட்ட அடிப்படை (Type) *</label>
+                  <select id="gss_adm_type" class="w-full border p-2.5 rounded-xl bg-white font-bold">
+                    <option value="FIXED_AMOUNT">பிக்சடு தொகை (Fixed Amount)</option>
+                    <option value="WEIGHT_FIXED">வெயிட் பிக்சடு (Weight Fixed)</option>
+                    <option value="IRREGULAR">இர்ரெகுலர் (Irregular / Flexible)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">கட்டும் முறை (Frequency)</label>
+                  <select id="gss_adm_freq" class="w-full border p-2.5 rounded-xl bg-white font-bold">
+                    <option value="MONTHLY">மாதாந்திரம் (Monthly)</option>
+                    <option value="WEEKLY">வாராந்திரம் (Weekly)</option>
+                    <option value="DAILY">தினசரி (Daily)</option>
+                    <option value="FLEXIBLE">தேவைக்கேற்ப (Flexible)</option>
+                  </select>
+                </div>
+    
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">தவணைத் தொகை (₹) (Fixed எனில்)</label>
+                  <input type="number" id="gss_adm_amt" value="0" class="w-full border p-2.5 rounded-xl font-mono">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">திட்டக் காலம் (Limit / Unlimit)</label>
+                  <select id="gss_adm_limit_type" class="w-full border p-2.5 rounded-xl bg-white font-bold">
+                    <option value="LIMITED">லிமிட் (Limited)</option>
+                    <option value="UNLIMITED">அன்லிமிட் (Unlimited)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">கால அளவு (மாதம்/வாரம்/நாள்)</label>
+                  <input type="number" id="gss_adm_tenure" value="12" class="w-full border p-2.5 rounded-xl font-mono">
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">கிரேஸ் பீரியட் (நாட்கள்)</label>
+                  <input type="number" id="gss_adm_grace" value="5" class="w-full border p-2.5 rounded-xl font-mono">
+                </div>
+    
+                <div class="sm:col-span-2">
+                  <label class="block font-bold text-slate-700 mb-1">அபராதம் (1 நாளைக்கு ₹1000-க்கு எவ்வளவு?)</label>
+                  <input type="number" step="0.01" id="gss_adm_penalty" value="1" class="w-full border p-2.5 rounded-xl font-mono">
+                </div>
+                <div class="sm:col-span-2 flex items-end justify-end">
+                  <button type="button" onclick="createGssSchemeAdmin()" style="background-color:#7c3aed;color:#fff;" class="px-6 py-2.5 rounded-xl text-xs font-black shadow-md cursor-pointer">
+                    + சேமிப்புத் திட்டத்தை உருவாக்கு
+                  </button>
+                </div>
+              </div>
+    
+              <div class="overflow-x-auto pt-2">
+                <table class="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr class="bg-purple-50 text-purple-900 border-b">
+                      <th class="p-2.5">குறியீடு</th>
+                      <th class="p-2.5">திட்டப் பெயர்</th>
+                      <th class="p-2.5">வகை & முறை</th>
+                      <th class="p-2.5">காலம் & கிரேஸ்</th>
+                      <th class="p-2.5">அபராதம் (/₹1000)</th>
+                      <th class="p-2.5 text-center">செயல்</th>
+                    </tr>
+                  </thead>
+                  <tbody id="gssSchemesTableBody" class="divide-y"></tbody>
+                </table>
+              </div>
+            </div>
         
             <!-- அணுகல் உரிமைகள் செக்பாக்ஸ் கட்டமைப்பு (ஒரே சீரான எழுத்து வடிவம்) -->
             <div class="bg-purple-50 p-4 rounded-2xl border-2 border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
@@ -6485,6 +6566,68 @@
 
     closeGssModal();
     alert("✅ GSS கணக்கு கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
+  }
+
+  async function loadGssSchemesList() {
+    const tbody = document.getElementById('gssSchemesTableBody');
+    if (!tbody) return;
+    try {
+      const res = await fetch('/api/admin/gss-schemes');
+      const data = await res.json();
+      const list = data.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">திட்டங்கள் எதுவும் உருவாக்கப்படவில்லை</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(s => `
+        <tr>
+          <td class="p-2.5 font-mono font-black text-purple-800">${s.scheme_code}</td>
+          <td class="p-2.5 font-bold">${s.scheme_name} ${s.installment_amount > 0 ? `(₹${s.installment_amount})` : ''}</td>
+          <td class="p-2.5">${s.calculation_type} | ${s.frequency}</td>
+          <td class="p-2.5">${s.tenure_limit_type === 'LIMITED' ? s.tenure_count + ' தவணை' : 'Unlimited'} (Grace: ${s.grace_period_days}d)</td>
+          <td class="p-2.5 font-mono">₹${s.penalty_per_thousand}/நாள்</td>
+          <td class="p-2.5 text-center">
+            <button type="button" onclick="deleteGssScheme(${s.id})" class="text-rose-600 font-bold hover:underline">டிலீட்</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function createGssSchemeAdmin() {
+    const payload = {
+      scheme_code: document.getElementById('gss_adm_code').value.trim(),
+      scheme_name: document.getElementById('gss_adm_name').value.trim(),
+      calculation_type: document.getElementById('gss_adm_type').value,
+      frequency: document.getElementById('gss_adm_freq').value,
+      installment_amount: parseFloat(document.getElementById('gss_adm_amt').value) || 0,
+      tenure_limit_type: document.getElementById('gss_adm_limit_type').value,
+      tenure_count: parseInt(document.getElementById('gss_adm_tenure').value) || 12,
+      grace_period_days: parseInt(document.getElementById('gss_adm_grace').value) || 0,
+      penalty_per_thousand: parseFloat(document.getElementById('gss_adm_penalty').value) || 0
+    };
+    if (!payload.scheme_code || !payload.scheme_name) {
+      return alert("திட்டக் குறியீடு மற்றும் பெயரை உள்ளிடவும்!");
+    }
+    const res = await fetch('/api/admin/gss-scheme/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const out = await res.json();
+    if (!res.ok) return alert(out.detail || "பிழை ஏற்பட்டது");
+    alert("✅ " + out.message);
+    document.getElementById('gss_adm_code').value = '';
+    document.getElementById('gss_adm_name').value = '';
+    loadGssSchemesList();
+  }
+
+  async function deleteGssScheme(id) {
+    if (!confirm("இந்தத் திட்டத்தை நீக்க வேண்டுமா?")) return;
+    await fetch(`/api/admin/gss-scheme/${id}`, { method: 'DELETE' });
+    loadGssSchemesList();
   }
 </script> 
 </body>

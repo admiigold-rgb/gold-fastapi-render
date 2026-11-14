@@ -462,7 +462,27 @@ def get_customer_active_loans(customer_id: int):
             .eq("status", "ACTIVE") \
             .order("id", desc=False) \
             .execute()
-        return {"status": "success", "data": res.data or []}
+        
+        loans = res.data or []
+        
+        # ஒவ்வொரு கடனுக்கும் முந்தைய வட்டி / பகுதி அசல் வரலாற்றை இணைத்தல்
+        for loan in loans:
+            history = []
+            for tbl_name in ["test_gold_loan_repayments", "test_gold_loan_transactions", "test_loan_repayments"]:
+                try:
+                    h_res = supabase.table(tbl_name) \
+                        .select("*") \
+                        .eq("loan_id", loan["id"]) \
+                        .order("id", desc=False) \
+                        .execute()
+                    if h_res.data:
+                        history = h_res.data
+                        break
+                except Exception:
+                    continue
+            loan["repayment_history"] = history
+
+        return {"status": "success", "data": loans}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

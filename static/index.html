@@ -140,6 +140,12 @@
                     class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
               <span>🔄</span> உள்-பணப் பரிமாற்றம்
             </button>
+            
+            <button type="button" onclick="openBranchGpStockModal()" 
+                    style="background-color: #047857 !important; color: #ffffff !important;" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+              <span>📦</span> GP நகை இருப்பு (Send to HQ)
+            </button>
 
             <!-- 5. மாலை கணக்கு முடிவு -->
             <button type="button" onclick="openCashDayModal('CLOSE')" id="btnCloseDay" 
@@ -727,6 +733,32 @@
               </thead>
               <tbody id="pendingTreasuryTableBody" class="divide-y divide-indigo-100 text-slate-700">
                 <tr><td colspan="6" class="p-4 text-center text-slate-400 font-semibold">பணப் பரிமாற்றக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 8. தலைமையக நகை இருப்பு & கிளைக்கு விற்பனை ஒதுக்கீடு (HQ Gold Stock Allocation) -->
+        <div class="space-y-2 pt-4 border-t border-purple-100">
+          <div class="flex justify-between items-center">
+            <h3 class="text-xs font-extrabold text-emerald-900 uppercase flex items-center gap-1.5">
+              <span>📦</span> 8. தலைமையக நகை இருப்பு & கிளைக்கு விற்பனை ஒதுக்கீடு (HQ Gold Stock Allocation):
+            </h3>
+            <button type="button" onclick="loadHqGpStockList()" class="text-[11px] bg-emerald-100 hover:bg-emerald-200 text-emerald-950 px-2.5 py-1 rounded-lg font-bold cursor-pointer">இருப்பு புதுப்பி 🔄</button>
+          </div>
+          <div class="overflow-x-auto border-2 border-emerald-200 rounded-xl bg-white">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-emerald-100 text-emerald-950 border-b border-emerald-200">
+                <tr>
+                  <th class="p-2.5 font-bold">படம் & டேக் எண்</th>
+                  <th class="p-2.5 font-bold">வந்த கிளை & விபரம்</th>
+                  <th class="p-2.5 font-bold">எடை & தரம்</th>
+                  <th class="p-2.5 font-bold">நிலை / ஒதுக்கப்பட்ட கிளை</th>
+                  <th class="p-2.5 text-center font-bold">விற்பனை ஒதுக்கீடு</th>
+                </tr>
+              </thead>
+              <tbody id="hqGpStockTableBody" class="divide-y divide-emerald-100 text-slate-700">
+                <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">தலைமையக இருப்பில் நகைகள் இல்லை</td></tr>
               </tbody>
             </table>
           </div>
@@ -4841,6 +4873,7 @@
       await loadHqOtpExemptions();
       loadPendingExpensesHQ();
       loadPendingTreasuryTransfersHQ();
+      loadHqGpStockList();
       
       try {
         const res = await fetch('/api/hq/all-pending-approvals');
@@ -6121,6 +6154,163 @@
     alert(`✅ நகை விற்பனை (${selectedGsStockItem.item_tag_no}) கூடையில் சேர்க்கப்பட்டது!`);
     document.getElementById('gs_stock_select').value = '';
     onGsStockSelected();
+  }
+</script>
+  <!-- 📦 கிளை GP நகை இருப்பு & HQ அனுப்பும் Modal -->
+<div id="branchGpStockModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 z-50">
+  <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto border-2 border-emerald-500">
+    <div class="flex justify-between items-center border-b border-emerald-100 pb-2">
+      <h3 class="text-base font-extrabold text-emerald-900">📦 கிளையில் வாங்கிய நகைகள் இருப்பு (GP Stock -> HQ)</h3>
+      <button type="button" onclick="closeBranchGpStockModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+    </div>
+    <p class="text-xs text-slate-600">தலைமையகத்திற்கு அனுப்ப வேண்டிய நகைகளைத் தேர்வு செய்து கீழே உள்ள பட்டனை அழுத்தவும்:</p>
+    <div class="overflow-x-auto border-2 border-emerald-100 rounded-xl">
+      <table class="w-full text-xs text-left">
+        <thead class="bg-emerald-50 text-emerald-950 border-b border-emerald-200">
+          <tr>
+            <th class="p-2.5 text-center"><input type="checkbox" id="chkAllGpStock" onchange="toggleAllGpStock(this.checked)"></th>
+            <th class="p-2.5 font-bold">படம்</th>
+            <th class="p-2.5 font-bold">டேக் எண் (Tag No)</th>
+            <th class="p-2.5 font-bold">நகை & எடை</th>
+            <th class="p-2.5 text-right font-bold">கொள்முதல் மதிப்பு</th>
+          </tr>
+        </thead>
+        <tbody id="branchGpStockTbody" class="divide-y divide-emerald-100"></tbody>
+      </table>
+    </div>
+    <div class="flex justify-end gap-2 pt-2 border-t border-emerald-100">
+      <button type="button" onclick="closeBranchGpStockModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">மூடு</button>
+      <button type="button" onclick="sendSelectedGpItemsToHq()" style="background-color:#059669;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
+        🚚 தேர்வு செய்த நகைகளை தலைமையகத்திற்கு அனுப்பு (Send to HQ)
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function openBranchGpStockModal() {
+    const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+    const modal = document.getElementById('branchGpStockModal');
+    const tbody = document.getElementById('branchGpStockTbody');
+    if (!modal || !tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-emerald-700 font-bold">இருப்பு ஏற்றப்படுகிறது...</td></tr>`;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    try {
+      const res = await fetch(`/api/gp/branch-purchased-stock?branch_id=${branchId}`);
+      const data = await res.json();
+      const list = data.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">தலைமையகத்திற்கு அனுப்ப வேண்டிய நகைகள் எதுவும் இல்லை.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(x => `
+        <tr>
+          <td class="p-2.5 text-center"><input type="checkbox" class="gp-stock-chk" value="${x.id}" checked></td>
+          <td class="p-2.5">${x.item_photo_url ? `<img src="${x.item_photo_url}" onclick="viewOrnamentPhoto('${x.item_photo_url}', '${x.item_tag_no}')" class="w-9 h-9 rounded-lg object-cover border cursor-pointer">` : '-'}</td>
+          <td class="p-2.5 font-mono font-black text-brand-violet">${x.item_tag_no}</td>
+          <td class="p-2.5 font-bold">${x.item_type} (${x.quantity}) - ${parseFloat(x.net_weight).toFixed(3)}g (${x.purity})</td>
+          <td class="p-2.5 text-right font-mono font-bold">₹${parseFloat(x.item_amount).toLocaleString('en-IN')}</td>
+        </tr>
+      `).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-600">பிழை: ${e.message}</td></tr>`;
+    }
+  }
+
+  function closeBranchGpStockModal() {
+    const m = document.getElementById('branchGpStockModal');
+    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+  }
+
+  function toggleAllGpStock(checked) {
+    document.querySelectorAll('.gp-stock-chk').forEach(cb => cb.checked = checked);
+  }
+
+  async function sendSelectedGpItemsToHq() {
+    const ids = Array.from(document.querySelectorAll('.gp-stock-chk:checked')).map(cb => parseInt(cb.value));
+    if (ids.length === 0) return alert("குறைந்தது ஒரு நகையாவது தேர்வு செய்யவும்.");
+    if (!confirm(`${ids.length} நகைகளைத் தலைமையகத்திற்கு அனுப்ப உறுதி செய்கிறீர்களா?`)) return;
+
+    const res = await fetch('/api/gp/send-to-hq', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_ids: ids })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ " + data.message);
+      closeBranchGpStockModal();
+    } else alert("❌ பிழை: " + data.detail);
+  }
+
+  async function loadHqGpStockList() {
+    const tbody = document.getElementById('hqGpStockTableBody');
+    if (!tbody) return;
+    try {
+      if (!branchesCache || branchesCache.length === 0) await loadBranchesList();
+      const res = await fetch('/api/hq/gp-stock-list');
+      const data = await res.json();
+      const list = data.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">தலைமையக இருப்பில் நகைகள் இல்லை</td></tr>`;
+        return;
+      }
+      const branchOpts = (branchesCache || []).map(b => `<option value="${b.id}">${b.branch_name} (${b.branch_code})</option>`).join('');
+
+      tbody.innerHTML = list.map(x => {
+        const isAlloc = x.stock_status === 'ALLOCATED_FOR_SALE';
+        return `
+          <tr class="${isAlloc ? 'bg-emerald-50/40' : ''}">
+            <td class="p-2.5 flex items-center gap-2">
+              ${x.item_photo_url ? `<img src="${x.item_photo_url}" onclick="viewOrnamentPhoto('${x.item_photo_url}', '${x.item_tag_no}')" class="w-10 h-10 rounded-lg object-cover border cursor-pointer">` : ''}
+              <span class="font-mono font-black text-brand-violet">${x.item_tag_no}</span>
+            </td>
+            <td class="p-2.5"><b>${x.from_branch_name}</b><br><span class="text-slate-600">${x.item_type} (${x.quantity} எண்)</span></td>
+            <td class="p-2.5 font-mono">நிகர: <b>${parseFloat(x.net_weight).toFixed(3)}g</b><br><span class="text-amber-800 font-bold">${x.purity}</span></td>
+            <td class="p-2.5 text-xs">
+              ${isAlloc 
+                ? `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-bold">✅ ஒதுக்கப்பட்டது: ${x.allocated_branch_name}</span><br><span class="font-mono text-[10px]">விலை: ₹${x.selling_rate_per_gram}/g | MC: ₹${x.making_charge}</span>` 
+                : `<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold">⏳ HQ ஆய்வில் உள்ளது</span>`}
+            </td>
+            <td class="p-2.5 text-center">
+              <div class="flex flex-wrap items-center justify-center gap-1">
+                <select id="alloc_br_${x.id}" class="border rounded-lg p-1 text-[11px] bg-white font-bold">${branchOpts}</select>
+                <input type="number" id="alloc_rate_${x.id}" value="${x.selling_rate_per_gram || todayGoldRates[x.purity] || 7150}" placeholder="விலை/g" class="w-16 border rounded-lg p-1 text-[11px] text-right font-mono">
+                <input type="number" id="alloc_mc_${x.id}" value="${x.making_charge || 0}" placeholder="MC ₹" class="w-14 border rounded-lg p-1 text-[11px] text-right font-mono">
+                <button type="button" onclick="allocateStockItemToBranch(${x.id})" style="background-color:#4f46e5;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold shadow cursor-pointer">ஒதுக்கு</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (e) { console.error(e); }
+  }
+
+  async function allocateStockItemToBranch(itemId) {
+    const branchId = document.getElementById(`alloc_br_${itemId}`)?.value;
+    const rate = parseFloat(document.getElementById(`alloc_rate_${itemId}`)?.value) || 0;
+    const mc = parseFloat(document.getElementById(`alloc_mc_${itemId}`)?.value) || 0;
+    if (!branchId || rate <= 0) return alert("கிளை மற்றும் விற்பனை கிராம் விலையை உள்ளிடவும்.");
+
+    const res = await fetch('/api/hq/allocate-stock-for-sale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_id: itemId,
+        allocated_branch_id: parseInt(branchId),
+        selling_rate_per_gram: rate,
+        making_charge: mc,
+        gst_percent: 3.0
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ " + data.message);
+      loadHqGpStockList();
+    } else alert("❌ பிழை: " + data.detail);
   }
 </script>
 </body>

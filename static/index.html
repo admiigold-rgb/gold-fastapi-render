@@ -6553,14 +6553,24 @@
     modal.style.display = 'flex';
 
     // 1. நிர்வாகத்தில் உருவாக்கப்பட்ட திட்டங்களை எடுத்தல்
-    try {
-      const sRes = await fetch('/api/admin/gss-schemes');
-      const sData = await sRes.json();
-      gssSchemesCache = sData.data || [];
-      const sel = document.getElementById('gss_scheme_select');
-      sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
-        gssSchemesCache.map(s => `<option value="${s.id}">${s.scheme_name} (${s.calculation_type})</option>`).join('');
-    } catch (e) { console.error(e); }
+    const sel = document.getElementById('gss_scheme_select');
+    if (sel) {
+      sel.innerHTML = `<option value="">-- திட்டங்கள் ஏற்றப்படுகின்றன... --</option>`;
+      try {
+        const sRes = await fetch('/api/admin/gss-schemes?t=' + Date.now());
+        const sData = await sRes.json();
+        gssSchemesCache = sData.data || [];
+        if (gssSchemesCache.length === 0) {
+          sel.innerHTML = `<option value="">-- திட்டங்கள் இல்லை (நிர்வாகத்தில் உருவாக்கவும்) --</option>`;
+        } else {
+          sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
+            gssSchemesCache.map(s => `<option value="${s.id}">${s.scheme_name} (${s.calculation_type})</option>`).join('');
+        }
+      } catch (e) {
+        console.error(e);
+        sel.innerHTML = `<option value="">-- திட்டங்களை எடுப்பதில் பிழை --</option>`;
+      }
+    }
 
     // 2. வாடிக்கையாளரின் நடப்பு GSS கணக்குகளை எடுத்தல்
     await loadCustomerGssAccounts();
@@ -6568,7 +6578,6 @@
     // 3. புதிய கணக்கு படிவத்தைத் தயார் செய்தல்
     await resetGssFormToNew();
   }
-
   async function loadCustomerGssAccounts() {
     const container = document.getElementById('customerActiveGssList');
     if (!container || !activeCustomer) return;
@@ -6767,68 +6776,94 @@
     alert("✅ GSS பரிவர்த்தனை கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
   }
 </script>
+  <script>
+  // கூடையில் GSS கணக்கு / தவணை / முதிர்வு சேர்க்கும் திருத்தப்பட்ட செயல்பாடு
+  function selectGssForMaturity(accId, closeType) {
+    const acc = customerGssAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const rate22k = parseFloat(todayGoldRates?.['916'] || todayGoldRates?.['22CT'] || 7150);
+    const totalAmt = parseFloat(acc.total_amount_paid || 0);
+    const totalWt = parseFloat(acc.total_accumulated_weight || 0);
+    const maturityVal = totalWt > 0 ? Math.round(totalWt * rate22k) : totalAmt;
 
-<script>
-  async function openGssModal() {
-    if (!activeCustomer || !activeCustomer.id) {
-      return alert("தயவுசெய்து முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
+    const label = closeType === 'GOLD'
+      ? `💍 GSS முதிர்வு - நகை விற்பனையில் கழித்தல் (${acc.gss_no})`
+      : `💵 GSS முதிர்வு - பணமாகப் பட்டுவாடா (${acc.gss_no})`;
+
+    if (typeof cartItems !== 'undefined') {
+      cartItems.push({
+        is_gss_account: true,
+        is_gss_maturity: true,
+        title: label,
+        details: `கணக்கு: ${acc.gss_no} | எடை: ${totalWt.toFixed(3)}g`,
+        debit: maturityVal,
+        credit: 0,
+        gss_meta: {
+          mode: 'CLOSE',
+          close_type: closeType,
+          account_id: acc.id,
+          gss_no: acc.gss_no,
+          maturity_amount: maturityVal,
+          accumulated_weight: totalWt
+        }
+      });
+      if (typeof renderCart === 'function') renderCart();
     }
-    const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
-    const modal = document.getElementById('gssAccountModal');
-    if (!modal) return;
-
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-
-    try {
-      const res = await fetch(`/api/gss/next-no?branch_id=${branchId}`);
-      const data = await res.json();
-      if (data.status === "success") {
-        document.getElementById('gss_account_no').value = data.next_gss_no;
-      }
-    } catch (e) {
-      console.error("GSS No fetch error:", e);
-    }
-  }
-
-  function closeGssModal() {
-    const modal = document.getElementById('gssAccountModal');
-    if (modal) {
-      modal.classList.add('hidden');
-      modal.style.display = 'none';
-    }
+    closeGssModal();
+    alert(`✅ ${acc.gss_no} முதிர்வுத் தொகை ₹${maturityVal.toLocaleString('en-IN')} கூடையில் சேர்க்கப்பட்டது!`);
   }
 
   function addGssToCart() {
+    const mode = document.getElementById('gss_mode').value;
+    const accId = document.getElementById('gss_existing_acc_id').value;
     const gssNo = document.getElementById('gss_account_no').value;
-    const schemeType = document.getElementById('gss_scheme_select').value;
-    const amount = parseFloat(document.getElementById('gss_initial_amount').value) || 0;
-    const maturityOption = document.getElementById('gss_maturity_option').value;
+    const schId = parseInt(document.getElementById('gss_scheme_select').value);
+    const sch = gssSchemesCache.find(s => s.id === schId);
+    const amt = parseFloat(document.getElementById('gss_initial_amount').value) || 0;
+    const lateDays = parseInt(document.getElementById('gss_late_days').value) || 0;
+    const maturityOpt = document.getElementById('gss_maturity_option').value;
 
-    if (!schemeType || amount <= 0) {
+    if (!schId || amt <= 0) {
       return alert("திட்டத்தைத் தேர்ந்தெடுத்து சரியான தொகையை உள்ளிடவும்.");
     }
 
-    // கூடையில் (Cart) சேமிப்புத் திட்டத்தைச் சேர்த்தல்
-    const cartItem = {
-      is_gss_account: true,
-      description: `🪙 GSS கணக்கு தொடக்கம் (${gssNo}) - ${schemeType}`,
-      amount: amount,
-      gss_meta: {
-        gss_no: gssNo,
-        scheme_type: schemeType,
-        initial_amount: amount,
-        maturity_option: maturityOption
-      }
-    };
+    const ratePer1000 = parseFloat(sch?.penalty_per_thousand || 1);
+    const penalty = lateDays > 0 ? Math.round((amt / 1000) * ratePer1000 * lateDays * 100) / 100 : 0;
+    const rate22k = parseFloat(todayGoldRates?.['916'] || todayGoldRates?.['22CT'] || 0);
+    const weight = (sch && (sch.calculation_type === 'WEIGHT_FIXED' || sch.calculation_type === 'IRREGULAR') && rate22k > 0)
+      ? parseFloat((amt / rate22k).toFixed(3)) : 0;
+
+    const totalPayable = amt + penalty;
+    const title = mode === 'NEW'
+      ? `🪙 புதிய GSS கணக்கு (${gssNo})`
+      : `💳 GSS தவணை (${gssNo})`;
+    const details = `${sch.scheme_name} | தவணை: ₹${amt}${penalty > 0 ? ` + அபராதம் ₹${penalty}` : ''}${weight > 0 ? ` | எடை: ${weight}g` : ''}`;
 
     if (typeof cartItems !== 'undefined') {
-      cartItems.push(cartItem);
+      cartItems.push({
+        is_gss_account: true,
+        title: title,
+        details: details,
+        debit: 0,
+        credit: totalPayable,
+        gss_meta: {
+          mode: mode,
+          account_id: accId ? parseInt(accId) : null,
+          gss_no: gssNo,
+          scheme_id: schId,
+          scheme_type: sch.calculation_type,
+          initial_amount: amt,
+          penalty_amount: penalty,
+          gold_rate: rate22k,
+          weight_credited: weight,
+          maturity_option: maturityOpt
+        }
+      });
       if (typeof renderCart === 'function') renderCart();
     }
 
     closeGssModal();
-    alert("✅ GSS கணக்கு கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
+    alert("✅ GSS பரிவர்த்தனை கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
   }
 
   async function loadGssSchemesList() {
@@ -6892,6 +6927,6 @@
     await fetch(`/api/admin/gss-scheme/${id}`, { method: 'DELETE' });
     loadGssSchemesList();
   }
-</script> 
+</script>
 </body>
 </html>

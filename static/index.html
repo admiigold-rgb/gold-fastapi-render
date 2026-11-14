@@ -5214,6 +5214,8 @@
       document.getElementById('staffFormTitle').innerText = "✏️ பணியாளர் திருத்துதல்";
       document.getElementById('btnSubmitStaff').innerText = "புதுப்பி";
       document.getElementById('btnCancelStaffEdit').classList.remove('hidden');
+      document.getElementById('perm_rebate').checked = !!s.can_approve_rebate;
+      document.getElementById('perm_gp_stock').checked = !!s.can_manage_gp_stock;
     }
 
     function cancelStaffEdit() {
@@ -5233,6 +5235,8 @@
       document.getElementById('staffFormTitle').innerText = "👤 புதிய பணியாளர் உருவாக்கம்";
       document.getElementById('btnSubmitStaff').innerText = "+ பணியாளரை உருவாக்கு";
       document.getElementById('btnCancelStaffEdit').classList.add('hidden');
+      document.getElementById('perm_rebate').checked = false;
+      document.getElementById('perm_gp_stock').checked = false;
     }
 
     async function submitStaffForm() {
@@ -5254,6 +5258,8 @@
         can_approve_otp_exempt: document.getElementById('perm_otp_exempt').checked,
         can_approve_expenses: document.getElementById('perm_expenses').checked,
         can_manage_treasury: document.getElementById('perm_treasury').checked,
+        can_approve_rebate: document.getElementById('perm_rebate').checked,
+        can_manage_gp_stock: document.getElementById('perm_gp_stock').checked,
       };
 
       const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
@@ -6288,15 +6294,25 @@
   async function loadHqGpStockList() {
     const tbody = document.getElementById('hqGpStockTableBody');
     if (!tbody) return;
+
+    // 🔒 புதிய அனுமதி சரிபார்ப்பு (Permission Check)
+    const isAuthorized = currentUser?.permissions?.can_manage_gp_stock === true || currentUser?.role_key === 'HQ_ADMIN';
+    if (!isAuthorized) {
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-500 font-semibold">⚠️ இந்தச் செயலைச் செய்ய உங்களுக்கு அனுமதி இல்லை!</td></tr>`;
+      return;
+    }
+
     try {
       if (!branchesCache || branchesCache.length === 0) await loadBranchesList();
       const res = await fetch('/api/hq/gp-stock-list');
       const data = await res.json();
       const list = data.data || [];
+      
       if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">தலைமையக இருப்பில் நகைகள் இல்லை</td></tr>`;
         return;
       }
+      
       const branchOpts = (branchesCache || []).map(b => `<option value="${b.id}">${b.branch_name} (${b.branch_code})</option>`).join('');
 
       tbody.innerHTML = list.map(x => {
@@ -6304,7 +6320,7 @@
         return `
           <tr class="${isAlloc ? 'bg-emerald-50/40' : ''}">
             <td class="p-2.5 flex items-center gap-2">
-              ${x.item_photo_url ? `<img src="${x.item_photo_url}" onclick="viewOrnamentPhoto('${x.item_photo_url}', '${x.item_tag_no}')" class="w-10 h-10 rounded-lg object-cover border cursor-pointer">` : ''}
+              ${x.item_photo_url ? `<img src="${x.item_photo_url}" onclick="viewOrnamentPhoto('${x.item_photo_url}', '${x.item_tag_no}')" class="w-10 h-10 rounded-lg object-cover border cursor-pointer" title="பெரிதாகப் பார்க்க">` : ''}
               <span class="font-mono font-black text-brand-violet">${x.item_tag_no}</span>
             </td>
             <td class="p-2.5"><b>${x.from_branch_name}</b><br><span class="text-slate-600">${x.item_type} (${x.quantity} எண்)</span></td>
@@ -6325,7 +6341,10 @@
           </tr>
         `;
       }).join('');
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-600">பிழை: ${e.message}</td></tr>`;
+    }
   }
 
   async function allocateStockItemToBranch(itemId) {

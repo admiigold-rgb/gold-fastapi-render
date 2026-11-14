@@ -3543,12 +3543,12 @@
       }
     }
 
-    function closeVisitDetailModal() {
+   function closeVisitDetailModal() {
       const modal = document.getElementById('visitDetailModal');
       if (modal) modal.classList.add('hidden');
     }
 
-    aasync function confirmSettleWithOtp(isExempted = false) {
+    async function confirmSettleWithOtp(isExempted = false) {
       // 🔒 தீவிரமான வட்டி தள்ளுபடி ஒப்புதல் சரிபார்ப்பு
       const rebateItem = (cartItems || []).find(item => item.rebate_req_id);
       if (rebateItem && rebateItem.rebate_req_id) {
@@ -3688,7 +3688,6 @@
       checkBranchBankStatus();
       checkCurrentDateStatus();
     }
-
     // 8. Admin APIs
     async function checkBranchBankStatus() {
       const bId = parseInt(document.getElementById('active_branch_id').value) || 1;

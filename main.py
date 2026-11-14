@@ -1470,6 +1470,16 @@ def delete_loan_scheme(scheme_id: int):
     supabase.table("test_loan_schemes").delete().eq("id", scheme_id).execute()
     return {"status": "success", "message": "திட்டம் நீக்கப்பட்டது."}
 
+@app.put("/api/admin/scheme/{scheme_id}")
+def update_loan_scheme(scheme_id: int, data: LoanSchemePayload):
+    check = supabase.table("test_loan_schemes").select("id").eq("scheme_code", data.scheme_code.strip()).neq("id", scheme_id).execute()
+    if check.data:
+        raise HTTPException(status_code=400, detail="இந்தத் திட்டக் குறியீடு ஏற்கனவே வேறொரு திட்டத்தில் உள்ளது.")
+    res = supabase.table("test_loan_schemes").update(data.model_dump()).eq("id", scheme_id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="திட்டம் கண்டறியப்படவில்லை.")
+    return {"status": "success", "message": "திட்ட விவரங்கள் வெற்றிகரமாகப் புதுப்பிக்கப்பட்டன!", "data": res.data}
+
 @app.get("/api/admin/company-banks")
 def get_company_banks():
     res = supabase.table("test_company_banks").select("*").eq("is_active", True).order("id", desc=True).execute()

@@ -6461,42 +6461,70 @@
     } else alert("❌ பிழை: " + data.detail);
   }
 </script>
-  <!-- 🪙 GSS கணக்கு தொடங்கும் Modal -->
-<div id="gssAccountModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 z-50">
-  <div class="bg-white rounded-3xl p-5 max-w-lg w-full shadow-2xl space-y-4 border-2 border-purple-500">
+  <!-- 🪙 GSS முழுமையான மேலாண்மை சாளரம் (புதிய கணக்கு / தவணை / முதிர்வு) -->
+<div id="gssAccountModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 border-2 border-purple-500 my-auto">
     <div class="flex justify-between items-center border-b border-purple-100 pb-2">
-      <h3 class="text-base font-extrabold text-purple-900">🪙 புதிய நகை சேமிப்புத் திட்டக் கணக்கு (GSS)</h3>
+      <h3 class="text-base font-extrabold text-purple-900">🪙 நகை சேமிப்புத் திட்டம் (GSS) - கணக்கு & தவணை</h3>
       <button type="button" onclick="closeGssModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
     </div>
-    
-    <div class="space-y-3 text-xs">
-      <div>
-        <label class="block font-bold text-slate-700 mb-1">GSS கணக்கு எண் (Auto Generated)</label>
-        <input type="text" id="gss_account_no" readonly class="w-full border-2 border-purple-200 p-2 rounded-xl bg-purple-50 font-mono font-black text-purple-900">
+
+    <!-- 1. வாடிக்கையாளரின் நடப்பு GSS கணக்குகள் பட்டியல் -->
+    <div id="activeGssAccountsSection" class="bg-purple-50/70 p-3 rounded-2xl border border-purple-200 space-y-2">
+      <div class="text-xs font-black text-purple-900">📋 வாடிக்கையாளரின் நடப்பு சேமிப்புக் கணக்குகள்:</div>
+      <div id="customerActiveGssList" class="space-y-2 text-xs">
+        <p class="text-slate-400">கணக்குகள் ஏதுமில்லை...</p>
       </div>
-      <div>
-        <label class="block font-bold text-slate-700 mb-1">திட்டத்தைத் தேர்வு செய்யவும் *</label>
-        <select id="gss_scheme_select" class="w-full border-2 border-purple-200 p-2 rounded-xl bg-white font-bold">
-          <option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>
-          <option value="FIXED">Fixed Amount (மாதாந்திர நிலையான தொகை)</option>
-          <option value="WEIGHT">Weight Fixed (தங்க எடை அடிப்படையிலானது)</option>
-          <option value="IRREGULAR">Irregular / Flexible (தேவைக்கேற்ப செலுத்துவது)</option>
-        </select>
-      </div>
-      <div>
-        <label class="block font-bold text-slate-700 mb-1">முதல் தவணைத் தொகை (₹) *</label>
-        <input type="number" id="gss_initial_amount" placeholder="எ.கா: 5000" class="w-full border-2 border-purple-200 p-2 rounded-xl font-bold">
-      </div>
-      <div>
-        <label class="block font-bold text-slate-700 mb-1">முதிர்வு விருப்பம் (Maturity Option)</label>
-        <select id="gss_maturity_option" class="w-full border-2 border-purple-200 p-2 rounded-xl bg-white font-bold">
-          <option value="GOLD">நகையாகப் பெறுதல் (Gold Redemption)</option>
-          <option value="CASH">பணமாகப் பெறுதல் (Cash Payout)</option>
-        </select>
+    </div>
+
+    <!-- 2. புதிய கணக்கு தொடங்குதல் / தவணை செலுத்தும் படிவம் -->
+    <div class="border-t border-purple-100 pt-3 space-y-3 text-xs">
+      <div class="font-black text-purple-900" id="gssFormTitle">➕ புதிய GSS கணக்கு தொடங்குதல்:</div>
+      <input type="hidden" id="gss_mode" value="NEW"> <!-- NEW / INSTALLMENT / CLOSE -->
+      <input type="hidden" id="gss_existing_acc_id" value="">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">GSS கணக்கு எண்</label>
+          <input type="text" id="gss_account_no" readonly class="w-full border-2 border-purple-200 p-2 rounded-xl bg-purple-50 font-mono font-black text-purple-900">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">திட்டம் (Scheme) *</label>
+          <select id="gss_scheme_select" onchange="onGssSchemeChange()" class="w-full border-2 border-purple-200 p-2 rounded-xl bg-white font-bold">
+            <option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1" id="gssAmountLabel">தவணைத் தொகை (₹) *</label>
+          <input type="number" id="gss_initial_amount" oninput="calcGssWeightAndPenalty()" placeholder="எ.கா: 5000" class="w-full border-2 border-purple-200 p-2 rounded-xl font-bold font-mono">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">தாமத நாட்கள் (கிரேஸ் பீரியட் போக)</label>
+          <input type="number" id="gss_late_days" value="0" min="0" oninput="calcGssWeightAndPenalty()" class="w-full border-2 border-purple-200 p-2 rounded-xl font-bold font-mono">
+        </div>
+
+        <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+          <div class="text-[11px] text-amber-900 font-bold">⚖️ வரவு வைக்கப்படும் தங்க எடை (Weight):</div>
+          <div class="text-sm font-black font-mono text-amber-800" id="gss_calc_weight_display">0.000 g</div>
+        </div>
+        <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+          <div class="text-[11px] text-rose-900 font-bold">⚠️ தாமத அபராதம் (Penalty):</div>
+          <div class="text-sm font-black font-mono text-rose-800" id="gss_calc_penalty_display">₹ 0.00</div>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block font-bold text-slate-700 mb-1">முதிர்வு விருப்பம் (Maturity Option)</label>
+          <select id="gss_maturity_option" class="w-full border-2 border-purple-200 p-2 rounded-xl bg-white font-bold">
+            <option value="GOLD">நகையாகப் பெறுதல் (Gold Redemption - விற்பனை பில்லில் கழித்தல்)</option>
+            <option value="CASH">பணமாகப் பெறுதல் (Cash Payout)</option>
+          </select>
+        </div>
       </div>
     </div>
 
     <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
+      <button type="button" onclick="resetGssFormToNew()" class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold">புதிய கணக்கு</button>
       <button type="button" onclick="closeGssModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து செய்</button>
       <button type="button" onclick="addGssToCart()" style="background-color:#7c3aed;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
         + கூடையில் சேர் (Add to Cart)
@@ -6504,6 +6532,235 @@
     </div>
   </div>
 </div>
+
+<script>
+  let gssSchemesCache = [];
+  let customerGssAccountsCache = [];
+
+  async function openGssModal() {
+    if (!activeCustomer || !activeCustomer.id) {
+      return alert("தயவுசெய்து முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
+    }
+    const modal = document.getElementById('gssAccountModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+
+    // 1. நிர்வாகத்தில் உருவாக்கப்பட்ட திட்டங்களை எடுத்தல்
+    try {
+      const sRes = await fetch('/api/admin/gss-schemes');
+      const sData = await sRes.json();
+      gssSchemesCache = sData.data || [];
+      const sel = document.getElementById('gss_scheme_select');
+      sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
+        gssSchemesCache.map(s => `<option value="${s.id}">${s.scheme_name} (${s.calculation_type})</option>`).join('');
+    } catch (e) { console.error(e); }
+
+    // 2. வாடிக்கையாளரின் நடப்பு GSS கணக்குகளை எடுத்தல்
+    await loadCustomerGssAccounts();
+
+    // 3. புதிய கணக்கு படிவத்தைத் தயார் செய்தல்
+    await resetGssFormToNew();
+  }
+
+  async function loadCustomerGssAccounts() {
+    const container = document.getElementById('customerActiveGssList');
+    if (!container || !activeCustomer) return;
+    try {
+      const res = await fetch(`/api/customer/${activeCustomer.id}/gss-accounts`);
+      const data = await res.json();
+      customerGssAccountsCache = data.data || [];
+      if (customerGssAccountsCache.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 italic">இந்த வாடிக்கையாளருக்கு நடப்பு சேமிப்புக் கணக்குகள் இல்லை.</p>`;
+        return;
+      }
+      container.innerHTML = customerGssAccountsCache.map(acc => `
+        <div class="bg-white p-2.5 rounded-xl border border-purple-200 flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <span class="font-mono font-black text-purple-900">${acc.gss_no}</span>
+            <span class="ml-2 px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-bold">${acc.scheme_details?.scheme_name || 'GSS'}</span>
+            <div class="text-[11px] text-slate-600 mt-0.5">
+              செலுத்தியது: <b>₹${parseFloat(acc.total_amount_paid || 0).toLocaleString()}</b> |
+              சேமித்த எடை: <b>${parseFloat(acc.total_accumulated_weight || 0).toFixed(3)} g</b>
+            </div>
+          </div>
+          <div class="flex gap-1.5">
+            <button type="button" onclick="selectGssForInstallment(${acc.id})" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">+ தவணை கட்டு</button>
+            <button type="button" onclick="selectGssForMaturity(${acc.id}, 'GOLD')" style="background-color:#d97706;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">💍 நகையாக முடி</button>
+            <button type="button" onclick="selectGssForMaturity(${acc.id}, 'CASH')" style="background-color:#dc2626;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">💵 பணமாக முடி</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  async function resetGssFormToNew() {
+    document.getElementById('gss_mode').value = 'NEW';
+    document.getElementById('gss_existing_acc_id').value = '';
+    document.getElementById('gssFormTitle').innerText = '➕ புதிய GSS கணக்கு தொடங்குதல்:';
+    document.getElementById('gssAmountLabel').innerText = 'முதல் தவணைத் தொகை (₹) *';
+    document.getElementById('gss_initial_amount').value = '';
+    document.getElementById('gss_late_days').value = '0';
+    document.getElementById('gss_scheme_select').disabled = false;
+
+    const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+    try {
+      const res = await fetch(`/api/gss/next-no?branch_id=${branchId}`);
+      const data = await res.json();
+      if (data.status === "success") {
+        document.getElementById('gss_account_no').value = data.next_gss_no;
+      }
+    } catch (e) { console.error(e); }
+    calcGssWeightAndPenalty();
+  }
+
+  function selectGssForInstallment(accId) {
+    const acc = customerGssAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    document.getElementById('gss_mode').value = 'INSTALLMENT';
+    document.getElementById('gss_existing_acc_id').value = acc.id;
+    document.getElementById('gssFormTitle').innerText = `💳 தவணை செலுத்துதல் (${acc.gss_no}):`;
+    document.getElementById('gssAmountLabel').innerText = 'செலுத்தும் தவணைத் தொகை (₹) *';
+    document.getElementById('gss_account_no').value = acc.gss_no;
+    document.getElementById('gss_scheme_select').value = acc.scheme_id;
+    document.getElementById('gss_scheme_select').disabled = true;
+    document.getElementById('gss_initial_amount').value = acc.scheme_details?.installment_amount || '';
+    document.getElementById('gss_late_days').value = '0';
+    calcGssWeightAndPenalty();
+  }
+
+  function selectGssForMaturity(accId, closeType) {
+    const acc = customerGssAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const rate22k = parseFloat(todayGoldRates?.['916'] || todayGoldRates?.['22CT'] || 7150);
+    const totalAmt = parseFloat(acc.total_amount_paid || 0);
+    const totalWt = parseFloat(acc.total_accumulated_weight || 0);
+    // எடை அடிப்படையிலான திட்டமெனில் இன்றைய தங்க விலைக்கு மதிப்பு, இல்லையெனில் கட்டிய மொத்தத் தொகை
+    const maturityVal = totalWt > 0 ? Math.round(totalWt * rate22k) : totalAmt;
+
+    const label = closeType === 'GOLD'
+      ? `💍 GSS முதிர்வு - நகை விற்பனையில் கழித்தல் (${acc.gss_no})`
+      : `💵 GSS முதிர்வு - பணமாகப் பட்டுவாடா (${acc.gss_no})`;
+
+    const cartItem = {
+      is_gss_account: true,
+      is_gss_maturity: true,
+      // பணமாகக் கொடுத்தாலோ அல்லது நகை பில்லில் கழித்தாலோ வாடிக்கையாளருக்குச் சேர வேண்டிய வரவு (Outward / Deduction)
+      direction: 'OUTWARD',
+      description: label,
+      amount: -Math.abs(maturityVal),
+      gss_meta: {
+        mode: 'CLOSE',
+        close_type: closeType,
+        account_id: acc.id,
+        gss_no: acc.gss_no,
+        maturity_amount: maturityVal,
+        accumulated_weight: totalWt
+      }
+    };
+
+    if (typeof cartItems !== 'undefined') {
+      cartItems.push(cartItem);
+      if (typeof renderCart === 'function') renderCart();
+    }
+    closeGssModal();
+    alert(`✅ ${acc.gss_no} முதிர்வுத் தொகை ₹${maturityVal.toLocaleString()} கூடையில் சேர்க்கப்பட்டது!`);
+  }
+
+  function onGssSchemeChange() {
+    const schId = parseInt(document.getElementById('gss_scheme_select').value);
+    const sch = gssSchemesCache.find(s => s.id === schId);
+    if (sch && sch.installment_amount > 0) {
+      document.getElementById('gss_initial_amount').value = sch.installment_amount;
+    }
+    calcGssWeightAndPenalty();
+  }
+
+  function calcGssWeightAndPenalty() {
+    const schId = parseInt(document.getElementById('gss_scheme_select').value);
+    const sch = gssSchemesCache.find(s => s.id === schId);
+    const amt = parseFloat(document.getElementById('gss_initial_amount').value) || 0;
+    const lateDays = parseInt(document.getElementById('gss_late_days').value) || 0;
+
+    // 1. அபராதக் கணக்கீடு: கிரேஸ் பீரியட் தாண்டினால் ஒவ்வொரு நாளுக்கும் ₹1000-க்கு penalty_per_thousand வீதம்
+    let penalty = 0;
+    if (sch && lateDays > 0) {
+      const ratePer1000 = parseFloat(sch.penalty_per_thousand || 1);
+      penalty = (amt / 1000) * ratePer1000 * lateDays;
+    }
+    document.getElementById('gss_calc_penalty_display').innerText = `₹ ${penalty.toFixed(2)}`;
+
+    // 2. தங்க எடை கணக்கீடு (WEIGHT_FIXED அல்லது IRREGULAR திட்டங்களுக்கு)
+    let weight = 0;
+    const rate22k = parseFloat(todayGoldRates?.['916'] || todayGoldRates?.['22CT'] || 0);
+    if (sch && (sch.calculation_type === 'WEIGHT_FIXED' || sch.calculation_type === 'IRREGULAR') && rate22k > 0 && amt > 0) {
+      weight = amt / rate22k;
+    }
+    document.getElementById('gss_calc_weight_display').innerText = `${weight.toFixed(3)} g`;
+  }
+
+  function closeGssModal() {
+    const modal = document.getElementById('gssAccountModal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+  }
+
+  function addGssToCart() {
+    const mode = document.getElementById('gss_mode').value;
+    const accId = document.getElementById('gss_existing_acc_id').value;
+    const gssNo = document.getElementById('gss_account_no').value;
+    const schId = parseInt(document.getElementById('gss_scheme_select').value);
+    const sch = gssSchemesCache.find(s => s.id === schId);
+    const amt = parseFloat(document.getElementById('gss_initial_amount').value) || 0;
+    const lateDays = parseInt(document.getElementById('gss_late_days').value) || 0;
+    const maturityOpt = document.getElementById('gss_maturity_option').value;
+
+    if (!schId || amt <= 0) {
+      return alert("திட்டத்தைத் தேர்ந்தெடுத்து சரியான தொகையை உள்ளிடவும்.");
+    }
+
+    const ratePer1000 = parseFloat(sch?.penalty_per_thousand || 1);
+    const penalty = lateDays > 0 ? Math.round((amt / 1000) * ratePer1000 * lateDays * 100) / 100 : 0;
+    const rate22k = parseFloat(todayGoldRates?.['916'] || todayGoldRates?.['22CT'] || 0);
+    const weight = (sch && (sch.calculation_type === 'WEIGHT_FIXED' || sch.calculation_type === 'IRREGULAR') && rate22k > 0)
+      ? parseFloat((amt / rate22k).toFixed(3)) : 0;
+
+    const totalPayable = amt + penalty;
+    const title = mode === 'NEW'
+      ? `🪙 புதிய GSS கணக்கு (${gssNo}) - ${sch.scheme_name}`
+      : `💳 GSS தவணை (${gssNo}) ${penalty > 0 ? `[அபராதம் ₹${penalty}]` : ''}`;
+
+    const cartItem = {
+      is_gss_account: true,
+      description: title,
+      amount: totalPayable,
+      gss_meta: {
+        mode: mode,
+        account_id: accId ? parseInt(accId) : null,
+        gss_no: gssNo,
+        scheme_id: schId,
+        scheme_type: sch.calculation_type,
+        initial_amount: amt,
+        penalty_amount: penalty,
+        gold_rate: rate22k,
+        weight_credited: weight,
+        maturity_option: maturityOpt
+      }
+    };
+
+    if (typeof cartItems !== 'undefined') {
+      cartItems.push(cartItem);
+      if (typeof renderCart === 'function') renderCart();
+    }
+
+    closeGssModal();
+    alert("✅ GSS பரிவர்த்தனை கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
+  }
+</script>
 
 <script>
   async function openGssModal() {

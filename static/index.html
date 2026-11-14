@@ -606,7 +606,7 @@
 
       <div class="space-y-4">
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
-          <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2 border-b border-purple-100 pb-2">
+          <h3 id="schemeFormTitle" class="text-sm font-extrabold text-brand-violet flex items-center gap-2 border-b border-purple-100 pb-2">
             <span>📜</span> புதிய நகைக்கடன் திட்டம் உருவாக்கம் (New Loan Scheme)
           </h3>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -662,8 +662,9 @@
               </div>
             </div>
           </div>
-          <div class="flex justify-end">
-            <button type="button" onclick="submitLoanSchemeForm()" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500">+ திட்டத்தை உருவாக்கு</button>
+          <div class="flex justify-end gap-2">
+            <button type="button" id="btnCancelSchemeEdit" onclick="resetSchemeForm()" class="hidden px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl">ரத்து செய்</button>
+            <button type="button" id="btnSubmitScheme" onclick="submitLoanSchemeForm()" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500">+ திட்டத்தை உருவாக்கு</button>
           </div>
         </div>
 
@@ -3728,6 +3729,95 @@
       container.appendChild(div);
     }
 
+    let editingSchemeId = null;
+
+    function editScheme(id) {
+      const s = schemesCache.find(item => item.id === id);
+      if (!s) return alert("திட்ட விபரம் கிடைக்கவில்லை.");
+
+      editingSchemeId = id;
+      document.getElementById('sch_code').value = s.scheme_code || '';
+      document.getElementById('sch_name').value = s.scheme_name || '';
+      document.getElementById('sch_tenure').value = s.tenure_months || '';
+      document.getElementById('sch_min_loan').value = s.min_loan_amount ?? 1000;
+      document.getElementById('sch_max_loan').value = s.max_loan_amount ?? 1500000;
+      document.getElementById('sch_min_days').value = s.min_interest_days ?? 7;
+      document.getElementById('sch_ltv').value = s.max_ltv_percentage ?? 75;
+      document.getElementById('sch_auction_charge').value = s.auction_charge_amount ?? 500;
+      document.getElementById('sch_proc_type').value = s.processing_charge_type || 'PLEDGE';
+      document.getElementById('sch_proc_calc').value = s.processing_charge_calc || 'AMOUNT';
+      document.getElementById('sch_proc_val').value = s.processing_charge_value ?? 0;
+
+      // வட்டி அடுக்குகளை (Interest Slabs) நிரப்புதல்
+      const slabsContainer = document.getElementById('slabsContainer');
+      slabsContainer.innerHTML = '';
+      const slabs = Array.isArray(s.interest_slabs) && s.interest_slabs.length > 0 
+        ? s.interest_slabs 
+        : [{ from_days: 1, to_days: 30, rate_percent: 12 }];
+
+      slabs.forEach(sl => {
+        const div = document.createElement('div');
+        div.className = "grid grid-cols-3 gap-2 slab-row";
+        div.innerHTML = `
+          <input type="number" placeholder="From Day" value="${sl.from_days}" class="border p-2 rounded-xl text-xs bg-white slab-from">
+          <input type="number" placeholder="To Day" value="${sl.to_days}" class="border p-2 rounded-xl text-xs bg-white slab-to">
+          <input type="number" placeholder="வட்டி %" value="${sl.rate_percent}" class="border p-2 rounded-xl text-xs bg-white slab-rate font-bold text-brand-violet">
+        `;
+        slabsContainer.appendChild(div);
+      });
+
+      // படிவத்தின் தலைப்பு மற்றும் பட்டனை Edit நிலைக்கு மாற்றுதல்
+      const titleEl = document.getElementById('schemeFormTitle');
+      if (titleEl) titleEl.innerHTML = `<span>✏️</span> திட்டம் திருத்தம்: ${s.scheme_name} (${s.scheme_code})`;
+      
+      const submitBtn = document.getElementById('btnSubmitScheme');
+      if (submitBtn) submitBtn.innerText = "💾 மாற்றங்களைச் சேமி (Update)";
+      
+      const cancelBtn = document.getElementById('btnCancelSchemeEdit');
+      if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+      // படிவத்திற்கு மேலே நகர்த்துதல்
+      document.getElementById('sch_code').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function resetSchemeForm() {
+      editingSchemeId = null;
+      document.getElementById('sch_code').value = '';
+      document.getElementById('sch_name').value = '';
+      document.getElementById('sch_tenure').value = '';
+      document.getElementById('sch_min_loan').value = '1000';
+      document.getElementById('sch_max_loan').value = '1500000';
+      document.getElementById('sch_min_days').value = '7';
+      document.getElementById('sch_ltv').value = '75';
+      document.getElementById('sch_auction_charge').value = '500';
+      document.getElementById('sch_proc_type').value = 'PLEDGE';
+      document.getElementById('sch_proc_calc').value = 'AMOUNT';
+      document.getElementById('sch_proc_val').value = '100';
+
+      const slabsContainer = document.getElementById('slabsContainer');
+      slabsContainer.innerHTML = `
+        <div class="grid grid-cols-3 gap-2 slab-row">
+          <input type="number" placeholder="From Day (1)" value="1" class="border p-2 rounded-xl text-xs bg-white slab-from">
+          <input type="number" placeholder="To Day (30)" value="30" class="border p-2 rounded-xl text-xs bg-white slab-to">
+          <input type="number" placeholder="வட்டி % (12)" value="12" class="border p-2 rounded-xl text-xs bg-white slab-rate font-bold text-brand-violet">
+        </div>
+        <div class="grid grid-cols-3 gap-2 slab-row">
+          <input type="number" placeholder="From Day (31)" value="31" class="border p-2 rounded-xl text-xs bg-white slab-from">
+          <input type="number" placeholder="To Day (90)" value="90" class="border p-2 rounded-xl text-xs bg-white slab-to">
+          <input type="number" placeholder="வட்டி % (15)" value="15" class="border p-2 rounded-xl text-xs bg-white slab-rate font-bold text-brand-violet">
+        </div>
+      `;
+
+      const titleEl = document.getElementById('schemeFormTitle');
+      if (titleEl) titleEl.innerHTML = `<span>📜</span> புதிய நகைக்கடன் திட்டம் உருவாக்கம் (New Loan Scheme)`;
+      
+      const submitBtn = document.getElementById('btnSubmitScheme');
+      if (submitBtn) submitBtn.innerText = "+ திட்டத்தை உருவாக்கு";
+      
+      const cancelBtn = document.getElementById('btnCancelSchemeEdit');
+      if (cancelBtn) cancelBtn.classList.add('hidden');
+    }
+
     async function submitLoanSchemeForm() {
       const code = document.getElementById('sch_code').value.trim();
       const name = document.getElementById('sch_name').value.trim();
@@ -3760,16 +3850,20 @@
         purity_rate_multipliers: { "916": 0.75, "22CT": 0.75, "18CT": 0.60, "999": 0.85 }
       };
 
-      const res = await fetch('/api/admin/scheme/create', {
-        method: 'POST',
+      const url = editingSchemeId 
+        ? `/api/admin/scheme/${editingSchemeId}` 
+        : '/api/admin/scheme/create';
+      const method = editingSchemeId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
         alert("✅ " + data.message);
-        document.getElementById('sch_code').value = '';
-        document.getElementById('sch_name').value = '';
+        resetSchemeForm();
         loadSchemesList();
         loadSchemesDropdown();
       } else alert("❌ பிழை: " + data.detail);
@@ -3794,19 +3888,14 @@
             <td class="p-2.5">₹${s.min_loan_amount} - ₹${s.max_loan_amount}</td>
             <td class="p-2.5 font-bold text-rose-600">₹${s.auction_charge_amount}</td>
             <td class="p-2.5 text-[11px]">${slabsStr}</td>
-            <td class="p-2.5 text-center"><button type="button" onclick="deleteScheme(${s.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px]">டிலீட்</button></td>
+            <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+              <button type="button" onclick="editScheme(${s.id})" class="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded font-bold text-[11px] cursor-pointer">✏️ எடிட்</button>
+              <button type="button" onclick="deleteScheme(${s.id})" class="px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-bold text-[11px] cursor-pointer">டிலீட்</button>
+            </td>
           `;
           tbody.appendChild(tr);
         });
       }
-    }
-
-    async function deleteScheme(id) {
-      if (!confirm("திட்டத்தை நீக்கவா?")) return;
-      const res = await fetch(`/api/admin/scheme/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (res.ok) { alert("✅ " + data.message); loadSchemesList(); loadSchemesDropdown(); }
-      else alert("❌ பிழை: " + data.detail);
     }
 
     async function loadSchemesDropdown() {

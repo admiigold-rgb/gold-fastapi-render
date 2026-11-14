@@ -5297,13 +5297,15 @@
       const txnDateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
       const origLoanDateStr = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
       
-      let lastPaidDate = loan.last_interest_paid_date || null;
-      if (!lastPaidDate && historyList.length > 0) {
+      // வரலாற்றில் (repayment_history) ஒரு பதிவாவது இருந்தால் மட்டுமே முன்பு வட்டி/அசல் கட்டப்பட்டுள்ளது என அர்த்தம்
+      const isFirstTimePayment = historyList.length === 0;
+
+      let lastPaidDate = null;
+      if (!isFirstTimePayment) {
         const lastRec = historyList[historyList.length - 1];
-        lastPaidDate = lastRec.payment_date || lastRec.transaction_date || (lastRec.created_at ? lastRec.created_at.split('T')[0] : null);
+        lastPaidDate = lastRec.payment_date || lastRec.transaction_date || (lastRec.created_at ? lastRec.created_at.split('T')[0] : loan.last_interest_paid_date);
       }
 
-      const isFirstTimePayment = !lastPaidDate && historyList.length === 0;
       const lastDateStr = lastPaidDate || origLoanDateStr;
 
       // தேதி வித்தியாசத்தைத் துல்லியமாக (UTC நாட்கள் அடிப்படையில்) கணக்கிடுதல்
@@ -5321,22 +5323,27 @@
       let calcDays = diffDays;
       let minDayNote = `Actual: ${diffDays} நாள்`;
 
-      if (diffDays === 0) {
-        // ஏற்கனவே இதே தேதியில் வட்டி கட்டப்பட்டுவிட்டது (அல்லது இன்றுதான் அடகு வைக்கப்பட்டது)
-        if (!isFirstTimePayment) {
+      if (isFirstTimePayment) {
+        // இதுவரை ஒரு முறை கூட வட்டி கட்டவில்லை (முதல் பரிவர்த்தனை)
+        if (diffDays < minDays) {
+          calcDays = minDays;
+          minDayNote = `முதல் முறை Min: ${minDays} நாள் (நடப்பு: ${diffDays})`;
+        } else {
+          calcDays = diffDays;
+          minDayNote = `Actual: ${diffDays} நாள்`;
+        }
+      } else {
+        // ஏற்கனவே வட்டி அல்லது பகுதி அசல் கட்டப்பட்டுள்ளது -> Actual Days மட்டுமே
+        if (diffDays === 0) {
           calcDays = 0;
           minDayNote = `இன்று வட்டி செலுத்தப்பட்டது (0 நாள்)`;
           if (actionType === 'INTEREST') {
             alert(`ℹ️ கடன் எண் ${loan.loan_no}-க்கு இன்றைய தேதி (${txnDateStr}) வரை வட்டி ஏற்கனவே செலுத்தப்பட்டுவிட்டது!`);
           }
         } else {
-          // இன்றுதான் புதியதாக அடகு வைக்கப்பட்டு, இன்றே திருப்ப வருகிறார்கள் என்றால் மட்டும் Min Days
-          calcDays = minDays;
-          minDayNote = `முதல் முறை Min: ${minDays} நாள் (அன்றே திருப்பம்)`;
+          calcDays = diffDays;
+          minDayNote = `Actual: ${diffDays} நாள்`;
         }
-      } else if (isFirstTimePayment && diffDays < minDays) {
-        calcDays = minDays;
-        minDayNote = `முதல் முறை Min: ${minDays} நாள் (நடப்பு: ${diffDays})`;
       }
 
       const badgeEl = document.getElementById('rep_min_day_badge');

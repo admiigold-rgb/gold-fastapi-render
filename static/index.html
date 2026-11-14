@@ -6702,37 +6702,6 @@
   </div>
 </div>
 
-<script>
-  let gssSchemesCache = [];
-  let customerGssAccountsCache = [];
-  let rdSchemesCache = [];
-  let customerRdAccountsCache = [];
-
-  async function openGssModal() {
-    if (!activeCustomer || !activeCustomer.id) {
-      return alert("தயவுசெய்து முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
-    }
-    const modal = document.getElementById('gssAccountModal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-    document.getElementById('gssInstallmentHistoryBox').classList.add('hidden');
-
-    const sel = document.getElementById('gss_scheme_select');
-    if (sel) {
-      sel.innerHTML = `<option value="">-- திட்டங்கள் ஏற்றப்படுகின்றன... --</option>`;
-      try {
-        const sRes = await fetch('/api/admin/gss-schemes?t=' + Date.now());
-        const sData = await sRes.json();
-        gssSchemesCache = sData.data || [];
-        sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
-          gssSchemesCache.map(s => `<option value="${s.id}">${s.scheme_name} (${s.calculation_type})</option>`).join('');
-      } catch (e) { console.error(e); }
-    }
-
-    await loadCustomerGssAccounts();
-    await resetGssFormToNew();
-  }
 
   async function loadCustomerGssAccounts() {
     const container = document.getElementById('customerActiveGssList');
@@ -7019,13 +6988,13 @@
   async function loadPendingGssBenefitsHQ() {
     const tbody = document.getElementById('pendingGssBenefitsTbody');
     if (!tbody) return;
-
+  
     const isAuthorized = currentUser?.permissions?.can_approve_gss_benefit === true || currentUser?.role_key === 'HQ_ADMIN';
     if (!isAuthorized) {
       tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-500 font-semibold">⚠️ GSS பெனிபிட் ஒப்புதல் அளிக்க உங்களுக்கு அனுமதி இல்லை!</td></tr>`;
       return;
     }
-
+  
     try {
       const res = await fetch('/api/hq/pending-gss-benefits');
       const out = await res.json();
@@ -7050,7 +7019,6 @@
       `).join('');
     } catch (e) { console.error(e); }
   }
-
   async function actionGssBenefitHQ(accId, action) {
     const editedVal = parseFloat(document.getElementById(`hq_ben_amt_${accId}`)?.value) || 0;
     if (!confirm(action === 'APPROVE' ? `₹${editedVal} பெனிபிட் தொகைக்கு ஒப்புதல் அளிக்கவா?` : "இந்த பெனிபிட் கோரிக்கையை நிராகரிக்கவா?")) return;
@@ -7119,40 +7087,42 @@
   }
 
   async function deleteGssScheme(id) {
-    if (!confirm("இந்தத் திட்டத்தை நீக்க வேண்டுமா?")) return;
-    await fetch(`/api/admin/gss-scheme/${id}`, { method: 'DELETE' });
-    loadGssSchemesList();
+      if (!confirm("இந்தத் திட்டத்தை நீக்க வேண்டுமா?")) return;
+      await fetch(`/api/admin/gss-scheme/${id}`, { method: 'DELETE' });
+      loadGssSchemesList();
   }
   
+  // அனைத்து மாறிகளையும் ஒரே ஒரு முறை மட்டும் தொடக்கத்தில் அறிவிக்கவும்:
+  let gssSchemesCache = [];
+  let customerGssAccountsCache = [];
   let rdSchemesCache = [];
   let customerRdAccountsCache = [];
-
-  async function openRdModal() {
-    if (!activeCustomer || !activeCustomer.id) {
-      return alert("தயவுசெய்து முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
-    }
-    const modal = document.getElementById('rdAccountModal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-    document.getElementById('rdInstallmentHistoryBox').classList.add('hidden');
-
-    const sel = document.getElementById('rd_scheme_select');
-    if (sel) {
-      sel.innerHTML = `<option value="">-- திட்டங்கள் ஏற்றப்படுகின்றன... --</option>`;
-      try {
-        const sRes = await fetch('/api/admin/rd-schemes?t=' + Date.now());
-        const sData = await sRes.json();
-        rdSchemesCache = sData.data || [];
-        sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
-          rdSchemesCache.map(s => s.map ? '' : `<option value="${s.id}">${s.scheme_name} (மாதம்: ₹${s.monthly_amount})</option>`).join('');
-      } catch (e) { console.error(e); }
-    }
-
-    await loadCustomerRdAccounts();
-    await resetRdFormToNew();
+  
+  async function openGssModal() {
+      if (!activeCustomer || !activeCustomer.id) {
+          return alert("தயவுசெய்து முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
+      }
+      const modal = document.getElementById('gssAccountModal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+      document.getElementById('gssInstallmentHistoryBox').classList.add('hidden');
+  
+      const sel = document.getElementById('gss_scheme_select');
+      if (sel) {
+          sel.innerHTML = `<option value="">-- திட்டங்கள் ஏற்றப்படுகின்றன... --</option>`;
+          try {
+              const sRes = await fetch('/api/admin/gss-schemes?t=' + Date.now());
+              const sData = await sRes.json();
+              gssSchemesCache = sData.data || [];
+              sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
+                  gssSchemesCache.map(s => `<option value="${s.id}">${s.scheme_name} (${s.calculation_type})</option>`).join('');
+          } catch (e) { console.error(e); }
+      }
+  
+      await loadCustomerGssAccounts();
+      await resetGssFormToNew();
   }
-
   function closeRdModal() {
     const modal = document.getElementById('rdAccountModal');
     if (modal) {

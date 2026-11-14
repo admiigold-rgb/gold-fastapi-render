@@ -2071,6 +2071,7 @@
         document.getElementById('cardRelation').innerText = (activeCustomer.relation_type || 'உறவினர்') + ": " + (activeCustomer.guardian_name || '-');
         document.getElementById('cardProofNo').innerText = activeCustomer.id_proof_no || '-';
         document.getElementById('cardAddress').innerText = activeCustomer.address || 'முகவரி இல்லை';
+        document.getElementById('rdFormSection')?.classList.remove('hidden');
 
         const imgElem = document.getElementById('cardCustomerImg');
         const placeholder = document.getElementById('cardCustomerPlaceholder');
@@ -2974,6 +2975,7 @@
       document.getElementById('cardRelation').innerText = (cust.relation_type || 'உறவினர்') + ": " + (cust.guardian_name || '-');
       document.getElementById('cardProofNo').innerText = cust.id_proof_no || '-';
       document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
+      document.getElementById('rdFormSection')?.classList.add('hidden');
 
       const imgElem = document.getElementById('cardCustomerImg');
       const placeholder = document.getElementById('cardCustomerPlaceholder');

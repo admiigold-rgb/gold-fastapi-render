@@ -1308,6 +1308,29 @@ def settle_with_otp(data: SettleWithOtpPayload):
         if day_status_res.data and day_status_res.data[0]["status"] == "CLOSED":
             raise HTTPException(status_code=400, detail="தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் பணப் பரிவர்த்தனை செய்ய முடியாது!")
 
+        # 🔒 தீவிரமான சர்வர் பக்க வட்டி தள்ளுபடி ஒப்புதல் சரிபார்ப்பு
+        for item in (data.cart_items or []):
+            if item.get("is_repayment") is True:
+                meta = item.get("repayment_meta") or {}
+                disc_amt = float(meta.get("discount_amount", 0))
+                req_id = item.get("rebate_req_id")
+                
+                # தள்ளுபடி தொகை கொடுக்கப்பட்டிருந்தால் கோரிக்கை ஐடி கட்டாயம் இருக்க வேண்டும் மற்றும் HQ Approved ஆக இருக்க வேண்டும்
+                if disc_amt > 0:
+                    if not req_id:
+                        raise HTTPException(status_code=400, detail="பாதுகாப்புப் பிழை: வட்டி தள்ளுபடி கோரிக்கை எண் (Rebate ID) காணப்படவில்லை!")
+                    
+                    rebate_check = supabase.table("test_rebate_approvals").select("status").eq("id", req_id).execute()
+                    if not rebate_check.data:
+                        raise HTTPException(status_code=400, detail="பாதுகாப்புப் பிழை: முறையான வட்டி தள்ளுபடி கோரிக்கை தரவுத்தளத்தில் இல்லை.")
+                    
+                    status = rebate_check.data[0].get("status")
+                    if status != "APPROVED":
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"❌ பரிவர்த்தனை நிராகரிக்கப்பட்டது: இந்த வட்டி தள்ளுபடிக்குத் தலைமையக ஒப்புதல் கிடைக்கவில்லை! (தற்போதைய நிலை: {status})"
+                        )
+
         if not data.is_exempted:
             otp_query = (
                 supabase.table("test_transaction_otps")

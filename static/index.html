@@ -306,11 +306,11 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-100">
                       <div>
                         <label class="block text-xs font-bold text-slate-700 mb-1">கடன் தொகை (₹) * [-]</label>
-                        <input type="number" id="loan_amount" placeholder="50000" class="w-full border-2 border-rose-200 p-2 rounded-xl text-xs font-black text-rose-600 bg-rose-50/30 focus:outline-none">
+                        <input type="number" id="loan_amount" oninput="recalculatePledgeCharge()" placeholder="50000" class="w-full border-2 border-rose-200 p-2 rounded-xl text-xs font-black text-rose-600 bg-rose-50/30 focus:outline-none">
                       </div>
                       <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Processing கட்டணம் (₹) [+]</label>
-                        <input type="number" id="charges_amount" value="0" class="w-full border-2 border-emerald-200 p-2 rounded-xl text-xs font-black text-emerald-600 bg-emerald-50/30 focus:outline-none">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Processing கட்டணம் (₹) [+] <span class="text-[10px] text-slate-400 font-normal">(பூட்டப்பட்டது)</span></label>
+                        <input type="number" id="charges_amount" value="0" readonly class="w-full border-2 border-emerald-200 p-2 rounded-xl text-xs font-black text-emerald-700 bg-slate-100 cursor-not-allowed focus:outline-none" title="திட்டத்தின் விதிப்படி தானாகக் கணக்கிடப்படும். இதை மாற்ற முடியாது.">
                       </div>
                     </div>
         
@@ -2502,6 +2502,26 @@
       });
     }
 
+    // கடன் தொகையை மாற்றும்போதெல்லாம் PLEDGE கட்டணத்தைப் புதுப்பிக்கும் செயல்பாடு
+    function recalculatePledgeCharge() {
+      const chargesInput = document.getElementById('charges_amount');
+      const loanInput = document.getElementById('loan_amount');
+      if (!chargesInput || !loanInput || !currentSelectedScheme || isDraftLocked) return;
+
+      const currentLoanAmt = parseFloat(loanInput.value) || 0;
+
+      if (currentSelectedScheme.processing_charge_type === 'PLEDGE') {
+        if (currentLoanAmt <= 0) {
+          chargesInput.value = 0;
+        } else if (currentSelectedScheme.processing_charge_calc === 'AMOUNT') {
+          chargesInput.value = currentSelectedScheme.processing_charge_value || 0;
+        } else {
+          // சதவீதம் (%) எனில், தற்போது உள்ளிடப்பட்டுள்ள கடன் தொகைக்கு ஏற்பக் கணக்கிடும்
+          chargesInput.value = Math.round((currentLoanAmt * currentSelectedScheme.processing_charge_value) / 100);
+        }
+      }
+    }
+
     function calculateEligibleLoanAmount() {
       let totNet = 0;
       totalGoldMarketValue = 0;
@@ -2517,6 +2537,7 @@
         maxEligibleLoanAmount = 0;
         document.getElementById('displayMaxEligibleLoan').innerText = `₹ 0.00`;
         document.getElementById('loan_amount').value = '';
+        recalculatePledgeCharge();
         return;
       }
 
@@ -2532,14 +2553,8 @@
       const loanInput = document.getElementById('loan_amount');
       if (loanInput && !isDraftLocked) loanInput.value = maxEligibleLoanAmount;
 
-      const chargesInput = document.getElementById('charges_amount');
-      if (chargesInput && currentSelectedScheme.processing_charge_type === 'PLEDGE' && !isDraftLocked) {
-        if (currentSelectedScheme.processing_charge_calc === 'AMOUNT') {
-          chargesInput.value = currentSelectedScheme.processing_charge_value || 0;
-        } else {
-          chargesInput.value = Math.round((maxEligibleLoanAmount * currentSelectedScheme.processing_charge_value) / 100);
-        }
-      }
+      // கடன் தொகைக்கு ஏற்ப கட்டணத்தைக் கணக்கிடுதல்
+      recalculatePledgeCharge();
     }
 
     function onSchemeSelected() {
@@ -2555,10 +2570,12 @@
         alert(`அனுமதிக்கப்பட்ட கடன் தொகைக்கு மேல் வழங்க முடியாது! \nஅன்றைய தங்க மதிப்பில் அதிகபட்சமாக ₹${maxEligibleLoanAmount.toLocaleString('en-IN')} மட்டுமே வழங்க முடியும்.`);
         this.value = maxEligibleLoanAmount;
       }
+      // கடன் தொகை திருத்தப்பட்ட பிறகும் கட்டணத்தை உடனே புதுப்பித்தல்
+      recalculatePledgeCharge();
     });
 
     document.getElementById('scheme_name').addEventListener('change', onSchemeSelected);
-
+    
     // 5. Search & Customer
     async function handleSearch() {
       const q = document.getElementById('searchInput').value.trim();

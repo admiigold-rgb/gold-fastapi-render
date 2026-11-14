@@ -3037,13 +3037,19 @@
       if (!loanNo || loanAmt <= 0) return alert("கடன் விபரம் உள்ளிடவும்.");
       if (ornamentList.length === 0) return alert("நகைகளைச் சேர்க்கவும்.");
 
-      // 📸 நகையின் புகைப்படம் இணைக்கப்பட்டுள்ளதா எனச் சரிபார்த்தல்
+      // 📸 நகையின் புகைப்படத்தை நேரடியாகப் படித்தல்
       const ornamentPhotoInput = document.getElementById('ornament_photo_input');
-      const ornamentPhotoFile = ornamentPhotoInput?.files[0];
+      const ornamentPhotoFile = ornamentPhotoInput && ornamentPhotoInput.files ? ornamentPhotoInput.files[0] : null;
       if (!ornamentPhotoFile) {
         return alert("📸 தயவுசெய்து நகையின் புகைப்படத்தை இணைக்கவும்!");
       }
-      const ornamentPhotoBase64 = await readFileAsBase64(ornamentPhotoFile);
+
+      const ornamentPhotoBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(ornamentPhotoFile);
+      });
 
       if (currentSelectedScheme) {
         if (loanAmt < currentSelectedScheme.min_loan_amount) {
@@ -3058,21 +3064,6 @@
       const transDateInput = document.querySelector('input[type="date"]');
       const transDate = transDateInput && transDateInput.value ? transDateInput.value : new Date().toISOString().split('T')[0];
 
-      // 2. நகைப் படத்தைத் தயார் செய்தல் (File upload அல்லது Webcam படம்)
-      let ornamentPhotoUrl = ornamentPhotoBase64;
-      if (!ornamentPhotoUrl) {
-        const photoElem = document.getElementById('ornament_photo_preview') || 
-                          document.getElementById('captured_ornament_photo') || 
-                          document.getElementById('itemPhotoPreview') || 
-                          document.getElementById('goldPhotoPreview');
-
-        if (photoElem && photoElem.src && photoElem.src.startsWith('data:image')) {
-          ornamentPhotoUrl = photoElem.src;
-        } else if (typeof capturedOrnamentPhoto !== 'undefined' && capturedOrnamentPhoto) {
-          ornamentPhotoUrl = capturedOrnamentPhoto;
-        }
-      }
-
       const payload = {
         customer_id: activeCustomer.id, 
         branch_id: branchId, 
@@ -3081,8 +3072,8 @@
         scheme_name: scheme,
         loan_amount: loanAmt, 
         charges_amount: chgAmt, 
-        photo_url: ornamentPhotoUrl, 
-        ornament_photo: ornamentPhotoUrl,
+        photo_url: ornamentPhotoBase64, 
+        ornament_photo: ornamentPhotoBase64,
         transaction_date: transDate, 
         items: ornamentList
       };

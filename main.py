@@ -576,11 +576,11 @@ def create_new_pawn(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் உருவாக்கம் பிழை: {str(e)}")
 
-# 5. Cash Day Status (Auto Roll-forward)
+# நாள் நிலையைச் சரிபார்த்தல் & தொடக்க இருப்பை முந்தைய நாளிலிருந்து தானாக எடுத்தல் (Auto Rollover)
 @app.get("/api/cash-day/status")
 def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Optional[str] = None):
     try:
-        # date அல்லது date_str இரண்டில் எதில் தேதி வந்தாலும் எடுத்தல்
+        # date அல்லது date_str இரண்டில் எதில் தேதி வந்தாலும் அதைப் பயன்படுத்துதல்
         target_date = date or date_str or datetime.now(IST).strftime("%Y-%m-%d")
 
         res = (
@@ -596,18 +596,45 @@ def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Op
             is_closed = (row.get("status") == "CLOSED")
             return {
                 "status": "success",
+                "business_date": target_date,
+                "opening_balance": float(row.get("opening_balance") or 0.0),
                 "is_closed": is_closed,
                 "data": row
             }
-        else:
-            return {
-                "status": "success",
-                "is_closed": False,
-                "data": None
-            }
+
+        # தற்போதைய தேதிக்கு இன்னும் பதிவு இல்லை என்றால், முந்தைய நாளின் இறுதி இருப்பை தொடக்க இருப்பாக எடுத்தல்
+        prev_day = (
+            supabase.table("test_branch_cash_days")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .lt("business_date", target_date)
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        auto_opening = 0.0
+        if prev_day.data:
+            auto_opening = float(prev_day.data[0].get("closing_balance") or prev_day.data[0].get("opening_balance") or 0.0)
+
+        ins_res = supabase.table("test_branch_cash_days").insert({
+            "branch_id": branch_id,
+            "business_date": target_date,
+            "opening_balance": auto_opening,
+            "status": "OPEN",
+            "created_at": datetime.now(IST).isoformat()
+        }).execute()
+
+        new_row = ins_res.data[0] if ins_res.data else None
+        return {
+            "status": "success",
+            "business_date": target_date,
+            "opening_balance": auto_opening,
+            "is_closed": False,
+            "data": new_row
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"நாள் நிலை அறியும் பிழை: {str(e)}")
-
 # 6. Day Report
 @app.get("/api/cash-day/report")
 def get_cash_day_report(branch_id: int, date_str: str):
@@ -615,9 +642,9 @@ def get_cash_day_report(branch_id: int, date_str: str):
         # 0. கிளை பெயர் எடுத்தல்
         branch_name = "Aundivilai"
         try:
-            br_res = supabase.table("test_branches").select("name").eq("id", branch_id).execute()
-            if br_res.data and br_res.data[0].get("name"):
-                branch_name = br_res.data[0].get("name")
+            br_res = supabase.table("test_branches").select("branch_name").eq("id", branch_id).execute()
+            if br_res.data and br_res.data[0].get("branch_name"):
+                branch_name = br_res.data[0].get("branch_name")
         except Exception:
             pass
 
@@ -990,116 +1017,6 @@ def close_cash_day(data: dict):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"மாலை கணக்கு முடிப்பதில் பிழை: {str(e)}")
-
-
-# 2. நாள் நிலையைச் சரிபார்த்தல் & தொடக்க இருப்பை முந்தைய நாளிலிருந்து தானாக எடுத்தல் (Auto Rollover)
-@app.get("/api/cash-day/status")
-def get_cash_day_status(branch_id: int, date_str: str):
-    try:
-        cur_day = (
-            supabase.table("test_branch_cash_days")
-            .select("*")
-            .eq("branch_id", branch_id)
-            .eq("business_date", date_str)
-            .execute()
-        )
-
-        if cur_day.data:
-            day_rec = cur_day.data[0]
-            return {
-                "business_date": date_str,
-                "status": day_rec.get("status", "OPEN"),
-                "opening_balance": float(day_rec.get("opening_balance") or 0.0),
-                "is_closed": day_rec.get("status") == "CLOSED"
-            }
-        
-        prev_day = (
-            supabase.table("test_branch_cash_days")
-            .select("*")
-            .eq("branch_id", branch_id)
-            .lt("business_date", date_str)
-            .order("business_date", desc=True)
-            .limit(1)
-            .execute()
-        )
-
-        auto_opening = 0.0
-        if prev_day.data:
-            auto_opening = float(prev_day.data[0].get("closing_balance") or prev_day.data[0].get("opening_balance") or 0.0)
-
-        supabase.table("test_branch_cash_days").insert({
-            "branch_id": branch_id,
-            "business_date": date_str,
-            "opening_balance": auto_opening,
-            "status": "OPEN",
-            "created_at": datetime.now().isoformat()
-        }).execute()
-
-        return {
-            "business_date": date_str,
-            "status": "OPEN",
-            "opening_balance": auto_opening,
-            "is_closed": False
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"நாள் நிலையை அறிவதில் பிழை: {str(e)}")
-
-# 7. நாள் நிலையைச் சரிபார்த்தல் & தொடக்க இருப்பை முந்தைய நாளிலிருந்து தானாக எடுத்தல் (Auto Rollover)
-@app.get("/api/cash-day/status")
-def get_cash_day_status(branch_id: int, date_str: str):
-    try:
-        # தற்போதைய தேதிக்கான பதிவு உள்ளதா எனப் பார்த்தல்
-        cur_day = (
-            supabase.table("test_branch_cash_days")
-            .select("*")
-            .eq("branch_id", branch_id)
-            .eq("business_date", date_str)
-            .execute()
-        )
-
-        if cur_day.data:
-            day_rec = cur_day.data[0]
-            return {
-                "business_date": date_str,
-                "status": day_rec.get("status", "OPEN"),
-                "opening_balance": float(day_rec.get("opening_balance") or 0.0),
-                "is_closed": day_rec.get("status") == "CLOSED"
-            }
-        
-        # தற்போதைய தேதிக்கு இன்னும் பதிவு இல்லை என்றால்:
-        # முந்தைய நாளின் கடைசிப் பதிவை எடுத்து அதிலுள்ள closing_balance-ஐ தொடக்க இருப்பாக மாற்றுதல்
-        prev_day = (
-            supabase.table("test_branch_cash_days")
-            .select("*")
-            .eq("branch_id", branch_id)
-            .lt("business_date", date_str)
-            .order("business_date", desc=True)
-            .limit(1)
-            .execute()
-        )
-
-        auto_opening = 0.0
-        if prev_day.data:
-            # முந்தைய நாள் மாலை முடிவு இருப்பை அடுத்த நாளின் தொடக்க இருப்பாக எடுத்தல்
-            auto_opening = float(prev_day.data[0].get("closing_balance") or prev_day.data[0].get("opening_balance") or 0.0)
-
-        # புதிய நாளுக்குத் தானாகவே OPEN நிலையில் பதிவு உருவாக்குதல்
-        supabase.table("test_branch_cash_days").insert({
-            "branch_id": branch_id,
-            "business_date": date_str,
-            "opening_balance": auto_opening,
-            "status": "OPEN",
-            "created_at": datetime.now().isoformat()
-        }).execute()
-
-        return {
-            "business_date": date_str,
-            "status": "OPEN",
-            "opening_balance": auto_opening,
-            "is_closed": False
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"நாள் நிலையை அறிவதில் பிழை: {str(e)}")
 
 # 8. Counter Live Visits Table
 @app.get("/api/customer/branch-visits")
@@ -2671,5 +2588,15 @@ def allocate_stock_for_sale(data: dict):
         return {"status": "success", "message": "நகை விற்பனைக்காகக் கிளைக்கு வெற்றிகரமாக ஒதுக்கப்பட்டது!"}
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# கூடையில் இருந்து நகைக்கடனை நீக்கும் API (Undo Cart Item)
+@app.delete("/api/loan/{loan_id}")
+def delete_pawn_loan_from_cart(loan_id: int):
+    try:
+        supabase.table("test_gold_loan_items").delete().eq("loan_id", loan_id).execute()
+        supabase.table("test_gold_loans").delete().eq("id", loan_id).execute()
+        return {"status": "success", "message": "கடன் நீக்கப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

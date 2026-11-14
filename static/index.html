@@ -5297,7 +5297,6 @@
       const txnDateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
       const origLoanDateStr = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
       
-      // வரலாற்றில் கடைசித் தேதி இருந்தாலோ அல்லது loan.last_interest_paid_date இருந்தாலோ அதை எடுத்தல்
       let lastPaidDate = loan.last_interest_paid_date || null;
       if (!lastPaidDate && historyList.length > 0) {
         const lastRec = historyList[historyList.length - 1];
@@ -5307,22 +5306,35 @@
       const isFirstTimePayment = !lastPaidDate && historyList.length === 0;
       const lastDateStr = lastPaidDate || origLoanDateStr;
 
-      const d1 = new Date(lastDateStr);
-      const d2 = new Date(txnDateStr);
-      let diffDays = Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)));
+      // தேதி வித்தியாசத்தைத் துல்லியமாக (UTC நாட்கள் அடிப்படையில்) கணக்கிடுதல்
+      const d1 = new Date(lastDateStr + 'T00:00:00Z');
+      const d2 = new Date(txnDateStr + 'T00:00:00Z');
+      const rawDiffDays = Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.max(0, rawDiffDays);
 
-      // கடன் தொடங்கியதிலிருந்து மொத்த நாட்கள் (ஏலக் கட்டணம் சரிபார்க்க)
-      const totalLoanDays = Math.max(1, Math.ceil((d2 - new Date(origLoanDateStr)) / (1000 * 60 * 60 * 24)));
+      // கடன் தொடங்கியதிலிருந்து மொத்த நாட்கள்
+      const totalLoanDays = Math.max(0, Math.floor((d2 - new Date(origLoanDateStr + 'T00:00:00Z')) / (1000 * 60 * 60 * 24)));
 
       const schemeObj = schemesCache.find(s => s.scheme_name === loan.scheme_name);
       const minDays = schemeObj?.min_interest_days || 7;
 
-      // விதிமுறை: முதல் முறை மட்டுமே மினிமம் வட்டி நாள் செல்லுபடியாகும் (அதுவும் மினிமம் நாளை விடக் குறைவாக இருந்தால் மட்டும்).
-      // மினிமம் நாளுக்கு மேல் சென்றுவிட்டாலோ அல்லது ஏற்கனவே வட்டி/அசல் கட்டியிருந்தாலோ Actual Days மட்டுமே எடுக்கப்படும்.
       let calcDays = diffDays;
       let minDayNote = `Actual: ${diffDays} நாள்`;
 
-      if (isFirstTimePayment && diffDays < minDays) {
+      if (diffDays === 0) {
+        // ஏற்கனவே இதே தேதியில் வட்டி கட்டப்பட்டுவிட்டது (அல்லது இன்றுதான் அடகு வைக்கப்பட்டது)
+        if (!isFirstTimePayment) {
+          calcDays = 0;
+          minDayNote = `இன்று வட்டி செலுத்தப்பட்டது (0 நாள்)`;
+          if (actionType === 'INTEREST') {
+            alert(`ℹ️ கடன் எண் ${loan.loan_no}-க்கு இன்றைய தேதி (${txnDateStr}) வரை வட்டி ஏற்கனவே செலுத்தப்பட்டுவிட்டது!`);
+          }
+        } else {
+          // இன்றுதான் புதியதாக அடகு வைக்கப்பட்டு, இன்றே திருப்ப வருகிறார்கள் என்றால் மட்டும் Min Days
+          calcDays = minDays;
+          minDayNote = `முதல் முறை Min: ${minDays} நாள் (அன்றே திருப்பம்)`;
+        }
+      } else if (isFirstTimePayment && diffDays < minDays) {
         calcDays = minDays;
         minDayNote = `முதல் முறை Min: ${minDays} நாள் (நடப்பு: ${diffDays})`;
       }
@@ -5332,14 +5344,13 @@
 
       let annualRate = 12.0;
       if (schemeObj && Array.isArray(schemeObj.interest_slabs) && schemeObj.interest_slabs.length > 0) {
-        // வட்டி அடுக்கு (Slab) கடன் தொடங்கிய மொத்த நாட்கள் அல்லது நடப்பு நாட்களுக்கு ஏற்ப
-        const slabCheckDays = Math.max(totalLoanDays, calcDays);
+        const slabCheckDays = Math.max(totalLoanDays, calcDays, 1);
         const matchedSlab = schemeObj.interest_slabs.find(sl => slabCheckDays >= sl.from_days && slabCheckDays <= sl.to_days);
         annualRate = matchedSlab ? parseFloat(matchedSlab.rate_percent) : parseFloat(schemeObj.interest_slabs[schemeObj.interest_slabs.length - 1].rate_percent);
       }
 
       const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
-      const calcInterest = Math.round((principal * annualRate * calcDays) / (365 * 100));
+      const calcInterest = calcDays === 0 ? 0 : Math.round((principal * annualRate * calcDays) / (365 * 100));
 
       // 3. இதர கட்டணம் (RELEASE Processing Charge) & தகவல்/ஏல கட்டணம் (Auction Notice Charge)
       let otherChg = 0;
@@ -5376,7 +5387,6 @@
       document.getElementById('loanRepaymentModal').classList.remove('hidden');
       document.getElementById('loanRepaymentModal').style.display = 'flex';
     }
-
     function switchRepaymentTab(actionType) {
       document.getElementById('rep_action_type').value = actionType;
 

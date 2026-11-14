@@ -1027,6 +1027,11 @@
                 <input type="checkbox" id="perm_gp_stock" class="w-4 h-4 text-emerald-700 rounded">
                 <span class="text-xs font-bold">📦 9. தலைமையக நகை இருப்பு & கிளை விற்பனை ஒதுக்கீடு</span>
               </label>
+
+              <label class="flex items-center space-x-2.5 font-bold text-purple-950 col-span-1 sm:col-span-2 bg-purple-100/70 p-2 rounded-xl border border-purple-300 hover:bg-purple-100 cursor-pointer shadow-xs">
+                <input type="checkbox" id="perm_gss_benefit" class="w-4 h-4 text-purple-700 rounded">
+                <span class="text-xs font-bold">🎁 10. GSS மெச்சியுரிட்டி பெனிபிட் ஒப்புதல் உரிமை</span>
+              </label>
             </div>
         
             <div class="flex justify-end">
@@ -2112,11 +2117,11 @@
       const activeTabs = [];
 
       if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
-      if (p.can_approve_kyc === true || p.can_approve_updates === true || p.can_approve_otp_exempt === true || p.can_approve_rebate === true) {
+      if (p.can_approve_kyc === true || p.can_approve_updates === true || p.can_approve_otp_exempt === true || p.can_approve_rebate === true || p.can_approve_gss_benefit === true) {
         activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
       }
       if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
-
+      
       activeTabs.forEach((tab, index) => {
         const btn = document.createElement('button');
         btn.id = `btn_${tab.id}`;
@@ -5340,6 +5345,7 @@
       document.getElementById('btnCancelStaffEdit').classList.remove('hidden');
       document.getElementById('perm_rebate').checked = !!s.can_approve_rebate;
       document.getElementById('perm_gp_stock').checked = !!s.can_manage_gp_stock;
+      document.getElementById('perm_gss_benefit').checked = !!s.can_approve_gss_benefit;
     }
 
     function cancelStaffEdit() {
@@ -5361,6 +5367,7 @@
       document.getElementById('btnCancelStaffEdit').classList.add('hidden');
       document.getElementById('perm_rebate').checked = false;
       document.getElementById('perm_gp_stock').checked = false;
+      document.getElementById('perm_gss_benefit').checked = false;
     }
 
     async function submitStaffForm() {
@@ -5384,6 +5391,7 @@
         can_manage_treasury: document.getElementById('perm_treasury').checked,
         can_approve_rebate: document.getElementById('perm_rebate').checked,
         can_manage_gp_stock: document.getElementById('perm_gp_stock').checked,
+        can_approve_gss_benefit: document.getElementById('perm_gss_benefit').checked,
       };
 
       const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
@@ -6906,6 +6914,13 @@
   async function loadPendingGssBenefitsHQ() {
     const tbody = document.getElementById('pendingGssBenefitsTbody');
     if (!tbody) return;
+
+    const isAuthorized = currentUser?.permissions?.can_approve_gss_benefit === true || currentUser?.role_key === 'HQ_ADMIN';
+    if (!isAuthorized) {
+      tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-500 font-semibold">⚠️ GSS பெனிபிட் ஒப்புதல் அளிக்க உங்களுக்கு அனுமதி இல்லை!</td></tr>`;
+      return;
+    }
+
     try {
       const res = await fetch('/api/hq/pending-gss-benefits');
       const out = await res.json();

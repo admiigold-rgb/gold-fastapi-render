@@ -5344,9 +5344,12 @@
 
       let annualRate = 12.0;
       if (schemeObj && Array.isArray(schemeObj.interest_slabs) && schemeObj.interest_slabs.length > 0) {
-        const slabCheckDays = Math.max(totalLoanDays, calcDays, 1);
-        const matchedSlab = schemeObj.interest_slabs.find(sl => slabCheckDays >= sl.from_days && slabCheckDays <= sl.to_days);
-        annualRate = matchedSlab ? parseFloat(matchedSlab.rate_percent) : parseFloat(schemeObj.interest_slabs[schemeObj.interest_slabs.length - 1].rate_percent);
+        // அடுக்குகளை to_days அடிப்படையில் சிறியதிலிருந்து பெரியதாக வரிசைப்படுத்துதல்
+        const sortedSlabs = [...schemeObj.interest_slabs].sort((a, b) => parseInt(a.to_days) - parseInt(b.to_days));
+        // தற்போதைய வட்டி நாட்களுக்கு (calcDays) ஏற்பச் சரியான அடுக்கைத் தேர்வு செய்தல்
+        const checkDays = Math.max(calcDays, 1);
+        const matchedSlab = sortedSlabs.find(sl => checkDays >= parseInt(sl.from_days) && checkDays <= parseInt(sl.to_days));
+        annualRate = matchedSlab ? parseFloat(matchedSlab.rate_percent) : parseFloat(sortedSlabs[sortedSlabs.length - 1].rate_percent);
       }
 
       const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);

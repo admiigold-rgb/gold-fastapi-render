@@ -215,7 +215,7 @@
             </button>
           </div>
         </div>
-
+        
         <!-- 🪙 வாடிக்கையாளரின் நடப்பு நகைக்கடன்கள் பட்டியல் (Active Loans) -->
         <div id="customerActiveLoansSection" class="bg-white p-5 rounded-2xl shadow-sm border-2 border-amber-200 space-y-3">
           <div class="flex justify-between items-center border-b border-amber-100 pb-2">
@@ -230,89 +230,97 @@
         </div>
         
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <!-- நகை அடகு படிவம் -->
-          <div id="pawnFormSection" class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
-            <div class="border-b border-purple-100 pb-2 flex justify-between items-center">
-              <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2">
-                <span>🪙</span> புதிய நகைக்கடன் அடகு (New Loan Entry)
-              </h3>
-              <span id="pawnStatusBadge" class="text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold">படிவம்</span>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">தொடர் நகைக்கடன் எண் (Auto) *</label>
-                <input type="text" id="loan_no" readonly class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold bg-purple-50 text-brand-violet cursor-not-allowed">
-              </div>
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">நகைக்கடன் திட்டம் (Schemes) *</label>
-                <select id="scheme_name" class="w-full border-2 border-purple-200 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet focus:outline-none"></select>
-              </div>
-            </div>
-
-            <div class="bg-purple-50/60 p-3.5 rounded-2xl border-2 border-purple-100 space-y-2">
-              <h4 class="text-xs font-extrabold text-brand-violet">நகையின் விவரங்கள்:</h4>
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                <input type="text" id="item_type" placeholder="வகை (Ring, Chain)" class="border-2 border-purple-100 p-2 rounded-xl text-xs col-span-2 sm:col-span-1 bg-white">
-                <input type="number" id="item_count" placeholder="எண்ணிக்கை" min="1" value="1" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-center">
-                <input type="number" id="item_gross" step="0.001" placeholder="மொத்த எடை" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-right">
-                <input type="number" id="item_net" step="0.001" placeholder="நிகர எடை" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-right font-bold text-brand-violet">
-                <select id="item_purity" class="border-2 border-purple-200 p-2 rounded-xl text-xs bg-white font-bold text-purple-900"></select>
-              </div>
-              <div class="flex justify-end pt-1">
-                <button type="button" id="btnAddOrnament" onclick="addOrnamentToTable()" class="brand-gradient-violet-btn text-xs px-4 py-2 rounded-xl font-bold shadow">+ நகையைச் சேர்</button>
-              </div>
-            </div>
-
-            <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
-              <table class="w-full text-xs text-left">
-                <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
-                  <tr>
-                    <th class="p-2.5 font-extrabold">வகை</th>
-                    <th class="p-2.5 text-center font-extrabold">எண்ணிக்கை</th>
-                    <th class="p-2.5 text-right font-extrabold">மொத்த எடை</th>
-                    <th class="p-2.5 text-right font-extrabold">நிகர எடை</th>
-                    <th class="p-2.5 text-center font-extrabold">தரம்</th>
-                    <th class="p-2.5 text-center font-extrabold">நீக்கு</th>
-                  </tr>
-                </thead>
-                <tbody id="ornamentsTableBody" class="divide-y divide-purple-100 text-slate-700">
-                  <tr id="emptyRow"><td colspan="6" class="p-4 text-center text-slate-400">நகைகள் சேர்க்கப்படவில்லை</td></tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="bg-gradient-to-r from-amber-50 to-yellow-50 p-3.5 rounded-2xl border-2 border-brand-gold grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs my-2 shadow-sm">
-              <div>
-                <span class="text-slate-500 block font-semibold">மொத்த நிகர எடை:</span>
-                <span id="displayTotalNetWeight" class="text-sm font-extrabold text-brand-violet">0.000 g</span>
-              </div>
-              <div>
-                <span class="text-slate-500 block font-semibold">அன்றைய நகைகளின் சந்தை மதிப்பு:</span>
-                <span id="displayTotalGoldValue" class="text-sm font-extrabold text-amber-900">₹ 0.00</span>
-              </div>
-              <div>
-                <span class="text-slate-500 block font-semibold">திட்டத்தின்படி அனுமதிக்கப்பட்ட கடன் (LTV):</span>
-                <span id="displayMaxEligibleLoan" class="text-sm font-black text-emerald-700">₹ 0.00</span>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-100">
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">கடன் தொகை (₹) * [-]</label>
-                <input type="number" id="loan_amount" placeholder="50000" class="w-full border-2 border-rose-200 p-2 rounded-xl text-xs font-black text-rose-600 bg-rose-50/30 focus:outline-none">
-              </div>
-              <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Processing கட்டணம் (₹) [+]</label>
-                <input type="number" id="charges_amount" value="0" class="w-full border-2 border-emerald-200 p-2 rounded-xl text-xs font-black text-emerald-600 bg-emerald-50/30 focus:outline-none">
-              </div>
-            </div>
-
-            <div class="flex justify-end pt-2">
-              <button type="button" id="btnAddToCart" onclick="submitPawnToDatabase()" class="brand-gradient-gold-btn font-black text-xs px-6 py-3 rounded-xl shadow-lg border border-yellow-500 transition transform active:scale-95">
-                கூடையில் சேர் (Add to Cart) 🛒
-              </button>
-            </div>
-          </div>
+                  <!-- நகை அடகு படிவம் -->
+                  <div id="pawnFormSection" class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+                    <div class="border-b border-purple-100 pb-2 flex justify-between items-center">
+                      <h3 class="text-sm font-extrabold text-brand-violet flex items-center gap-2">
+                        <span>🪙</span> புதிய நகைக்கடன் அடகு (New Loan Entry)
+                      </h3>
+                      <span id="pawnStatusBadge" class="text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold">படிவம்</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">தொடர் நகைக்கடன் எண் (Auto) *</label>
+                        <input type="text" id="loan_no" readonly class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs font-mono font-bold bg-purple-50 text-brand-violet cursor-not-allowed">
+                      </div>
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">நகைக்கடன் திட்டம் (Schemes) *</label>
+                        <select id="scheme_name" class="w-full border-2 border-purple-200 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet focus:outline-none"></select>
+                      </div>
+                    </div>
+        
+                    <div class="bg-purple-50/60 p-3.5 rounded-2xl border-2 border-purple-100 space-y-2">
+                      <h4 class="text-xs font-extrabold text-brand-violet">நகையின் விவரங்கள்:</h4>
+                      <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        <input type="text" id="item_type" placeholder="வகை (Ring, Chain)" class="border-2 border-purple-100 p-2 rounded-xl text-xs col-span-2 sm:col-span-1 bg-white">
+                        <input type="number" id="item_count" placeholder="எண்ணிக்கை" min="1" value="1" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-center">
+                        <input type="number" id="item_gross" step="0.001" placeholder="மொத்த எடை" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-right">
+                        <input type="number" id="item_net" step="0.001" placeholder="நிகர எடை" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white text-right font-bold text-brand-violet">
+                        <select id="item_purity" class="border-2 border-purple-200 p-2 rounded-xl text-xs bg-white font-bold text-purple-900"></select>
+                      </div>
+                      
+                      <!-- 📸 நகையின் புகைப்படம் பதிவேற்றம் செய்யும் பகுதி (இங்கே இணைக்கப்பட்டுள்ளது) -->
+                      <div class="pt-1">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">நகையின் புகைப்படம் (Ornament Photo)</label>
+                        <input type="file" id="ornament_photo_input" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-violet-50 file:text-brand-violet hover:file:bg-violet-100 cursor-pointer bg-white border-2 border-purple-100 rounded-xl p-1">
+                      </div>
+        
+                      <div class="flex justify-end pt-1">
+                        <button type="button" id="btnAddOrnament" onclick="addOrnamentToTable()" class="brand-gradient-violet-btn text-xs px-4 py-2 rounded-xl font-bold shadow">+ நகையைச் சேர்</button>
+                      </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
+                      <table class="w-full text-xs text-left">
+                        <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
+                          <tr>
+                            <th class="p-2.5 font-extrabold">வகை</th>
+                            <th class="p-2.5 text-center font-extrabold">எண்ணிக்கை</th>
+                            <th class="p-2.5 text-right font-extrabold">மொத்த எடை</th>
+                            <th class="p-2.5 text-right font-extrabold">நிகர எடை</th>
+                            <th class="p-2.5 text-center font-extrabold">தரம்</th>
+                            <th class="p-2.5 text-center font-extrabold">நீக்கு</th>
+                          </tr>
+                        </thead>
+                        <tbody id="ornamentsTableBody" class="divide-y divide-purple-100 text-slate-700">
+                          <tr id="emptyRow"><td colspan="6" class="p-4 text-center text-slate-400">நகைகள் சேர்க்கப்படவில்லை</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-amber-50 to-yellow-50 p-3.5 rounded-2xl border-2 border-brand-gold grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs my-2 shadow-sm">
+                      <div>
+                        <span class="text-slate-500 block font-semibold">மொத்த நிகர எடை:</span>
+                        <span id="displayTotalNetWeight" class="text-sm font-extrabold text-brand-violet">0.000 g</span>
+                      </div>
+                      <div>
+                        <span class="text-slate-500 block font-semibold">அன்றைய நகைகளின் சந்தை மதிப்பு:</span>
+                        <span id="displayTotalGoldValue" class="text-sm font-extrabold text-amber-900">₹ 0.00</span>
+                      </div>
+                      <div>
+                        <span class="text-slate-500 block font-semibold">திட்டத்தின்படி அனுமதிக்கப்பட்ட கடன் (LTV):</span>
+                        <span id="displayMaxEligibleLoan" class="text-sm font-black text-emerald-700">₹ 0.00</span>
+                      </div>
+                    </div>
+        
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-purple-100">
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">கடன் தொகை (₹) * [-]</label>
+                        <input type="number" id="loan_amount" placeholder="50000" class="w-full border-2 border-rose-200 p-2 rounded-xl text-xs font-black text-rose-600 bg-rose-50/30 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Processing கட்டணம் (₹) [+]</label>
+                        <input type="number" id="charges_amount" value="0" class="w-full border-2 border-emerald-200 p-2 rounded-xl text-xs font-black text-emerald-600 bg-emerald-50/30 focus:outline-none">
+                      </div>
+                    </div>
+        
+                    <div class="flex justify-end pt-2">
+                      <button type="button" id="btnAddToCart" onclick="submitPawnToDatabase()" class="brand-gradient-gold-btn font-black text-xs px-6 py-3 rounded-xl shadow-lg border border-yellow-500 transition transform active:scale-95">
+                        கூடையில் சேர் (Add to Cart) 🛒
+                      </button>
+                    </div>
+                  </div>
+        </div>
 
           <!-- கார்ட் சுருக்கம் -->
           <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-col justify-between space-y-4">
@@ -3028,6 +3036,13 @@
 
       if (!loanNo || loanAmt <= 0) return alert("கடன் விபரம் உள்ளிடவும்.");
       if (ornamentList.length === 0) return alert("நகைகளைச் சேர்க்கவும்.");
+
+      // 📸 நகையின் புகைப்படம் இணைக்கப்பட்டுள்ளதா எனச் சரிபார்த்தல்
+      const ornamentPhotoFile = document.getElementById('ornament_photo_input')?.files[0];
+      if (!ornamentPhotoFile) {
+        return alert("📸 தயவுசெய்து நகையின் புகைப்படத்தை இணைக்கவும்!");
+      }
+      const ornamentPhotoBase64 = await readFileAsBase64(ornamentPhotoFile);
 
       if (currentSelectedScheme) {
         if (loanAmt < currentSelectedScheme.min_loan_amount) {

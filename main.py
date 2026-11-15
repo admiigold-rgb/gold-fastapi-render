@@ -1623,23 +1623,6 @@ def get_rd_schemes():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/admin/rd-scheme/create")
-def create_rd_scheme(data: dict):
-    try:
-        code = str(data.get("scheme_code") or "").strip().upper()
-        rec = {
-            "scheme_code": code,
-            "scheme_name": str(data.get("scheme_name") or "").strip(),
-            "monthly_amount": float(data.get("monthly_amount") or 0),
-            "tenure_months": int(data.get("tenure_months") or 12),
-            "interest_rate": float(data.get("interest_rate") or 0),
-            "is_active": True
-        }
-        res = supabase.table("test_rd_schemes").insert(rec).execute()
-        return {"status": "success", "message": "புதிய தொடர்வைப்பு (RD) திட்டம் உருவாக்கப்பட்டது!", "data": res.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.delete("/api/admin/rd-scheme/{scheme_id}")
 def delete_rd_scheme(scheme_id: int):
     try:
@@ -1664,15 +1647,43 @@ def get_customer_rd_accounts(customer_id: int):
         return {"status": "success", "data": accounts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+        
+@app.post("/api/admin/rd-scheme/create")
+def create_rd_scheme(data: dict):
+    try:
+        code = str(data.get("scheme_code") or "").strip().upper()
+        min_amt = float(data.get("min_installment_amount") or data.get("monthly_amount") or 1000)
+        tenure = int(data.get("tenure_count") or data.get("tenure_months") or 12)
+        
+        rec = {
+            "scheme_code": code,
+            "scheme_name": str(data.get("scheme_name") or "").strip(),
+            "frequency": str(data.get("frequency") or "MONTHLY"),
+            "min_installment_amount": min_amt,
+            "monthly_amount": min_amt,
+            "tenure_count": tenure,
+            "tenure_months": tenure,
+            "locking_period_count": int(data.get("locking_period_count") if data.get("locking_period_count") is not None else 3),
+            "grace_period_days": int(data.get("grace_period_days") if data.get("grace_period_days") is not None else 5),
+            "penalty_per_thousand": float(data.get("penalty_per_thousand") if data.get("penalty_per_thousand") is not None else 2),
+            "interest_calculation_type": str(data.get("interest_calculation_type") or "COMPOUND"),
+            "interest_rate": float(data.get("interest_rate") or 0),
+            "maturity_per_thousand": float(data.get("maturity_per_thousand") or 0),
+            "is_active": True
+        }
+        res = supabase.table("test_rd_schemes").insert(rec).execute()
+        return {"status": "success", "message": "புதிய தொடர்வைப்பு (RD) திட்டம் வெற்றிகரமாக உருவாக்கப்பட்டது!", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/rd/request-maturity-benefit")
 def request_rd_maturity_benefit(data: dict):
     try:
         acc_id = int(data.get("account_id"))
-        proposed_amt = float(data.get("proposed_benefit") or 0)
-        supabase.table("test_customer_rd_accounts").update({
-            "proposed_benefit_amount": proposed_amt,
-            "benefit_approval_status": "PENDING"
+        proposed = float(data.get("proposed_benefit") or 0)
+        supabase.table("test_rd_accounts").update({
+            "benefit_approval_status": "PENDING",
+            "proposed_benefit_amount": proposed
         }).eq("id", acc_id).execute()
         return {"status": "success", "message": "RD மெச்சியுரிட்டி பெனிபிட் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது!"}
     except Exception as e:
@@ -1681,22 +1692,21 @@ def request_rd_maturity_benefit(data: dict):
 @app.get("/api/hq/pending-rd-benefits")
 def get_pending_rd_benefits():
     try:
-        acc_res = supabase.table("test_customer_rd_accounts").select("*").eq("benefit_approval_status", "PENDING").execute()
-        accounts = acc_res.data or []
-        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
-        cust_map = {c["id"]: c for c in (cust_res.data or [])}
-        br_res = supabase.table("test_branches").select("id, branch_name").execute()
-        br_map = {b["id"]: b["branch_name"] for b in (br_res.data or [])}
-        sch_res = supabase.table("test_rd_schemes").select("id, scheme_name").execute()
-        sch_map = {s["id"]: s["scheme_name"] for s in (sch_res.data or [])}
-
-        for a in accounts:
-            c = cust_map.get(a.get("customer_id"), {})
-            a["customer_name"] = c.get("name", "-")
-            a["customer_mobile"] = c.get("mobile", "-")
-            a["branch_name"] = br_map.get(a.get("branch_id"), "-")
-            a["scheme_name"] = sch_map.get(a.get("scheme_id"), "RD")
-        return {"status": "success", "data": accounts}
+        res = supabase.table("test_rd_accounts").select("*, test_customers(name, mobile), test_branches(branch_name), test_rd_schemes(scheme_name)").eq("benefit_approval_status", "PENDING").execute()
+        out = []
+        for r in (res.data or []):
+            out.append({
+                "id": r["id"],
+                "rd_no": r.get("rd_no"),
+                "branch_name": (r.get("test_branches") or {}).get("branch_name", "-"),
+                "customer_name": (r.get("test_customers") or {}).get("name", "-"),
+                "customer_mobile": (r.get("test_customers") or {}).get("mobile", "-"),
+                "scheme_name": (r.get("test_rd_schemes") or {}).get("scheme_name", "RD"),
+                "total_amount_paid": r.get("total_amount_paid", 0),
+                "total_penalty_accrued": r.get("total_penalty_accrued", 0),
+                "proposed_benefit_amount": r.get("proposed_benefit_amount", 0)
+            })
+        return {"status": "success", "data": out}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1705,16 +1715,17 @@ def approve_rd_benefit(data: dict):
     try:
         acc_id = int(data.get("account_id"))
         action = data.get("action")
-        edited_amt = float(data.get("approved_amount") or 0)
+        approved_amt = float(data.get("approved_amount") or 0)
         if action == "APPROVE":
-            supabase.table("test_customer_rd_accounts").update({
-                "approved_benefit_amount": edited_amt,
-                "benefit_approval_status": "APPROVED"
+            supabase.table("test_rd_accounts").update({
+                "benefit_approval_status": "APPROVED",
+                "approved_benefit_amount": approved_amt
             }).eq("id", acc_id).execute()
-            return {"status": "success", "message": f"₹{edited_amt} RD மெச்சியுரிட்டி பெனிபிட் அங்கீகரிக்கப்பட்டது!"}
+            return {"status": "success", "message": f"₹{approved_amt} RD பெனிபிட் தொகைக்கு ஒப்புதல் அளிக்கப்பட்டது!"}
         else:
-            supabase.table("test_customer_rd_accounts").update({
-                "benefit_approval_status": "REJECTED"
+            supabase.table("test_rd_accounts").update({
+                "benefit_approval_status": "REJECTED",
+                "approved_benefit_amount": 0
             }).eq("id", acc_id).execute()
             return {"status": "success", "message": "RD பெனிபிட் கோரிக்கை நிராகரிக்கப்பட்டது."}
     except Exception as e:

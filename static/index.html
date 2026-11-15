@@ -221,7 +221,49 @@
             </button>
           </div>
         </div>
-        
+        <!-- ⚡ விரைவுச் செயல் பட்டன்கள் (Quick Action Navigation Bar) -->
+        <div class="bg-white p-3 rounded-2xl shadow-sm border-2 border-purple-200">
+          <div class="text-[11px] font-extrabold text-slate-500 uppercase mb-2 flex items-center justify-between">
+            <span>⚡ தேவையான நடவடிக்கையைத் தேர்ந்தெடுக்கவும் (Select Action):</span>
+            <span class="text-[10px] text-brand-violet font-bold">தேர்வு செய்த படிவம் மட்டும் கீழே திறக்கும்</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
+            <button type="button" id="qbtn_active_loans" onclick="switchCounterActionPanel('active_loans')" class="p-2.5 rounded-xl border-2 border-amber-400 bg-amber-100 text-amber-950 font-black flex flex-col items-center justify-center gap-1 shadow-xs cursor-pointer transition">
+              <span class="text-base">📋</span>
+              <span class="text-[11px] text-center leading-tight">நடப்புக் கடன்கள் <span id="qbadge_loans" class="bg-amber-600 text-white px-1.5 py-0.2 rounded-full text-[10px] hidden">0</span></span>
+            </button>
+
+            <button type="button" id="qbtn_new_pawn" onclick="switchCounterActionPanel('new_pawn')" class="p-2.5 rounded-xl border-2 border-purple-100 bg-white hover:bg-purple-50 text-slate-700 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition">
+              <span class="text-base">🪙</span>
+              <span class="text-[11px] text-center leading-tight">புதிய அடகு (Pawn)</span>
+            </button>
+
+            <button type="button" id="qbtn_gp" onclick="switchCounterActionPanel('gp')" class="p-2.5 rounded-xl border-2 border-purple-100 bg-white hover:bg-emerald-50 text-slate-700 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition">
+              <span class="text-base">🛍️</span>
+              <span class="text-[11px] text-center leading-tight">நகை வாங்குதல் (GP)</span>
+            </button>
+
+            <button type="button" id="qbtn_gs" onclick="switchCounterActionPanel('gs')" class="p-2.5 rounded-xl border-2 border-purple-100 bg-white hover:bg-indigo-50 text-slate-700 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition">
+              <span class="text-base">💍</span>
+              <span class="text-[11px] text-center leading-tight">நகை விற்பனை (GS)</span>
+            </button>
+
+            <button type="button" id="qbtn_gss" onclick="switchCounterActionPanel('gss')" class="p-2.5 rounded-xl border-2 border-purple-100 bg-white hover:bg-purple-50 text-slate-700 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition">
+              <span class="text-base">✨</span>
+              <span class="text-[11px] text-center leading-tight">நகை சேமிப்பு (GSS) <span id="qbadge_gss" class="bg-purple-700 text-white px-1.5 py-0.2 rounded-full text-[10px] hidden">0</span></span>
+            </button>
+
+            <button type="button" id="qbtn_rd" onclick="switchCounterActionPanel('rd')" class="p-2.5 rounded-xl border-2 border-purple-100 bg-white hover:bg-indigo-50 text-slate-700 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition">
+              <span class="text-base">💰</span>
+              <span class="text-[11px] text-center leading-tight">தொடர்வைப்பு (RD) <span id="qbadge_rd" class="bg-indigo-700 text-white px-1.5 py-0.2 rounded-full text-[10px] hidden">0</span></span>
+            </button>
+
+            <button type="button" id="qbtn_si" onclick="switchCounterActionPanel('si')" class="p-2.5 rounded-xl border-2 border-purple-100 bg-white hover:bg-teal-50 text-slate-700 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition">
+              <span class="text-base">💎</span>
+              <span class="text-[11px] text-center leading-tight">முதலீடு (SI/FD) <span id="qbadge_si" class="bg-teal-700 text-white px-1.5 py-0.2 rounded-full text-[10px] hidden">0</span></span>
+            </button>
+          </div>
+        </div>
         <!-- 🪙 வாடிக்கையாளரின் நடப்பு நகைக்கடன்கள் பட்டியல் (Active Loans) -->
         <div id="customerActiveLoansSection" class="bg-white p-5 rounded-2xl shadow-sm border-2 border-amber-200 space-y-3">
           <div class="flex justify-between items-center border-b border-amber-100 pb-2">
@@ -473,7 +515,7 @@
         </div>
 
         <!-- 🪙 4. நகை சேமிப்புத் திட்டம் (GSS - Gold Savings Scheme) -->
-        <div class="bg-white p-5 rounded-3xl shadow-md border-2 border-purple-200 flex flex-wrap justify-between items-center gap-3 mt-4">
+        <div id="gssFormSection" class="hidden bg-white p-5 rounded-3xl shadow-md border-2 border-purple-200 flex flex-wrap justify-between items-center gap-3 mt-4">
           <div>
             <h4 class="text-sm font-black text-purple-900">🪙 4. நகை சேமிப்புத் திட்டம் (Gold Savings Scheme - GSS)</h4>
             <p class="text-xs text-slate-500 mt-0.5">புதிய சேமிப்புக் கணக்கு தொடங்குதல், தவணை கட்டுதல் மற்றும் முதிர்வு (பணம் / நகை) முடித்தல்</p>
@@ -8356,6 +8398,98 @@
     alert("✅ " + out.message);
     loadPendingSiApprovalsHQ();
   }
+</script>
+  <script>
+  // ⚡ கவுண்ட்டர் விரைவுச் செயல் பட்டன்களைக் கட்டுப்படுத்தும் செயல்பாடு
+  function switchCounterActionPanel(panelKey) {
+    const panels = {
+      'active_loans': document.getElementById('customerActiveLoansSection'),
+      'new_pawn': document.getElementById('pawnFormSection'),
+      'gp': document.getElementById('goldPurchaseFormSection'),
+      'gs': document.getElementById('goldSalesFormSection'),
+      'gss': document.getElementById('gssFormSection'),
+      'rd': document.getElementById('rdFormSection'),
+      'si': document.getElementById('siFormSection')
+    };
+
+    // 1. முதலில் அனைத்துப் படிவங்களையும் மறைத்தல்
+    Object.values(panels).forEach(el => {
+      if (el) el.classList.add('hidden');
+    });
+
+    // 2. அனைத்து பட்டன்களையும் இயல்பு நிலைக்கு மாற்றுதல்
+    Object.keys(panels).forEach(key => {
+      const btn = document.getElementById(`qbtn_${key}`);
+      if (btn) {
+        btn.className = "p-2.5 rounded-xl border-2 border-purple-100 bg-white hover:bg-purple-50 text-slate-700 font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition";
+      }
+    });
+
+    // 3. தேர்வு செய்த படிவத்தை மட்டும் காட்டுதல் & பட்டனை ஹைலைட் செய்தல்
+    const activePanel = panels[panelKey];
+    const activeBtn = document.getElementById(`qbtn_${panelKey}`);
+    if (activePanel) activePanel.classList.remove('hidden');
+    if (activeBtn) {
+      activeBtn.className = "p-2.5 rounded-xl border-2 border-brand-violet bg-purple-100 text-brand-violet font-black flex flex-col items-center justify-center gap-1 shadow-sm cursor-pointer transition";
+    }
+
+    // 4. சம்பந்தப்பட்ட தரவுகளை உடனுக்குடன் புதுப்பித்தல்
+    if (panelKey === 'active_loans' && typeof loadCustomerActiveLoans === 'function') loadCustomerActiveLoans();
+    if (panelKey === 'new_pawn' && typeof fetchAutoLoanNumber === 'function') fetchAutoLoanNumber();
+    if (panelKey === 'gp' && typeof fetchAutoGpNumber === 'function') { fetchAutoGpNumber(); onGpPurityChange(); }
+    if (panelKey === 'gs' && typeof fetchAutoGsNumber === 'function') { fetchAutoGsNumber(); loadBranchSaleStock(); }
+  }
+
+  // வாடிக்கையாளரின் கணக்கு எண்ணிக்கைகளை (Badges) பட்டன்களில் காட்டுதல்
+  async function updateCustomerActionBadges(customerId) {
+    if (!customerId) return;
+    try {
+      const [lRes, gRes, rRes, sRes] = await Promise.all([
+        fetch(`/api/customer/${customerId}/active-loans`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`/api/customer/${customerId}/gss-accounts`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`/api/customer/${customerId}/rd-accounts`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`/api/customer/${customerId}/si-accounts`).then(r => r.json()).catch(() => ({ data: [] }))
+      ]);
+
+      const setBadge = (id, count) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (count > 0) {
+          el.innerText = count;
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      };
+
+      setBadge('qbadge_loans', (lRes.data || []).length);
+      setBadge('qbadge_gss', (gRes.data || []).length);
+      setBadge('qbadge_rd', (rRes.data || []).length);
+      setBadge('qbadge_si', (sRes.data || []).length);
+
+      // நடப்பில் கடன்கள் இருந்தால் அதை முதலில் காட்டும்; இல்லையென்றால் புதிய அடகு படிவத்தைத் திறக்கும்
+      if ((lRes.data || []).length > 0) {
+        switchCounterActionPanel('active_loans');
+      } else {
+        switchCounterActionPanel('new_pawn');
+      }
+    } catch (e) {
+      switchCounterActionPanel('active_loans');
+    }
+  }
+
+  // selectCustomer & restoreCustomerDraft ஆகியவற்றுடன் தானாக இணைத்தல்
+  const _origSelectCustomer = selectCustomer;
+  selectCustomer = async function(cust) {
+    await _origSelectCustomer(cust);
+    if (cust && cust.id) updateCustomerActionBadges(cust.id);
+  };
+
+  const _origRestoreDraft = restoreCustomerDraft;
+  restoreCustomerDraft = function(customerId) {
+    _origRestoreDraft(customerId);
+    if (customerId) updateCustomerActionBadges(customerId);
+  };
 </script>
 </body>
 </html>

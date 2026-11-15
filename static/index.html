@@ -7977,7 +7977,7 @@
     const pDisp = document.getElementById('si_adm_periodic_lakh_disp');
     const mDisp = document.getElementById('si_adm_maturity_lakh_disp');
     if (pDisp) pDisp.innerText = payoutFreq === 'MATURITY' ? 'முதிர்வில் மொத்தமாக' : `₹ ${res.periodicReturn.toLocaleString('en-IN')}`;
-    if (mDisp) mDisp.innerText = `₹ ${(100000 + res.totalInterest).toLocaleString('en-IN')}`;
+    if (mDisp) mDisp.innerText = `₹ ${res.maturityAmount.toLocaleString('en-IN')}`;
     return res;
   }
 
@@ -8123,7 +8123,7 @@
     document.getElementById('si_cust_freq_lbl').innerText = `இடைவெளி: ${sch.payout_frequency}`;
     document.getElementById('si_cust_total_int_disp').innerText = `₹ ${m.totalInterest.toLocaleString('en-IN')}`;
     document.getElementById('si_cust_roi_lbl').innerText = `வட்டி: ${sch.return_rate}% (${sch.return_calc_type})`;
-    document.getElementById('si_cust_maturity_disp').innerText = `₹ ${(amt + m.totalInterest).toLocaleString('en-IN')}`;
+    document.getElementById('si_cust_maturity_disp').innerText = `₹ ${m.maturityAmount.toLocaleString('en-IN')}`;
     document.getElementById('si_cust_lockin_lbl').innerText = `Lock-in காலம்: ${sch.locking_period_months} மாதங்கள்`;
   }
 

@@ -814,6 +814,33 @@
               </table>
             </div>            
           </div>
+
+          <!-- 💰 10. தொடர்வைப்புத் திட்டம் (RD) மெச்சியுரிட்டி பெனிபிட் / வட்டி ஒப்புதல் -->
+          <div class="space-y-2 pt-4 border-t border-purple-100">
+            <div class="flex justify-between items-center">
+              <h3 class="text-xs font-extrabold text-indigo-900 uppercase flex items-center gap-1.5">
+                <span>💰</span> 10. RD மெச்சியுரிட்டி பெனிபிட் ஒப்புதல் (RD Maturity Benefit Approval):
+              </h3>
+              <button type="button" onclick="loadPendingRdBenefitsHQ()" class="text-[11px] bg-indigo-100 hover:bg-indigo-200 text-indigo-950 px-2.5 py-1 rounded-lg font-bold cursor-pointer">புதுப்பி 🔄</button>
+            </div>
+            <div class="overflow-x-auto border-2 border-indigo-200 rounded-xl bg-white">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-indigo-100 text-indigo-950 border-b border-indigo-200">
+                  <tr>
+                    <th class="p-2.5 font-bold">கிளை & RD எண்</th>
+                    <th class="p-2.5 font-bold">வாடிக்கையாளர்</th>
+                    <th class="p-2.5 font-bold">செலுத்திய அசல் & அபராதம்</th>
+                    <th class="p-2.5 font-bold">பெனிபிட் / வட்டி (Edit ₹)</th>
+                    <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingRdBenefitsTbody" class="divide-y divide-indigo-100 text-slate-700">
+                  <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">RD பெனிபிட் கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        
         </div> 
     </div> <!-- 👈 இங்கே 'hqApprovalTab'-க்கான சரியான மூடும் டேக் இருக்க வேண்டும் -->
       
@@ -1172,58 +1199,93 @@
           </div>
         </div>
 
+    
         <!-- 💰 தொடர்வைப்புத் திட்டங்கள் (RD Schemes) மேலாண்மை -->
-          <div class="bg-white p-6 rounded-3xl shadow-md border-2 border-indigo-200 space-y-4 mt-6">
-            <div class="flex justify-between items-center border-b border-indigo-100 pb-3">
-              <h3 class="text-base font-black text-indigo-900">💰 தொடர்வைப்புத் திட்டங்கள் உருவாக்கம் (RD Schemes)</h3>
-              <button type="button" onclick="loadRdSchemesList()" class="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-xl text-xs font-bold cursor-pointer">🔄 புதுப்பி</button>
+        <div class="bg-white p-6 rounded-3xl shadow-md border-2 border-indigo-200 space-y-4 mt-6">
+          <div class="flex justify-between items-center border-b border-indigo-100 pb-3">
+            <h3 class="text-base font-black text-indigo-900">💰 தொடர்வைப்புத் திட்டங்கள் உருவாக்கம் (RD Schemes)</h3>
+            <button type="button" onclick="loadRdSchemesList()" class="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-xl text-xs font-bold cursor-pointer">🔄 புதுப்பி</button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">திட்டக் குறியீடு (Code) *</label>
+              <input type="text" id="rd_adm_code" placeholder="எ.கா: RD-12M" class="w-full border p-2.5 rounded-xl font-mono uppercase">
             </div>
-  
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">திட்டக் குறியீடு (Code) *</label>
-                <input type="text" id="rd_adm_code" placeholder="எ.கா: RD-12M" class="w-full border p-2.5 rounded-xl font-mono uppercase">
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">திட்டத்தின் பெயர் *</label>
-                <input type="text" id="rd_adm_name" placeholder="எ.கா: 1 வருட தொடர்வைப்பு" class="w-full border p-2.5 rounded-xl">
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">மாதத் தவணை (₹) *</label>
-                <input type="number" id="rd_adm_amt" placeholder="2000" class="w-full border p-2.5 rounded-xl font-mono font-bold">
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">கால அளவு (மாதங்கள்) *</label>
-                <input type="number" id="rd_adm_tenure" value="12" class="w-full border p-2.5 rounded-xl font-mono">
-              </div>
-              <div>
-                <label class="block font-bold text-slate-700 mb-1">வட்டி விகிதம் (% p.a)</label>
-                <input type="number" step="0.1" id="rd_adm_roi" value="10" class="w-full border p-2.5 rounded-xl font-mono font-bold text-indigo-900">
-              </div>
-              <div class="sm:col-span-3 flex items-end justify-end">
-                <button type="button" onclick="createRdSchemeAdmin()" style="background-color:#4338ca;color:#fff;" class="px-6 py-2.5 rounded-xl text-xs font-black shadow-md cursor-pointer">
-                  + RD திட்டத்தை உருவாக்கு
-                </button>
-              </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">திட்டத்தின் பெயர் *</label>
+              <input type="text" id="rd_adm_name" placeholder="எ.கா: 1 வருட தொடர்வைப்பு" class="w-full border p-2.5 rounded-xl">
             </div>
-  
-            <div class="overflow-x-auto pt-2">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="bg-indigo-50 text-indigo-900 border-b">
-                    <th class="p-2.5">குறியீடு</th>
-                    <th class="p-2.5">திட்டப் பெயர்</th>
-                    <th class="p-2.5">மாதத் தவணை</th>
-                    <th class="p-2.5">காலம்</th>
-                    <th class="p-2.5">வட்டி (%)</th>
-                    <th class="p-2.5 text-center">செயல்</th>
-                  </tr>
-                </thead>
-                <tbody id="rdSchemesTableBody" class="divide-y"></tbody>
-              </table>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">கட்டும் முறை (Frequency) *</label>
+              <select id="rd_adm_freq" class="w-full border p-2.5 rounded-xl bg-white font-bold text-indigo-950">
+                <option value="MONTHLY">மாதாந்திரம் (Monthly)</option>
+                <option value="WEEKLY">வாராந்திரம் (Weekly)</option>
+                <option value="DAILY">தினசரி (Daily)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">குறைந்தபட்ச தவணை (Min ₹) *</label>
+              <input type="number" id="rd_adm_min_amt" placeholder="1000" value="1000" class="w-full border p-2.5 rounded-xl font-mono font-bold text-emerald-700">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">திட்டக் கால அளவு (தவணைகள்) *</label>
+              <input type="number" id="rd_adm_tenure" value="12" placeholder="எ.கா: 12" class="w-full border p-2.5 rounded-xl font-mono font-bold">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">லாக்கிங் பீரியட் (Lock-in தவணை) *</label>
+              <input type="number" id="rd_adm_lockin" value="3" placeholder="எ.கா: 3" class="w-full border p-2.5 rounded-xl font-mono">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">கிரேஸ் பீரியட் (Grace நாட்கள்) *</label>
+              <input type="number" id="rd_adm_grace" value="5" class="w-full border p-2.5 rounded-xl font-mono">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">அபராதம் (1 நாளைக்கு ₹1000-க்கு ₹) *</label>
+              <input type="number" step="0.01" id="rd_adm_penalty" value="2" class="w-full border p-2.5 rounded-xl font-mono text-rose-600 font-bold">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">வட்டி கணக்கீடு முறை *</label>
+              <select id="rd_adm_int_type" class="w-full border p-2.5 rounded-xl bg-white font-bold">
+                <option value="COMPOUND">கூட்டுவட்டி (Compound Interest)</option>
+                <option value="SIMPLE">தனிவட்டி (Simple Interest)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">வட்டி விகிதம் (% p.a) *</label>
+              <input type="number" step="0.1" id="rd_adm_roi" value="10" class="w-full border p-2.5 rounded-xl font-mono font-bold text-indigo-900">
+            </div>
+            <div>
+              <label class="block font-bold text-indigo-900 mb-1">₹1000 தவணைக்கு முதிர்வுத் தொகை (₹) *</label>
+              <input type="number" step="0.01" id="rd_adm_mat_per_1000" placeholder="எ.கா: 13200" class="w-full border-2 border-indigo-300 p-2.5 rounded-xl font-mono font-black text-indigo-950 bg-indigo-50/40">
+            </div>
+            <div class="flex items-end justify-end">
+              <button type="button" onclick="createRdSchemeAdmin()" style="background-color:#4338ca;color:#fff;" class="w-full py-2.5 px-4 rounded-xl text-xs font-black shadow-md cursor-pointer">
+                + RD திட்டத்தை உருவாக்கு
+              </button>
             </div>
           </div>
-    
+
+          <div class="overflow-x-auto pt-2">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-indigo-50 text-indigo-900 border-b">
+                  <th class="p-2.5">குறியீடு & பெயர்</th>
+                  <th class="p-2.5">முறை & Min ₹</th>
+                  <th class="p-2.5">காலம் & Lock-in</th>
+                  <th class="p-2.5">கிரேஸ் & அபராதம்</th>
+                  <th class="p-2.5">வட்டி முறை</th>
+                  <th class="p-2.5">₹1000-க்கு முதிர்வு</th>
+                  <th class="p-2.5 text-center">செயல்</th>
+                </tr>
+              </thead>
+              <tbody id="rdSchemesTableBody" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+      
     </div> <!-- 👈 நிர்வாகம் பிரதான பெட்டி (Container) இங்கு சரியாக முடிகிறது -->
   </div> <!-- 👈 TAB C: நிர்வாகம் டேப் (adminTab) இங்கு மட்டுமே சரியாக முடிகிறது -->
 
@@ -6530,11 +6592,11 @@
   </div>
 </div>
 
-<!-- 💰 RD முழுமையான மேலாண்மை சாளரம் (புதிய கணக்கு / தவணை / முதிர்வு) -->
+<!-- 💰 RD முழுமையான மேலாண்மை சாளரம் (புதிய கணக்கு / தவணை / பெனிபிட் / முதிர்வு) -->
 <div id="rdAccountModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
-  <div class="bg-white rounded-3xl p-5 max-w-2xl w-full shadow-2xl space-y-4 border-2 border-indigo-500 my-auto max-h-[92vh] overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-3xl w-full shadow-2xl space-y-4 border-2 border-indigo-500 my-auto max-h-[92vh] overflow-y-auto">
     <div class="flex justify-between items-center border-b border-indigo-100 pb-2">
-      <h3 class="text-base font-extrabold text-indigo-900">💰 தொடர்வைப்புத் திட்டம் (RD) - கணக்கு & தவணை</h3>
+      <h3 class="text-base font-extrabold text-indigo-900">💰 தொடர்வைப்புத் திட்டம் (RD) - கணக்கு, தவணை & முதிர்வு</h3>
       <button type="button" onclick="closeRdModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
     </div>
 
@@ -6560,6 +6622,7 @@
               <th class="p-2">தேதி</th>
               <th class="p-2">ரசீது எண்</th>
               <th class="p-2 text-right">கட்டிய தொகை</th>
+              <th class="p-2 text-right">தாமத அபராதம்</th>
             </tr>
           </thead>
           <tbody id="rdHistoryTbody" class="divide-y divide-amber-100"></tbody>
@@ -6569,7 +6632,10 @@
 
     <!-- 2. புதிய கணக்கு தொடங்குதல் / தவணை செலுத்தும் படிவம் -->
     <div class="border-t border-indigo-100 pt-3 space-y-3 text-xs">
-      <div class="font-black text-indigo-900" id="rdFormTitle">➕ புதிய RD கணக்கு தொடங்குதல்:</div>
+      <div class="flex justify-between items-center">
+        <div class="font-black text-indigo-900" id="rdFormTitle">➕ புதிய RD கணக்கு தொடங்குதல்:</div>
+        <span id="rdSchemeRulesBadge" class="text-[10px] bg-indigo-100 text-indigo-900 px-2.5 py-0.5 rounded-lg font-bold hidden"></span>
+      </div>
       <input type="hidden" id="rd_mode" value="NEW">
       <input type="hidden" id="rd_existing_acc_id" value="">
 
@@ -6586,19 +6652,27 @@
         </div>
 
         <div>
-          <label class="block font-bold text-slate-700 mb-1" id="rdAmountLabel">மாத தவணைத் தொகை (₹) *</label>
-          <input type="number" id="rd_initial_amount" placeholder="எ.கா: 2000" class="w-full border-2 border-indigo-200 p-2 rounded-xl font-bold font-mono">
+          <label class="block font-bold text-slate-700 mb-1" id="rdAmountLabel">தவணைத் தொகை (₹) *</label>
+          <input type="number" id="rd_initial_amount" oninput="calcRdMaturityAndPenalty()" placeholder="எ.கா: 2000" class="w-full border-2 border-indigo-200 p-2 rounded-xl font-bold font-mono text-indigo-950">
+          <span id="rdMinAmtHint" class="text-[10px] text-slate-500 block mt-0.5"></span>
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">முதிர்வு விருப்பம்</label>
-          <select id="rd_maturity_option" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold">
-            <option value="CASH">பணமாகப் பெறுதல் (Cash Payout)</option>
-            <option value="GOLD">நகையாகப் பெறுதல்</option>
-          </select>
+          <label class="block font-bold text-slate-700 mb-1">தாமத நாட்கள் (கிரேஸ் பீரியட் போக)</label>
+          <input type="number" id="rd_late_days" value="0" min="0" oninput="calcRdMaturityAndPenalty()" class="w-full border-2 border-indigo-200 p-2 rounded-xl font-bold font-mono">
+        </div>
+
+        <div class="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200">
+          <div class="text-[11px] text-indigo-900 font-bold">🎯 எதிர்பார்க்கப்படும் முதிர்வுத் தொகை (Maturity Value):</div>
+          <div class="text-sm font-black font-mono text-indigo-950" id="rd_calc_maturity_display">₹ 0.00</div>
+          <span class="text-[10px] text-indigo-700" id="rd_calc_benefit_hint"></span>
+        </div>
+        <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+          <div class="text-[11px] text-rose-900 font-bold">⚠️ தாமத அபராதம் (முதிர்வு பெனிபிட்டில் கழியும்):</div>
+          <div class="text-sm font-black font-mono text-rose-800" id="rd_calc_penalty_display">₹ 0.00</div>
         </div>
 
         <!-- நாமினி விபரங்கள் -->
-        <div class="sm:col-span-2 bg-indigo-50/50 p-3 rounded-2xl border border-indigo-100 space-y-2">
+        <div id="rdNomineeBox" class="sm:col-span-2 bg-indigo-50/50 p-3 rounded-2xl border border-indigo-100 space-y-2">
           <div class="font-black text-indigo-950">👤 நாமினி விபரங்கள் (Nominee Details):</div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <input type="text" id="rd_nominee_name" placeholder="நாமினி பெயர்" class="border p-2 rounded-xl bg-white">
@@ -6610,8 +6684,8 @@
     </div>
 
     <div class="flex justify-end gap-2 pt-2 border-t border-indigo-100">
-      <button type="button" onclick="resetRdFormToNew()" class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold">புதிய கணக்கு</button>
-      <button type="button" onclick="closeRdModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து செய்</button>
+      <button type="button" onclick="resetRdFormToNew()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold cursor-pointer">புதிய கணக்கு</button>
+      <button type="button" onclick="closeRdModal()" class="px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer">ரத்து செய்</button>
       <button type="button" onclick="addRdToCart()" style="background-color:#4338ca;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
         + கூடையில் சேர் (Add to Cart)
       </button>
@@ -7040,7 +7114,9 @@
       await loadCustomerGssAccounts();
       await resetGssFormToNew();
   }
-  // தொடர்வைப்புத் திட்டம் (RD) பாப்-அப் சாளரத்தைத் திறக்கும் செயல்பாடு
+  // =========================================================================
+  // 💰 மேம்படுத்தப்பட்ட தொடர்வைப்புத் திட்டம் (RD) முழுமையான செயல்பாடுகள்
+  // =========================================================================
   async function openRdModal() {
     if (!activeCustomer || !activeCustomer.id) {
       return alert("தயவுசெய்து முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
@@ -7049,8 +7125,7 @@
     if (!modal) return;
     modal.classList.remove('hidden');
     modal.style.display = 'flex';
-    const historyBox = document.getElementById('rdInstallmentHistoryBox');
-    if (historyBox) historyBox.classList.add('hidden');
+    document.getElementById('rdInstallmentHistoryBox')?.classList.add('hidden');
 
     const sel = document.getElementById('rd_scheme_select');
     if (sel) {
@@ -7059,20 +7134,20 @@
         const sRes = await fetch('/api/admin/rd-schemes?t=' + Date.now());
         const sData = await sRes.json();
         rdSchemesCache = sData.data || [];
+        const freqMap = { 'MONTHLY': 'மாதம்', 'WEEKLY': 'வாரம்', 'DAILY': 'தினசரி' };
         sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
-          rdSchemesCache.map(s => `<option value="${s.id}">${s.scheme_name} (மாதம்: ₹${s.monthly_amount})</option>`).join('');
+          rdSchemesCache.map(s => {
+            const minAmt = s.min_installment_amount || s.monthly_amount || 1000;
+            const fTxt = freqMap[s.frequency] || s.frequency || 'மாதம்';
+            return `<option value="${s.id}">${s.scheme_name} (${fTxt} - Min: ₹${minAmt})</option>`;
+          }).join('');
       } catch (e) { console.error(e); }
     }
 
-    if (typeof loadCustomerRdAccounts === 'function') {
-      await loadCustomerRdAccounts();
-    }
-    if (typeof resetRdFormToNew === 'function') {
-      await resetRdFormToNew();
-    }
+    await loadCustomerRdAccounts();
+    await resetRdFormToNew();
   }
 
-  // தொடர்வைப்புத் திட்டம் (RD) பாப்-அப் சாளரத்தை மூடும் செயல்பாடு
   function closeRdModal() {
     const modal = document.getElementById('rdAccountModal');
     if (modal) {
@@ -7094,22 +7169,47 @@
       }
       container.innerHTML = customerRdAccountsCache.map(acc => {
         const paid = parseFloat(acc.total_amount_paid || 0);
+        const pen = parseFloat(acc.total_penalty_accrued || 0);
+        const instAmt = parseFloat(acc.installment_amount || acc.monthly_amount || (acc.transactions?.[0]?.amount_paid) || 0);
+        const paidCount = (acc.transactions || []).length;
+        const sch = acc.scheme_details || {};
+        const lockIn = parseInt(sch.locking_period_count || 0);
+        const tenure = parseInt(sch.tenure_count || sch.tenure_months || 12);
+
+        const bStatus = acc.benefit_approval_status || 'NONE';
+        const appBen = parseFloat(acc.approved_benefit_amount || 0);
+        const propBen = parseFloat(acc.proposed_benefit_amount || 0);
+
+        let benefitBadge = '';
+        if (bStatus === 'PENDING') {
+          benefitBadge = `<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold">⏳ பெனிபிட் ஒப்புதல் நிலுவை (₹${propBen})</span>`;
+        } else if (bStatus === 'APPROVED') {
+          benefitBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-black">✅ பெனிபிட் அங்கீகரிக்கப்பட்டது: ₹${appBen}</span>`;
+        } else if (bStatus === 'REJECTED') {
+          benefitBadge = `<span class="px-2 py-0.5 bg-rose-100 text-rose-900 rounded font-bold">❌ பெனிபிட் நிராகரிக்கப்பட்டது</span>`;
+        }
+
         return `
           <div class="bg-white p-3 rounded-2xl border border-indigo-200 space-y-2 shadow-xs">
             <div class="flex flex-wrap justify-between items-center gap-2">
               <div>
                 <span class="font-mono font-black text-indigo-900 text-sm">${acc.rd_no}</span>
-                <span class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold">${acc.scheme_details?.scheme_name || 'RD'}</span>
-                <span class="ml-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold">${(acc.transactions || []).length} தவணைகள்</span>
+                <span class="ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold">${sch.scheme_name || 'RD'}</span>
+                <span class="ml-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold">தவணை: ₹${instAmt.toLocaleString('en-IN')} (${paidCount}/${tenure})</span>
               </div>
               <div class="flex flex-wrap gap-1.5">
                 <button type="button" onclick="viewRdInstallments(${acc.id})" style="background-color:#4f46e5;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">📜 தவணை விபரம்</button>
                 <button type="button" onclick="selectRdForInstallment(${acc.id})" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">+ தவணை கட்டு</button>
-                <button type="button" onclick="selectRdForMaturity(${acc.id})" style="background-color:#dc2626;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">💵 முதிர்வு முடிவு</button>
+                <button type="button" onclick="requestRdBenefit(${acc.id})" style="background-color:#7c3aed;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">🎁 பெனிபிட் கோரு</button>
+                <button type="button" onclick="selectRdForMaturity(${acc.id})" style="background-color:#dc2626;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">💵 முதிர்வு பட்டுவாடா</button>
               </div>
             </div>
-            <div class="text-[11px] text-slate-700 bg-slate-50 p-2 rounded-xl">
-              செலுத்தியது: <b>₹${paid.toLocaleString('en-IN')}</b> | நாமினி: <b>${acc.nominee_name || 'இல்லை'} (${acc.nominee_relation || '-'})</b>
+            <div class="text-[11px] text-slate-700 flex flex-wrap gap-3 items-center bg-slate-50 p-2 rounded-xl">
+              <span>செலுத்திய மொத்தம்: <b>₹${paid.toLocaleString('en-IN')}</b></span>
+              <span class="text-rose-600">மொத்த தாமத அபராதம்: <b>₹${pen.toLocaleString('en-IN')}</b></span>
+              <span>Lock-in: <b>${lockIn} தவணைகள்</b></span>
+              <span>நாமினி: <b>${acc.nominee_name || 'இல்லை'}</b></span>
+              ${benefitBadge}
             </div>
           </div>
         `;
@@ -7125,7 +7225,7 @@
     document.getElementById('rdHistoryTitle').innerText = `📜 RD தவணை கட்டிய விபரங்கள் (${acc.rd_no}):`;
     const txns = acc.transactions || [];
     if (txns.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-slate-400">தவணைப் பதிவுகள் இல்லை</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-400">தவணைப் பதிவுகள் இல்லை</td></tr>`;
     } else {
       tbody.innerHTML = txns.map((t, idx) => `
         <tr>
@@ -7133,19 +7233,63 @@
           <td class="p-2 font-mono">${t.transaction_date || '-'}</td>
           <td class="p-2 font-mono text-indigo-800">${t.receipt_no || '-'}</td>
           <td class="p-2 text-right font-mono font-bold text-emerald-700">₹${parseFloat(t.amount_paid || 0).toLocaleString('en-IN')}</td>
+          <td class="p-2 text-right font-mono font-bold text-rose-600">₹${parseFloat(t.penalty_amount || 0).toLocaleString('en-IN')}</td>
         </tr>
       `).join('');
     }
     box.classList.remove('hidden');
   }
 
+  // கணக்கின் தவணைத் தொகைக்கேற்ப இயல்புநிலை பெனிபிட் (வட்டி) கணக்கிடுதல்
+  function getDefaultRdBenefitForAccount(acc) {
+    const sch = acc.scheme_details || rdSchemesCache.find(s => s.id === acc.scheme_id) || {};
+    const instAmt = parseFloat(acc.installment_amount || acc.monthly_amount || (acc.transactions?.[0]?.amount_paid) || 0);
+    const tenure = parseInt(sch.tenure_count || sch.tenure_months || 12);
+    const matPer1000 = parseFloat(sch.maturity_per_thousand || 0);
+
+    if (matPer1000 > 0 && instAmt > 0) {
+      const expectedTotalMat = (instAmt / 1000) * matPer1000;
+      const expectedPrincipal = instAmt * tenure;
+      return Math.max(0, Math.round(expectedTotalMat - expectedPrincipal));
+    }
+    return 0;
+  }
+
+  async function requestRdBenefit(accId) {
+    const acc = customerRdAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const defaultBen = getDefaultRdBenefitForAccount(acc);
+    const valStr = prompt(`${acc.rd_no} கணக்கிற்கான மெச்சியுரிட்டி பெனிபிட் / வட்டித் தொகையை (₹) உள்ளிடவும்:\n(தலைமையக அலுவலர் இதைச் சரிபார்த்து எடிட்/ஒப்புதல் அளிப்பார்)`, defaultBen);
+    if (valStr === null) return;
+    const benAmt = parseFloat(valStr) || 0;
+    if (benAmt < 0) return alert("சரியான தொகையை உள்ளிடவும்.");
+
+    const res = await fetch('/api/rd/request-maturity-benefit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accId, proposed_benefit: benAmt })
+    });
+    const out = await res.json();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      await loadCustomerRdAccounts();
+    } else alert("❌ பிழை: " + (out.detail || "கோரிக்கை அனுப்புவதில் சிக்கல்"));
+  }
+
   async function resetRdFormToNew() {
     document.getElementById('rd_mode').value = 'NEW';
     document.getElementById('rd_existing_acc_id').value = '';
     document.getElementById('rdFormTitle').innerText = '➕ புதிய RD கணக்கு தொடங்குதல்:';
-    document.getElementById('rdAmountLabel').innerText = 'மாத தவணைத் தொகை (₹) *';
-    document.getElementById('rd_initial_amount').value = '';
+    document.getElementById('rdAmountLabel').innerText = 'முதல் தவணைத் தொகை (₹) * (இதே தொகையே தொடரும்)';
+    
+    const amtInput = document.getElementById('rd_initial_amount');
+    amtInput.value = '';
+    amtInput.readOnly = false;
+    amtInput.className = "w-full border-2 border-indigo-300 p-2 rounded-xl font-bold font-mono text-indigo-950 bg-white";
+
+    document.getElementById('rd_late_days').value = '0';
     document.getElementById('rd_scheme_select').disabled = false;
+    document.getElementById('rdNomineeBox')?.classList.remove('hidden');
     document.getElementById('rd_nominee_name').value = '';
     document.getElementById('rd_nominee_relation').value = '';
     document.getElementById('rd_nominee_mobile').value = '';
@@ -7158,54 +7302,150 @@
         document.getElementById('rd_account_no').value = data.next_rd_no;
       }
     } catch (e) { console.error(e); }
+    calcRdMaturityAndPenalty();
   }
 
   function selectRdForInstallment(accId) {
     const acc = customerRdAccountsCache.find(a => a.id === accId);
     if (!acc) return;
+    // முதல் முறை கட்டிய அதே தொகையை எடுத்தல் (எடிட் செய்ய முடியாதபடி பூட்டுதல்)
+    const lockedInstallmentAmt = parseFloat(acc.installment_amount || acc.monthly_amount || (acc.transactions?.[0]?.amount_paid) || 0);
+
     document.getElementById('rd_mode').value = 'INSTALLMENT';
     document.getElementById('rd_existing_acc_id').value = acc.id;
     document.getElementById('rdFormTitle').innerText = `💳 RD தவணை செலுத்துதல் (${acc.rd_no}):`;
-    document.getElementById('rdAmountLabel').innerText = 'செலுத்தும் தவணைத் தொகை (₹) *';
+    document.getElementById('rdAmountLabel').innerText = 'நிர்ணயிக்கப்பட்ட தவணைத் தொகை (₹) 🔒 (மாற்ற முடியாது)';
     document.getElementById('rd_account_no').value = acc.rd_no;
     document.getElementById('rd_scheme_select').value = acc.scheme_id;
     document.getElementById('rd_scheme_select').disabled = true;
-    document.getElementById('rd_initial_amount').value = acc.scheme_details?.monthly_amount || '';
+
+    const amtInput = document.getElementById('rd_initial_amount');
+    amtInput.value = lockedInstallmentAmt;
+    amtInput.readOnly = true; // 🔒 எடிட் செய்ய முடியாதபடி பூட்டப்பட்டுள்ளது
+    amtInput.className = "w-full border-2 border-slate-300 p-2 rounded-xl font-black font-mono text-slate-700 bg-slate-100 cursor-not-allowed";
+
+    document.getElementById('rd_late_days').value = '0';
+    document.getElementById('rdNomineeBox')?.classList.add('hidden');
+    calcRdMaturityAndPenalty();
   }
 
   function selectRdForMaturity(accId) {
     const acc = customerRdAccountsCache.find(a => a.id === accId);
     if (!acc) return;
-    const totalAmt = parseFloat(acc.total_amount_paid || 0);
 
-    const cartItem = {
+    if (acc.benefit_approval_status === 'PENDING') {
+      return alert("⚠️ இந்தக் கணக்கின் மெச்சியுரிட்டி பெனிபிட் கோரிக்கை தலைமையக ஒப்புதலில் நிலுவையில் உள்ளது! ஒப்புதல் கிடைத்த பிறகு முடிக்கவும்.");
+    }
+
+    const sch = acc.scheme_details || rdSchemesCache.find(s => s.id === acc.scheme_id) || {};
+    const lockIn = parseInt(sch.locking_period_count || 0);
+    const paidCount = (acc.transactions || []).length;
+
+    if (paidCount < lockIn) {
+      return alert(`🔒 லாக்கிங் பீரியட் விதி: குறைந்தது ${lockIn} தவணைகள் கட்டியிருந்தால் மட்டுமே கணக்கை முடிக்க முடியும்! (தற்போது கட்டியது: ${paidCount})`);
+    }
+
+    const totalAmt = parseFloat(acc.total_amount_paid || 0);
+    const totalPenalty = parseFloat(acc.total_penalty_accrued || 0);
+    const approvedBenefit = acc.benefit_approval_status === 'APPROVED' ? parseFloat(acc.approved_benefit_amount || 0) : 0;
+
+    const finalMaturityVal = Math.max(0, totalAmt + approvedBenefit - totalPenalty);
+    const detailTxt = `அசல்: ₹${totalAmt} + பெனிபிட்: ₹${approvedBenefit} - அபராதம்: ₹${totalPenalty} = நிகர பட்டுவாடா: ₹${finalMaturityVal}`;
+
+    cartItems.push({
       is_rd_account: true,
-      title: `💵 RD முதிர்வுப் பணம் (${acc.rd_no})`,
-      details: `கணக்கு: ${acc.rd_no} | மொத்தச் செலுத்தியது: ₹${totalAmt}`,
-      debit: totalAmt, // வாடிக்கையாளருக்குத் தர வேண்டிய பட்டுவாடா தொகை (-)
+      is_rd_maturity: true,
+      title: `💵 RD முதிர்வுப் பட்டுவாடா (${acc.rd_no})`,
+      details: detailTxt,
+      debit: finalMaturityVal, // வாடிக்கையாளருக்கு வழங்கும் தொகை (-)
       credit: 0,
       rd_meta: {
         mode: 'CLOSE',
         account_id: acc.id,
         rd_no: acc.rd_no,
-        maturity_amount: totalAmt
+        maturity_amount: finalMaturityVal,
+        approved_benefit: approvedBenefit,
+        penalty_deducted: totalPenalty
       }
-    };
+    });
 
-    if (typeof cartItems !== 'undefined') {
-      cartItems.push(cartItem);
-      if (typeof renderCart === 'function') renderCart();
-    }
+    if (typeof renderCart === 'function') renderCart();
     closeRdModal();
-    alert(`✅ ${acc.rd_no} முதிர்வுத் தொகை ₹${totalAmt.toLocaleString('en-IN')} கூடையில் சேர்க்கப்பட்டது!`);
+    alert(`✅ ${acc.rd_no} முதிர்வுத் தொகை ₹${finalMaturityVal.toLocaleString('en-IN')} கூடையில் சேர்க்கப்பட்டது!\n${detailTxt}`);
   }
 
   function onRdSchemeChange() {
     const schId = parseInt(document.getElementById('rd_scheme_select').value);
     const sch = rdSchemesCache.find(s => s.id === schId);
-    if (sch && sch.monthly_amount > 0) {
-      document.getElementById('rd_initial_amount').value = sch.monthly_amount;
+    const badge = document.getElementById('rdSchemeRulesBadge');
+    const hint = document.getElementById('rdMinAmtHint');
+
+    if (sch) {
+      const minAmt = parseFloat(sch.min_installment_amount || sch.monthly_amount || 1000);
+      const tenure = sch.tenure_count || sch.tenure_months || 12;
+      const grace = sch.grace_period_days ?? 5;
+      const pen = sch.penalty_per_thousand ?? 2;
+      const lockIn = sch.locking_period_count ?? 3;
+
+      if (document.getElementById('rd_mode').value === 'NEW') {
+        document.getElementById('rd_initial_amount').value = minAmt;
+      }
+      if (hint) hint.innerText = `குறைந்தபட்சம் ₹${minAmt} அல்லது அதற்கு மேல் உள்ளிடலாம்.`;
+      if (badge) {
+        badge.innerText = `காலம்: ${tenure} தவணை | Lock-in: ${lockIn} | Grace: ${grace} நாள் | அபராதம்: ₹${pen}/₹1000`;
+        badge.classList.remove('hidden');
+      }
+    } else {
+      if (badge) badge.classList.add('hidden');
+      if (hint) hint.innerText = '';
     }
+    calcRdMaturityAndPenalty();
+  }
+
+  function calcRdMaturityAndPenalty() {
+    const schId = parseInt(document.getElementById('rd_scheme_select').value);
+    const sch = rdSchemesCache.find(s => s.id === schId);
+    const amt = parseFloat(document.getElementById('rd_initial_amount').value) || 0;
+    const lateDays = parseInt(document.getElementById('rd_late_days').value) || 0;
+
+    let penalty = 0;
+    let maturityVal = 0;
+    let benefitHint = '';
+
+    if (sch && amt > 0) {
+      // 1. ₹1000-க்கு எவ்வளவு தாமத அபராதம் எனக் கணக்கிடுதல்
+      const ratePer1000 = parseFloat(sch.penalty_per_thousand || 0);
+      if (lateDays > 0 && ratePer1000 > 0) {
+        penalty = (amt / 1000) * ratePer1000 * lateDays;
+      }
+
+      // 2. ₹1000 தவணைக்கு வரையறுக்கப்பட்ட முதிர்வுத் தொகையின் அடிப்படையில் கணக்கிடுதல்
+      const tenure = parseInt(sch.tenure_count || sch.tenure_months || 12);
+      const totalPrincipal = amt * tenure;
+      const matPer1000 = parseFloat(sch.maturity_per_thousand || 0);
+
+      if (matPer1000 > 0) {
+        maturityVal = (amt / 1000) * matPer1000;
+      } else {
+        // ஒருவேளை ₹1000 முதிர்வு கொடுக்கப்படாவிட்டால் வட்டி விகிதத்தில் கணக்கிடும்
+        const roi = parseFloat(sch.interest_rate || 0);
+        const intType = sch.interest_calculation_type || 'COMPOUND';
+        if (intType === 'SIMPLE') {
+          const interest = (totalPrincipal * roi * (tenure / 12)) / 100;
+          maturityVal = totalPrincipal + interest;
+        } else {
+          // தோராய கூட்டுவட்டி கணக்கீடு
+          const r = roi / 100 / 12;
+          maturityVal = amt * ((Math.pow(1 + r, tenure) - 1) / r) * (1 + r);
+        }
+      }
+      const estBenefit = Math.max(0, Math.round(maturityVal - totalPrincipal));
+      benefitHint = `(மொத்த அசல்: ₹${totalPrincipal.toLocaleString('en-IN')} + எதிர்பார்க்கும் பெனிபிட்: ₹${estBenefit.toLocaleString('en-IN')})`;
+    }
+
+    document.getElementById('rd_calc_penalty_display').innerText = `₹ ${penalty.toFixed(2)}`;
+    document.getElementById('rd_calc_maturity_display').innerText = `₹ ${Math.round(maturityVal).toLocaleString('en-IN')}`;
+    document.getElementById('rd_calc_benefit_hint').innerText = benefitHint;
   }
 
   function addRdToCart() {
@@ -7215,26 +7455,38 @@
     const schId = parseInt(document.getElementById('rd_scheme_select').value);
     const sch = rdSchemesCache.find(s => s.id === schId);
     const amt = parseFloat(document.getElementById('rd_initial_amount').value) || 0;
+    const lateDays = parseInt(document.getElementById('rd_late_days').value) || 0;
 
-    if (!schId || amt <= 0) {
+    if (!schId || !sch || amt <= 0) {
       return alert("திட்டத்தைத் தேர்ந்தெடுத்து சரியான தொகையை உள்ளிடவும்.");
     }
 
+    const minAmt = parseFloat(sch.min_installment_amount || sch.monthly_amount || 0);
+    if (mode === 'NEW' && amt < minAmt) {
+      return alert(`⚠️ இந்தத் திட்டத்தின் குறைந்தபட்ச தவணைத் தொகை ₹${minAmt} ஆகும்! இதற்குக் குறைவாக உள்ளிட முடியாது.`);
+    }
+
+    const ratePer1000 = parseFloat(sch.penalty_per_thousand || 0);
+    const penalty = lateDays > 0 ? Math.round((amt / 1000) * ratePer1000 * lateDays * 100) / 100 : 0;
+
     const title = mode === 'NEW' ? `💰 புதிய RD கணக்கு (${rdNo})` : `💳 RD தவணை (${rdNo})`;
-    const details = `${sch.scheme_name} | தொகை: ₹${amt}`;
+    const details = `${sch.scheme_name} | தவணை: ₹${amt}${penalty > 0 ? ` | அபராதம் (முதிர்வில் கழியும்): ₹${penalty}` : ''}`;
 
     cartItems.push({
       is_rd_account: true,
       title: title,
       details: details,
       debit: 0,
-      credit: amt, // வாடிக்கையாளர் செலுத்தும் தொகை (+)
+      credit: amt, // வாடிக்கையாளர் செலுத்தும் தவணைத் தொகை (+)
       rd_meta: {
         mode: mode,
         account_id: accId ? parseInt(accId) : null,
         rd_no: rdNo,
         scheme_id: schId,
         initial_amount: amt,
+        installment_amount: amt,
+        penalty_amount: penalty,
+        late_days: lateDays,
         nominee_name: document.getElementById('rd_nominee_name').value.trim(),
         nominee_relation: document.getElementById('rd_nominee_relation').value.trim(),
         nominee_mobile: document.getElementById('rd_nominee_mobile').value.trim()
@@ -7246,6 +7498,7 @@
     alert("✅ RD பரிவர்த்தனை கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
   }
 
+  // நிர்வாகப் பலகையில் RD திட்டங்களைப் பட்டியலிடுதல் & உருவாக்குதல்
   async function loadRdSchemesList() {
     const tbody = document.getElementById('rdSchemesTableBody');
     if (!tbody) return;
@@ -7254,34 +7507,49 @@
       const data = await res.json();
       const list = data.data || [];
       if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">RD திட்டங்கள் எதுவும் உருவாக்கப்படவில்லை</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">RD திட்டங்கள் எதுவும் உருவாக்கப்படவில்லை</td></tr>`;
         return;
       }
-      tbody.innerHTML = list.map(s => `
-        <tr>
-          <td class="p-2.5 font-mono font-black text-indigo-800">${s.scheme_code}</td>
-          <td class="p-2.5 font-bold">${s.scheme_name}</td>
-          <td class="p-2.5 font-mono font-bold">₹${s.monthly_amount}</td>
-          <td class="p-2.5">${s.tenure_months} மாதம்</td>
-          <td class="p-2.5 font-mono">${s.interest_rate || 0}%</td>
-          <td class="p-2.5 text-center">
-            <button type="button" onclick="deleteRdScheme(${s.id})" class="text-rose-600 font-bold hover:underline">டிலீட்</button>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = list.map(s => {
+        const minAmt = s.min_installment_amount || s.monthly_amount || 0;
+        const tenure = s.tenure_count || s.tenure_months || 12;
+        return `
+          <tr>
+            <td class="p-2.5"><span class="font-mono font-black text-indigo-800 block">${s.scheme_code}</span><b>${s.scheme_name}</b></td>
+            <td class="p-2.5">${s.frequency || 'MONTHLY'}<br><span class="font-mono font-bold text-emerald-700">Min: ₹${minAmt}</span></td>
+            <td class="p-2.5">${tenure} தவணை<br><span class="text-[11px] text-slate-500">Lock-in: ${s.locking_period_count || 0}</span></td>
+            <td class="p-2.5">Grace: ${s.grace_period_days || 0}d<br><span class="text-rose-600 font-mono font-bold">₹${s.penalty_per_thousand || 0}/₹1000</span></td>
+            <td class="p-2.5">${s.interest_calculation_type || 'COMPOUND'}<br><span class="font-mono font-bold">${s.interest_rate || 0}%</span></td>
+            <td class="p-2.5 font-mono font-black text-indigo-900">₹${s.maturity_per_thousand || 0}</td>
+            <td class="p-2.5 text-center">
+              <button type="button" onclick="deleteRdScheme(${s.id})" class="text-rose-600 font-bold hover:underline cursor-pointer">டிலீட்</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
     } catch (e) { console.error(e); }
   }
 
   async function createRdSchemeAdmin() {
+    const minAmt = parseFloat(document.getElementById('rd_adm_min_amt').value) || 0;
+    const tenure = parseInt(document.getElementById('rd_adm_tenure').value) || 12;
     const payload = {
       scheme_code: document.getElementById('rd_adm_code').value.trim(),
       scheme_name: document.getElementById('rd_adm_name').value.trim(),
-      monthly_amount: parseFloat(document.getElementById('rd_adm_amt').value) || 0,
-      tenure_months: parseInt(document.getElementById('rd_adm_tenure').value) || 12,
-      interest_rate: parseFloat(document.getElementById('rd_adm_roi').value) || 0
+      frequency: document.getElementById('rd_adm_freq').value,
+      min_installment_amount: minAmt,
+      monthly_amount: minAmt, // பின்தள இணக்கத்தன்மைக்காக
+      tenure_count: tenure,
+      tenure_months: tenure,
+      locking_period_count: parseInt(document.getElementById('rd_adm_lockin').value) || 0,
+      grace_period_days: parseInt(document.getElementById('rd_adm_grace').value) || 0,
+      penalty_per_thousand: parseFloat(document.getElementById('rd_adm_penalty').value) || 0,
+      interest_calculation_type: document.getElementById('rd_adm_int_type').value,
+      interest_rate: parseFloat(document.getElementById('rd_adm_roi').value) || 0,
+      maturity_per_thousand: parseFloat(document.getElementById('rd_adm_mat_per_1000').value) || 0
     };
-    if (!payload.scheme_code || !payload.scheme_name || payload.monthly_amount <= 0) {
-      return alert("திட்டக் குறியீடு, பெயர் மற்றும் மாதத் தவணைத் தொகையை உள்ளிடவும்!");
+    if (!payload.scheme_code || !payload.scheme_name || payload.min_installment_amount <= 0) {
+      return alert("திட்டக் குறியீடு, பெயர் மற்றும் குறைந்தபட்ச தவணைத் தொகையை உள்ளிடவும்!");
     }
     const res = await fetch('/api/admin/rd-scheme/create', {
       method: 'POST',
@@ -7300,6 +7568,49 @@
     if (!confirm("இந்த RD திட்டத்தை நீக்க வேண்டுமா?")) return;
     await fetch(`/api/admin/rd-scheme/${id}`, { method: 'DELETE' });
     loadRdSchemesList();
+  }
+
+  // தலைமையக RD பெனிபிட் ஒப்புதல் பட்டியல்
+  async function loadPendingRdBenefitsHQ() {
+    const tbody = document.getElementById('pendingRdBenefitsTbody');
+    if (!tbody) return;
+    try {
+      const res = await fetch('/api/hq/pending-rd-benefits');
+      if (!res.ok) return;
+      const out = await res.json();
+      const list = out.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">RD பெனிபிட் கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(a => `
+        <tr>
+          <td class="p-2.5"><b>${a.branch_name || '-'}</b><br><span class="font-mono font-black text-indigo-900">${a.rd_no}</span> (${a.scheme_name || 'RD'})</td>
+          <td class="p-2.5"><b>${a.customer_name || '-'}</b><br><span class="font-mono text-[11px]">${a.customer_mobile || '-'}</span></td>
+          <td class="p-2.5 text-[11px]">செலுத்தியது: <b>₹${parseFloat(a.total_amount_paid || 0).toLocaleString()}</b><br><span class="text-rose-600 font-bold">அபராதம்: ₹${parseFloat(a.total_penalty_accrued || 0).toLocaleString()}</span></td>
+          <td class="p-2.5">
+            <input type="number" id="hq_rd_ben_amt_${a.id}" value="${parseFloat(a.proposed_benefit_amount || 0)}" class="w-28 border-2 border-indigo-300 p-1.5 rounded-lg font-mono font-black text-emerald-800 bg-white">
+          </td>
+          <td class="p-2.5 text-center space-x-1">
+            <button type="button" onclick="actionRdBenefitHQ(${a.id}, 'APPROVE')" style="background-color:#059669;color:#fff;" class="px-3 py-1 rounded-lg text-xs font-bold shadow cursor-pointer">✓ ஒப்புதல்</button>
+            <button type="button" onclick="actionRdBenefitHQ(${a.id}, 'REJECT')" style="background-color:#dc2626;color:#fff;" class="px-2.5 py-1 rounded-lg text-xs font-bold shadow cursor-pointer">✕ நிராகரி</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) { console.error(e); }
+  }
+
+  async function actionRdBenefitHQ(accId, action) {
+    const editedVal = parseFloat(document.getElementById(`hq_rd_ben_amt_${accId}`)?.value) || 0;
+    if (!confirm(action === 'APPROVE' ? `₹${editedVal} RD பெனிபிட் தொகைக்கு ஒப்புதல் அளிக்கவா?` : "இந்த கோரிக்கையை நிராகரிக்கவா?")) return;
+    const res = await fetch('/api/hq/approve-rd-benefit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accId, action: action, approved_amount: editedVal })
+    });
+    const out = await res.json();
+    alert("✅ " + (out.message || "நிறைவேற்றப்பட்டது"));
+    loadPendingRdBenefitsHQ();
   }
 </script>
 </body>

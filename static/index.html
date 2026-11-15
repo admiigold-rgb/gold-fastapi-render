@@ -812,10 +812,9 @@
                   <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">பெனிபிட் கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>
                 </tbody>
               </table>
-            </div>
-            
-        </div>
-      </div> 
+            </div>            
+          </div>
+        </div> 
     </div> <!-- 👈 இங்கே 'hqApprovalTab'-க்கான சரியான மூடும் டேக் இருக்க வேண்டும் -->
       
     <!-- TAB C: நிர்வாகம் -->
@@ -909,11 +908,29 @@
         </div>
       </div>
 
-      <!-- நிறுவன வங்கி கணக்குகள் பட்டியல் -->
+      <!-- 3. நிறுவன வங்கி கணக்குகள் உருவாக்கம் மற்றும் பட்டியல் -->
+      <div class="space-y-4 pt-4 border-t border-purple-100">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
+          <h3 class="text-sm font-extrabold text-brand-violet border-b border-purple-100 pb-2">🏦 புதிய நிறுவன வங்கி கணக்கு சேர்க்க</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <input type="text" id="bank_acc_name" placeholder="வங்கி பெயர் (எ.கா: HDFC Bank) *" class="border-2 border-purple-100 p-2 rounded-xl">
+            <input type="text" id="bank_acc_branch" placeholder="கிளை (எ.கா: நாகர்கோவில்) *" class="border-2 border-purple-100 p-2 rounded-xl">
+            <select id="bank_acc_type" class="border-2 border-purple-100 p-2 rounded-xl bg-white font-bold text-brand-violet">
+              <option value="CURRENT">நடப்புக் கணக்கு (Current A/C)</option>
+              <option value="SAVINGS">சேமிப்புக் கணக்கு (Savings A/C)</option>
+              <option value="OD">ஓவர் டிராப்ட் (OD A/C)</option>
+            </select>
+            <input type="text" id="bank_acc_no" placeholder="கணக்கு எண் (Account No) *" class="border-2 border-purple-100 p-2 rounded-xl font-mono font-bold">
+            <input type="text" id="bank_acc_ifsc" placeholder="IFSC குறியீடு *" class="border-2 border-purple-100 p-2 rounded-xl font-mono uppercase">
+            <input type="text" id="bank_acc_upi" placeholder="UPI ID (விரும்பினால்)" class="border-2 border-purple-100 p-2 rounded-xl font-mono">
+          </div>
+          <div class="flex justify-end">
+            <button type="button" onclick="submitCompanyBankForm()" class="brand-gradient-violet-btn text-xs font-bold px-6 py-2.5 rounded-xl shadow cursor-pointer">+ வங்கி கணக்கைச் சேர்</button>
+          </div>
+        </div>
+
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
-          <!-- 3. நிறுவன வங்கி கணக்குகள் -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-3">
-          <h4 class="text-xs font-extrabold text-brand-violet uppercase">நிறுவன வங்கி கணக்குகள்:</h4>
+          <h4 class="text-xs font-extrabold text-brand-violet uppercase">நிறுவன வங்கி கணக்குகள் பட்டியல்:</h4>
           <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
             <table class="w-full text-xs text-left">
               <thead class="bg-purple-100/70 text-brand-violet border-b border-purple-200">
@@ -930,7 +947,7 @@
             </table>
           </div>
         </div>
-
+      </div>
         <!-- 4. புதிய கிளை உருவாக்கம் மற்றும் பட்டியல் -->
         <div class="space-y-4 pt-4 border-t border-purple-100">
           <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-4">
@@ -1155,9 +1172,60 @@
           </div>
         </div>
 
-
-      </div> <!-- 👈 நிர்வாகம் பிரதான பெட்டி (Container) இங்கு சரியாக முடிகிறது -->
-    </div> <!-- 👈 TAB C: நிர்வாகம் டேப் (adminTab) இங்கு மட்டுமே சரியாக முடிகிறது -->
+        <!-- 💰 தொடர்வைப்புத் திட்டங்கள் (RD Schemes) மேலாண்மை -->
+          <div class="bg-white p-6 rounded-3xl shadow-md border-2 border-indigo-200 space-y-4 mt-6">
+            <div class="flex justify-between items-center border-b border-indigo-100 pb-3">
+              <h3 class="text-base font-black text-indigo-900">💰 தொடர்வைப்புத் திட்டங்கள் உருவாக்கம் (RD Schemes)</h3>
+              <button type="button" onclick="loadRdSchemesList()" class="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-xl text-xs font-bold cursor-pointer">🔄 புதுப்பி</button>
+            </div>
+  
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">திட்டக் குறியீடு (Code) *</label>
+                <input type="text" id="rd_adm_code" placeholder="எ.கா: RD-12M" class="w-full border p-2.5 rounded-xl font-mono uppercase">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">திட்டத்தின் பெயர் *</label>
+                <input type="text" id="rd_adm_name" placeholder="எ.கா: 1 வருட தொடர்வைப்பு" class="w-full border p-2.5 rounded-xl">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">மாதத் தவணை (₹) *</label>
+                <input type="number" id="rd_adm_amt" placeholder="2000" class="w-full border p-2.5 rounded-xl font-mono font-bold">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">கால அளவு (மாதங்கள்) *</label>
+                <input type="number" id="rd_adm_tenure" value="12" class="w-full border p-2.5 rounded-xl font-mono">
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">வட்டி விகிதம் (% p.a)</label>
+                <input type="number" step="0.1" id="rd_adm_roi" value="10" class="w-full border p-2.5 rounded-xl font-mono font-bold text-indigo-900">
+              </div>
+              <div class="sm:col-span-3 flex items-end justify-end">
+                <button type="button" onclick="createRdSchemeAdmin()" style="background-color:#4338ca;color:#fff;" class="px-6 py-2.5 rounded-xl text-xs font-black shadow-md cursor-pointer">
+                  + RD திட்டத்தை உருவாக்கு
+                </button>
+              </div>
+            </div>
+  
+            <div class="overflow-x-auto pt-2">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-indigo-50 text-indigo-900 border-b">
+                    <th class="p-2.5">குறியீடு</th>
+                    <th class="p-2.5">திட்டப் பெயர்</th>
+                    <th class="p-2.5">மாதத் தவணை</th>
+                    <th class="p-2.5">காலம்</th>
+                    <th class="p-2.5">வட்டி (%)</th>
+                    <th class="p-2.5 text-center">செயல்</th>
+                  </tr>
+                </thead>
+                <tbody id="rdSchemesTableBody" class="divide-y"></tbody>
+              </table>
+            </div>
+          </div>
+    
+    </div> <!-- 👈 நிர்வாகம் பிரதான பெட்டி (Container) இங்கு சரியாக முடிகிறது -->
+  </div> <!-- 👈 TAB C: நிர்வாகம் டேப் (adminTab) இங்கு மட்டுமே சரியாக முடிகிறது -->
 
     <!-- ========================================== -->
     <!-- 🪟 பாப்-அப் சாளரங்கள் (Modals) தொடக்கம் -->
@@ -2214,6 +2282,7 @@
         loadCompanyBanksList();
         loadTodayGoldRate();
         if (typeof loadGssSchemesList === 'function') loadGssSchemesList();
+        if (typeof loadRdSchemesList === 'function') loadRdSchemesList();
       }
     }
 
@@ -2628,144 +2697,6 @@
       }
     }
 
-    // சாளரத்தை மூடும் செயல்பாடு
-    function closeDaySummaryReportModal() {
-      const modal = document.getElementById('daySummaryReportModal');
-      if (modal) {
-        modal.style.display = 'none';
-      }
-    }
-
-    // விசைப்பலகை Esc அழுத்தினால் சாளரத்தை மூடுதல்
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        closeDaySummaryReportModal();
-      }
-    });
-
-    // அறிக்கையைத் திறந்து தரவுகளை ஏற்றும் செயல்பாடு
-    async function openDaySummaryReportModal() {
-      const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
-      const branchName = (currentUser && currentUser.branch_name) ? currentUser.branch_name : 'Aundivilai';
-      
-      const modal = document.getElementById('daySummaryReportModal');
-      if (modal) {
-        modal.style.display = 'flex';
-      }
-
-      const transInput = document.getElementById('txn_date');
-      const selectedDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
-
-      const titleElem = document.getElementById('rep_branch_date_title');
-      if (titleElem) {
-        titleElem.innerText = `${branchName} | ${selectedDate} நிதி நிலை அறிக்கை`;
-      }
-
-      try {
-        const res = await fetch(`/api/cash-day/report?branch_id=${branchId}&date_str=${selectedDate}`);
-        const data = await res.json();
-
-        const openBal = data.opening_balance || 0;
-        const totalCashIn = data.total_cash_in || 0;
-        const totalCashOut = data.total_cash_out || 0;
-        const closeBal = data.calculated_closing || (openBal + totalCashIn - totalCashOut);
-        const netCashChange = totalCashIn - totalCashOut;
-
-        // 1. கார்டுகள் விவரம்
-        document.getElementById('rep_card_opening').innerText = '₹' + openBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        document.getElementById('rep_card_cash_in').innerText = '₹' + totalCashIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        document.getElementById('rep_card_cash_out').innerText = '₹' + totalCashOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        document.getElementById('rep_card_closing').innerText = '₹' + closeBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-
-        const netElem = document.getElementById('rep_card_net_change');
-        if (netElem) {
-          const sign = netCashChange >= 0 ? '+ ' : '- ';
-          netElem.style.background = netCashChange >= 0 ? '#f5f3ff' : '#fee2e2';
-          netElem.style.color = netCashChange >= 0 ? '#6b21a8' : '#b91c1c';
-          netElem.innerText = `${sign}₹${Math.abs(netCashChange).toLocaleString('en-IN', {minimumFractionDigits: 2})} மாற்றம்`;
-        }
-
-        // 2. வங்கிப் பட்டைகள்
-        document.getElementById('rep_bank_in').innerText = '₹' + (data.total_bank_in || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
-        document.getElementById('rep_bank_out').innerText = '₹' + (data.total_bank_out || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
-
-        // 3. அடிக்குறிப்பு கல்லா சமநிலை
-        document.getElementById('recon_open').innerText = '₹' + openBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        document.getElementById('recon_in').innerText = '₹' + totalCashIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        document.getElementById('recon_out').innerText = '₹' + totalCashOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
-        document.getElementById('recon_close').innerText = '₹' + closeBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
-
-        // 4. அட்டவணை வரிசைகள்
-        const tbody = document.getElementById('rep_unified_daybook_tbody');
-        tbody.innerHTML = '';
-
-        if (!data.entries || data.entries.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" style="padding:40px; text-align:center; color:#94a3b8; font-weight:bold; font-size:14px; background:#ffffff;">இன்றைய நடவடிக்கைகள் எதுவும் பதிவு செய்யப்படவில்லை</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = data.entries.map((e, idx) => {
-          // ரொக்கம் பத்தி
-          let cashCell = '<span style="color:#cbd5e1;">-</span>';
-          if (e.cash_change > 0) {
-            cashCell = `<span style="color:#047857; font-weight:900; font-family:monospace; white-space:nowrap;">(+) ₹${e.cash_change.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
-          } else if (e.cash_change < 0) {
-            cashCell = `<span style="color:#dc2626; font-weight:900; font-family:monospace; white-space:nowrap;">(-) ₹${Math.abs(e.cash_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
-          }
-
-          // வங்கி பத்தி
-          let bankCell = '<span style="color:#cbd5e1;">-</span>';
-          if (e.bank_change !== 0) {
-            const bSign = e.bank_change > 0 ? '(+) ' : '(-) ';
-            const bColor = e.bank_change > 0 ? '#1d4ed8' : '#723a91';
-            bankCell = `<span style="color:${bColor}; font-weight:900; font-family:monospace; white-space:nowrap;">${bSign}₹${Math.abs(e.bank_change).toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
-          }
-
-          const inCell = e.gross_in > 0 ? `<span style="font-family:monospace; font-weight:700; color:#0f172a;">₹${e.gross_in.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span style="color:#cbd5e1;">-</span>';
-          const outCell = e.gross_out > 0 ? `<span style="font-family:monospace; font-weight:700; color:#0f172a;">₹${e.gross_out.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>` : '<span style="color:#cbd5e1;">-</span>';
-
-          // வகைக்குரிய பேட்ஜ் (Badge) ஸ்டைல்
-          let badgeBg = '#f3e8ff';
-          let badgeColor = '#6b21a8';
-          if (e.entry_type.includes("செலவு")) {
-            badgeBg = '#fef3c7';
-            badgeColor = '#92400e';
-          } else if (e.entry_type.includes("HQ") || e.entry_type.includes("நிதி")) {
-            badgeBg = '#e0e7ff';
-            badgeColor = '#3730a3';
-          } else if (e.entry_type.includes("வணிக")) {
-            badgeBg = '#e0f2fe';
-            badgeColor = '#0369a1';
-          }
-
-          // வகையை விவரத்தின் கீழே அழகிய பேட்ஜாகக் கொண்டு வருதல்
-          const partyAndType = `
-            <div style="display:flex; flex-direction:column; gap:4px;">
-              <span style="font-weight:800; color:#0f172a; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${e.party_name}">${e.party_name}</span>
-              <span style="align-self:flex-start; background:${badgeBg}; color:${badgeColor}; padding:2px 7px; border-radius:4px; font-weight:700; font-size:10px; letter-spacing:0.2px;">${e.entry_type}</span>
-            </div>
-          `;
-
-          const rowBg = idx % 2 === 0 ? '#ffffff' : '#faf5ff';
-
-          return `
-            <tr style="background:${rowBg}; border-bottom:1px solid #f1f5f9; transition:background 0.15s;" onmouseover="this.style.background='#fdf4ff'" onmouseout="this.style.background='${rowBg}'">
-              <td style="padding:10px 8px; font-family:monospace; color:#64748b; text-align:center; border-right:1px solid #f1f5f9; font-weight:600;">${e.time}</td>
-              <td style="padding:10px 12px; font-family:monospace; font-weight:800; color:#723a91; border-right:1px solid #f1f5f9; white-space:nowrap;">${e.visit_no}</td>
-              <td style="padding:10px 14px; border-right:1px solid #f1f5f9;">${partyAndType}</td>
-              <td style="padding:10px 14px; color:#475569; border-right:1px solid #f1f5f9; line-height:1.4;">${e.activity}</td>
-              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9;">${inCell}</td>
-              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9;">${outCell}</td>
-              <td style="padding:10px 12px; text-align:right; border-right:1px solid #f1f5f9; background:#fffbeb;">${cashCell}</td>
-              <td style="padding:10px 12px; text-align:right; background:#f0fdf4;">${bankCell}</td>
-            </tr>
-          `;
-        }).join('');
-
-      } catch (err) {
-        alert("அறிக்கை எடுப்பதில் பிழை: " + err.message);
-      }
-    }
     // 3. Purity & Auto Loan No
     async function fetchAndSetupPurityDropdown() {
       try {
@@ -3043,40 +2974,6 @@
       document.getElementById('activeCustomerSection').classList.add('hidden');
       document.getElementById('searchSection').classList.remove('hidden');
       document.getElementById('rdFormSection')?.classList.add('hidden');
-    }
-
-    // ========================================================
-    // 🔒 பணம் & ரூபாய் தாள்கள் கச்சிதமாகப் பொருந்துவதை உறுதிசெய்தல்
-    // ========================================================
-    function validatePaymentAndDenomMatch() {
-      const cVal = Math.round(parseFloat(document.getElementById('pay_cash')?.value) || 0);
-      const bVal = Math.round(parseFloat(document.getElementById('pay_bank')?.value) || 0);
-      const netVal = Math.round(currentNetAbs || 0);
-
-      // 1. ரொக்கம் + வங்கி = நிகரத் தொகை இருக்க வேண்டும்
-      if ((cVal + bVal) !== netVal) {
-        alert(`⚠️ கட்டணத் தொகை பொருந்தவில்லை!\nகார்ட்டின் நிகரத் தொகை: ₹${netVal}\nநீங்கள் உள்ளிட்ட தொகை: ₹${cVal + bVal} (ரொக்கம்: ₹${cVal} + வங்கி: ₹${bVal})`);
-        return false;
-      }
-
-      // 2. ரொக்கம் இருந்தால் தாள்கள் டினாமினேஷன் சமமாக இருக்க வேண்டும்
-      if (cVal > 0) {
-        const d500 = (parseInt(document.getElementById('d500')?.value) || 0) * 500;
-        const d200 = (parseInt(document.getElementById('d200')?.value) || 0) * 200;
-        const d100 = (parseInt(document.getElementById('d100')?.value) || 0) * 100;
-        const d50 = (parseInt(document.getElementById('d50')?.value) || 0) * 50;
-        const d20 = (parseInt(document.getElementById('d20')?.value) || 0) * 20;
-        const d10 = (parseInt(document.getElementById('d10')?.value) || 0) * 10;
-        const dcoins = parseInt(document.getElementById('dcoins')?.value) || 0;
-        const totalDenom = d500 + d200 + d100 + d50 + d20 + d10 + dcoins;
-
-        if (totalDenom !== cVal) {
-          alert(`⚠️ ரூபாய் தாள்கள் டினாமினேஷன் பொருந்தவில்லை!\nரொக்கத் தொகை: ₹${cVal}\nநீங்கள் எண்ணிய தாள்கள்: ₹${totalDenom}\nவேறுபாடு: ₹${Math.abs(cVal - totalDenom)}`);
-          return false;
-        }
-      }
-
-      return true;
     }
 
     // ========================================================
@@ -4304,6 +4201,23 @@
         const data = await res.json();
         if (res.ok) {
           alert("✅ " + data.message);
+          loadSchemesList();
+          loadSchemesDropdown();
+        } else {
+          alert("❌ பிழை: " + data.detail);
+        }
+      } catch (err) {
+        alert("பிழை: " + err.message);
+      }
+    }
+
+    async function deleteScheme(id) {
+      if (!confirm("இந்த நகைக்கடன் திட்டத்தை நீக்க விரும்புகிறீர்களா?")) return;
+      try {
+        const res = await fetch(`/api/admin/scheme/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ " + (data.message || "திட்டம் நீக்கப்பட்டது!"));
           loadSchemesList();
           loadSchemesDropdown();
         } else {
@@ -7330,6 +7244,62 @@
     if (typeof renderCart === 'function') renderCart();
     closeRdModal();
     alert("✅ RD பரிவர்த்தனை கூடையில் வெற்றிகரமாகச் சேர்க்கப்பட்டது!");
+  }
+
+  async function loadRdSchemesList() {
+    const tbody = document.getElementById('rdSchemesTableBody');
+    if (!tbody) return;
+    try {
+      const res = await fetch('/api/admin/rd-schemes');
+      const data = await res.json();
+      const list = data.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">RD திட்டங்கள் எதுவும் உருவாக்கப்படவில்லை</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(s => `
+        <tr>
+          <td class="p-2.5 font-mono font-black text-indigo-800">${s.scheme_code}</td>
+          <td class="p-2.5 font-bold">${s.scheme_name}</td>
+          <td class="p-2.5 font-mono font-bold">₹${s.monthly_amount}</td>
+          <td class="p-2.5">${s.tenure_months} மாதம்</td>
+          <td class="p-2.5 font-mono">${s.interest_rate || 0}%</td>
+          <td class="p-2.5 text-center">
+            <button type="button" onclick="deleteRdScheme(${s.id})" class="text-rose-600 font-bold hover:underline">டிலீட்</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) { console.error(e); }
+  }
+
+  async function createRdSchemeAdmin() {
+    const payload = {
+      scheme_code: document.getElementById('rd_adm_code').value.trim(),
+      scheme_name: document.getElementById('rd_adm_name').value.trim(),
+      monthly_amount: parseFloat(document.getElementById('rd_adm_amt').value) || 0,
+      tenure_months: parseInt(document.getElementById('rd_adm_tenure').value) || 12,
+      interest_rate: parseFloat(document.getElementById('rd_adm_roi').value) || 0
+    };
+    if (!payload.scheme_code || !payload.scheme_name || payload.monthly_amount <= 0) {
+      return alert("திட்டக் குறியீடு, பெயர் மற்றும் மாதத் தவணைத் தொகையை உள்ளிடவும்!");
+    }
+    const res = await fetch('/api/admin/rd-scheme/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const out = await res.json();
+    if (!res.ok) return alert(out.detail || "பிழை ஏற்பட்டது");
+    alert("✅ " + out.message);
+    document.getElementById('rd_adm_code').value = '';
+    document.getElementById('rd_adm_name').value = '';
+    loadRdSchemesList();
+  }
+
+  async function deleteRdScheme(id) {
+    if (!confirm("இந்த RD திட்டத்தை நீக்க வேண்டுமா?")) return;
+    await fetch(`/api/admin/rd-scheme/${id}`, { method: 'DELETE' });
+    loadRdSchemesList();
   }
 </script>
 </body>

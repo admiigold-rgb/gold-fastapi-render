@@ -536,69 +536,72 @@
             </button>
           </div>
         </div>
+
+      </div> <!-- 👈 1. activeCustomerSection இங்கே முடிகிறது -->
+    </div> <!-- 👈 2. counterTab (கவுண்ட்டர் பிரிவு) இங்கே முழுமையாக முடிகிறது -->
+
+    <!-- TAB B: தலைமையக ஒப்புதல்கள் மையம் -->
+    <div id="hqApprovalTab" class="hidden space-y-5">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
         
-      <!-- TAB B: தலைமையக ஒப்புதல்கள் மையம் -->
-      <div id="hqApprovalTab" class="hidden space-y-5">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
-          
-          <!-- தலைப்பு மற்றும் புதுப்பித்தல் பட்டன் -->
-          <div class="flex justify-between items-center border-b border-purple-100 pb-3">
-            <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
-              <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
-            </h2>
-            <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition cursor-pointer">புதுப்பி 🔄</button>
+        <!-- தலைப்பு மற்றும் புதுப்பித்தல் பட்டன் -->
+        <div class="flex justify-between items-center border-b border-purple-100 pb-3">
+          <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
+            <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
+          </h2>
+          <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition cursor-pointer">புதுப்பி 🔄</button>
+        </div>
+
+        <!-- 🏷️ வட்டி தள்ளுபடி (Interest Rebate) ஒப்புதல் கோரிக்கைகள் -->
+        <div id="hqRebateSection" class="space-y-2 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl border-2 border-purple-400 shadow-sm">
+          <div class="flex justify-between items-center border-b border-purple-200 pb-2">
+            <h3 class="text-xs font-black text-purple-950 uppercase flex items-center gap-2">
+              <span>🏷️</span> வட்டி தள்ளுபடி ஒப்புதல் கோரிக்கைகள் (Interest Rebate Approval):
+            </h3>
+            <span class="text-[10px] bg-purple-200 text-purple-950 px-2 py-0.5 rounded font-black border border-purple-300">சிறப்பு அனுமதி</span>
           </div>
-  
-          <!-- 🏷️ வட்டி தள்ளுபடி (Interest Rebate) ஒப்புதல் கோரிக்கைகள் -->
-          <div id="hqRebateSection" class="space-y-2 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl border-2 border-purple-400 shadow-sm">
-            <div class="flex justify-between items-center border-b border-purple-200 pb-2">
-              <h3 class="text-xs font-black text-purple-950 uppercase flex items-center gap-2">
-                <span>🏷️</span> வட்டி தள்ளுபடி ஒப்புதல் கோரிக்கைகள் (Interest Rebate Approval):
-              </h3>
-              <span class="text-[10px] bg-purple-200 text-purple-950 px-2 py-0.5 rounded font-black border border-purple-300">சிறப்பு அனுமதி</span>
-            </div>
-            <div class="overflow-x-auto border-2 border-purple-200 rounded-xl bg-white">
-              <table class="w-full text-xs text-left">
-                <thead class="bg-purple-100 text-purple-950 border-b border-purple-200">
-                  <tr>
-                    <th class="p-2.5 font-bold">கிளை & கடன் எண்</th>
-                    <th class="p-2.5 font-bold">வாடிக்கையாளர்</th>
-                    <th class="p-2.5 font-bold">அசல் வட்டி vs தள்ளுபடி</th>
-                    <th class="p-2.5 font-bold">காரணம்</th>
-                    <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
-                  </tr>
-                </thead>
-                <tbody id="hqRebateTableBody" class="divide-y divide-purple-100 text-slate-700">
-                  <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">வட்டி தள்ளுபடி கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>
-                </tbody>
-              </table>
-            </div>
+          <div class="overflow-x-auto border-2 border-purple-200 rounded-xl bg-white">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-purple-100 text-purple-950 border-b border-purple-200">
+                <tr>
+                  <th class="p-2.5 font-bold">கிளை & கடன் எண்</th>
+                  <th class="p-2.5 font-bold">வாடிக்கையாளர்</th>
+                  <th class="p-2.5 font-bold">அசல் வட்டி vs தள்ளுபடி</th>
+                  <th class="p-2.5 font-bold">காரணம்</th>
+                  <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
+                </tr>
+              </thead>
+              <tbody id="hqRebateTableBody" class="divide-y divide-purple-100 text-slate-700">
+                <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">வட்டி தள்ளுபடி கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>
+              </tbody>
+            </table>
           </div>
-          
-          <!-- OTP விலக்குக் கோரிக்கைகள் -->
-          <div id="hqOtpExemptSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-2xl border-2 border-yellow-400 shadow-sm">
-            <div class="flex justify-between items-center border-b border-yellow-200 pb-2">
-              <h3 class="text-xs font-black text-amber-950 uppercase flex items-center gap-2">
-                <span>⚡</span> கிளைகளின் அவசர OTP விலக்குக் கோரிக்கைகள் (OTP Exemption Hub):
-              </h3>
-              <span class="text-[10px] bg-yellow-300 text-amber-950 px-2 py-0.5 rounded font-black border border-yellow-400">உயர் அனுமதி தேவை</span>
-            </div>
-            <div class="overflow-x-auto border-2 border-yellow-200 rounded-xl bg-white">
-              <table class="w-full text-xs text-left">
-                <thead class="bg-yellow-100/90 text-amber-950 border-b border-yellow-200">
-                  <tr>
-                    <th class="p-2.5 font-bold">வருகை எண்</th>
-                    <th class="p-2.5 font-bold">வாடிக்கையாளர் பெயர்</th>
-                    <th class="p-2.5 font-bold">காரணம்</th>
-                    <th class="p-2.5 text-center font-bold">நடவடிக்கை / அனுமதி</th>
-                  </tr>
-                </thead>
-                <tbody id="hqOtpExemptTableBody" class="divide-y divide-yellow-100 text-slate-700">
-                  <tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">விலக்குக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>
-                </tbody>
-              </table>
-            </div>
+        </div>
+        
+        <!-- OTP விலக்குக் கோரிக்கைகள் -->
+        <div id="hqOtpExemptSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-2xl border-2 border-yellow-400 shadow-sm">
+          <div class="flex justify-between items-center border-b border-yellow-200 pb-2">
+            <h3 class="text-xs font-black text-amber-950 uppercase flex items-center gap-2">
+              <span>⚡</span> கிளைகளின் அவசர OTP விலக்குக் கோரிக்கைகள் (OTP Exemption Hub):
+            </h3>
+            <span class="text-[10px] bg-yellow-300 text-amber-950 px-2 py-0.5 rounded font-black border border-yellow-400">உயர் அனுமதி தேவை</span>
           </div>
+          <div class="overflow-x-auto border-2 border-yellow-200 rounded-xl bg-white">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-yellow-100/90 text-amber-950 border-b border-yellow-200">
+                <tr>
+                  <th class="p-2.5 font-bold">வருகை எண்</th>
+                  <th class="p-2.5 font-bold">வாடிக்கையாளர் பெயர்</th>
+                  <th class="p-2.5 font-bold">காரணம்</th>
+                  <th class="p-2.5 text-center font-bold">நடவடிக்கை / அனுமதி</th>
+                </tr>
+              </thead>
+              <tbody id="hqOtpExemptTableBody" class="divide-y divide-yellow-100 text-slate-700">
+                <tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">விலக்குக் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
     
           <!-- 1. வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள் -->
           <div class="space-y-2">
@@ -810,8 +813,7 @@
                 </tbody>
               </table>
             </div>
-          </div>
-  
+            
         </div>
       </div> 
     </div> <!-- 👈 இங்கே 'hqApprovalTab'-க்கான சரியான மூடும் டேக் இருக்க வேண்டும் -->
@@ -2211,6 +2213,7 @@
         loadSchemesList();
         loadCompanyBanksList();
         loadTodayGoldRate();
+        if (typeof loadGssSchemesList === 'function') loadGssSchemesList();
       }
     }
 
@@ -2973,7 +2976,7 @@
       document.getElementById('cardRelation').innerText = (cust.relation_type || 'உறவினர்') + ": " + (cust.guardian_name || '-');
       document.getElementById('cardProofNo').innerText = cust.id_proof_no || '-';
       document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
-      document.getElementById('rdFormSection')?.classList.add('hidden');
+      document.getElementById('rdFormSection')?.classList.remove('hidden');
 
       const imgElem = document.getElementById('cardCustomerImg');
       const placeholder = document.getElementById('cardCustomerPlaceholder');

@@ -5035,6 +5035,7 @@
       loadPendingTreasuryTransfersHQ();
       loadHqGpStockList();
       loadPendingGssBenefitsHQ();
+      if (typeof loadPendingRdBenefitsHQ === 'function') loadPendingRdBenefitsHQ();
       
       try {
         const res = await fetch('/api/hq/all-pending-approvals');

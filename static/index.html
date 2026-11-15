@@ -328,7 +328,7 @@
         </div>
 
         <!-- 🪙 2. நகை வாங்குதல் (GP - Gold Purchase) படிவம் -->
-        <div id="goldPurchaseFormSection" class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-emerald-200 space-y-4 mt-4">
+        <div id="goldPurchaseFormSection" class="bg-white p-5 rounded-2xl shadow-sm border-2 border-emerald-200 space-y-4 mt-4">
           <div class="border-b border-emerald-100 pb-2 flex justify-between items-center">
             <h3 class="text-sm font-extrabold text-emerald-800 flex items-center gap-2">
               <span>🛍️</span> நகை வாங்குதல் (GP - Gold Purchase)
@@ -420,7 +420,7 @@
         </div>
 
         <!-- 💍 3. நகை விற்பனை (GS - Gold Sales) படிவம் -->
-        <div id="goldSalesFormSection" class="lg:col-span-2 bg-white p-5 rounded-2xl shadow-sm border-2 border-indigo-200 space-y-4 mt-4">
+        <div id="goldSalesFormSection" class="bg-white p-5 rounded-2xl shadow-sm border-2 border-indigo-200 space-y-4 mt-4">
           <div class="border-b border-indigo-100 pb-2 flex justify-between items-center">
             <h3 class="text-sm font-extrabold text-indigo-900 flex items-center gap-2">
               <span>💍</span> நகை விற்பனை (GS - Gold Sales)
@@ -3194,6 +3194,7 @@
       document.getElementById('activeCustomerSection').classList.add('hidden');
       document.getElementById('searchSection').classList.remove('hidden');
       document.getElementById('rdFormSection')?.classList.add('hidden');
+      document.getElementById('siFormSection')?.classList.add('hidden');
     }
 
     // ========================================================
@@ -7816,7 +7817,8 @@
     alert("✅ " + (out.message || "நிறைவேற்றப்பட்டது"));
     loadPendingRdBenefitsHQ();
   }
-
+</script>
+  
   <!-- 💎 Standard Investment (SI / FD) முழுமையான மேலாண்மை சாளரம் -->
 <div id="siAccountModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
   <div class="bg-white rounded-3xl p-5 max-w-3xl w-full shadow-2xl space-y-4 border-2 border-teal-500 my-auto max-h-[92vh] overflow-y-auto">

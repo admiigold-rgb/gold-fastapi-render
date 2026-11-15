@@ -1598,6 +1598,42 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 "receipt_no": f"{rd_no}/NEW"
                             }).execute()
 
+            # 💎 Standard Investment (SI) பரிவர்த்தனைகளைப் பதிதல்
+            if item.get("is_si_account") and item.get("si_meta"):
+                sm = item["si_meta"]
+                s_mode = sm.get("mode")
+                if s_mode == "NEW":
+                    supabase.table("test_si_accounts").insert({
+                        "si_no": sm.get("si_no"),
+                        "customer_id": payload.customer_id,
+                        "branch_id": payload.branch_id,
+                        "scheme_id": sm.get("scheme_id"),
+                        "principal_amount": sm.get("principal_amount", 0),
+                        "nominees": sm.get("nominees", []),
+                        "status": "ACTIVE"
+                    }).execute()
+                elif s_mode == "RETURN_PAYOUT":
+                    acc_id = sm.get("account_id")
+                    ret_amt = float(sm.get("return_amount", 0))
+                    supabase.table("test_si_return_payouts").insert({
+                        "si_account_id": acc_id,
+                        "visit_id": payload.visit_id,
+                        "settlement_id": settlement_id,
+                        "voucher_no": f"SIV-{settlement_id}-{acc_id}",
+                        "payout_date": payload.transaction_date,
+                        "period_label": sm.get("period_label", "Periodic Return"),
+                        "return_amount": ret_amt
+                    }).execute()
+                    cur = supabase.table("test_si_accounts").select("total_return_paid").eq("id", acc_id).execute()
+                    prev_paid = float(cur.data[0]["total_return_paid"] or 0) if cur.data else 0
+                    supabase.table("test_si_accounts").update({"total_return_paid": prev_paid + ret_amt}).eq("id", acc_id).execute()
+                elif s_mode == "CLOSE":
+                    acc_id = sm.get("account_id")
+                    supabase.table("test_si_accounts").update({
+                        "status": "CLOSED",
+                        "closed_at": datetime.now().isoformat()
+                    }).eq("id", acc_id).execute()
+
         return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
     except HTTPException:
         raise
@@ -2609,5 +2645,135 @@ def delete_pawn_loan_from_cart(loan_id: int):
         supabase.table("test_gold_loan_items").delete().eq("loan_id", loan_id).execute()
         supabase.table("test_gold_loans").delete().eq("id", loan_id).execute()
         return {"status": "success", "message": "கடன் நீக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =========================================================================
+# 💎 STANDARD INVESTMENT (SI / FD) API ENDPOINTS
+# =========================================================================
+
+@app.get("/api/admin/si-schemes")
+def get_si_schemes():
+    try:
+        res = supabase.table("test_si_schemes").select("*").eq("is_active", True).order("id", desc=True).execute()
+        return {"status": "success", "data": res.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/admin/si-scheme/create")
+def create_si_scheme(data: dict):
+    try:
+        rec = {
+            "scheme_code": str(data.get("scheme_code") or "").strip().upper(),
+            "scheme_name": str(data.get("scheme_name") or "").strip(),
+            "tenure_value": int(data.get("tenure_value") or 12),
+            "tenure_unit": str(data.get("tenure_unit") or "MONTH"),
+            "locking_period_months": int(data.get("locking_period_months") or 0),
+            "min_amount": float(data.get("min_amount") or 10000),
+            "return_calc_type": str(data.get("return_calc_type") or "SIMPLE"),
+            "return_calc_period": str(data.get("return_calc_period") or "MONTH"),
+            "payout_frequency": str(data.get("payout_frequency") or "MONTHLY"),
+            "return_rate": float(data.get("return_rate") or 0),
+            "preclose_slabs": data.get("preclose_slabs") or [],
+            "periodic_return_per_lakh": float(data.get("periodic_return_per_lakh") or 0),
+            "maturity_amount_per_lakh": float(data.get("maturity_amount_per_lakh") or 0),
+            "is_active": True
+        }
+        res = supabase.table("test_si_schemes").insert(rec).execute()
+        return {"status": "success", "message": "புதிய Standard Investment (SI) திட்டம் உருவாக்கப்பட்டது!", "data": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/admin/si-scheme/{scheme_id}")
+def delete_si_scheme(scheme_id: int):
+    try:
+        supabase.table("test_si_schemes").update({"is_active": False}).eq("id", scheme_id).execute()
+        return {"status": "success", "message": "SI திட்டம் நீக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/si/next-no")
+def get_next_si_no(branch_id: int = 1):
+    try:
+        br = supabase.table("test_branches").select("branch_code").eq("id", branch_id).execute()
+        b_code = br.data[0]["branch_code"] if br.data else "BR"
+        res = supabase.table("test_si_accounts").select("id").order("id", desc=True).limit(1).execute()
+        next_num = (res.data[0]["id"] + 1) if res.data else 1
+        return {"status": "success", "next_si_no": f"{b_code}/SI/{str(next_num).zfill(4)}"}
+    except Exception as e:
+        return {"status": "success", "next_si_no": "BR/SI/0001"}
+
+@app.get("/api/customer/{customer_id}/si-accounts")
+def get_customer_si_accounts(customer_id: int):
+    try:
+        res = supabase.table("test_si_accounts").select("*, test_si_schemes(*)").eq("customer_id", customer_id).eq("status", "ACTIVE").order("id", desc=True).execute()
+        accounts = res.data or []
+        for acc in accounts:
+            acc["scheme_details"] = acc.get("test_si_schemes") or {}
+            p_res = supabase.table("test_si_return_payouts").select("*").eq("si_account_id", acc["id"]).order("id", desc=False).execute()
+            acc["payouts"] = p_res.data or []
+        return {"status": "success", "data": accounts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/si/request-closure")
+def request_si_closure(data: dict):
+    try:
+        acc_id = int(data.get("account_id"))
+        closure_type = str(data.get("closure_type") or "MATURITY")
+        prop_prin = float(data.get("proposed_principal") or 0)
+        prop_ben = float(data.get("proposed_benefit") or 0)
+        supabase.table("test_si_accounts").update({
+            "closure_type": closure_type,
+            "approval_status": "PENDING",
+            "proposed_principal": prop_prin,
+            "proposed_benefit": prop_ben
+        }).eq("id", acc_id).execute()
+        return {"status": "success", "message": "SI கணக்கு முடிப்பு / ப்ரீ-குளோஸ் கோரிக்கை தலைமையக ஒப்புதலுக்கு அனுப்பப்பட்டது!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/hq/pending-si-approvals")
+def get_pending_si_approvals():
+    try:
+        res = supabase.table("test_si_accounts").select("*, test_customers(name, mobile), test_branches(branch_name), test_si_schemes(scheme_name)").eq("approval_status", "PENDING").execute()
+        out = []
+        for r in (res.data or []):
+            out.append({
+                "id": r["id"],
+                "si_no": r.get("si_no"),
+                "closure_type": r.get("closure_type", "MATURITY"),
+                "branch_name": (r.get("test_branches") or {}).get("branch_name", "-"),
+                "customer_name": (r.get("test_customers") or {}).get("name", "-"),
+                "customer_mobile": (r.get("test_customers") or {}).get("mobile", "-"),
+                "scheme_name": (r.get("test_si_schemes") or {}).get("scheme_name", "SI"),
+                "principal_amount": r.get("principal_amount", 0),
+                "total_return_paid": r.get("total_return_paid", 0),
+                "proposed_principal": r.get("proposed_principal", 0),
+                "proposed_benefit": r.get("proposed_benefit", 0)
+            })
+        return {"status": "success", "data": out}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/approve-si-closure")
+def approve_si_closure(data: dict):
+    try:
+        acc_id = int(data.get("account_id"))
+        action = data.get("action")
+        app_prin = float(data.get("approved_principal") or 0)
+        app_ben = float(data.get("approved_benefit") or 0)
+        if action == "APPROVE":
+            supabase.table("test_si_accounts").update({
+                "approval_status": "APPROVED",
+                "approved_principal": app_prin,
+                "approved_benefit": app_ben
+            }).eq("id", acc_id).execute()
+            return {"status": "success", "message": f"SI அனுமதி வழங்கப்பட்டது! (அசல்: ₹{app_prin}, பெனிபிட்: ₹{app_ben})"}
+        else:
+            supabase.table("test_si_accounts").update({
+                "approval_status": "REJECTED"
+            }).eq("id", acc_id).execute()
+            return {"status": "success", "message": "SI கோரிக்கை நிராகரிக்கப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

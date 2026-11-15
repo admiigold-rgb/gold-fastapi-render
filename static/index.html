@@ -498,6 +498,19 @@
           </button>
         </div>
 
+        <!-- 💎 6. Standard Investment (SI - Fixed Deposit) -->
+        <div id="siFormSection" class="hidden bg-white p-5 rounded-3xl shadow-md border-2 border-teal-300 flex flex-wrap justify-between items-center gap-3 mt-4">
+          <div>
+            <h4 class="text-sm font-black text-teal-900">💎 6. Standard Investment (SI - Fixed Deposit)</h4>
+            <p class="text-xs text-slate-500 mt-0.5">புதிய முதலீட்டுக் கணக்கு, ஒன்றுக்கு மேற்பட்ட நாமினிகள் (%), ரிட்டன் வழங்கல் & முதிர்வு/ப்ரீ-குளோஸ்</p>
+          </div>
+          <button type="button" onclick="openSiModal()" 
+                  style="background-color: #0d9488 !important; color: #ffffff !important;" 
+                  class="px-4 py-2.5 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+            <span>💎</span> Standard Investment திற (SI)
+          </button>
+        </div>
+
         <!-- கார்ட் சுருக்கம் -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 flex flex-col justify-between space-y-4 mt-4">
           <div>
@@ -835,6 +848,32 @@
                 </thead>
                 <tbody id="pendingRdBenefitsTbody" class="divide-y divide-indigo-100 text-slate-700">
                   <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">RD பெனிபிட் கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 💎 11. Standard Investment (SI) முதிர்வு & ப்ரீ-குளோஸ் ஒப்புதல் -->
+          <div class="space-y-2 pt-4 border-t border-purple-100">
+            <div class="flex justify-between items-center">
+              <h3 class="text-xs font-extrabold text-teal-900 uppercase flex items-center gap-1.5">
+                <span>💎</span> 11. Standard Investment (SI) முதிர்வு / ப்ரீ-குளோஸ் ஒப்புதல்:
+              </h3>
+              <button type="button" onclick="loadPendingSiApprovalsHQ()" class="text-[11px] bg-teal-100 hover:bg-teal-200 text-teal-950 px-2.5 py-1 rounded-lg font-bold cursor-pointer">புதுப்பி 🔄</button>
+            </div>
+            <div class="overflow-x-auto border-2 border-teal-200 rounded-xl bg-white">
+              <table class="w-full text-xs text-left">
+                <thead class="bg-teal-100 text-teal-950 border-b border-teal-200">
+                  <tr>
+                    <th class="p-2.5 font-bold">கிளை & SI எண் / வகை</th>
+                    <th class="p-2.5 font-bold">வாடிக்கையாளர்</th>
+                    <th class="p-2.5 font-bold">முதலீடு & பெற்ற ரிட்டன்</th>
+                    <th class="p-2.5 font-bold">அசல் (Edit ₹) & பெனிபிட் (Edit ₹)</th>
+                    <th class="p-2.5 text-center font-bold">நடவடிக்கை</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingSiApprovalsTbody" class="divide-y divide-teal-100 text-slate-700">
+                  <tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">SI ஒப்புதல் கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1282,6 +1321,122 @@
                 </tr>
               </thead>
               <tbody id="rdSchemesTableBody" class="divide-y"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 💎 Standard Investment (SI / FD) திட்டங்கள் மேலாண்மை -->
+        <div class="bg-white p-6 rounded-3xl shadow-md border-2 border-teal-300 space-y-4 mt-6">
+          <div class="flex justify-between items-center border-b border-teal-100 pb-3">
+            <h3 class="text-base font-black text-teal-900">💎 Standard Investment (SI / FD) திட்டங்கள் உருவாக்கம்</h3>
+            <button type="button" onclick="loadSiSchemesList()" class="px-3 py-1 bg-teal-100 text-teal-900 rounded-xl text-xs font-bold cursor-pointer">🔄 புதுப்பி</button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">திட்டக் குறியீடு (Code) *</label>
+              <input type="text" id="si_adm_code" placeholder="எ.கா: SI-GOLD-12M" class="w-full border p-2.5 rounded-xl font-mono uppercase">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">திட்டத்தின் பெயர் *</label>
+              <input type="text" id="si_adm_name" placeholder="எ.கா: 1 வருட நிலையான முதலீடு" class="w-full border p-2.5 rounded-xl">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">திட்டக் காலம் (Tenure) *</label>
+              <div class="flex gap-1.5">
+                <input type="number" id="si_adm_tenure" value="12" oninput="calcAdminSiPerLakh()" class="w-1/2 border p-2.5 rounded-xl font-mono font-bold">
+                <select id="si_adm_tenure_unit" onchange="calcAdminSiPerLakh()" class="w-1/2 border p-2 rounded-xl bg-white font-bold">
+                  <option value="MONTH">மாதம் (Months)</option>
+                  <option value="DAY">நாள் (Days)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">லாக்கிங் காலம் (Lock-in மாதங்கள்) *</label>
+              <input type="number" id="si_adm_lockin" value="3" class="w-full border p-2.5 rounded-xl font-mono">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">குறைந்தபட்ச முதலீடு (Min ₹) *</label>
+              <input type="number" id="si_adm_min_amt" value="10000" class="w-full border p-2.5 rounded-xl font-mono font-bold text-emerald-700">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">ரிட்டன் கணக்கீட்டு வகை *</label>
+              <select id="si_adm_calc_type" onchange="calcAdminSiPerLakh()" class="w-full border p-2.5 rounded-xl bg-white font-bold">
+                <option value="SIMPLE">தனிவட்டி (Simple Interest)</option>
+                <option value="COMPOUND">கூட்டுவட்டி (Compound Interest)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">ரிட்டன் கணக்கீட்டு காலம் *</label>
+              <select id="si_adm_calc_period" onchange="calcAdminSiPerLakh()" class="w-full border p-2.5 rounded-xl bg-white font-bold">
+                <option value="MONTH">மாதம் (Monthly Basis)</option>
+                <option value="DAY">நாள் (Daily Basis)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">ரிட்டன் கால இடைவெளி (Payout) *</label>
+              <select id="si_adm_payout_freq" onchange="calcAdminSiPerLakh()" class="w-full border p-2.5 rounded-xl bg-white font-bold text-teal-900">
+                <option value="MONTHLY">மாதந்தோறும் (Monthly)</option>
+                <option value="QUARTERLY">காலாண்டு (Quarterly - 3M)</option>
+                <option value="HALF_YEARLY">அரையாண்டு (Half-Yearly - 6M)</option>
+                <option value="YEARLY">ஆண்டுதோறும் (Yearly - 12M)</option>
+                <option value="MATURITY">திட்ட முடிவில் (On Maturity)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">ரிட்டன் சதவீதம் (% p.a) *</label>
+              <input type="number" step="0.1" id="si_adm_roi" value="12" oninput="calcAdminSiPerLakh()" class="w-full border p-2.5 rounded-xl font-mono font-bold text-teal-950">
+            </div>
+            <div class="bg-teal-50 p-2.5 rounded-xl border border-teal-200">
+              <label class="block text-[10px] font-bold text-teal-900">₹1,00,000-க்கு இடைவெளி ரிட்டன்:</label>
+              <div id="si_adm_periodic_lakh_disp" class="text-sm font-black font-mono text-teal-800">₹ 1,000</div>
+            </div>
+            <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+              <label class="block text-[10px] font-bold text-amber-900">₹1,00,000-க்கு முதிர்வுத் தொகை:</label>
+              <div id="si_adm_maturity_lakh_disp" class="text-sm font-black font-mono text-amber-900">₹ 1,12,000</div>
+            </div>
+            <div class="flex items-end">
+              <button type="button" onclick="createSiSchemeAdmin()" style="background-color:#0d9488;color:#fff;" class="w-full py-2.5 px-4 rounded-xl text-xs font-black shadow-md cursor-pointer">
+                + SI திட்டத்தை உருவாக்கு
+              </button>
+            </div>
+          </div>
+
+          <!-- ப்ரீ-குளோஸ் ஸ்லாப் (மாதம் அடிப்படையில்) -->
+          <div class="bg-rose-50/70 p-3.5 rounded-2xl border border-rose-200 space-y-2 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="font-black text-rose-950">⚠️ ப்ரீ-குளோஸ் வட்டி ஸ்லாப் (Pre-closure Slabs - மாதம் அடிப்படையில்):</span>
+              <button type="button" onclick="addSiPrecloseSlabRow()" class="text-xs font-bold text-teal-800 hover:underline">+ ஸ்லாப் சேர்</button>
+            </div>
+            <div id="siPrecloseSlabsContainer" class="space-y-1.5">
+              <div class="grid grid-cols-3 gap-2 si-preclose-row">
+                <input type="number" placeholder="From Month (0)" value="0" class="border p-2 rounded-xl bg-white si-pc-from">
+                <input type="number" placeholder="To Month (6)" value="6" class="border p-2 rounded-xl bg-white si-pc-to">
+                <input type="number" step="0.1" placeholder="வழங்கும் வட்டி % (6)" value="6" class="border p-2 rounded-xl bg-white font-bold text-rose-700 si-pc-rate">
+              </div>
+              <div class="grid grid-cols-3 gap-2 si-preclose-row">
+                <input type="number" placeholder="From Month (7)" value="7" class="border p-2 rounded-xl bg-white si-pc-from">
+                <input type="number" placeholder="To Month (11)" value="11" class="border p-2 rounded-xl bg-white si-pc-to">
+                <input type="number" step="0.1" placeholder="வழங்கும் வட்டி % (9)" value="9" class="border p-2 rounded-xl bg-white font-bold text-rose-700 si-pc-rate">
+              </div>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto pt-2">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-teal-50 text-teal-900 border-b">
+                  <th class="p-2.5">குறியீடு & பெயர்</th>
+                  <th class="p-2.5">காலம் & Lock-in</th>
+                  <th class="p-2.5">Min ₹ & வட்டி %</th>
+                  <th class="p-2.5">வகை & இடைவெளி</th>
+                  <th class="p-2.5">₹1 லட்சத்திற்கு ரிட்டன் / முதிர்வு</th>
+                  <th class="p-2.5 text-center">செயல்</th>
+                </tr>
+              </thead>
+              <tbody id="siSchemesTableBody" class="divide-y"></tbody>
             </table>
           </div>
         </div>
@@ -2202,6 +2357,7 @@
         document.getElementById('cardProofNo').innerText = activeCustomer.id_proof_no || '-';
         document.getElementById('cardAddress').innerText = activeCustomer.address || 'முகவரி இல்லை';
         document.getElementById('rdFormSection')?.classList.remove('hidden');
+        document.getElementById('siFormSection')?.classList.remove('hidden');
 
         const imgElem = document.getElementById('cardCustomerImg');
         const placeholder = document.getElementById('cardCustomerPlaceholder');
@@ -2343,6 +2499,7 @@
         loadSchemesList();
         loadCompanyBanksList();
         loadTodayGoldRate();
+        loadSiSchemesList();
         if (typeof loadGssSchemesList === 'function') loadGssSchemesList();
         if (typeof loadRdSchemesList === 'function') loadRdSchemesList();
       }
@@ -2970,6 +3127,7 @@
       document.getElementById('cardProofNo').innerText = cust.id_proof_no || '-';
       document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
       document.getElementById('rdFormSection')?.classList.remove('hidden');
+      document.getElementById('siFormSection')?.classList.remove('hidden');
 
       const imgElem = document.getElementById('cardCustomerImg');
       const placeholder = document.getElementById('cardCustomerPlaceholder');
@@ -5035,6 +5193,7 @@
       loadPendingTreasuryTransfersHQ();
       loadHqGpStockList();
       loadPendingGssBenefitsHQ();
+      loadPendingSiApprovalsHQ();
       if (typeof loadPendingRdBenefitsHQ === 'function') loadPendingRdBenefitsHQ();
       
       try {
@@ -7656,6 +7815,542 @@
     const out = await res.json();
     alert("✅ " + (out.message || "நிறைவேற்றப்பட்டது"));
     loadPendingRdBenefitsHQ();
+  }
+
+  <!-- 💎 Standard Investment (SI / FD) முழுமையான மேலாண்மை சாளரம் -->
+<div id="siAccountModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-3xl w-full shadow-2xl space-y-4 border-2 border-teal-500 my-auto max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center border-b border-teal-100 pb-2">
+      <h3 class="text-base font-extrabold text-teal-900">💎 Standard Investment (SI) - முதலீடு, ரிட்டன் & முதிர்வு</h3>
+      <button type="button" onclick="closeSiModal()" class="text-slate-400 hover:text-slate-700 text-lg font-bold">✕</button>
+    </div>
+
+    <!-- 1. வாடிக்கையாளரின் நடப்பு SI கணக்குகள் பட்டியல் -->
+    <div class="bg-teal-50/70 p-3 rounded-2xl border border-teal-200 space-y-2">
+      <div class="text-xs font-black text-teal-900">📋 வாடிக்கையாளரின் நடப்பு முதலீட்டுக் கணக்குகள் (Active SI Accounts):</div>
+      <div id="customerActiveSiList" class="space-y-2 text-xs">
+        <p class="text-slate-400">கணக்குகள் ஏதுமில்லை...</p>
+      </div>
+    </div>
+
+    <!-- 📜 வட்டி / ரிட்டன் அளித்த வரலாறு பார்வைப் பெட்டி -->
+    <div id="siPayoutHistoryBox" class="hidden bg-amber-50/90 p-3 rounded-2xl border-2 border-amber-300 space-y-2 text-xs">
+      <div class="flex justify-between items-center border-b border-amber-200 pb-1.5">
+        <span class="font-black text-amber-950" id="siHistoryTitle">📜 வட்டி / ரிட்டன் அளித்த வரலாறு:</span>
+        <button type="button" onclick="document.getElementById('siPayoutHistoryBox').classList.add('hidden')" class="text-rose-600 font-bold text-xs">மூடு ✕</button>
+      </div>
+      <div class="overflow-x-auto bg-white rounded-xl border border-amber-200">
+        <table class="w-full text-left border-collapse text-[11px]">
+          <thead class="bg-amber-100 text-amber-950">
+            <tr>
+              <th class="p-2">வ.எண்</th>
+              <th class="p-2">வழங்கிய தேதி</th>
+              <th class="p-2">வவுச்சர் எண்</th>
+              <th class="p-2">காலம் / விவரம்</th>
+              <th class="p-2 text-right">வழங்கிய வட்டி (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="siHistoryTbody" class="divide-y divide-amber-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. புதிய SI முதலீட்டுக் கணக்கு தொடங்குதல் -->
+    <div id="newSiFormContainer" class="border-t border-teal-100 pt-3 space-y-3 text-xs">
+      <div class="font-black text-teal-900">➕ புதிய Standard Investment (SI) கணக்கு தொடங்குதல்:</div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">SI கணக்கு எண்</label>
+          <input type="text" id="si_account_no" readonly class="w-full border-2 border-teal-200 p-2 rounded-xl bg-teal-50 font-mono font-black text-teal-900">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">திட்டம் தேர்வு (Scheme) *</label>
+          <select id="si_scheme_select" onchange="onSiSchemeChange()" class="w-full border-2 border-teal-200 p-2 rounded-xl bg-white font-bold">
+            <option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">முதலீட்டுத் தொகை (₹) *</label>
+          <input type="number" id="si_principal_amount" oninput="calcSiCustomerBenefit()" placeholder="எ.கா: 100000" class="w-full border-2 border-teal-300 p-2 rounded-xl font-black font-mono text-teal-950">
+        </div>
+      </div>
+
+      <!-- கிடைக்கும் பெனிபிட் திரை -->
+      <div class="bg-gradient-to-r from-teal-50 to-emerald-50 p-3.5 rounded-2xl border-2 border-teal-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <span class="text-[11px] font-bold text-teal-800 block">கால இடைவெளி ரிட்டன் (Periodic Return):</span>
+          <span id="si_cust_periodic_disp" class="text-base font-black font-mono text-teal-950">₹ 0.00</span>
+          <span id="si_cust_freq_lbl" class="text-[10px] text-teal-700 block">-</span>
+        </div>
+        <div>
+          <span class="text-[11px] font-bold text-emerald-800 block">மொத்த வட்டி பெனிபிட் (Total Benefit):</span>
+          <span id="si_cust_total_int_disp" class="text-base font-black font-mono text-emerald-700">₹ 0.00</span>
+          <span id="si_cust_roi_lbl" class="text-[10px] text-emerald-700 block">-</span>
+        </div>
+        <div>
+          <span class="text-[11px] font-bold text-amber-900 block">திட்ட முடிவில் முதிர்வுத் தொகை:</span>
+          <span id="si_cust_maturity_disp" class="text-base font-black font-mono text-amber-950">₹ 0.00</span>
+          <span id="si_cust_lockin_lbl" class="text-[10px] text-rose-700 font-bold block">-</span>
+        </div>
+      </div>
+
+      <!-- ஒன்றுக்கு மேற்பட்ட நாமினிகள் (% அடிப்படையில்) -->
+      <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="font-black text-slate-800">👥 நாமினி விபரங்கள் (மொத்தப் பங்கு = 100% இருக்க வேண்டும்):</span>
+          <button type="button" onclick="addSiNomineeRow()" class="text-xs font-bold text-teal-700 hover:underline cursor-pointer">+ நாமினி சேர்</button>
+        </div>
+        <div id="siNomineesContainer" class="space-y-1.5">
+          <div class="grid grid-cols-4 gap-2 si-nominee-row">
+            <input type="text" placeholder="நாமினி பெயர் *" class="border p-2 rounded-xl bg-white si-nom-name">
+            <input type="text" placeholder="உறவுமுறை *" class="border p-2 rounded-xl bg-white si-nom-rel">
+            <input type="tel" placeholder="மொபைல் எண்" class="border p-2 rounded-xl bg-white si-nom-mob">
+            <input type="number" placeholder="பங்கு %" value="100" min="1" max="100" class="border p-2 rounded-xl bg-white font-bold text-center si-nom-pct">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2 border-t border-teal-100">
+      <button type="button" onclick="closeSiModal()" class="px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer">ரத்து செய்</button>
+      <button type="button" onclick="addNewSiToCart()" style="background-color:#0d9488;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
+        + முதலீட்டை கூடையில் சேர் (Add to Cart)
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let siSchemesCache = [];
+  let customerSiAccountsCache = [];
+
+  // ₹1,00,000-க்கான ரிட்டன் & முதிர்வுக் கணக்கீடு (Admin)
+  function computeSiMetrics(principal, tenureVal, tenureUnit, roiPct, calcType, calcPeriod, payoutFreq) {
+    if (principal <= 0 || tenureVal <= 0) return { periodicReturn: 0, totalInterest: 0, maturityAmount: principal };
+    const years = tenureUnit === 'DAY' ? (tenureVal / 365) : (tenureVal / 12);
+    const freqMonths = { 'MONTHLY': 1, 'QUARTERLY': 3, 'HALF_YEARLY': 6, 'YEARLY': 12 };
+
+    let totalInterest = 0;
+    let periodicReturn = 0;
+
+    if (payoutFreq !== 'MATURITY') {
+      // குறிப்பிட்ட கால இடைவெளியில் வட்டி வழங்கப்படும் திட்டம்
+      totalInterest = (principal * roiPct * years) / 100;
+      const pMonths = freqMonths[payoutFreq] || 1;
+      periodicReturn = Math.round((principal * roiPct * (pMonths / 12)) / 100);
+      return {
+        periodicReturn: periodicReturn,
+        totalInterest: Math.round(totalInterest),
+        maturityAmount: Math.round(principal) // வட்டி இடைவெளியில் வழங்கப்படுவதால் முடிவில் அசல் கிடைக்கும்
+      };
+    } else {
+      // திட்ட முடிவில் மொத்தமாக முதிர்வுத் தொகை வழங்கப்படும் திட்டம்
+      if (calcType === 'SIMPLE') {
+        totalInterest = (principal * roiPct * years) / 100;
+      } else {
+        const n = calcPeriod === 'DAY' ? 365 : 12;
+        const maturity = principal * Math.pow((1 + (roiPct / 100) / n), n * years);
+        totalInterest = maturity - principal;
+      }
+      return {
+        periodicReturn: 0,
+        totalInterest: Math.round(totalInterest),
+        maturityAmount: Math.round(principal + totalInterest)
+      };
+    }
+  }
+
+  function calcAdminSiPerLakh() {
+    const tenure = parseInt(document.getElementById('si_adm_tenure')?.value) || 0;
+    const tUnit = document.getElementById('si_adm_tenure_unit')?.value || 'MONTH';
+    const calcType = document.getElementById('si_adm_calc_type')?.value || 'SIMPLE';
+    const calcPeriod = document.getElementById('si_adm_calc_period')?.value || 'MONTH';
+    const payoutFreq = document.getElementById('si_adm_payout_freq')?.value || 'MONTHLY';
+    const roi = parseFloat(document.getElementById('si_adm_roi')?.value) || 0;
+
+    const res = computeSiMetrics(100000, tenure, tUnit, roi, calcType, calcPeriod, payoutFreq);
+    const pDisp = document.getElementById('si_adm_periodic_lakh_disp');
+    const mDisp = document.getElementById('si_adm_maturity_lakh_disp');
+    if (pDisp) pDisp.innerText = payoutFreq === 'MATURITY' ? 'முதிர்வில் மொத்தமாக' : `₹ ${res.periodicReturn.toLocaleString('en-IN')}`;
+    if (mDisp) mDisp.innerText = `₹ ${(100000 + res.totalInterest).toLocaleString('en-IN')}`;
+    return res;
+  }
+
+  function addSiPrecloseSlabRow() {
+    const container = document.getElementById('siPrecloseSlabsContainer');
+    const div = document.createElement('div');
+    div.className = "grid grid-cols-3 gap-2 si-preclose-row";
+    div.innerHTML = `
+      <input type="number" placeholder="From Month" class="border p-2 rounded-xl bg-white si-pc-from">
+      <input type="number" placeholder="To Month" class="border p-2 rounded-xl bg-white si-pc-to">
+      <input type="number" step="0.1" placeholder="வழங்கும் வட்டி %" class="border p-2 rounded-xl bg-white font-bold text-rose-700 si-pc-rate">
+    `;
+    container.appendChild(div);
+  }
+
+  async function createSiSchemeAdmin() {
+    const metrics = calcAdminSiPerLakh();
+    const slabs = [];
+    document.querySelectorAll('.si-preclose-row').forEach(r => {
+      const f = parseInt(r.querySelector('.si-pc-from').value);
+      const t = parseInt(r.querySelector('.si-pc-to').value);
+      const rate = parseFloat(r.querySelector('.si-pc-rate').value);
+      if (!isNaN(f) && !isNaN(t) && !isNaN(rate)) slabs.push({ from_month: f, to_month: t, rate_percent: rate });
+    });
+
+    const payload = {
+      scheme_code: document.getElementById('si_adm_code').value.trim(),
+      scheme_name: document.getElementById('si_adm_name').value.trim(),
+      tenure_value: parseInt(document.getElementById('si_adm_tenure').value) || 12,
+      tenure_unit: document.getElementById('si_adm_tenure_unit').value,
+      locking_period_months: parseInt(document.getElementById('si_adm_lockin').value) || 0,
+      min_amount: parseFloat(document.getElementById('si_adm_min_amt').value) || 10000,
+      return_calc_type: document.getElementById('si_adm_calc_type').value,
+      return_calc_period: document.getElementById('si_adm_calc_period').value,
+      payout_frequency: document.getElementById('si_adm_payout_freq').value,
+      return_rate: parseFloat(document.getElementById('si_adm_roi').value) || 0,
+      preclose_slabs: slabs,
+      periodic_return_per_lakh: metrics.periodicReturn,
+      maturity_amount_per_lakh: 100000 + metrics.totalInterest
+    };
+    if (!payload.scheme_code || !payload.scheme_name) return alert("திட்டக் குறியீடு மற்றும் பெயரை உள்ளிடவும்!");
+    const res = await fetch('/api/admin/si-scheme/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    });
+    const out = await res.json();
+    if (!res.ok) return alert(out.detail || "பிழை");
+    alert("✅ " + out.message);
+    document.getElementById('si_adm_code').value = '';
+    document.getElementById('si_adm_name').value = '';
+    loadSiSchemesList();
+  }
+
+  async function loadSiSchemesList() {
+    calcAdminSiPerLakh();
+    const tbody = document.getElementById('siSchemesTableBody');
+    if (!tbody) return;
+    try {
+      const res = await fetch('/api/admin/si-schemes?t=' + Date.now());
+      const out = await res.json();
+      const list = out.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">SI திட்டங்கள் எதுவும் உருவாக்கப்படவில்லை</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(s => `
+        <tr>
+          <td class="p-2.5"><span class="font-mono font-black text-teal-800 block">${s.scheme_code}</span><b>${s.scheme_name}</b></td>
+          <td class="p-2.5">${s.tenure_value} ${s.tenure_unit}<br><span class="text-[11px] text-rose-600">Lock-in: ${s.locking_period_months}M</span></td>
+          <td class="p-2.5 font-mono">Min: ₹${parseFloat(s.min_amount).toLocaleString('en-IN')}<br><b>${s.return_rate}% p.a</b></td>
+          <td class="p-2.5">${s.return_calc_type} (${s.return_calc_period})<br><span class="text-teal-800 font-bold">${s.payout_frequency}</span></td>
+          <td class="p-2.5 font-mono">ரிட்டன்: <b>₹${s.periodic_return_per_lakh}</b><br>முதிர்வு: <b class="text-emerald-700">₹${parseFloat(s.maturity_amount_per_lakh).toLocaleString('en-IN')}</b></td>
+          <td class="p-2.5 text-center"><button type="button" onclick="deleteSiScheme(${s.id})" class="text-rose-600 font-bold hover:underline cursor-pointer">டிலீட்</button></td>
+        </tr>
+      `).join('');
+    } catch (e) {}
+  }
+
+  async function deleteSiScheme(id) {
+    if (!confirm("இந்த SI திட்டத்தை நீக்கவா?")) return;
+    await fetch(`/api/admin/si-scheme/${id}`, { method: 'DELETE' });
+    loadSiSchemesList();
+  }
+
+  async function openSiModal() {
+    if (!activeCustomer || !activeCustomer.id) return alert("முதலில் வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்!");
+    const modal = document.getElementById('siAccountModal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    document.getElementById('siPayoutHistoryBox').classList.add('hidden');
+
+    const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+    try {
+      const noRes = await fetch(`/api/si/next-no?branch_id=${branchId}`);
+      const noData = await noRes.json();
+      if (noData.next_si_no) document.getElementById('si_account_no').value = noData.next_si_no;
+
+      const sRes = await fetch('/api/admin/si-schemes?t=' + Date.now());
+      const sData = await sRes.json();
+      siSchemesCache = sData.data || [];
+      const sel = document.getElementById('si_scheme_select');
+      sel.innerHTML = `<option value="">-- திட்டத்தைத் தேர்ந்தெடுக்கவும் --</option>` +
+        siSchemesCache.map(s => `<option value="${s.id}">${s.scheme_name} (${s.return_rate}% - ${s.payout_frequency})</option>`).join('');
+    } catch (e) {}
+
+    await loadCustomerSiAccounts();
+  }
+
+  function closeSiModal() {
+    const modal = document.getElementById('siAccountModal');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+  }
+
+  function addSiNomineeRow() {
+    const container = document.getElementById('siNomineesContainer');
+    const div = document.createElement('div');
+    div.className = "grid grid-cols-4 gap-2 si-nominee-row";
+    div.innerHTML = `
+      <input type="text" placeholder="நாமினி பெயர் *" class="border p-2 rounded-xl bg-white si-nom-name">
+      <input type="text" placeholder="உறவுமுறை *" class="border p-2 rounded-xl bg-white si-nom-rel">
+      <input type="tel" placeholder="மொபைல் எண்" class="border p-2 rounded-xl bg-white si-nom-mob">
+      <input type="number" placeholder="பங்கு %" value="0" min="1" max="100" class="border p-2 rounded-xl bg-white font-bold text-center si-nom-pct">
+    `;
+    container.appendChild(div);
+  }
+
+  function onSiSchemeChange() {
+    const schId = parseInt(document.getElementById('si_scheme_select').value);
+    const sch = siSchemesCache.find(s => s.id === schId);
+    if (sch) {
+      document.getElementById('si_principal_amount').value = sch.min_amount || 10000;
+    }
+    calcSiCustomerBenefit();
+  }
+
+  function calcSiCustomerBenefit() {
+    const schId = parseInt(document.getElementById('si_scheme_select').value);
+    const sch = siSchemesCache.find(s => s.id === schId);
+    const amt = parseFloat(document.getElementById('si_principal_amount').value) || 0;
+    if (!sch || amt <= 0) return;
+
+    const m = computeSiMetrics(amt, sch.tenure_value, sch.tenure_unit, sch.return_rate, sch.return_calc_type, sch.return_calc_period, sch.payout_frequency);
+    document.getElementById('si_cust_periodic_disp').innerText = sch.payout_frequency === 'MATURITY' ? 'முதிர்வில் மொத்தமாக' : `₹ ${m.periodicReturn.toLocaleString('en-IN')}`;
+    document.getElementById('si_cust_freq_lbl').innerText = `இடைவெளி: ${sch.payout_frequency}`;
+    document.getElementById('si_cust_total_int_disp').innerText = `₹ ${m.totalInterest.toLocaleString('en-IN')}`;
+    document.getElementById('si_cust_roi_lbl').innerText = `வட்டி: ${sch.return_rate}% (${sch.return_calc_type})`;
+    document.getElementById('si_cust_maturity_disp').innerText = `₹ ${(amt + m.totalInterest).toLocaleString('en-IN')}`;
+    document.getElementById('si_cust_lockin_lbl').innerText = `Lock-in காலம்: ${sch.locking_period_months} மாதங்கள்`;
+  }
+
+  function addNewSiToCart() {
+    const siNo = document.getElementById('si_account_no').value;
+    const schId = parseInt(document.getElementById('si_scheme_select').value);
+    const sch = siSchemesCache.find(s => s.id === schId);
+    const amt = parseFloat(document.getElementById('si_principal_amount').value) || 0;
+
+    if (!sch || amt < parseFloat(sch.min_amount || 0)) {
+      return alert(`⚠️ குறைந்தபட்ச முதலீட்டுத் தொகை ₹${sch?.min_amount || 0} ஆகும்!`);
+    }
+
+    // நாமினிகள் மொத்தம் 100% உள்ளதா எனச் சரிபார்த்தல்
+    const nominees = [];
+    let totalPct = 0;
+    document.querySelectorAll('.si-nominee-row').forEach(r => {
+      const name = r.querySelector('.si-nom-name').value.trim();
+      const rel = r.querySelector('.si-nom-rel').value.trim();
+      const mob = r.querySelector('.si-nom-mob').value.trim();
+      const pct = parseFloat(r.querySelector('.si-nom-pct').value) || 0;
+      if (name && pct > 0) {
+        nominees.push({ name, relation: rel, mobile: mob, share_percent: pct });
+        totalPct += pct;
+      }
+    });
+    if (nominees.length === 0 || totalPct !== 100) {
+      return alert(`⚠️ நாமினிகளின் மொத்தப் பங்கு சரியாக 100% இருக்க வேண்டும்! (தற்போது: ${totalPct}%)`);
+    }
+
+    cartItems.push({
+      is_si_account: true,
+      title: `💎 புதிய SI முதலீடு (${siNo})`,
+      details: `${sch.scheme_name} | முதலீடு: ₹${amt.toLocaleString('en-IN')} | நாமினிகள்: ${nominees.length}`,
+      debit: 0,
+      credit: amt, // வாடிக்கையாளர் செலுத்தும் முதலீட்டுத் தொகை (+)
+      si_meta: { mode: 'NEW', si_no: siNo, scheme_id: schId, principal_amount: amt, nominees: nominees }
+    });
+    renderCart();
+    closeSiModal();
+    alert("✅ Standard Investment (SI) கூடையில் சேர்க்கப்பட்டது!");
+  }
+
+  async function loadCustomerSiAccounts() {
+    const container = document.getElementById('customerActiveSiList');
+    if (!container || !activeCustomer) return;
+    try {
+      const res = await fetch(`/api/customer/${activeCustomer.id}/si-accounts?t=` + Date.now());
+      const out = await res.json();
+      customerSiAccountsCache = out.data || [];
+      if (customerSiAccountsCache.length === 0) {
+        container.innerHTML = `<p class="text-slate-500 italic">நடப்பில் SI முதலீட்டுக் கணக்குகள் இல்லை.</p>`;
+        return;
+      }
+      container.innerHTML = customerSiAccountsCache.map(acc => {
+        const sch = acc.scheme_details || {};
+        const prin = parseFloat(acc.principal_amount || 0);
+        const paidInt = parseFloat(acc.total_return_paid || 0);
+        const m = computeSiMetrics(prin, sch.tenure_value, sch.tenure_unit, sch.return_rate, sch.return_calc_type, sch.return_calc_period, sch.payout_frequency);
+        const appStatus = acc.approval_status || 'NONE';
+
+        let statusBadge = '';
+        if (appStatus === 'PENDING') statusBadge = `<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold">⏳ HQ ஒப்புதல் நிலுவை (${acc.closure_type})</span>`;
+        else if (appStatus === 'APPROVED') statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-black">✅ HQ அனுமதி: அசல் ₹${acc.approved_principal} + பெனிபிட் ₹${acc.approved_benefit}</span>`;
+
+        return `
+          <div class="bg-white p-3 rounded-2xl border border-teal-200 space-y-2 shadow-xs">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <div>
+                <span class="font-mono font-black text-teal-900 text-sm">${acc.si_no}</span>
+                <span class="ml-2 px-2 py-0.5 bg-teal-100 text-teal-900 rounded font-bold">${sch.scheme_name || 'SI'}</span>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" onclick="viewSiPayoutHistory(${acc.id})" style="background-color:#4f46e5;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">📜 வட்டி வரலாறு</button>
+                ${sch.payout_frequency !== 'MATURITY' ? `<button type="button" onclick="addSiReturnPayoutToCart(${acc.id}, ${m.periodicReturn})" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">💸 ரிட்டன் வழங்கு (₹${m.periodicReturn})</button>` : ''}
+                <button type="button" onclick="requestSiClosureHQ(${acc.id}, 'PRECLOSE')" style="background-color:#d97706;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">⚠️ ப்ரீ-குளோஸ் கோரு</button>
+                <button type="button" onclick="requestSiClosureHQ(${acc.id}, 'MATURITY')" style="background-color:#7c3aed;color:#fff;" class="px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer">🎁 முதிர்வு கோரு</button>
+                ${appStatus === 'APPROVED' ? `<button type="button" onclick="addApprovedSiClosureToCart(${acc.id})" style="background-color:#dc2626;color:#fff;" class="px-3 py-1 rounded-lg text-[11px] font-black cursor-pointer">💵 தீர்வு செய் (Close)</button>` : ''}
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-700 flex flex-wrap gap-3 items-center bg-slate-50 p-2 rounded-xl">
+              <span>முதலீடு: <b>₹${prin.toLocaleString('en-IN')}</b></span>
+              <span>இதுவரை வழங்கிய வட்டி: <b class="text-emerald-700">₹${paidInt.toLocaleString('en-IN')}</b></span>
+              <span>Lock-in: <b>${sch.locking_period_months || 0}M</b></span>
+              ${statusBadge}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {}
+  }
+
+  function viewSiPayoutHistory(accId) {
+    const acc = customerSiAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const box = document.getElementById('siPayoutHistoryBox');
+    const tbody = document.getElementById('siHistoryTbody');
+    document.getElementById('siHistoryTitle').innerText = `📜 வட்டி / ரிட்டன் அளித்த வரலாறு (${acc.si_no}):`;
+    const list = acc.payouts || [];
+    tbody.innerHTML = list.length === 0
+      ? `<tr><td colspan="5" class="p-3 text-center text-slate-400">இதுவரை வட்டி வழங்கப்படவில்லை</td></tr>`
+      : list.map((p, idx) => `
+          <tr>
+            <td class="p-2 font-bold">#${idx + 1}</td>
+            <td class="p-2 font-mono">${p.payout_date || '-'}</td>
+            <td class="p-2 font-mono text-teal-800">${p.voucher_no || '-'}</td>
+            <td class="p-2">${p.period_label || '-'}</td>
+            <td class="p-2 text-right font-mono font-bold text-rose-600">₹${parseFloat(p.return_amount || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        `).join('');
+    box.classList.remove('hidden');
+  }
+
+  function addSiReturnPayoutToCart(accId, periodicAmt) {
+    const acc = customerSiAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const periodLabel = prompt(`${acc.si_no} கணக்கிற்கான வட்டி வழங்கும் காலத்தைக் குறிப்பிடவும் (எ.கா: நவம்பர் 2026 மாதம்):`, "மாதாந்திர ரிட்டன்");
+    if (!periodLabel) return;
+
+    cartItems.push({
+      is_si_account: true,
+      title: `💸 SI வட்டி பட்டுவாடா (${acc.si_no})`,
+      details: `${periodLabel} | ரிட்டன் தொகை: ₹${periodicAmt}`,
+      debit: periodicAmt, // வாடிக்கையாளருக்கு நாம் வழங்கும் வட்டி (-)
+      credit: 0,
+      si_meta: { mode: 'RETURN_PAYOUT', account_id: acc.id, si_no: acc.si_no, return_amount: periodicAmt, period_label: periodLabel }
+    });
+    renderCart();
+    closeSiModal();
+    alert(`✅ ₹${periodicAmt} வட்டி பட்டுவாடா கூடையில் சேர்க்கப்பட்டது!`);
+  }
+
+  async function requestSiClosureHQ(accId, closureType) {
+    const acc = customerSiAccountsCache.find(a => a.id === accId);
+    if (!acc) return;
+    const sch = acc.scheme_details || {};
+    const prin = parseFloat(acc.principal_amount || 0);
+    const paidInt = parseFloat(acc.total_return_paid || 0);
+
+    let defaultBenefit = 0;
+    if (closureType === 'MATURITY') {
+      const m = computeSiMetrics(prin, sch.tenure_value, sch.tenure_unit, sch.return_rate, sch.return_calc_type, sch.return_calc_period, sch.payout_frequency);
+      defaultBenefit = Math.max(0, m.totalInterest - paidInt);
+    } else {
+      const monthsStr = prompt("இந்த SI கணக்கு தொடங்கி எத்தனை முழு மாதங்கள் ஆகியுள்ளன? (ப்ரீ-குளோஸ் ஸ்லாப் கணக்கிட):", "4");
+      if (monthsStr === null) return;
+      const elapsedMonths = parseInt(monthsStr) || 0;
+      if (elapsedMonths < parseInt(sch.locking_period_months || 0)) {
+        return alert(`🔒 லாக்கிங் காலம் (${sch.locking_period_months} மாதங்கள்) முடியாததால் ப்ரீ-குளோஸ் செய்ய முடியாது!`);
+      }
+      const slabs = Array.isArray(sch.preclose_slabs) ? sch.preclose_slabs : [];
+      const matched = slabs.find(sl => elapsedMonths >= sl.from_month && elapsedMonths <= sl.to_month);
+      const applicableRate = matched ? parseFloat(matched.rate_percent) : 0;
+      const earnedInt = Math.round((prin * applicableRate * (elapsedMonths / 12)) / 100);
+      defaultBenefit = Math.max(0, earnedInt - paidInt);
+    }
+
+    const benStr = prompt(`${acc.si_no} (${closureType}) - தலைமையக ஒப்புதலுக்கு அனுப்ப வேண்டிய பெனிபிட்/வட்டித் தொகை (₹):`, defaultBenefit);
+    if (benStr === null) return;
+
+    const res = await fetch('/api/si/request-closure', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accId, closure_type: closureType, proposed_principal: prin, proposed_benefit: parseFloat(benStr) || 0 })
+    });
+    const out = await res.json();
+    alert("✅ " + out.message);
+    loadCustomerSiAccounts();
+  }
+
+  function addApprovedSiClosureToCart(accId) {
+    const acc = customerSiAccountsCache.find(a => a.id === accId);
+    if (!acc || acc.approval_status !== 'APPROVED') return;
+    const appPrin = parseFloat(acc.approved_principal || 0);
+    const appBen = parseFloat(acc.approved_benefit || 0);
+    const totalPayable = appPrin + appBen;
+
+    cartItems.push({
+      is_si_account: true,
+      title: `💵 SI கணக்கு முடிப்பு (${acc.si_no} - ${acc.closure_type})`,
+      details: `அசல்: ₹${appPrin} + பெனிபிட்: ₹${appBen} = மொத்தம்: ₹${totalPayable}`,
+      debit: totalPayable, // வாடிக்கையாளருக்குத் தரும் மொத்தத் தொகை (-)
+      credit: 0,
+      si_meta: { mode: 'CLOSE', account_id: acc.id, si_no: acc.si_no, total_payable: totalPayable }
+    });
+    renderCart();
+    closeSiModal();
+    alert(`✅ SI கணக்கு முடிப்பு (₹${totalPayable.toLocaleString('en-IN')}) கூடையில் சேர்க்கப்பட்டது!`);
+  }
+
+  // தலைமையக SI ஒப்புதல் பட்டியல்
+  async function loadPendingSiApprovalsHQ() {
+    const tbody = document.getElementById('pendingSiApprovalsTbody');
+    if (!tbody) return;
+    try {
+      const res = await fetch('/api/hq/pending-si-approvals');
+      if (!res.ok) return;
+      const out = await res.json();
+      const list = out.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-semibold">SI ஒப்புதல் கோரிக்கைகள் நிலுவையில் இல்லை</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(a => `
+        <tr>
+          <td class="p-2.5"><b>${a.branch_name}</b><br><span class="font-mono font-black text-teal-900">${a.si_no}</span> <span class="px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px] font-bold">${a.closure_type}</span></td>
+          <td class="p-2.5"><b>${a.customer_name}</b><br><span class="font-mono text-[11px]">${a.customer_mobile}</span></td>
+          <td class="p-2.5 text-[11px]">முதலீடு: <b>₹${parseFloat(a.principal_amount).toLocaleString()}</b><br>பெற்ற ரிட்டன்: ₹${parseFloat(a.total_return_paid).toLocaleString()}</td>
+          <td class="p-2.5 space-y-1">
+            <div>அசல்: <input type="number" id="hq_si_prin_${a.id}" value="${a.proposed_principal}" class="w-24 border p-1 rounded font-mono font-bold"></div>
+            <div>பெனிபிட்: <input type="number" id="hq_si_ben_${a.id}" value="${a.proposed_benefit}" class="w-24 border p-1 rounded font-mono font-bold text-emerald-800"></div>
+          </td>
+          <td class="p-2.5 text-center space-x-1">
+            <button type="button" onclick="actionSiClosureHQ(${a.id}, 'APPROVE')" style="background-color:#059669;color:#fff;" class="px-3 py-1 rounded-lg text-xs font-bold shadow cursor-pointer">✓ ஒப்புதல்</button>
+            <button type="button" onclick="actionSiClosureHQ(${a.id}, 'REJECT')" style="background-color:#dc2626;color:#fff;" class="px-2.5 py-1 rounded-lg text-xs font-bold shadow cursor-pointer">✕ நிராகரி</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {}
+  }
+
+  async function actionSiClosureHQ(accId, action) {
+    const appPrin = parseFloat(document.getElementById(`hq_si_prin_${accId}`)?.value) || 0;
+    const appBen = parseFloat(document.getElementById(`hq_si_ben_${accId}`)?.value) || 0;
+    if (!confirm(action === 'APPROVE' ? `அசல் ₹${appPrin} + பெனிபிட் ₹${appBen} ஆகியவற்றுக்கு ஒப்புதல் அளிக்கவா?` : "நிராகரிக்கவா?")) return;
+    const res = await fetch('/api/hq/approve-si-closure', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accId, action: action, approved_principal: appPrin, approved_benefit: appBen })
+    });
+    const out = await res.json();
+    alert("✅ " + out.message);
+    loadPendingSiApprovalsHQ();
   }
 </script>
 </body>

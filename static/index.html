@@ -8644,6 +8644,8 @@
       const isHanded = Boolean(p.is_handed_over);
       const loc = p.current_location;
       const st = p.packet_status;
+      const bVer = p.bank_verify_status || 'NONE';
+      const branchName = p.test_branches?.branch_name || '';
 
       // 1. கடன் & ஒப்படைப்பு நிலை பேட்ஜ்
       let statusBadge = `<span class="px-2 py-0.5 bg-blue-50 text-blue-800 rounded font-bold text-[10px]">நடப்புக் கடன் (Active)</span>`;
@@ -8653,15 +8655,27 @@
         statusBadge = `<span class="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded font-black text-[10px] animate-pulse">⚠️ கடன் முடிந்தது - ஒப்படைப்பு நிலுவை!</span>`;
       }
 
+      const branchTag = (currentPacketViewRole === 'HQ' && branchName)
+        ? `<span class="inline-block ml-1 px-1.5 py-0.2 bg-purple-100 text-purple-900 rounded text-[10px] font-bold">🏢 ${branchName}</span>` : '';
+
       const prevNote = p.previous_loan_no ? `<span class="block text-[10px] text-amber-800 font-bold">🔄 பழைய எண்: ${p.previous_loan_no}</span>` : '';
       const reqInfo = (p.pending_request_data && p.pending_request_data.new_loan_no)
         ? ` (புதிய எண்: <b>${p.pending_request_data.new_loan_no}</b>)` : '';
-      const specBadge = p.pending_request_status === 'PENDING'
-        ? `<span class="block mt-1 px-2 py-0.5 bg-yellow-200 text-amber-950 rounded font-black text-[10px]">⏳ HQ ஒப்புதல் நிலுவை: ${p.pending_request_type}${reqInfo}</span>` : '';
 
-      // 2. Checkbox கட்டுப்பாடு: ஒப்படைக்கப்பட்ட பாக்கெட்டை தேர்வு செய்ய முடியாது
+      let specBadge = '';
+      if (st === 'REQUESTED_BY_BRANCH') {
+        specBadge += `<span class="block mt-1 px-2 py-0.5 bg-indigo-100 text-indigo-950 border border-indigo-300 rounded font-black text-[10px]">📥 கிளை பாக்கெட் கேட்டுள்ளது!</span>`;
+      }
+      if (bVer === 'PENDING_PLEDGE_VERIFY' || bVer === 'PENDING_REDEEM_VERIFY') {
+        const lbl = bVer === 'PENDING_PLEDGE_VERIFY' ? 'வங்கி லாக்கர் வைப்பு' : 'வங்கி லாக்கர் மீட்பு';
+        specBadge += `<span class="block mt-1 px-2 py-0.5 bg-amber-200 text-amber-950 border border-amber-400 rounded font-black text-[10px]">🛡️ 2-வது HQ பணியாளர் சரிபார்ப்பு நிலுவை (${lbl})</span>`;
+      } else if (p.pending_request_status === 'PENDING') {
+        specBadge += `<span class="block mt-1 px-2 py-0.5 bg-yellow-200 text-amber-950 rounded font-black text-[10px]">⏳ HQ ஒப்புதல் நிலுவை: ${p.pending_request_type}${reqInfo}</span>`;
+      }
+
+      // 2. Checkbox கட்டுப்பாடு
       let canSelectCheckbox = false;
-      if (!isHanded) {
+      if (!isHanded && bVer !== 'PENDING_PLEDGE_VERIFY' && bVer !== 'PENDING_REDEEM_VERIFY') {
         if (currentPacketViewRole === 'BRANCH' && st === 'AT_BRANCH_NEW') canSelectCheckbox = true;
         if (currentPacketViewRole === 'HQ' && (st === 'IN_TRANSIT_TO_HQ' || st === 'AT_HQ_VAULT' || st === 'PLEDGED_IN_BANK' || st === 'REQUESTED_BY_BRANCH')) canSelectCheckbox = true;
       }
@@ -8674,9 +8688,7 @@
       if (isHanded) {
         actionBtns = `<span class="text-[11px] font-bold text-slate-400">🔒 நிறைவடைந்தது</span>`;
       } else if (currentPacketViewRole === 'BRANCH') {
-        // A. கடன் முடிந்திருந்தால் மட்டுமே விடுவிப்பு / மறு-அடகு நடவடிக்கைகள்
         if (isClosed) {
-          // பாக்கெட் HQ அல்லது வங்கி லாக்கரில் இருந்தால்:
           if (loc === 'HQ_VAULT' || loc === 'BANK_LOCKER') {
             if (st !== 'REQUESTED_BY_BRANCH') {
               actionBtns += `<button type="button" onclick="sendPacketSpecialReq('${p.loan_no}', 'REQUEST_FROM_HQ')" class="px-2.5 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 rounded-lg font-bold text-[10px] mb-1 block mx-auto cursor-pointer">📥 பாக்கெட் கேட்டு HQ-க்கு அனுப்பு</button>`;
@@ -8684,29 +8696,21 @@
             if (p.pending_request_status !== 'PENDING') {
               actionBtns += `<button type="button" onclick="requestRepledgeTransfer('${p.loan_no}')" style="background-color:#7c3aed;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] block mx-auto shadow cursor-pointer">🔄 மறு-அடகு (லாக்கரில் எண் மாற்று)</button>`;
             }
-          }
-          // பாக்கெட் HQ-விலிருந்து கிளைக்கு வரும் வழியில் இருந்தால்:
-          else if (st === 'IN_TRANSIT_TO_BRANCH') {
+          } else if (st === 'IN_TRANSIT_TO_BRANCH') {
             actionBtns += `<button type="button" onclick="receivePacketAtBranch('${p.loan_no}')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] cursor-pointer">✓ கிளையில் பாக்கெட் பெறு</button>`;
-          }
-          // பாக்கெட் கிளையில் இருந்தால்:
-          else if (loc === 'BRANCH') {
-            // HQ செல்லாமல் கிளையிலேயே இருந்தால் முதலில் HQ ஒப்புதல் கட்டாயம்
+          } else if (loc === 'BRANCH') {
             if (st === 'AT_BRANCH_NEW') {
               if (p.pending_request_status === 'PENDING') {
                 actionBtns += `<button type="button" disabled class="px-2.5 py-1 bg-slate-200 text-slate-500 rounded-lg font-bold text-[10px] cursor-not-allowed">⏳ HQ ஒப்புதலுக்குக் காத்திருக்கிறது</button>`;
               } else {
                 actionBtns += `<button type="button" onclick="sendPacketSpecialReq('${p.loan_no}', 'DIRECT_RELEASE')" style="background-color:#d97706;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] shadow cursor-pointer">🛡️ நேரடி விடுவிப்பு HQ ஒப்புதல் கேள்</button>`;
               }
-            }
-            // HQ ஒப்புதல் பெற்றபின் அல்லது HQ-விலிருந்து கிளைக்கு வந்தபின் மட்டுமே OTP பட்டன் திறக்கும்
-            else if (st === 'AT_BRANCH_FOR_RELEASE') {
+            } else if (st === 'AT_BRANCH_FOR_RELEASE') {
               actionBtns += `<button type="button" onclick="handoverPacketWithOtp('${p.loan_no}')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] shadow mb-1 block mx-auto cursor-pointer">📲 SMS OTP மூலம் ஒப்படை</button>`;
               actionBtns += `<button type="button" onclick="sendPacketSpecialReq('${p.loan_no}', 'RETURN_UNCLAIMED')" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[10px] cursor-pointer">↩ வராப் பாக்கெட் HQ திருப்ப அனுமதி</button>`;
             }
           }
         } else {
-          // B. கடன் இன்னும் முடியவில்லை (Active Loan)
           if (st === 'AT_BRANCH_NEW') {
             actionBtns = `<span class="text-[10px] text-purple-800 font-bold">📦 மேலே தேர்வு செய்து HQ அனுப்பவும்</span>`;
           } else {
@@ -8714,24 +8718,34 @@
           }
         }
       } else {
-        // HQ Actions (தலைமையகப் பார்வை)
-        if (p.pending_request_status === 'PENDING') {
+        // 🛡️ HQ Actions (தலைமையகப் பார்வை)
+        if (bVer === 'PENDING_PLEDGE_VERIFY' || bVer === 'PENDING_REDEEM_VERIFY') {
+          const isSameStaff = p.bank_initiated_by && Number(p.bank_initiated_by) === Number(currentUser?.id);
+          if (isSameStaff) {
+            actionBtns = `<span class="text-[10px] text-amber-800 font-bold bg-amber-50 px-2 py-1 rounded border border-amber-300 block">⏳ மற்றொரு HQ பணியாளர் சரிபார்க்க வேண்டும்</span>`;
+          } else {
+            actionBtns = `
+              <button type="button" onclick="hqVerifyBankAction('${p.loan_no}', 'APPROVE')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] mr-1 shadow cursor-pointer">✓ 2-வது HQ சரிபார்த்து உறுதி செய்</button>
+              <button type="button" onclick="hqVerifyBankAction('${p.loan_no}', 'REJECT')" style="background-color:#dc2626;color:#fff;" class="px-2 py-1 rounded-lg font-bold text-[10px] cursor-pointer">✕ நிராகரி</button>
+            `;
+          }
+        } else if (p.pending_request_status === 'PENDING') {
           const btnLabel = p.pending_request_type === 'REPLEDGE_TRANSFER' ? '✓ மறு-அடகு எண் மாற்ற அனுமதி' : '✓ சிறப்பு அனுமதி வழங்கு';
           actionBtns += `
             <button type="button" onclick="hqApproveSpecial('${p.loan_no}', 'APPROVE_SPECIAL')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] mr-1 shadow cursor-pointer">${btnLabel}</button>
             <button type="button" onclick="hqApproveSpecial('${p.loan_no}', 'REJECT_SPECIAL')" style="background-color:#dc2626;color:#fff;" class="px-2 py-1 rounded-lg font-bold text-[10px] cursor-pointer">✕ நிராகரி</button>
           `;
         } else if (st === 'REQUESTED_BY_BRANCH' && loc === 'HQ_VAULT') {
-          actionBtns += `<span class="text-[10px] text-indigo-800 font-black">📥 கிளை கேட்டுள்ளது (தேர்வு செய்து அனுப்பவும்)</span>`;
+          actionBtns += `<span class="text-[10px] text-indigo-800 font-black">📥 கிளை கேட்டுள்ளது (தேர்வு செய்து கிளைக்கு அனுப்பவும்)</span>`;
         } else if (st === 'REQUESTED_BY_BRANCH' && loc === 'BANK_LOCKER') {
           actionBtns += `<span class="text-[10px] text-rose-700 font-black">🏦 வங்கியில் உள்ளது (முதலில் Redeem செய்யவும்)</span>`;
         }
       }
 
       return `
-        <tr class="${isHanded ? 'bg-slate-50 opacity-75' : ''}">
+        <tr class="${isHanded ? 'bg-slate-50 opacity-75' : (st === 'REQUESTED_BY_BRANCH' && currentPacketViewRole === 'HQ' ? 'bg-indigo-50/70' : '')}">
           <td class="p-2.5 text-center">${checkboxHtml}</td>
-          <td class="p-2.5 font-mono font-black text-brand-violet">${p.loan_no}${prevNote}</td>
+          <td class="p-2.5 font-mono font-black text-brand-violet">${p.loan_no}${branchTag}${prevNote}</td>
           <td class="p-2.5"><b>${p.test_customers?.name || '-'}</b><br><span class="font-mono text-[11px]">${p.test_customers?.mobile || '-'}</span></td>
           <td class="p-2.5"><b>${loc}</b><br><span class="text-[11px] text-purple-800 font-bold">${st}</span>${specBadge}</td>
           <td class="p-2.5">${statusBadge}<br><span class="text-[10px] text-slate-500">${p.audit_notes || ''}</span></td>
@@ -8739,6 +8753,25 @@
         </tr>
       `;
     }).join('');
+  }
+
+  async function hqVerifyBankAction(loanNo, action) {
+    if (!confirm(action === 'APPROVE'
+      ? `பாக்கெட் (${loanNo}) வங்கி லாக்கர் நடவடிக்கையை நேரில் சரிபார்த்து உறுதி செய்கிறீர்களா?`
+      : `பாக்கெட் (${loanNo}) வங்கி லாக்கர் நடவடிக்கையை நிராகரிக்கிறீர்களா?`)) return;
+
+    const res = await fetch('/api/hq/packets/verify-bank-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loan_no: loanNo, action: action, verifier_id: currentUser?.id || 1 })
+    });
+    const out = await res.json();
+    if (res.ok) {
+      alert(out.message);
+      loadGoldPacketsList();
+    } else {
+      alert("❌ " + (out.detail || "பிழை ஏற்பட்டது"));
+    }
   }
   function getSelectedPacketLoanNos() {
     return Array.from(document.querySelectorAll('.pkt-chk:checked')).map(c => c.value);

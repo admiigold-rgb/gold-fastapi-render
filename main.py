@@ -15,7 +15,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 app = FastAPI(
     title="Muthusise Gold Loan Management - Enterprise Core",
-    version="6.2.0"
+    version="6.5.0"
 )
 
 app.add_middleware(
@@ -57,6 +57,28 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
 
         if res_json.get("return") is True:
             return True, "SMS அனுப்பப்பட்டது!"
+        return False, str(res_json.get("message") or res_json)
+    except Exception as e:
+        return False, f"SMS இணைப்புப் பிழை: {str(e)}"
+
+def send_packet_handover_sms(mobile_no: str, otp_code: str, loan_no: str):
+    """நகைக்கடன் பாக்கெட் ஒப்படைப்பிற்கான Fast2SMS DLT OTP (Sender: MTHSEG, Msg ID: 219832)"""
+    try:
+        api_key = os.getenv("FAST2SMS_API_KEY", "eBGQYanRZNKVCpMSg3KB5kUxY2QhDnOjxesh3Hqr7FOG792XV9wut4TPhQia")
+        clean_mobile = "".join(filter(str.isdigit, str(mobile_no)))[-10:]
+        url = "https://www.fast2sms.com/dev/bulkV2"
+        headers = {"authorization": api_key.strip()}
+        payload = {
+            "sender_id": "MTHSEG",
+            "message": "219832",
+            "route": "dlt",
+            "numbers": clean_mobile,
+            "variables_values": f"{otp_code}|{loan_no}"
+        }
+        resp = requests.post(url, data=payload, headers=headers, timeout=10)
+        res_json = resp.json()
+        if res_json.get("return") is True:
+            return True, "பாக்கெட் ஒப்படைப்பு OTP SMS அனுப்பப்பட்டது!"
         return False, str(res_json.get("message") or res_json)
     except Exception as e:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
@@ -184,31 +206,6 @@ class BankTransferPayload(BaseModel):
     receipt_ref_no: Optional[str] = None
     receipt_screenshot: Optional[str] = None
 
-class BankApprovalPayload(BaseModel):
-    transfer_id: int
-    action: str
-    admin_id: int
-    notes: Optional[str] = None
-
-class OrnamentItem(BaseModel):
-    item_type: str
-    item_count: int
-    gross_weight: float
-    net_weight: float
-    purity: str
-
-class NewGoldLoanEntry(BaseModel):
-    customer_id: int
-    branch_id: int
-    loan_no: str
-    scheme_name: str
-    loan_amount: float
-    charges_amount: float = 0.0
-    photo_url: Optional[str] = None
-    items: List[Any] = []
-    transaction_date: Optional[str] = None  # 👈 இந்த வரியைச் சேர்த்துக் கொள்ளவும்
-    visit_id: Optional[int] = None
-
 class DenominationCounts(BaseModel):
     c_500: int = 0
     c_200: int = 0
@@ -254,42 +251,25 @@ class OtpExemptApprovalPayload(BaseModel):
     action: str
     admin_id: int
 
-class CashDayClosePayload(BaseModel):
-    branch_id: int
-    business_date: str
-    closing_balance: float
-    denominations: Dict[str, int]
-    calculated_system_cash: float
-    staff_id: int
+class ExpenseApprovalPayload(BaseModel):
+    expense_id: int
+    action: str
+    admin_id: int
+
+class TreasuryApprovalPayload(BaseModel):
+    transfer_id: int
+    action: str
+    admin_id: int
+
 # ==========================================
 # 🧾 கிளை தினசரி செலவு மேலாண்மை (Branch Expenses)
 # ==========================================
-
-# 1. Pydantic Model
-class BranchExpenseRequest(BaseModel):
-    branch_id: int
-    category: str
-    amount: float
-    payment_mode: str = "CASH"
-    reason: Optional[str] = None
-    bill_photo: Optional[str] = None
-    staff_id: int
-
-class ExpenseApprovalPayload(BaseModel):
-    expense_id: int
-    action: str  # APPROVE / REJECT
-    admin_id: int
-
-
-# 2. கிளை செலவுக் கோரிக்கை  அனுப்பும் API
 @app.post("/api/expense/request")
 def create_branch_expense(data: dict):
     try:
-        # 1. கிளை எண் மற்றும் கவுண்ட்டரில் இருந்து வரும் பரிவர்த்தனை தேதியை முதலில் எடுத்தல்
         branch_id = data.get("branch_id") or 1
         trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
 
-        # 2. நாள் பூட்டப்பட்டுள்ளதா (CLOSED) எனச் சரிபார்த்தல்
         day_chk = (
             supabase.table("test_branch_cash_days")
             .select("status")
@@ -303,7 +283,6 @@ def create_branch_expense(data: dict):
                 detail=f"⚠️ {trans_date} நாளுக்கான மாலை கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது! இந்தப் பழைய தேதியில் புதிய செலவுகளைப் பதிவு செய்ய முடியாது."
             )
 
-        # 3. செலவுப் பதிவு விவரங்கள்
         record = {
             "branch_id": branch_id,
             "category": data.get("category"),
@@ -323,7 +302,6 @@ def create_branch_expense(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"செலவு பதிவு பிழை: {str(e)}")
 
-# 3. தலைமையகத்தில் நிலுவையில் உள்ள செலவுகளை எடுக்கும் API
 @app.get("/api/hq/pending-expenses")
 def get_pending_expenses():
     try:
@@ -346,8 +324,6 @@ def get_pending_expenses():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# 4. தலைமையகம் செலவுக்கு ஒப்புதல் அளிக்கும் API
 @app.post("/api/hq/approve-expense")
 def approve_branch_expense(data: ExpenseApprovalPayload):
     try:
@@ -371,7 +347,7 @@ def serve_ui():
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Enterprise API v6.2"}
+    return {"status": "active", "service": "Enterprise API v6.5"}
 
 # 1. Staff Login
 @app.post("/api/auth/staff-login")
@@ -456,7 +432,6 @@ def get_next_loan_no(branch_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் எண் பிழை: {str(e)}")
         
-# வாடிக்கையாளரின் நடப்பு நகைக்கடன்களை எடுக்கும் API
 @app.get("/api/customer/{customer_id}/active-loans")
 def get_customer_active_loans(customer_id: int):
     try:
@@ -468,8 +443,6 @@ def get_customer_active_loans(customer_id: int):
             .execute()
         
         loans = res.data or []
-        
-        # ஒவ்வொரு கடனுக்கும் முந்தைய வட்டி / பகுதி அசல் வரலாற்றை இணைத்தல்
         for loan in loans:
             history = []
             for tbl_name in ["test_gold_loan_repayments", "test_gold_loan_transactions", "test_loan_repayments"]:
@@ -497,7 +470,6 @@ def create_new_pawn(data: dict):
         branch_id = data.get("branch_id") or 1
         trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
 
-        # அன்றைய நாள் லாக் செய்யப்பட்டுள்ளதா எனச் சரிபார்த்தல்
         check_day = (
             supabase.table("test_branch_cash_days")
             .select("status")
@@ -512,19 +484,17 @@ def create_new_pawn(data: dict):
         if not items:
             raise HTTPException(status_code=400, detail="நகைகளைச் சேர்க்கவும்.")
 
-        # Dictionary-யில் இருந்து எடையைக் கணக்கிடும் சரியான முறை:
         total_gross = sum(float(i.get("gross_weight") if isinstance(i, dict) else getattr(i, "gross_weight", 0) or 0) for i in items)
         total_net = sum(float(i.get("net_weight") if isinstance(i, dict) else getattr(i, "net_weight", 0) or 0) for i in items)
         
         loan_amt = float(data.get("loan_amount") or 0.0)
         charges_amt = float(data.get("charges_amount") or 0.0)
         net_payable = loan_amt - charges_amt
-
-        # நகைப் படம் எடுத்தல்
         ornament_img = data.get("ornament_photo") or data.get("photo_url")
+        loan_no_clean = str(data.get("loan_no") or "").strip()
 
         loan_record = {
-            "loan_no": str(data.get("loan_no") or "").strip(),
+            "loan_no": loan_no_clean,
             "customer_id": data.get("customer_id"),
             "scheme_name": data.get("scheme_name"),
             "total_gross_weight": round(total_gross, 3),
@@ -547,7 +517,6 @@ def create_new_pawn(data: dict):
             raise HTTPException(status_code=500, detail="கடன் பதிவு தோல்வியடைந்தது.")
         new_loan_id = res_loan.data[0]["id"]
 
-        # நகை உருப்படிகள் ஒவ்வொன்றையும் Dictionary முறையில் சேர்த்தல்:
         items_payload = []
         for i in items:
             if isinstance(i, dict):
@@ -576,11 +545,10 @@ def create_new_pawn(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கடன் உருவாக்கம் பிழை: {str(e)}")
 
-# நாள் நிலையைச் சரிபார்த்தல் & தொடக்க இருப்பை முந்தைய நாளிலிருந்து தானாக எடுத்தல் (Auto Rollover)
+# நாள் நிலையைச் சரிபார்த்தல்
 @app.get("/api/cash-day/status")
 def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Optional[str] = None):
     try:
-        # date அல்லது date_str இரண்டில் எதில் தேதி வந்தாலும் அதைப் பயன்படுத்துதல்
         target_date = date or date_str or datetime.now(IST).strftime("%Y-%m-%d")
 
         res = (
@@ -602,7 +570,6 @@ def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Op
                 "data": row
             }
 
-        # தற்போதைய தேதிக்கு இன்னும் பதிவு இல்லை என்றால், முந்தைய நாளின் இறுதி இருப்பை தொடக்க இருப்பாக எடுத்தல்
         prev_day = (
             supabase.table("test_branch_cash_days")
             .select("*")
@@ -635,11 +602,11 @@ def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Op
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"நாள் நிலை அறியும் பிழை: {str(e)}")
+
 # 6. Day Report
 @app.get("/api/cash-day/report")
 def get_cash_day_report(branch_id: int, date_str: str):
     try:
-        # 0. கிளை பெயர் எடுத்தல்
         branch_name = "Aundivilai"
         try:
             br_res = supabase.table("test_branches").select("branch_name").eq("id", branch_id).execute()
@@ -648,7 +615,6 @@ def get_cash_day_report(branch_id: int, date_str: str):
         except Exception:
             pass
 
-        # 1. தொடக்க இருப்பு எடுத்தல்
         opening_bal = 0.0
         try:
             prev_closed = (
@@ -672,24 +638,17 @@ def get_cash_day_report(branch_id: int, date_str: str):
         tot_bank_in = 0.0
         tot_bank_out = 0.0
 
-        # 2. test_customer_visits அட்டவணையில் இருந்து முழுமையாக எடுத்தல்
-        # தேதி வடிகட்டுதலை மிகவும் நம்பகமான முறையில் செய்தல்
         all_visits = []
         try:
-            # விசிட்களை branch_id மற்றும் transaction_date மூலம் எடுத்தல்
             v_res = supabase.table("test_customer_visits").select("*").eq("branch_id", branch_id).execute()
-            
             for row in (v_res.data or []):
-                # தேதி பொருத்தம் பார்த்தல் (transaction_date அல்லது created_at தொடக்கம்)
                 r_date = str(row.get("transaction_date") or "")
                 c_date = str(row.get("created_at") or "")[:10]
-                
                 if r_date == date_str or c_date == date_str:
                     all_visits.append(row)
         except Exception as v_err:
             print("Visits fetch error:", v_err)
 
-        # வாடிக்கையாளர் பெயர்களை எடுத்தல்
         cust_ids = [v["customer_id"] for v in all_visits if v.get("customer_id")]
         cust_map = {}
         if cust_ids:
@@ -704,26 +663,18 @@ def get_cash_day_report(branch_id: int, date_str: str):
             cid = v.get("customer_id")
             cust_info = cust_map.get(cid, {})
             c_name = cust_info.get("name") or "வாடிக்கையாளர்"
-            
-            # வருகை எண் வடிவம் (எ.கா: VST-AUN-0012)
             v_id_val = v.get("id")
             v_code = f"VST-AUN-{int(v_id_val):04d}" if str(v_id_val).isdigit() else f"VST-{v_id_val}"
 
-            # தொகைகள்
             net_amt = float(v.get("net_amount") or 0.0)
             cash_val = float(v.get("cash_amount") or 0.0)
             bank_val = float(v.get("bank_amount") or 0.0)
             direction = str(v.get("direction") or "OUTWARD").upper()
 
-            # cash_amount / bank_amount தனித்துக் குறிப்பிடப்படவில்லை எனில்
             if cash_val == 0.0 and bank_val == 0.0 and net_amt > 0.0:
                 cash_val = net_amt
 
-            c_in = 0.0
-            c_out = 0.0
-            b_in = 0.0
-            b_out = 0.0
-
+            c_in = c_out = b_in = b_out = 0.0
             if direction in ["OUTWARD", "COMPANY_PAYABLE"]:
                 c_out = cash_val
                 b_out = bank_val
@@ -751,7 +702,6 @@ def get_cash_day_report(branch_id: int, date_str: str):
                 "raw_time": created_t or str(v_id_val)
             })
 
-        # 3. கிளை செலவுகள்
         try:
             exp_res = supabase.table("test_branch_expenses").select("*").eq("branch_id", branch_id).eq("status", "APPROVED").execute()
             for e in (exp_res.data or []):
@@ -762,15 +712,12 @@ def get_cash_day_report(branch_id: int, date_str: str):
                     e_mode = str(e.get("payment_mode") or "CASH").upper()
                     e_time = str(e.get("created_at") or "")
                     t_str = e_time[11:16] if len(e_time) >= 16 else "--:--"
-                    
                     if e_mode == "CASH":
                         tot_cash_out += amt
-                        c_chg = -amt
-                        b_chg = 0.0
+                        c_chg, b_chg = -amt, 0.0
                     else:
                         tot_bank_out += amt
-                        b_chg = -amt
-                        c_chg = 0.0
+                        c_chg, b_chg = 0.0, -amt
 
                     unified_entries.append({
                         "time": t_str,
@@ -787,7 +734,6 @@ def get_cash_day_report(branch_id: int, date_str: str):
         except Exception as e_err:
             print("Expenses report err:", e_err)
 
-        # 4. கருவூலப் பரிமாற்றங்கள்
         try:
             tr_res = supabase.table("test_treasury_transfers").select("*").eq("branch_id", branch_id).eq("status", "APPROVED").execute()
             type_names = {
@@ -806,18 +752,12 @@ def get_cash_day_report(branch_id: int, date_str: str):
                     t_str = t_time[11:16] if len(t_time) >= 16 else "--:--"
                     t_title, t_desc = type_names.get(ttype, ('பணப் பரிமாற்றம்', ttype))
 
-                    c_chg = 0.0
-                    g_in = 0.0
-                    g_out = 0.0
-
                     if ttype in ['HQ_TO_BRANCH', 'BANK_TO_CASH']:
                         tot_cash_in += amt
-                        c_chg = amt
-                        g_in = amt
+                        c_chg, g_in, g_out = amt, amt, 0.0
                     else:
                         tot_cash_out += amt
-                        c_chg = -amt
-                        g_out = amt
+                        c_chg, g_in, g_out = -amt, 0.0, amt
 
                     unified_entries.append({
                         "time": t_str,
@@ -854,7 +794,6 @@ def get_cash_day_report(branch_id: int, date_str: str):
 @app.get("/api/cash-day/next-business-date")
 def get_next_business_date(branch_id: int):
     try:
-        # கடைசியாகப் பூட்டப்பட்ட (CLOSED) நாளை எடுத்தல்
         last_closed = (
             supabase.table("test_branch_cash_days")
             .select("business_date")
@@ -870,7 +809,6 @@ def get_next_business_date(branch_id: int):
             next_date = (last_dt + timedelta(days=1)).strftime("%Y-%m-%d")
             return {"status": "success", "suggested_date": next_date, "last_closed_date": last_date_str}
         else:
-            # இதுவரை எந்த நாளும் பூட்டப்படவில்லை எனில் மிகப்பழைய பரிவர்த்தனை நாள் அல்லது இன்றைய நாள்
             today_str = datetime.now(IST).strftime("%Y-%m-%d")
             return {"status": "success", "suggested_date": today_str, "last_closed_date": None}
     except Exception as e:
@@ -879,7 +817,6 @@ def get_next_business_date(branch_id: int):
 @app.get("/api/cash-day/validate-date-sequence")
 def validate_date_sequence(branch_id: int, selected_date: str):
     try:
-        # கடைசியாகப் பூட்டப்பட்ட நாள்
         last_closed = (
             supabase.table("test_branch_cash_days")
             .select("business_date")
@@ -889,28 +826,22 @@ def validate_date_sequence(branch_id: int, selected_date: str):
             .limit(1)
             .execute()
         )
-        
         if last_closed.data:
             last_date_str = last_closed.data[0]["business_date"]
             last_dt = datetime.strptime(last_date_str, "%Y-%m-%d")
             allowed_dt = last_dt + timedelta(days=1)
             allowed_date_str = allowed_dt.strftime("%Y-%m-%d")
-            
             sel_dt = datetime.strptime(selected_date, "%Y-%m-%d")
-
-            # பூட்டப்பட்ட நாளுக்கு அடுத்த நாளைத் தவிர எதிர்காலத் தேதிகளுக்குத் தாவினால் தடுத்தல்
             if sel_dt > allowed_dt:
                 return {
                     "is_valid": False,
                     "allowed_date": allowed_date_str,
-                    "message": f"⚠️ தொடர் நாள் விதிமீறல்: {last_date_str} நாளுக்குப் பிறகு அடுத்த வேலை நாளான {allowed_date_str}-ஐ மட்டுமே முடிக்க முடியும். தாவிச் சென்று {selected_date}-ல் பணியாற்ற முடியாது!"
+                    "message": f"⚠️ தொடர் நாள் விதிமீறல்: {last_date_str} நாளுக்குப் பிறகு அடுத்த வேலை நாளான {allowed_date_str}-ஐ மட்டுமே முடிக்க முடியும்."
                 }
-        
         return {"is_valid": True, "message": "அனுமதிக்கப்பட்டது"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 1. மாலை கணக்கு முடித்தல் (Day Close)
 @app.post("/api/cash-day/close")
 def close_cash_day(data: dict):
     try:
@@ -921,15 +852,13 @@ def close_cash_day(data: dict):
         staff_id = data.get("staff_id") or 1
         denoms = data.get("denominations") or {}
 
-        # 👈 தாள்கள் தொகை கணினியின்படி சரியாக இல்லையெனில் நிராகரித்தல் (Strict Zero Difference Rule)
         diff = round(closing_balance - calc_sys_cash, 2)
         if diff != 0.0:
             raise HTTPException(
                 status_code=400, 
-                detail=f"கணினியின்படி இருக்க வேண்டிய ரொக்கமும் (₹{calc_sys_cash:,.2f}) தாள்களின் தொகையும் (₹{closing_balance:,.2f}) சமமாக இல்லை! வேறுபாடு: ₹{diff:,.2f}. சமமாக இருந்தால் மட்டுமே நாளைப் பூட்ட முடியும்."
+                detail=f"கணினியின்படி இருக்க வேண்டிய ரொக்கமும் (₹{calc_sys_cash:,.2f}) தாள்களின் தொகையும் (₹{closing_balance:,.2f}) சமமாக இல்லை!"
             )
 
-        # 1. முந்தைய நாளின் இறுதி இருப்பை (Closing Balance) எடுத்தல்
         opening = 0.0
         try:
             prev_day_res = (
@@ -946,7 +875,6 @@ def close_cash_day(data: dict):
         except Exception as pe:
             print("Previous closing balance fetch error:", pe)
 
-        # 2. அன்றைய நாள் பதிவு ஏற்கனவே உள்ளதா எனப் பார்த்தல்
         day_res = (
             supabase.table("test_branch_cash_days")
             .select("id, status")
@@ -959,21 +887,17 @@ def close_cash_day(data: dict):
             raise HTTPException(status_code=400, detail=f"{business_date} நாளுக்கான கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED).")
 
         now_time = datetime.now(IST).isoformat()
-
         if day_res.data:
-            # ஏற்கனவே வரிசை இருந்தால் update செய்தல்
             day_id = day_res.data[0]["id"]
-            update_data = {
+            supabase.table("test_branch_cash_days").update({
                 "closing_balance": closing_balance,
                 "calculated_system_cash": calc_sys_cash,
                 "status": "CLOSED",
                 "closed_by": staff_id,
                 "closed_at": now_time
-            }
-            supabase.table("test_branch_cash_days").update(update_data).eq("id", day_id).execute()
+            }).eq("id", day_id).execute()
         else:
-            # காலை பதிவு இல்லையென்றாலும், புதிய பதிவை உருவாக்கி உடனே பூட்டுதல்
-            new_record = {
+            supabase.table("test_branch_cash_days").insert({
                 "branch_id": branch_id,
                 "business_date": business_date,
                 "opening_balance": opening,
@@ -984,28 +908,25 @@ def close_cash_day(data: dict):
                 "closed_by": staff_id,
                 "created_at": now_time,
                 "closed_at": now_time
-            }
-            supabase.table("test_branch_cash_days").insert(new_record).execute()
+            }).execute()
 
-        # 3. தாள்கள் டினாமினேஷன் இருப்பின் சேமித்தல்
         if denoms:
-            denom_record = {
-                "branch_id": branch_id,
-                "business_date": business_date,
-                "record_type": "DAY_CLOSE",
-                "c_500": denoms.get("c_500", 0),
-                "c_200": denoms.get("c_200", 0),
-                "c_100": denoms.get("c_100", 0),
-                "c_50": denoms.get("c_50", 0),
-                "c_20": denoms.get("c_20", 0),
-                "c_10": denoms.get("c_10", 0),
-                "c_coins": denoms.get("c_coins", 0),
-                "total_amount": closing_balance
-            }
             try:
-                supabase.table("test_cash_denominations").insert(denom_record).execute()
-            except Exception as de:
-                print("Denominations save note:", de)
+                supabase.table("test_cash_denominations").insert({
+                    "branch_id": branch_id,
+                    "business_date": business_date,
+                    "record_type": "DAY_CLOSE",
+                    "c_500": denoms.get("c_500", 0),
+                    "c_200": denoms.get("c_200", 0),
+                    "c_100": denoms.get("c_100", 0),
+                    "c_50": denoms.get("c_50", 0),
+                    "c_20": denoms.get("c_20", 0),
+                    "c_10": denoms.get("c_10", 0),
+                    "c_coins": denoms.get("c_coins", 0),
+                    "total_amount": closing_balance
+                }).execute()
+            except Exception:
+                pass
 
         return {
             "status": "success",
@@ -1037,11 +958,9 @@ def get_branch_visits(branch_id: int = Query(...), date: str = Query(...)):
 @app.post("/api/customer/visit")
 def log_customer_visit(data: CustomerVisitEntry):
     try:
-        # கவுண்ட்டரில் இருந்து வரும் தேதி அல்லது தற்போதைய இந்தியத் தேதி
         selected_date = getattr(data, 'transaction_date', None) or datetime.now(IST).strftime("%Y-%m-%d")
         now_ist = datetime.now(IST).isoformat()
 
-        # நாள் லாக் செய்யப்பட்டுள்ளதா எனப் பார்த்தல்
         day_check = (
             supabase.table("test_branch_cash_days")
             .select("status")
@@ -1052,7 +971,7 @@ def log_customer_visit(data: CustomerVisitEntry):
         if day_check.data and day_check.data[0].get("status") == "CLOSED":
             raise HTTPException(
                 status_code=400, 
-                detail=f"தேதி {selected_date}-க்கான மாலை கணக்கு முடிக்கப்பட்டுவிட்டது (Day Closed). புதிய பரிவர்த்தனைகள் செய்ய முடியாது!"
+                detail=f"தேதி {selected_date}-க்கான மாலை கணக்கு முடிக்கப்பட்டுவிட்டது (Day Closed)."
             )
 
         record = {
@@ -1087,15 +1006,12 @@ def request_otp_exemption(data: OtpExemptRequestPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"விலக்குக் கோரிக்கை பிழை: {str(e)}")
 
-
 @app.get("/api/hq/pending-otp-exemptions")
 def get_pending_otp_exemptions():
     try:
-        # வாடிக்கையாளர் விவரங்களை தனியாக எடுத்தல்
         cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
         cust_map = {c["id"]: c for c in (cust_res.data or [])}
 
-        # கோரிக்கைகளை எடுத்தல்
         res = (
             supabase.table("test_customer_visits")
             .select("*")
@@ -1104,15 +1020,12 @@ def get_pending_otp_exemptions():
             .execute()
         )
         visits_data = res.data or []
-
-        # வாடிக்கையாளர் பெயரை இணைத்தல்
         for v in visits_data:
             c = cust_map.get(v.get("customer_id"), {})
             v["test_customers"] = {
                 "name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"),
                 "mobile": c.get("mobile", "-")
             }
-
         return {"status": "success", "data": visits_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OTP விலக்கு பட்டியல் பிழை: {str(e)}")
@@ -1120,52 +1033,38 @@ def get_pending_otp_exemptions():
 @app.get("/api/hq/visit-details/{visit_id}")
 def get_visit_details_for_hq(visit_id: int):
     try:
-        # 1. வருகை விபரம் எடுத்தல்
         visit_res = supabase.table("test_customer_visits").select("*").eq("id", visit_id).execute()
         if not visit_res.data:
             raise HTTPException(status_code=404, detail="வருகை விபரம் கிடைக்கவில்லை")
         visit = visit_res.data[0]
 
-        # 2. வாடிக்கையாளர் விபரம்
         cust_res = supabase.table("test_customers").select("*").eq("id", visit["customer_id"]).execute()
         customer = cust_res.data[0] if cust_res.data else {}
 
-        # 3. கிளை விபரம்
         branch_res = supabase.table("test_branches").select("branch_name, branch_code").eq("id", visit.get("branch_id", 1)).execute()
         branch = branch_res.data[0] if branch_res.data else {}
 
-        # 4. அந்த குறிப்பிட்ட வருகையில் மட்டும் மேற்கொள்ளப்பட்ட கடன் விபரம் (சரியான தொகையுடன் பொருத்துதல்)
         v_net_amt = float(visit.get("net_amount") or 0.0)
-        
         loans_query = (
             supabase.table("test_gold_loans")
             .select("*, test_gold_loan_items(*)")
             .eq("customer_id", visit["customer_id"])
         )
-        
-        # வருகை நேரம் அல்லது அதற்குப் பின் உருவான கடன்களை எடுத்தல்
         if visit.get("created_at"):
             loans_query = loans_query.gte("created_at", visit["created_at"])
-            
         raw_loans = loans_query.order("id", desc=True).limit(5).execute().data or []
 
-        # வருகைத் தொகையுடன் (net_amount) கச்சிதமாகப் பொருந்தும் கடனை மட்டும் தேர்வு செய்தல்
         matched_loans = []
         if raw_loans:
             for l in raw_loans:
-                # கடன் தொகையோ அல்லது கழிவுகள் போக உள்ள தொகையோ வருகைத் தொகையுடன் ஒத்துப்போகிறதா எனப் பார்த்தல்
                 l_amt = float(l.get("loan_amount") or 0.0)
                 l_net = float(l.get("net_payable_amount") or 0.0)
-                
                 if v_net_amt > 0 and (abs(l_amt - v_net_amt) < 1000 or abs(l_net - v_net_amt) < 1000):
                     matched_loans = [l]
                     break
-            
-            # பொருந்தும் கடன் இல்லை எனில், அந்த வருகை நேரத்தில் உருவான கடைசி 1 கடனை மட்டும் எடுத்தல்
             if not matched_loans:
                 matched_loans = [raw_loans[0]]
 
-        # 5. பணத் தீர்வு மற்றும் ரொக்கத் தாள்கள் விபரம்
         settle_res = (
             supabase.table("test_transaction_settlements")
             .select("*, test_cash_denominations(*)")
@@ -1176,7 +1075,6 @@ def get_visit_details_for_hq(visit_id: int):
         )
         settlement = settle_res.data[0] if settle_res.data else {}
 
-        # 6. அனுப்பப்பட்ட OTP விபரம்
         otp_res = (
             supabase.table("test_transaction_otps")
             .select("*")
@@ -1223,7 +1121,7 @@ def check_otp_exemption_status(visit_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 10. Settle with OTP
+# 10. Settle with OTP (+ Automatic Gold Packet Lifecycle Integration)
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     otp_code = str(random.randint(100000, 999999))
@@ -1249,28 +1147,17 @@ def settle_with_otp(data: SettleWithOtpPayload):
         if day_status_res.data and day_status_res.data[0]["status"] == "CLOSED":
             raise HTTPException(status_code=400, detail="தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் பணப் பரிவர்த்தனை செய்ய முடியாது!")
 
-        # 🔒 தீவிரமான சர்வர் பக்க வட்டி தள்ளுபடி ஒப்புதல் சரிபார்ப்பு
         for item in (data.cart_items or []):
             if item.get("is_repayment") is True:
                 meta = item.get("repayment_meta") or {}
                 disc_amt = float(meta.get("discount_amount", 0))
                 req_id = item.get("rebate_req_id")
-                
-                # தள்ளுபடி தொகை கொடுக்கப்பட்டிருந்தால் கோரிக்கை ஐடி கட்டாயம் இருக்க வேண்டும் மற்றும் HQ Approved ஆக இருக்க வேண்டும்
                 if disc_amt > 0:
                     if not req_id:
                         raise HTTPException(status_code=400, detail="பாதுகாப்புப் பிழை: வட்டி தள்ளுபடி கோரிக்கை எண் (Rebate ID) காணப்படவில்லை!")
-                    
                     rebate_check = supabase.table("test_rebate_approvals").select("status").eq("id", req_id).execute()
-                    if not rebate_check.data:
-                        raise HTTPException(status_code=400, detail="பாதுகாப்புப் பிழை: முறையான வட்டி தள்ளுபடி கோரிக்கை தரவுத்தளத்தில் இல்லை.")
-                    
-                    status = rebate_check.data[0].get("status")
-                    if status != "APPROVED":
-                        raise HTTPException(
-                            status_code=400, 
-                            detail=f"❌ பரிவர்த்தனை நிராகரிக்கப்பட்டது: இந்த வட்டி தள்ளுபடிக்குத் தலைமையக ஒப்புதல் கிடைக்கவில்லை! (தற்போதைய நிலை: {status})"
-                        )
+                    if not rebate_check.data or rebate_check.data[0].get("status") != "APPROVED":
+                        raise HTTPException(status_code=400, detail="❌ பரிவர்த்தனை நிராகரிக்கப்பட்டது: வட்டி தள்ளுபடிக்குத் தலைமையக ஒப்புதல் கிடைக்கவில்லை!")
 
         if not data.is_exempted:
             otp_query = (
@@ -1316,7 +1203,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 "total_calculated_cash": data.cash_amount
             }).execute()
 
-        # visit_id இருந்தால் அதை நேரடியாக மாற்றுதல், இல்லாவிட்டால் வாடிக்கையாளரின் நடப்பு வருகையைத் தேடி மாற்றுதல்
         target_visit_id = data.visit_id
         if not target_visit_id:
             last_visit = (
@@ -1341,8 +1227,37 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை நிறைவுற்றது"
             }).eq("id", target_visit_id).execute()
 
-        # கூடையில் உள்ள வட்டி, பகுதி அசல் மற்றும் கடன் முடிப்பு நடவடிக்கைகளைச் செயல்படுத்துதல்
         for item in (data.cart_items or []):
+            # 🔐 0. புதிய அடகுக் கடனுக்கு OTP சரிபார்க்கப்பட்டவுடன் தானாகவே பாக்கெட் பதிவு உருவாக்குதல்
+            if not item.get("is_repayment") and not item.get("is_gold_purchase") and not item.get("is_gold_sale") and not item.get("is_gss_account") and not item.get("is_rd_account") and not item.get("is_si_account") and item.get("loan_no"):
+                try:
+                    l_no = str(item.get("loan_no")).strip()
+                    l_id = item.get("loan_id")
+                    exist_pkt = supabase.table("test_gold_packets").select("id").eq("loan_no", l_no).execute()
+                    if not exist_pkt.data:
+                        pkt_ins = supabase.table("test_gold_packets").insert({
+                            "loan_id": l_id,
+                            "loan_no": l_no,
+                            "customer_id": data.customer_id,
+                            "branch_id": data.branch_id,
+                            "packet_status": "AT_BRANCH_NEW",
+                            "current_location": "BRANCH",
+                            "is_loan_closed": False,
+                            "is_handed_over": False,
+                            "audit_notes": "புதிய அடகு OTP சரிபார்க்கப்பட்டு கிளையில் பாக்கெட் உருவாக்கப்பட்டது"
+                        }).execute()
+                        if pkt_ins.data:
+                            supabase.table("test_gold_packet_movements").insert({
+                                "packet_id": pkt_ins.data[0]["id"],
+                                "loan_no": l_no,
+                                "action_type": "PACKET_CREATED_AT_BRANCH",
+                                "from_location": "CUSTOMER",
+                                "to_location": "BRANCH",
+                                "remarks": "புதிய நகைக்கடன் அடகு மூலம் பாக்கெட் உருவாக்கப்பட்டது"
+                            }).execute()
+                except Exception as pkt_err:
+                    print("Packet creation note:", pkt_err)
+
             if item.get("is_repayment") is True:
                 loan_id = item.get("loan_id")
                 action_type = item.get("action_type")
@@ -1352,7 +1267,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 prin_paid = float(meta.get("principal_paid", 0))
                 disc_amt = float(meta.get("discount_amount", 0))
 
-                # 1. பரிவர்த்தனை வரலாற்றில் பதிவு செய்தல்
                 supabase.table("test_loan_repayments").insert({
                     "visit_id": target_visit_id,
                     "loan_id": loan_id,
@@ -1369,7 +1283,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     "transaction_date": txn_date
                 }).execute()
 
-                # 2. கடனின் தற்போதைய நிலுவை & நிலையைப் புதுப்பித்தல்
                 loan_res = supabase.table("test_gold_loans").select("*").eq("id", loan_id).execute()
                 if loan_res.data:
                     loan_row = loan_res.data[0]
@@ -1383,10 +1296,17 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     if action_type == "FULL_CLOSURE" or new_prin <= 0:
                         update_fields["status"] = "CLOSED"
                         update_fields["closed_date"] = txn_date
+                        # 🔐 கடன் முடிந்ததைப் பாக்கெட் அட்டவணையிலும் பதிவு செய்தல் (ஒப்படைப்பு நிலுவை அறிக்கைக்கு)
+                        try:
+                            supabase.table("test_gold_packets").update({
+                                "is_loan_closed": True,
+                                "updated_at": datetime.now(IST).isoformat()
+                            }).eq("loan_no", loan_row["loan_no"]).execute()
+                        except Exception as pe:
+                            print("Packet close flag update note:", pe)
 
                     supabase.table("test_gold_loans").update(update_fields).eq("id", loan_id).execute()
 
-            # 🪙 3. நகை வாங்குதல் (GOLD_PURCHASE - GP) கூடையில் இருந்தால் சேமித்தல்
             elif item.get("is_gold_purchase") is True:
                 gp_meta = item.get("gp_meta") or {}
                 gp_items = gp_meta.get("items") or []
@@ -1420,7 +1340,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                         total_cnt = len(gp_items)
                         items_to_save = []
                         for idx, g_item in enumerate(gp_items, start=1):
-                            # ஒவ்வொரு நகைக்கும் AVL/GP/0001/1/4 வடிவத்தில் டேக் எண்
                             tag_no = f"{final_gp_no}/{idx}/{total_cnt}"
                             items_to_save.append({
                                 "purchase_id": new_gp_id,
@@ -1437,7 +1356,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             })
                         supabase.table("test_gold_purchase_items").insert(items_to_save).execute()
 
-            # 💍 4. நகை விற்பனை (GOLD_SALE - GS) கூடையில் இருந்தால் சேமித்தல்
             elif item.get("is_gold_sale") is True:
                 gs_meta = item.get("gs_meta") or {}
                 stock_item_id = gs_meta.get("stock_item_id")
@@ -1463,10 +1381,8 @@ def settle_with_otp(data: SettleWithOtpPayload):
                         "total_sale_amount": float(gs_meta.get("total_sale_amount") or 0)
                     }
                     supabase.table("test_gold_sales").insert(gs_record).execute()
-                    # விற்கப்பட்ட நகையை இருப்பிலிருந்து SOLD என மாற்றுதல்
                     supabase.table("test_gold_purchase_items").update({"stock_status": "SOLD"}).eq("id", stock_item_id).execute()
 
-            # 🪙 5. நகை சேமிப்புத் திட்டம் (GSS Account / Installment / Maturity Close) கூடையில் இருந்தால் சேமித்தல்
             elif item.get("is_gss_account") is True:
                 gss_meta = item.get("gss_meta") or {}
                 mode = gss_meta.get("mode", "NEW")
@@ -1479,18 +1395,14 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 maturity_opt = gss_meta.get("maturity_option", "GOLD")
 
                 if mode == "CLOSE":
-                    # திட்டத்தை முடித்தல் (Maturity Closure - GOLD or CASH)
                     acc_id = gss_meta.get("account_id")
                     if acc_id:
                         supabase.table("test_customer_savings_accounts").update({
                             "status": "CLOSED",
                             "maturity_option": gss_meta.get("close_type", "GOLD")
                         }).eq("id", acc_id).execute()
-
                 else:
-                    # புதிய கணக்கு அல்லது தவணை செலுத்துதல்
                     acc_res = supabase.table("test_customer_savings_accounts").select("*").eq("gss_no", gss_no).execute()
-
                     if acc_res.data:
                         acc_row = acc_res.data[0]
                         account_id = acc_row["id"]
@@ -1498,7 +1410,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                         old_wt = float(acc_row.get("total_accumulated_weight") or 0)
                         old_penalty = float(acc_row.get("total_penalty_accrued") or 0)
 
-                        # தவணைப் பதிவு
                         supabase.table("test_savings_transactions").insert({
                             "account_id": account_id,
                             "visit_id": target_visit_id,
@@ -1510,15 +1421,12 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             "receipt_no": f"{gss_no}/INST"
                         }).execute()
 
-                        # மொத்த தொகை, எடை & தாமத அபராதம் சேமித்தல் (அபராதம் முதிர்வில் கழிக்கப்படும்)
                         supabase.table("test_customer_savings_accounts").update({
                             "total_amount_paid": round(old_total + init_amount, 2),
                             "total_accumulated_weight": round(old_wt + wt_credited, 3),
                             "total_penalty_accrued": round(old_penalty + penalty_amt, 2)
                         }).eq("id", account_id).execute()
-
                     else:
-                        # புதிய GSS கணக்கைத் தொடங்குதல்
                         new_acc_res = supabase.table("test_customer_savings_accounts").insert({
                             "gss_no": gss_no,
                             "customer_id": data.customer_id,
@@ -1545,7 +1453,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 "receipt_no": f"{gss_no}/NEW"
                             }).execute()
 
-            # 🪙 6. தொடர்வைப்பு கூடையில் இருந்தால் சேமித்தல்
             elif item.get("is_rd_account") is True:
                 rd_meta = item.get("rd_meta") or {}
                 mode = rd_meta.get("mode", "NEW")
@@ -1556,9 +1463,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 if mode == "CLOSE":
                     acc_id = rd_meta.get("account_id")
                     if acc_id:
-                        supabase.table("test_customer_rd_accounts").update({
-                            "status": "CLOSED"
-                        }).eq("id", acc_id).execute()
+                        supabase.table("test_customer_rd_accounts").update({"status": "CLOSED"}).eq("id", acc_id).execute()
                 else:
                     acc_res = supabase.table("test_customer_rd_accounts").select("*").eq("rd_no", rd_no).execute()
                     if acc_res.data:
@@ -1598,15 +1503,14 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 "receipt_no": f"{rd_no}/NEW"
                             }).execute()
 
-            # 💎 Standard Investment (SI) பரிவர்த்தனைகளைப் பதிதல்
-            if item.get("is_si_account") and item.get("si_meta"):
+            elif item.get("is_si_account") and item.get("si_meta"):
                 sm = item["si_meta"]
                 s_mode = sm.get("mode")
                 if s_mode == "NEW":
                     supabase.table("test_si_accounts").insert({
                         "si_no": sm.get("si_no"),
-                        "customer_id": payload.customer_id,
-                        "branch_id": payload.branch_id,
+                        "customer_id": data.customer_id,
+                        "branch_id": data.branch_id,
                         "scheme_id": sm.get("scheme_id"),
                         "principal_amount": sm.get("principal_amount", 0),
                         "nominees": sm.get("nominees", []),
@@ -1617,10 +1521,10 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     ret_amt = float(sm.get("return_amount", 0))
                     supabase.table("test_si_return_payouts").insert({
                         "si_account_id": acc_id,
-                        "visit_id": payload.visit_id,
-                        "settlement_id": settlement_id,
-                        "voucher_no": f"SIV-{settlement_id}-{acc_id}",
-                        "payout_date": payload.transaction_date,
+                        "visit_id": target_visit_id,
+                        "settlement_id": new_settle_id,
+                        "voucher_no": f"SIV-{new_settle_id}-{acc_id}",
+                        "payout_date": txn_date,
                         "period_label": sm.get("period_label", "Periodic Return"),
                         "return_amount": ret_amt
                     }).execute()
@@ -1631,7 +1535,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     acc_id = sm.get("account_id")
                     supabase.table("test_si_accounts").update({
                         "status": "CLOSED",
-                        "closed_at": datetime.now().isoformat()
+                        "closed_at": datetime.now(IST).isoformat()
                     }).eq("id", acc_id).execute()
 
         return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
@@ -1640,6 +1544,414 @@ def settle_with_otp(data: SettleWithOtpPayload):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தீர்வுப் பிழை: {str(e)}")
 
+# =========================================================================
+# 🔐 நகைக்கடன் பாக்கெட் & லாக்கர் மேலாண்மை (Gold Packet Lifecycle APIs)
+# =========================================================================
+
+@app.get("/api/packets/list")
+def get_gold_packets(branch_id: Optional[int] = None, role: str = "BRANCH"):
+    try:
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        c_map = {c["id"]: c for c in (cust_res.data or [])}
+
+        br_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute()
+        b_map = {b["id"]: b for b in (br_res.data or [])}
+
+        query = supabase.table("test_gold_packets").select("*")
+        if role != "HQ" and branch_id:
+            query = query.eq("branch_id", branch_id)
+        res = query.order("updated_at", desc=True).execute()
+        packets = res.data or []
+        for p in packets:
+            p["test_customers"] = c_map.get(p.get("customer_id"), {"name": "-", "mobile": "-"})
+            p["test_branches"] = b_map.get(p.get("branch_id"), {"branch_name": "-", "branch_code": "BR"})
+        return {"status": "success", "data": packets}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/packets/dispatch-to-hq")
+def dispatch_packets_to_hq(data: dict):
+    try:
+        loan_nos = data.get("loan_nos") or []
+        carrier = str(data.get("carrier_person") or "").strip()
+        staff_id = data.get("staff_id") or 1
+        if not loan_nos or not carrier:
+            raise HTTPException(status_code=400, detail="பாக்கெட்டுகள் மற்றும் கொண்டு செல்பவர் பெயர் அவசியம்.")
+
+        now_t = datetime.now(IST).isoformat()
+        for lno in loan_nos:
+            pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+            if not pkt_res.data:
+                continue
+            pkt = pkt_res.data[0]
+            supabase.table("test_gold_packets").update({
+                "packet_status": "IN_TRANSIT_TO_HQ",
+                "current_location": "TRANSIT",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+
+            supabase.table("test_gold_packet_movements").insert({
+                "packet_id": pkt["id"],
+                "loan_no": lno,
+                "action_type": "DISPATCH_TO_HQ",
+                "from_location": "BRANCH",
+                "to_location": "HQ_VAULT",
+                "carrier_person": carrier,
+                "performed_by": staff_id,
+                "remarks": f"கிளையிலிருந்து HQ-க்கு அனுப்பப்பட்டது (கொண்டு செல்பவர்: {carrier})"
+            }).execute()
+        return {"status": "success", "message": f"{len(loan_nos)} பாக்கெட்டுகள் தலைமையகத்திற்கு அனுப்பப்பட்டன!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/packets/receive-vault")
+def receive_packets_hq_vault(data: dict):
+    try:
+        loan_nos = data.get("loan_nos") or []
+        staff_id = data.get("staff_id") or 1
+        now_t = datetime.now(IST).isoformat()
+        for lno in loan_nos:
+            pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+            if not pkt_res.data:
+                continue
+            pkt = pkt_res.data[0]
+            supabase.table("test_gold_packets").update({
+                "packet_status": "AT_HQ_VAULT",
+                "current_location": "HQ_VAULT",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+
+            supabase.table("test_gold_packet_movements").insert({
+                "packet_id": pkt["id"],
+                "loan_no": lno,
+                "action_type": "HQ_VAULT_VERIFIED",
+                "from_location": "TRANSIT",
+                "to_location": "HQ_VAULT",
+                "verified_by_hq": True,
+                "performed_by": staff_id,
+                "remarks": "தலைமையக லாக்கரில் பாக்கெட் வாரியாகச் சரிபார்க்கப்பட்டு வைக்கப்பட்டது"
+            }).execute()
+        return {"status": "success", "message": f"{len(loan_nos)} பாக்கெட்டுகள் சரிபார்க்கப்பட்டு HQ லாக்கரில் வைக்கப்பட்டன."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/packets/bank-pledge")
+def pledge_packets_in_bank(data: dict):
+    try:
+        loan_nos = data.get("loan_nos") or []
+        bank_name = str(data.get("bank_name") or "").strip()
+        bank_loan_ref = str(data.get("bank_loan_ref") or "-").strip()
+        total_received = float(data.get("total_received_amount") or 0)
+        bank_charges = float(data.get("bank_charges") or 0)
+        comp_bank_id = int(data.get("company_bank_id") or 1)
+        staff_id = data.get("staff_id") or 1
+
+        if not loan_nos or not bank_name or total_received <= 0:
+            raise HTTPException(status_code=400, detail="வங்கிப் பெயர், தொகை மற்றும் பாக்கெட்டுகளைச் சரியாக உள்ளிடவும்.")
+
+        net_credit = total_received - bank_charges
+        now_t = datetime.now(IST).isoformat()
+
+        for lno in loan_nos:
+            pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+            if not pkt_res.data:
+                continue
+            pkt = pkt_res.data[0]
+            supabase.table("test_gold_packets").update({
+                "packet_status": "PLEDGED_IN_BANK",
+                "current_location": "BANK_LOCKER",
+                "bank_name": bank_name,
+                "bank_loan_ref": bank_loan_ref,
+                "bank_pledge_amount": round(total_received / len(loan_nos), 2),
+                "bank_charges_amount": round(bank_charges / len(loan_nos), 2),
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+
+            supabase.table("test_gold_packet_movements").insert({
+                "packet_id": pkt["id"],
+                "loan_no": lno,
+                "action_type": "BANK_LOCKER_PLEDGE",
+                "from_location": "HQ_VAULT",
+                "to_location": "BANK_LOCKER",
+                "company_bank_id": comp_bank_id,
+                "amount_involved": total_received,
+                "charges_or_interest": bank_charges,
+                "verified_by_hq": True,
+                "performed_by": staff_id,
+                "remarks": f"வங்கி லாக்கரில் வைக்கப்பட்டது ({bank_name} - {bank_loan_ref})"
+            }).execute()
+
+        # நிறுவன வங்கிக் கணக்கில் நிகரத் தொகையை வரவு வைத்தல்
+        bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
+        if bk_res.data:
+            bk_row = bk_res.data[0]
+            for bal_col in ["current_balance", "balance", "opening_balance"]:
+                if bal_col in bk_row:
+                    old_bal = float(bk_row.get(bal_col) or 0.0)
+                    supabase.table("test_company_banks").update({bal_col: old_bal + net_credit}).eq("id", comp_bank_id).execute()
+                    break
+
+        return {"status": "success", "message": f"பாக்கெட்டுகள் சரிபார்க்கப்பட்டு வங்கி லாக்கரில் வைக்கப்பட்டன! ₹{net_credit:,.2f} நிறுவன வங்கியில் வரவு வைக்கப்பட்டது."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/packets/bank-redeem")
+def redeem_packets_from_bank(data: dict):
+    try:
+        loan_nos = data.get("loan_nos") or []
+        prin_paid = float(data.get("principal_paid") or 0)
+        int_paid = float(data.get("interest_paid") or 0)
+        comp_bank_id = int(data.get("company_bank_id") or 1)
+        staff_id = data.get("staff_id") or 1
+
+        if not loan_nos:
+            raise HTTPException(status_code=400, detail="மீட்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.")
+
+        total_debit = prin_paid + int_paid
+        now_t = datetime.now(IST).isoformat()
+
+        for lno in loan_nos:
+            pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+            if not pkt_res.data:
+                continue
+            pkt = pkt_res.data[0]
+            supabase.table("test_gold_packets").update({
+                "packet_status": "AT_HQ_VAULT",
+                "current_location": "HQ_VAULT",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+
+            supabase.table("test_gold_packet_movements").insert({
+                "packet_id": pkt["id"],
+                "loan_no": lno,
+                "action_type": "BANK_LOCKER_REDEEM",
+                "from_location": "BANK_LOCKER",
+                "to_location": "HQ_VAULT",
+                "company_bank_id": comp_bank_id,
+                "amount_involved": prin_paid,
+                "charges_or_interest": int_paid,
+                "verified_by_hq": True,
+                "performed_by": staff_id,
+                "remarks": f"வங்கி லாக்கரிலிருந்து மீட்கப்பட்டு பாக்கெட் வாரியாகச் சரிபார்க்கப்பட்டது (அசல்: ₹{prin_paid}, வட்டி: ₹{int_paid})"
+            }).execute()
+
+        bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
+        if bk_res.data:
+            bk_row = bk_res.data[0]
+            for bal_col in ["current_balance", "balance", "opening_balance"]:
+                if bal_col in bk_row:
+                    old_bal = float(bk_row.get(bal_col) or 0.0)
+                    supabase.table("test_company_banks").update({bal_col: old_bal - total_debit}).eq("id", comp_bank_id).execute()
+                    break
+
+        return {"status": "success", "message": f"வங்கியிலிருந்து மீட்கப்பட்டு HQ-வில் சரிபார்க்கப்பட்டது! ₹{total_debit:,.2f} நிறுவன வங்கியிலிருந்து கழிக்கப்பட்டது."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/packets/special-request")
+def create_packet_special_request(data: dict):
+    try:
+        lno = str(data.get("loan_no") or "").strip()
+        req_type = str(data.get("request_type") or "").strip()
+        new_lno = str(data.get("new_loan_no") or "").strip()
+        remarks = str(data.get("remarks") or "").strip()
+
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் விபரம் கிடைக்கவில்லை")
+        pkt = pkt_res.data[0]
+        now_t = datetime.now(IST).isoformat()
+
+        if req_type == "REQUEST_FROM_HQ":
+            supabase.table("test_gold_packets").update({
+                "packet_status": "REQUESTED_BY_BRANCH",
+                "audit_notes": remarks or "கிளையிலிருந்து பாக்கெட் கோரப்பட்டுள்ளது",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+            return {"status": "success", "message": "பாக்கெட் கேட்டு தலைமையகத்திற்கு வேண்டுகோள் அனுப்பப்பட்டது."}
+
+        supabase.table("test_gold_packets").update({
+            "pending_request_type": req_type,
+            "pending_request_data": {"new_loan_no": new_lno, "remarks": remarks},
+            "pending_request_status": "PENDING",
+            "updated_at": now_t
+        }).eq("id", pkt["id"]).execute()
+
+        return {"status": "success", "message": "தலைமையக ஒப்புதலுக்குக் கோரிக்கை அனுப்பப்பட்டது."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/packets/action")
+def hq_packet_action(data: dict):
+    try:
+        lno = str(data.get("loan_no") or "").strip()
+        act_type = str(data.get("action_type") or "").strip()
+        carrier = str(data.get("carrier_person") or "").strip()
+        admin_id = data.get("admin_id") or 1
+
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
+        pkt = pkt_res.data[0]
+        now_t = datetime.now(IST).isoformat()
+
+        if act_type == "SEND_TO_BRANCH":
+            if pkt.get("current_location") == "BANK_LOCKER":
+                raise HTTPException(status_code=400, detail="இந்தப் பாக்கெட் வங்கி லாக்கரில் உள்ளது! முதலில் வங்கியிலிருந்து மீட்ட பின்னரே கிளைக்கு அனுப்ப முடியும்.")
+            supabase.table("test_gold_packets").update({
+                "packet_status": "IN_TRANSIT_TO_BRANCH",
+                "current_location": "TRANSIT",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+            supabase.table("test_gold_packet_movements").insert({
+                "packet_id": pkt["id"],
+                "loan_no": lno,
+                "action_type": "DISPATCH_TO_BRANCH",
+                "from_location": "HQ_VAULT",
+                "to_location": "BRANCH",
+                "carrier_person": carrier,
+                "performed_by": admin_id,
+                "remarks": f"தலைமையகத்திலிருந்து கிளைக்கு அனுப்பப்பட்டது (கொண்டு செல்பவர்: {carrier})"
+            }).execute()
+            return {"status": "success", "message": f"பாக்கெட் ({lno}) கிளைக்கு அனுப்பப்பட்டது."}
+
+        if act_type == "APPROVE_SPECIAL":
+            r_type = pkt.get("pending_request_type")
+            r_data = pkt.get("pending_request_data") or {}
+            if r_type == "DIRECT_RELEASE":
+                supabase.table("test_gold_packets").update({
+                    "packet_status": "AT_BRANCH_FOR_RELEASE",
+                    "pending_request_status": "APPROVED",
+                    "audit_notes": "HQ அனுமதியுடன் கிளையிலேயே நேரடியாக விடுவிக்க அனுமதிக்கப்பட்டது",
+                    "updated_at": now_t
+                }).eq("id", pkt["id"]).execute()
+            elif r_type == "RETURN_UNCLAIMED":
+                supabase.table("test_gold_packets").update({
+                    "packet_status": "IN_TRANSIT_TO_HQ",
+                    "current_location": "TRANSIT",
+                    "pending_request_status": "APPROVED",
+                    "audit_notes": "வாடிக்கையாளர் வராததால் HQ ஒப்புதலுடன் திரும்ப அனுப்பப்பட்டது",
+                    "updated_at": now_t
+                }).eq("id", pkt["id"]).execute()
+            elif r_type == "REPLEDGE_TRANSFER":
+                new_lno = str(r_data.get("new_loan_no") or "").strip()
+                old_lno = pkt["loan_no"]
+                note = f"பழைய கடன் ({old_lno}) முடித்து, புதிய கடன் ({new_lno})-க்கு மறு-அடகு மாற்றப்பட்டது."
+                supabase.table("test_gold_packets").update({
+                    "loan_no": new_lno,
+                    "previous_loan_no": old_lno,
+                    "is_loan_closed": False,
+                    "is_handed_over": False,
+                    "pending_request_status": "APPROVED",
+                    "audit_notes": note,
+                    "updated_at": now_t
+                }).eq("id", pkt["id"]).execute()
+                supabase.table("test_gold_packet_movements").insert({
+                    "packet_id": pkt["id"],
+                    "loan_no": new_lno,
+                    "action_type": "REPLEDGE_NUMBER_CHANGED",
+                    "from_location": pkt["current_location"],
+                    "to_location": pkt["current_location"],
+                    "verified_by_hq": True,
+                    "performed_by": admin_id,
+                    "remarks": note
+                }).execute()
+            return {"status": "success", "message": "சிறப்பு ஒப்புதல் வெற்றிகரமாக வழங்கப்பட்டது!"}
+
+        supabase.table("test_gold_packets").update({"pending_request_status": "REJECTED", "updated_at": now_t}).eq("id", pkt["id"]).execute()
+        return {"status": "success", "message": "கோரிக்கை நிராகரிக்கப்பட்டது."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/packets/branch-receive")
+def branch_receive_packet(loan_no: str = Query(...), staff_id: int = Query(1)):
+    try:
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", loan_no.strip()).execute()
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
+        pkt = pkt_res.data[0]
+        supabase.table("test_gold_packets").update({
+            "packet_status": "AT_BRANCH_FOR_RELEASE",
+            "current_location": "BRANCH",
+            "updated_at": datetime.now(IST).isoformat()
+        }).eq("id", pkt["id"]).execute()
+        return {"status": "success", "message": "பாக்கெட் கிளையில் பெறப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/packets/send-handover-otp")
+def trigger_packet_handover_otp(loan_no: str = Query(...)):
+    try:
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", loan_no.strip()).execute()
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
+        pkt = pkt_res.data[0]
+        cust_res = supabase.table("test_customers").select("name, mobile").eq("id", pkt["customer_id"]).execute()
+        cust = cust_res.data[0] if cust_res.data else {}
+        mobile = cust.get("mobile")
+        if not mobile:
+            raise HTTPException(status_code=400, detail="வாடிக்கையாளர் மொபைல் எண் இல்லை.")
+
+        otp = str(random.randint(100000, 999999))
+        supabase.table("test_gold_packets").update({"handover_otp": otp}).eq("id", pkt["id"]).execute()
+        ok, msg = send_packet_handover_sms(mobile, otp, loan_no.strip())
+        if not ok:
+            raise HTTPException(status_code=502, detail=f"SMS பிழை: {msg}")
+        return {"status": "success", "message": f"வாடிக்கையாளர் மொபைலுக்கு ({mobile}) OTP அனுப்பப்பட்டது!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/packets/verify-handover-otp")
+def verify_packet_handover_otp(data: dict):
+    try:
+        lno = str(data.get("loan_no") or "").strip()
+        otp_code = str(data.get("otp_code") or "").strip()
+        staff_id = data.get("staff_id") or 1
+
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+        if not pkt_res.data or str(pkt_res.data[0].get("handover_otp")) != otp_code:
+            raise HTTPException(status_code=400, detail="தவறான OTP எண்! மீண்டும் சரிபார்க்கவும்.")
+        pkt = pkt_res.data[0]
+        now_t = datetime.now(IST).isoformat()
+
+        supabase.table("test_gold_packets").update({
+            "packet_status": "HANDED_OVER_TO_CUSTOMER",
+            "current_location": "CUSTOMER",
+            "is_handed_over": True,
+            "handed_over_at": now_t,
+            "updated_at": now_t
+        }).eq("id", pkt["id"]).execute()
+
+        supabase.table("test_gold_packet_movements").insert({
+            "packet_id": pkt["id"],
+            "loan_no": lno,
+            "action_type": "HANDED_OVER_OTP_VERIFIED",
+            "from_location": "BRANCH",
+            "to_location": "CUSTOMER",
+            "performed_by": staff_id,
+            "remarks": "SMS OTP சரிபார்க்கப்பட்டு வாடிக்கையாளரிடம் பாக்கெட் ஒப்படைக்கப்பட்டது"
+        }).execute()
+        return {"status": "success", "message": "🎉 SMS OTP சரிபார்க்கப்பட்டு நகை பாக்கெட் வாடிக்கையாளரிடம் ஒப்படைக்கப்பட்டது!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =========================================================================
+# 💰 தொடர்வைப்புத் திட்டம் (RD) API-கள்
+# =========================================================================
 @app.get("/api/rd/next-no")
 def get_next_rd_no(branch_id: int):
     try:
@@ -1717,7 +2029,7 @@ def request_rd_maturity_benefit(data: dict):
     try:
         acc_id = int(data.get("account_id"))
         proposed = float(data.get("proposed_benefit") or 0)
-        supabase.table("test_rd_accounts").update({
+        supabase.table("test_customer_rd_accounts").update({
             "benefit_approval_status": "PENDING",
             "proposed_benefit_amount": proposed
         }).eq("id", acc_id).execute()
@@ -1728,7 +2040,7 @@ def request_rd_maturity_benefit(data: dict):
 @app.get("/api/hq/pending-rd-benefits")
 def get_pending_rd_benefits():
     try:
-        res = supabase.table("test_rd_accounts").select("*, test_customers(name, mobile), test_branches(branch_name), test_rd_schemes(scheme_name)").eq("benefit_approval_status", "PENDING").execute()
+        res = supabase.table("test_customer_rd_accounts").select("*, test_customers(name, mobile), test_branches(branch_name), test_rd_schemes(scheme_name)").eq("benefit_approval_status", "PENDING").execute()
         out = []
         for r in (res.data or []):
             out.append({
@@ -1753,13 +2065,13 @@ def approve_rd_benefit(data: dict):
         action = data.get("action")
         approved_amt = float(data.get("approved_amount") or 0)
         if action == "APPROVE":
-            supabase.table("test_rd_accounts").update({
+            supabase.table("test_customer_rd_accounts").update({
                 "benefit_approval_status": "APPROVED",
                 "approved_benefit_amount": approved_amt
             }).eq("id", acc_id).execute()
             return {"status": "success", "message": f"₹{approved_amt} RD பெனிபிட் தொகைக்கு ஒப்புதல் அளிக்கப்பட்டது!"}
         else:
-            supabase.table("test_rd_accounts").update({
+            supabase.table("test_customer_rd_accounts").update({
                 "benefit_approval_status": "REJECTED",
                 "approved_benefit_amount": 0
             }).eq("id", acc_id).execute()
@@ -1803,7 +2115,7 @@ def toggle_loan_scheme_active(scheme_id: int):
         raise HTTPException(status_code=404, detail="திட்டம் கண்டறியப்படவில்லை.")
     current_status = curr.data[0].get("is_active")
     new_status = False if current_status is not False else True
-    res = supabase.table("test_loan_schemes").update({"is_active": new_status}).eq("id", scheme_id).execute()
+    supabase.table("test_loan_schemes").update({"is_active": new_status}).eq("id", scheme_id).execute()
     status_text = "Active (செயலில்)" if new_status else "Deactive (நிறுத்தப்பட்டது)"
     return {"status": "success", "message": f"திட்டத்தின் நிலை '{status_text}' என மாற்றப்பட்டது!", "is_active": new_status}
 
@@ -1864,11 +2176,9 @@ def create_staff(data: StaffPayload):
     check = supabase.table("test_staff_users").select("id").eq("username", data.username.strip()).execute()
     if check.data:
         raise HTTPException(status_code=400, detail="இந்தப் பயனர் பெயர் ஏற்கனவே உள்ளது.")
-    
     staff_record = data.model_dump()
     if not staff_record.get("password"):
         staff_record["password"] = "gold123"
-        
     res = supabase.table("test_staff_users").insert(staff_record).execute()
     return {"status": "success", "message": "பணியாளர் கணக்கு உருவாக்கப்பட்டது.", "data": res.data}
 
@@ -1918,26 +2228,16 @@ def get_branch_bank_status(branch_id: int = Query(...)):
         t["test_customers"] = {"name": c.get("name", "வாடிக்கையாளர்"), "mobile": c.get("mobile", "-")}
     return {"status": "success", "data": data}
 
-class HQBankPayoutApprovalPayload(BaseModel):
-    transfer_id: int
-    action: str
-    admin_id: int
-    company_bank_id: Optional[int] = None
-    utr_ref_no: Optional[str] = None
-    payment_mode_used: Optional[str] = "IMPS"
-    notes: Optional[str] = None
-
 @app.post("/api/hq/process-bank-transfer")
 def process_hq_bank_transfer(data: dict):
     try:
         transfer_id = data.get("transfer_id")
-        action = data.get("action")  # 'APPROVE' or 'REJECT'
+        action = data.get("action")
         admin_id = data.get("admin_id") or 1
         company_bank_id = data.get("company_bank_id")
         utr_ref_no = data.get("utr_ref_no")
         notes = data.get("notes") or ""
 
-        # 1. நிறுவன வங்கியின் பெயரை எடுத்தல் (ID-யிலிருந்து bank_name பெறுதல்)
         company_bank_name = None
         if company_bank_id:
             try:
@@ -1949,8 +2249,6 @@ def process_hq_bank_transfer(data: dict):
                 print("Bank name fetch error:", be)
 
         now_time = datetime.now(IST).isoformat()
-
-        # 2. நிராகரிப்பு (REJECT)
         if action == "REJECT":
             supabase.table("test_bank_transfers").update({
                 "status": "REJECTED",
@@ -1960,25 +2258,21 @@ def process_hq_bank_transfer(data: dict):
             }).eq("id", transfer_id).execute()
             return {"status": "success", "message": "வங்கிப் பரிவர்த்தனை நிராகரிக்கப்பட்டது."}
 
-        # 3. ஒப்புதல் (APPROVE) - அட்டவணையின் சரியான பத்திகளுக்கு மட்டும் சேமித்தல்
-        update_payload = {
+        supabase.table("test_bank_transfers").update({
             "status": "APPROVED",
             "company_bank_name": company_bank_name,
             "receipt_ref_no": utr_ref_no,
             "hq_notes": notes,
             "approved_by": admin_id,
             "approved_at": now_time
-        }
-        supabase.table("test_bank_transfers").update(update_payload).eq("id", transfer_id).execute()
+        }).eq("id", transfer_id).execute()
 
-        # 4. நிறுவன வங்கிக் கணக்கு இருப்பைக் குறைத்தல் (பட்டுவாடா தொகை)
         if company_bank_id:
             try:
                 tr_chk = supabase.table("test_bank_transfers").select("amount, direction").eq("id", transfer_id).execute()
                 if tr_chk.data:
                     amount = float(tr_chk.data[0].get("amount") or 0.0)
                     direction = tr_chk.data[0].get("direction")
-                    
                     cb_res = supabase.table("test_company_banks").select("*").eq("id", company_bank_id).execute()
                     if cb_res.data:
                         cb_row = cb_res.data[0]
@@ -2073,7 +2367,6 @@ def process_update_approval(data: ApprovalActionPayload):
         if not req_res.data:
             raise HTTPException(status_code=404, detail="கோரிக்கை கிடைக்கவில்லை.")
         req = req_res.data[0]
-
         new_status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
 
         if data.action == "APPROVE":
@@ -2081,7 +2374,6 @@ def process_update_approval(data: ApprovalActionPayload):
             if changes:
                 supabase.table("test_customers").update(changes).eq("id", req["customer_id"]).execute()
 
-        # Schema cache பிழையைத் தவிர்க்கும் தற்காப்பு அணுகுமுறை
         try:
             supabase.table("test_customer_update_requests").update({
                 "status": new_status,
@@ -2089,7 +2381,6 @@ def process_update_approval(data: ApprovalActionPayload):
                 "approved_at": "now()"
             }).eq("id", data.request_id).execute()
         except Exception:
-            # காலம்கள் இல்லையென்றால் நிலையை மட்டும் மாற்றும் Fallback
             supabase.table("test_customer_update_requests").update({
                 "status": new_status
             }).eq("id", data.request_id).execute()
@@ -2135,30 +2426,12 @@ def request_customer_update(data: CustomerUpdateRequest):
 # ==========================================
 # 🔄 உள்-பணப் பரிமாற்றம் & கருவூல மேலாண்மை (Treasury Transfers)
 # ==========================================
-
-class TreasuryTransferRequest(BaseModel):
-    transfer_type: str  # BRANCH_TO_HQ, HQ_TO_BRANCH, CASH_TO_BANK, BANK_TO_CASH
-    branch_id: int
-    company_bank_id: Optional[int] = None
-    amount: float
-    carrier_person: Optional[str] = None
-    reference_no: Optional[str] = None
-    proof_doc: Optional[str] = None
-    notes: Optional[str] = None
-    staff_id: int
-
-class TreasuryApprovalPayload(BaseModel):
-    transfer_id: int
-    action: str  # APPROVE / REJECT
-    admin_id: int
-
 @app.post("/api/treasury/transfer-request")
 def create_treasury_transfer(data: dict):
     try:
         branch_id = data.get("branch_id") or 1
         trans_date = data.get("transaction_date") or datetime.now(IST).strftime("%Y-%m-%d")
 
-        # நாள் பூட்டப்பட்டுள்ளதா எனச் சரிபார்த்தல்
         day_chk = (
             supabase.table("test_branch_cash_days")
             .select("status")
@@ -2169,22 +2442,18 @@ def create_treasury_transfer(data: dict):
         if day_chk.data and day_chk.data[0].get("status") == "CLOSED":
             raise HTTPException(
                 status_code=400, 
-                detail=f"⚠️ {trans_date} நாளுக்கான மாலை கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது! இந்தப் பழைய தேதியில் புதிய பணப் பரிமாற்றம் செய்ய முடியாது."
+                detail=f"⚠️ {trans_date} நாளுக்கான மாலை கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது!"
             )
 
-        from_src = "BRANCH_CASH"
-        to_dest = "HQ_VAULT"
+        from_src, to_dest = "BRANCH_CASH", "HQ_VAULT"
         transfer_type = data.get("transfer_type")
 
         if transfer_type == "HQ_TO_BRANCH":
-            from_src = "HQ_VAULT"
-            to_dest = "BRANCH_CASH"
+            from_src, to_dest = "HQ_VAULT", "BRANCH_CASH"
         elif transfer_type == "CASH_TO_BANK":
-            from_src = "BRANCH_CASH"
-            to_dest = "COMPANY_BANK"
+            from_src, to_dest = "BRANCH_CASH", "COMPANY_BANK"
         elif transfer_type == "BANK_TO_CASH":
-            from_src = "COMPANY_BANK"
-            to_dest = "BRANCH_CASH"
+            from_src, to_dest = "COMPANY_BANK", "BRANCH_CASH"
 
         rec = {
             "transfer_type": transfer_type,
@@ -2239,27 +2508,23 @@ def get_pending_treasury_transfers():
 def approve_treasury_transfer(data: TreasuryApprovalPayload):
     try:
         status = "APPROVED" if data.action == "APPROVE" else "REJECTED"
-        
         t_res = supabase.table("test_treasury_transfers").select("*").eq("id", data.transfer_id).execute()
         if not t_res.data:
             raise HTTPException(status_code=404, detail="பரிமாற்ற விபரம் கிடைக்கவில்லை")
         transfer = t_res.data[0]
 
-        # வங்கி சம்பந்தப்பட்டிருந்தால் நிறுவன வங்கி இருப்பைப் புதுப்பித்தல்
         if status == "APPROVED" and transfer.get("company_bank_id"):
             amt = float(transfer.get("amount") or 0.0)
             bk_res = supabase.table("test_company_banks").select("*").eq("id", transfer["company_bank_id"]).execute()
             if bk_res.data:
                 comp_bank = bk_res.data[0]
                 cur_bal = float(comp_bank.get("current_balance") or comp_bank.get("opening_balance") or 0.0)
-                
                 if transfer.get("transfer_type") == "CASH_TO_BANK":
-                    new_bal = cur_bal + amt  # வங்கியில் ரொக்கம் சேர்ந்தது
+                    new_bal = cur_bal + amt
                 elif transfer.get("transfer_type") == "BANK_TO_CASH":
-                    new_bal = cur_bal - amt  # வங்கியிலிருந்து ரொக்கம் எடுக்கப்பட்டது
+                    new_bal = cur_bal - amt
                 else:
                     new_bal = cur_bal
-
                 supabase.table("test_company_banks").update({"current_balance": new_bal}).eq("id", transfer["company_bank_id"]).execute()
 
         supabase.table("test_treasury_transfers").update({
@@ -2271,10 +2536,10 @@ def approve_treasury_transfer(data: TreasuryApprovalPayload):
         return {"status": "success", "message": f"பரிமாற்றம் வெற்றிகரமாக '{status}' செய்யப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 # ==========================================
 # 🏷️ வட்டி தள்ளுபடி (Interest Rebate) ஒப்புதல் மையம்
 # ==========================================
-
 @app.post("/api/rebate/request")
 def request_interest_rebate(data: dict):
     try:
@@ -2329,7 +2594,7 @@ def get_pending_rebates():
 def approve_rebate_request(data: dict):
     try:
         req_id = data.get("request_id")
-        action = data.get("action") # APPROVE / REJECT
+        action = data.get("action")
         admin_id = data.get("admin_id") or 1
         new_status = "APPROVED" if action == "APPROVE" else "REJECTED"
 
@@ -2346,7 +2611,6 @@ def approve_rebate_request(data: dict):
 # ==========================================
 # 🪙 நகை வாங்குதல் (GP) & நகை விற்பனை (GS) API-கள்
 # ==========================================
-
 @app.get("/api/gp/next-no")
 def get_next_gp_no(branch_id: int = Query(...)):
     try:
@@ -2354,11 +2618,7 @@ def get_next_gp_no(branch_id: int = Query(...)):
         branch_code = branch_res.data[0]["branch_code"].strip().upper() if branch_res.data else "BR"
         count_res = supabase.table("test_gold_purchases").select("id", count="exact").eq("branch_id", branch_id).execute()
         next_count = (count_res.count or len(count_res.data or [])) + 1
-        return {
-            "status": "success",
-            "branch_code": branch_code,
-            "next_gp_no": f"{branch_code}/GP/{next_count:04d}"
-        }
+        return {"status": "success", "branch_code": branch_code, "next_gp_no": f"{branch_code}/GP/{next_count:04d}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GP எண் பிழை: {str(e)}")
 
@@ -2369,11 +2629,7 @@ def get_next_gs_no(branch_id: int = Query(...)):
         branch_code = branch_res.data[0]["branch_code"].strip().upper() if branch_res.data else "BR"
         count_res = supabase.table("test_gold_sales").select("id", count="exact").eq("branch_id", branch_id).execute()
         next_count = (count_res.count or len(count_res.data or [])) + 1
-        return {
-            "status": "success",
-            "branch_code": branch_code,
-            "next_gs_no": f"{branch_code}/GS/{next_count:04d}"
-        }
+        return {"status": "success", "branch_code": branch_code, "next_gs_no": f"{branch_code}/GS/{next_count:04d}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GS எண் பிழை: {str(e)}")
 
@@ -2397,26 +2653,18 @@ def get_next_gss_no(branch_id: int = Query(...)):
     try:
         branch_res = supabase.table("test_branches").select("branch_code").eq("id", branch_id).execute()
         branch_code = branch_res.data[0]["branch_code"].strip().upper() if branch_res.data else "BR"
-        
         count_res = supabase.table("test_customer_savings_accounts").select("id", count="exact").eq("branch_id", branch_id).execute()
         next_count = (count_res.count or len(count_res.data or [])) + 1
-        
-        return {
-            "status": "success",
-            "branch_code": branch_code,
-            "next_gss_no": f"{branch_code}/GSS/{next_count:04d}"
-        }
+        return {"status": "success", "branch_code": branch_code, "next_gss_no": f"{branch_code}/GSS/{next_count:04d}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GSS எண் பிழை: {str(e)}")
 
 @app.get("/api/customer/{customer_id}/gss-accounts")
 def get_customer_gss_accounts(customer_id: int):
     try:
-        # திட்ட விவரங்களை எடுத்தல்
         sch_res = supabase.table("test_savings_schemes").select("*").execute()
         sch_map = {s["id"]: s for s in (sch_res.data or [])}
 
-        # வாடிக்கையாளரின் சேமிப்புக் கணக்குகளை எடுத்தல்
         acc_res = (
             supabase.table("test_customer_savings_accounts")
             .select("*")
@@ -2428,7 +2676,6 @@ def get_customer_gss_accounts(customer_id: int):
         accounts = acc_res.data or []
         for acc in accounts:
             acc["scheme_details"] = sch_map.get(acc.get("scheme_id"), {})
-            # செலுத்திய தவணை வரலாறு
             txn_res = (
                 supabase.table("test_savings_transactions")
                 .select("*")
@@ -2481,7 +2728,7 @@ def get_pending_gss_benefits():
 def approve_gss_benefit(data: dict):
     try:
         acc_id = int(data.get("account_id"))
-        action = data.get("action") # APPROVE / REJECT
+        action = data.get("action")
         edited_amt = float(data.get("approved_amount") or 0)
         if action == "APPROVE":
             supabase.table("test_customer_savings_accounts").update({
@@ -2543,11 +2790,9 @@ def delete_gss_scheme(scheme_id: int):
 # ==========================================
 # 📦 GP நகை இருப்பு & தலைமையக ஒதுக்கீடு (Stock Flow APIs)
 # ==========================================
-
 @app.get("/api/gp/branch-purchased-stock")
 def get_branch_purchased_stock(branch_id: int = Query(...)):
     try:
-        # கிளையில் வாங்கப்பட்டு இன்னும் தலைமையகத்திற்கு அனுப்பப்படாத நகைகள்
         p_res = supabase.table("test_gold_purchases").select("id, gp_no, transaction_date").eq("branch_id", branch_id).execute()
         p_map = {p["id"]: p for p in (p_res.data or [])}
         if not p_map:
@@ -2642,6 +2887,7 @@ def allocate_stock_for_sale(data: dict):
 @app.delete("/api/loan/{loan_id}")
 def delete_pawn_loan_from_cart(loan_id: int):
     try:
+        supabase.table("test_gold_packets").delete().eq("loan_id", loan_id).execute()
         supabase.table("test_gold_loan_items").delete().eq("loan_id", loan_id).execute()
         supabase.table("test_gold_loans").delete().eq("id", loan_id).execute()
         return {"status": "success", "message": "கடன் நீக்கப்பட்டது."}
@@ -2651,7 +2897,6 @@ def delete_pawn_loan_from_cart(loan_id: int):
 # =========================================================================
 # 💎 STANDARD INVESTMENT (SI / FD) API ENDPOINTS
 # =========================================================================
-
 @app.get("/api/admin/si-schemes")
 def get_si_schemes():
     try:
@@ -2700,7 +2945,7 @@ def get_next_si_no(branch_id: int = 1):
         res = supabase.table("test_si_accounts").select("id").order("id", desc=True).limit(1).execute()
         next_num = (res.data[0]["id"] + 1) if res.data else 1
         return {"status": "success", "next_si_no": f"{b_code}/SI/{str(next_num).zfill(4)}"}
-    except Exception as e:
+    except Exception:
         return {"status": "success", "next_si_no": "BR/SI/0001"}
 
 @app.get("/api/customer/{customer_id}/si-accounts")

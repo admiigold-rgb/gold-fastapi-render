@@ -1648,6 +1648,7 @@ def receive_packets_hq_vault(data: dict):
 
 @app.post("/api/hq/packets/bank-pledge")
 def pledge_packets_in_bank(data: dict):
+    """படி 1: முதல் HQ பணியாளர் வங்கி லாக்கரில் வைக்கப் பதிவு செய்தல் (2-வது HQ சரிபார்ப்புக்கு அனுப்புதல்)"""
     try:
         loan_nos = data.get("loan_nos") or []
         bank_name = str(data.get("bank_name") or "").strip()
@@ -1655,108 +1656,190 @@ def pledge_packets_in_bank(data: dict):
         total_received = float(data.get("total_received_amount") or 0)
         bank_charges = float(data.get("bank_charges") or 0)
         comp_bank_id = int(data.get("company_bank_id") or 1)
-        staff_id = data.get("staff_id") or 1
+        staff_id = int(data.get("staff_id") or 1)
 
         if not loan_nos or not bank_name or total_received <= 0:
             raise HTTPException(status_code=400, detail="வங்கிப் பெயர், தொகை மற்றும் பாக்கெட்டுகளைச் சரியாக உள்ளிடவும்.")
 
-        net_credit = total_received - bank_charges
         now_t = datetime.now(IST).isoformat()
-
         for lno in loan_nos:
             pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
             if not pkt_res.data:
                 continue
             pkt = pkt_res.data[0]
+            if pkt.get("current_location") != "HQ_VAULT":
+                continue
+
             supabase.table("test_gold_packets").update({
-                "packet_status": "PLEDGED_IN_BANK",
-                "current_location": "BANK_LOCKER",
-                "bank_name": bank_name,
-                "bank_loan_ref": bank_loan_ref,
-                "bank_pledge_amount": round(total_received / len(loan_nos), 2),
-                "bank_charges_amount": round(bank_charges / len(loan_nos), 2),
+                "bank_verify_status": "PENDING_PLEDGE_VERIFY",
+                "bank_initiated_by": staff_id,
+                "pending_request_type": "BANK_PLEDGE_VERIFY",
+                "pending_request_status": "PENDING",
+                "pending_request_data": {
+                    "bank_name": bank_name,
+                    "bank_loan_ref": bank_loan_ref,
+                    "total_received": total_received,
+                    "bank_charges": bank_charges,
+                    "company_bank_id": comp_bank_id,
+                    "packet_count": len(loan_nos)
+                },
+                "audit_notes": f"வங்கி லாக்கர் வைப்பு பதிவு செய்யப்பட்டது ({bank_name}) - 2-வது HQ சரிபார்ப்பு நிலுவை",
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
-            supabase.table("test_gold_packet_movements").insert({
-                "packet_id": pkt["id"],
-                "loan_no": lno,
-                "action_type": "BANK_LOCKER_PLEDGE",
-                "from_location": "HQ_VAULT",
-                "to_location": "BANK_LOCKER",
-                "company_bank_id": comp_bank_id,
-                "amount_involved": total_received,
-                "charges_or_interest": bank_charges,
-                "verified_by_hq": True,
-                "performed_by": staff_id,
-                "remarks": f"வங்கி லாக்கரில் வைக்கப்பட்டது ({bank_name} - {bank_loan_ref})"
-            }).execute()
-
-        bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
-        if bk_res.data:
-            bk_row = bk_res.data[0]
-            for bal_col in ["current_balance", "balance", "opening_balance"]:
-                if bal_col in bk_row:
-                    old_bal = float(bk_row.get(bal_col) or 0.0)
-                    supabase.table("test_company_banks").update({bal_col: old_bal + net_credit}).eq("id", comp_bank_id).execute()
-                    break
-
-        return {"status": "success", "message": f"பாக்கெட்டுகள் சரிபார்க்கப்பட்டு வங்கி லாக்கரில் வைக்கப்பட்டன! ₹{net_credit:,.2f} நிறுவன வங்கியில் வரவு வைக்கப்பட்டது."}
+        return {"status": "success", "message": f"{len(loan_nos)} பாக்கெட்டுகள் வங்கி லாக்கரில் வைக்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் வங்கியில் வரவு வைக்கப்படும்."}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/api/hq/packets/bank-redeem")
 def redeem_packets_from_bank(data: dict):
+    """படி 1: முதல் HQ பணியாளர் வங்கியிலிருந்து மீட்கப் பதிவு செய்தல் (2-வது HQ சரிபார்ப்புக்கு அனுப்புதல்)"""
     try:
         loan_nos = data.get("loan_nos") or []
         prin_paid = float(data.get("principal_paid") or 0)
         int_paid = float(data.get("interest_paid") or 0)
         comp_bank_id = int(data.get("company_bank_id") or 1)
-        staff_id = data.get("staff_id") or 1
+        staff_id = int(data.get("staff_id") or 1)
 
         if not loan_nos:
             raise HTTPException(status_code=400, detail="மீட்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.")
 
-        total_debit = prin_paid + int_paid
         now_t = datetime.now(IST).isoformat()
-
         for lno in loan_nos:
             pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
             if not pkt_res.data:
                 continue
             pkt = pkt_res.data[0]
+            if pkt.get("current_location") != "BANK_LOCKER":
+                continue
+
             supabase.table("test_gold_packets").update({
-                "packet_status": "AT_HQ_VAULT",
-                "current_location": "HQ_VAULT",
+                "bank_verify_status": "PENDING_REDEEM_VERIFY",
+                "bank_initiated_by": staff_id,
+                "pending_request_type": "BANK_REDEEM_VERIFY",
+                "pending_request_status": "PENDING",
+                "pending_request_data": {
+                    "principal_paid": prin_paid,
+                    "interest_paid": int_paid,
+                    "company_bank_id": comp_bank_id,
+                    "packet_count": len(loan_nos)
+                },
+                "audit_notes": "வங்கியிலிருந்து மீட்பு பதிவு செய்யப்பட்டது - 2-வது HQ சரிபார்ப்பு நிலுவை",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+
+        return {"status": "success", "message": f"{len(loan_nos)} பாக்கெட்டுகள் வங்கியிலிருந்து மீட்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/hq/packets/verify-bank-action")
+def verify_bank_locker_second_staff(data: dict):
+    """படி 2: மற்றொரு HQ பணியாளர் பாக்கெட் வாரியாகச் சரிபார்த்து உறுதி செய்தல்"""
+    try:
+        lno = str(data.get("loan_no") or "").strip()
+        verifier_id = int(data.get("verifier_id") or 1)
+        action = str(data.get("action") or "APPROVE")
+
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
+        pkt = pkt_res.data[0]
+
+        # 🔒 பாதுகாப்பு விதி: பதிவு செய்த அதே பணியாளர் சரிபார்க்க முடியாது!
+        if pkt.get("bank_initiated_by") and int(pkt.get("bank_initiated_by")) == verifier_id:
+            raise HTTPException(status_code=400, detail="❌ பாதுகாப்பு விதி: இந்தப் பதிவைச் செய்த அதே பணியாளர் சரிபார்க்க முடியாது! மற்றொரு தலைமையகப் பணியாளர் சரிபார்க்க வேண்டும்.")
+
+        now_t = datetime.now(IST).isoformat()
+        v_status = pkt.get("bank_verify_status")
+        r_data = pkt.get("pending_request_data") or {}
+
+        if action == "REJECT":
+            supabase.table("test_gold_packets").update({
+                "bank_verify_status": "NONE",
+                "pending_request_status": "REJECTED",
+                "audit_notes": "2-வது HQ பணியாளரால் வங்கி நடவடிக்கை நிராகரிக்கப்பட்டது",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+            return {"status": "success", "message": "வங்கி நடவடிக்கை நிராகரிக்கப்பட்டது."}
+
+        comp_bank_id = int(r_data.get("company_bank_id") or 1)
+        cnt = max(1, int(r_data.get("packet_count") or 1))
+
+        if v_status == "PENDING_PLEDGE_VERIFY":
+            bank_name = r_data.get("bank_name", "-")
+            bank_ref = r_data.get("bank_loan_ref", "-")
+            share_amt = float(r_data.get("total_received") or 0) / cnt
+            share_chg = float(r_data.get("bank_charges") or 0) / cnt
+            net_credit = share_amt - share_chg
+
+            supabase.table("test_gold_packets").update({
+                "packet_status": "PLEDGED_IN_BANK",
+                "current_location": "BANK_LOCKER",
+                "bank_name": bank_name,
+                "bank_loan_ref": bank_ref,
+                "bank_pledge_amount": round(share_amt, 2),
+                "bank_charges_amount": round(share_chg, 2),
+                "bank_verify_status": "VERIFIED",
+                "pending_request_status": "APPROVED",
+                "audit_notes": f"2-வது HQ பணியாளரால் சரிபார்க்கப்பட்டு வங்கி லாக்கரில் வைக்கப்பட்டது ({bank_name})",
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
             supabase.table("test_gold_packet_movements").insert({
-                "packet_id": pkt["id"],
-                "loan_no": lno,
-                "action_type": "BANK_LOCKER_REDEEM",
-                "from_location": "BANK_LOCKER",
-                "to_location": "HQ_VAULT",
-                "company_bank_id": comp_bank_id,
-                "amount_involved": prin_paid,
-                "charges_or_interest": int_paid,
-                "verified_by_hq": True,
-                "performed_by": staff_id,
-                "remarks": f"வங்கி லாக்கரிலிருந்து மீட்கப்பட்டு பாக்கெட் வாரியாகச் சரிபார்க்கப்பட்டது (அசல்: ₹{prin_paid}, வட்டி: ₹{int_paid})"
+                "packet_id": pkt["id"], "loan_no": lno, "action_type": "BANK_LOCKER_PLEDGE_VERIFIED",
+                "from_location": "HQ_VAULT", "to_location": "BANK_LOCKER",
+                "company_bank_id": comp_bank_id, "amount_involved": round(share_amt, 2),
+                "charges_or_interest": round(share_chg, 2), "verified_by_hq": True,
+                "performed_by": verifier_id, "remarks": f"2-வது HQ சரிபார்ப்பு முடிந்து வங்கியில் வைக்கப்பட்டது ({bank_name})"
             }).execute()
 
-        bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
-        if bk_res.data:
-            bk_row = bk_res.data[0]
-            for bal_col in ["current_balance", "balance", "opening_balance"]:
-                if bal_col in bk_row:
-                    old_bal = float(bk_row.get(bal_col) or 0.0)
-                    supabase.table("test_company_banks").update({bal_col: old_bal - total_debit}).eq("id", comp_bank_id).execute()
-                    break
+            # நிறுவன வங்கியில் வரவு வைத்தல்
+            bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
+            if bk_res.data:
+                for bal_col in ["current_balance", "balance", "opening_balance"]:
+                    if bal_col in bk_res.data[0]:
+                        old_bal = float(bk_res.data[0].get(bal_col) or 0)
+                        supabase.table("test_company_banks").update({bal_col: old_bal + net_credit}).eq("id", comp_bank_id).execute()
+                        break
 
-        return {"status": "success", "message": f"வங்கியிலிருந்து மீட்கப்பட்டு HQ-வில் சரிபார்க்கப்பட்டது! ₹{total_debit:,.2f} நிறுவன வங்கியிலிருந்து கழிக்கப்பட்டது."}
+        elif v_status == "PENDING_REDEEM_VERIFY":
+            share_prin = float(r_data.get("principal_paid") or 0) / cnt
+            share_int = float(r_data.get("interest_paid") or 0) / cnt
+            total_debit = share_prin + share_int
+
+            supabase.table("test_gold_packets").update({
+                "packet_status": "AT_HQ_VAULT",
+                "current_location": "HQ_VAULT",
+                "bank_verify_status": "VERIFIED",
+                "pending_request_status": "APPROVED",
+                "audit_notes": "2-வது HQ பணியாளரால் சரிபார்க்கப்பட்டு வங்கியிலிருந்து மீட்கப்பட்டது",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+
+            supabase.table("test_gold_packet_movements").insert({
+                "packet_id": pkt["id"], "loan_no": lno, "action_type": "BANK_LOCKER_REDEEM_VERIFIED",
+                "from_location": "BANK_LOCKER", "to_location": "HQ_VAULT",
+                "company_bank_id": comp_bank_id, "amount_involved": round(share_prin, 2),
+                "charges_or_interest": round(share_int, 2), "verified_by_hq": True,
+                "performed_by": verifier_id, "remarks": "2-வது HQ சரிபார்ப்பு முடிந்து வங்கியிலிருந்து மீட்கப்பட்டது"
+            }).execute()
+
+            # நிறுவன வங்கியிலிருந்து கழித்தல்
+            bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
+            if bk_res.data:
+                for bal_col in ["current_balance", "balance", "opening_balance"]:
+                    if bal_col in bk_res.data[0]:
+                        old_bal = float(bk_res.data[0].get(bal_col) or 0)
+                        supabase.table("test_company_banks").update({bal_col: old_bal - total_debit}).eq("id", comp_bank_id).execute()
+                        break
+
+        return {"status": "success", "message": f"✅ பாக்கெட் ({lno}) 2-வது HQ பணியாளரால் சரிபார்க்கப்பட்டு உறுதி செய்யப்பட்டது!"}
     except HTTPException:
         raise
     except Exception as e:

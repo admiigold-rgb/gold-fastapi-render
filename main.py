@@ -1579,11 +1579,16 @@ def dispatch_packets_to_hq(data: dict):
             raise HTTPException(status_code=400, detail="பாக்கெட்டுகள் மற்றும் கொண்டு செல்பவர் பெயர் அவசியம்.")
 
         now_t = datetime.now(IST).isoformat()
+        sent_count = 0
         for lno in loan_nos:
             pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
             if not pkt_res.data:
                 continue
             pkt = pkt_res.data[0]
+            # 🔒 ஒப்படைக்கப்பட்ட அல்லது ஏற்கனவே HQ-வில் உள்ள பாக்கெட்டுகளை அனுப்பத் தடை
+            if pkt.get("is_handed_over") or pkt.get("packet_status") != "AT_BRANCH_NEW":
+                continue
+
             supabase.table("test_gold_packets").update({
                 "packet_status": "IN_TRANSIT_TO_HQ",
                 "current_location": "TRANSIT",
@@ -1600,7 +1605,11 @@ def dispatch_packets_to_hq(data: dict):
                 "performed_by": staff_id,
                 "remarks": f"கிளையிலிருந்து HQ-க்கு அனுப்பப்பட்டது (கொண்டு செல்பவர்: {carrier})"
             }).execute()
-        return {"status": "success", "message": f"{len(loan_nos)} பாக்கெட்டுகள் தலைமையகத்திற்கு அனுப்பப்பட்டன!"}
+            sent_count += 1
+
+        if sent_count == 0:
+            raise HTTPException(status_code=400, detail="தேர்வு செய்த பாக்கெட்டுகள் அனுப்பும் நிலையில் இல்லை!")
+        return {"status": "success", "message": f"{sent_count} பாக்கெட்டுகள் தலைமையகத்திற்கு அனுப்பப்பட்டன!"}
     except HTTPException:
         raise
     except Exception as e:
@@ -1683,7 +1692,6 @@ def pledge_packets_in_bank(data: dict):
                 "remarks": f"வங்கி லாக்கரில் வைக்கப்பட்டது ({bank_name} - {bank_loan_ref})"
             }).execute()
 
-        # நிறுவன வங்கிக் கணக்கில் நிகரத் தொகையை வரவு வைத்தல்
         bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
         if bk_res.data:
             bk_row = bk_res.data[0]
@@ -1767,6 +1775,10 @@ def create_packet_special_request(data: dict):
             raise HTTPException(status_code=404, detail="பாக்கெட் விபரம் கிடைக்கவில்லை")
         pkt = pkt_res.data[0]
         now_t = datetime.now(IST).isoformat()
+
+        # 🔒 மறு-அடகு மற்றும் நேரடி விடுவிப்புக்கு கடன் முடிந்திருக்க வேண்டும்
+        if req_type in ["DIRECT_RELEASE", "REPLEDGE_TRANSFER"] and not pkt.get("is_loan_closed"):
+            raise HTTPException(status_code=400, detail="❌ முதலில் கவுண்ட்டரில் நகைக்கடனை முழுமையாக முடித்த பின்னரே இந்தக் கோரிக்கையை அனுப்ப முடியும்!")
 
         if req_type == "REQUEST_FROM_HQ":
             supabase.table("test_gold_packets").update({
@@ -1896,6 +1908,23 @@ def trigger_packet_handover_otp(loan_no: str = Query(...)):
         if not pkt_res.data:
             raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
         pkt = pkt_res.data[0]
+
+        # 🔒 1. கடன் முடிக்கப்பட்டிருக்க வேண்டும்
+        if not pkt.get("is_loan_closed"):
+            raise HTTPException(status_code=400, detail="❌ இந்த நகைக்கடன் இன்னும் முடிக்கப்படவில்லை! முதலில் கவுண்ட்டரில் கடனை முடிக்கவும்.")
+
+        # 🔒 2. ஏற்கனவே ஒப்படைக்கப்பட்டிருந்தால் தடுத்தல்
+        if pkt.get("is_handed_over"):
+            raise HTTPException(status_code=400, detail="❌ இந்தப் பாக்கெட் ஏற்கனவே வாடிக்கையாளரிடம் ஒப்படைக்கப்பட்டுவிட்டது!")
+
+        # 🔒 3. HQ செல்லாமல் கிளையிலேயே இருந்தால் HQ நேரடி விடுவிப்பு ஒப்புதல் கட்டாயம்
+        if pkt.get("packet_status") == "AT_BRANCH_NEW" and pkt.get("pending_request_status") != "APPROVED":
+            raise HTTPException(status_code=400, detail="❌ HQ செல்லாமல் கிளையிலேயே வைத்துத் திருப்ப தலைமையக ஒப்புதல் அவசியம்!")
+
+        # 🔒 4. பாக்கெட் கிளையில் இருக்க வேண்டும்
+        if pkt.get("current_location") != "BRANCH" or pkt.get("packet_status") != "AT_BRANCH_FOR_RELEASE":
+            raise HTTPException(status_code=400, detail="❌ பாக்கெட் இன்னும் கிளையில் ஒப்படைப்புக்குத் தயாராக இல்லை!")
+
         cust_res = supabase.table("test_customers").select("name, mobile").eq("id", pkt["customer_id"]).execute()
         cust = cust_res.data[0] if cust_res.data else {}
         mobile = cust.get("mobile")
@@ -1912,7 +1941,7 @@ def trigger_packet_handover_otp(loan_no: str = Query(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+        
 @app.post("/api/packets/verify-handover-otp")
 def verify_packet_handover_otp(data: dict):
     try:

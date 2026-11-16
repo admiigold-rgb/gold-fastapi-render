@@ -49,7 +49,7 @@ def send_fast2sms_otp(mobile_no: str, otp_code: str, customer_name: str, amount:
             "numbers": clean_mobile,
             "flash": "0"
         }
-        resp = requests.post(url, headers=headers, data=payload, timeout=10)
+        resp = requests.post(url, headers=headers, data=payload, timeout=15)
         try:
             res_json = resp.json()
         except Exception:
@@ -75,7 +75,7 @@ def send_packet_handover_sms(mobile_no: str, otp_code: str, loan_no: str):
             "numbers": clean_mobile,
             "variables_values": f"{otp_code}|{loan_no}"
         }
-        resp = requests.post(url, data=payload, headers=headers, timeout=10)
+        resp = requests.post(url, data=payload, headers=headers, timeout=15)
         res_json = resp.json()
         if res_json.get("return") is True:
             return True, "பாக்கெட் ஒப்படைப்பு OTP SMS அனுப்பப்பட்டது!"

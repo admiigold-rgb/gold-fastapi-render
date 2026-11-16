@@ -2398,8 +2398,6 @@
         document.getElementById('cardRelation').innerText = (activeCustomer.relation_type || 'உறவினர்') + ": " + (activeCustomer.guardian_name || '-');
         document.getElementById('cardProofNo').innerText = activeCustomer.id_proof_no || '-';
         document.getElementById('cardAddress').innerText = activeCustomer.address || 'முகவரி இல்லை';
-        document.getElementById('rdFormSection')?.classList.remove('hidden');
-        document.getElementById('siFormSection')?.classList.remove('hidden');
 
         const imgElem = document.getElementById('cardCustomerImg');
         const placeholder = document.getElementById('cardCustomerPlaceholder');
@@ -3168,9 +3166,7 @@
       document.getElementById('cardRelation').innerText = (cust.relation_type || 'உறவினர்') + ": " + (cust.guardian_name || '-');
       document.getElementById('cardProofNo').innerText = cust.id_proof_no || '-';
       document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
-      document.getElementById('rdFormSection')?.classList.remove('hidden');
-      document.getElementById('siFormSection')?.classList.remove('hidden');
-
+  
       const imgElem = document.getElementById('cardCustomerImg');
       const placeholder = document.getElementById('cardCustomerPlaceholder');
       if (cust.customer_photo) {
@@ -3368,9 +3364,7 @@
 
       document.getElementById('searchSection').classList.add('hidden');
       document.getElementById('activeCustomerSection').classList.remove('hidden');
-      document.getElementById('rdFormSection')?.classList.remove('hidden');
-      document.getElementById('siFormSection')?.classList.remove('hidden');
-
+    
       renderOrnamentsTable();
       renderCart();
       renderHeldDraftsBar();
@@ -8058,7 +8052,7 @@
       return_rate: parseFloat(document.getElementById('si_adm_roi').value) || 0,
       preclose_slabs: slabs,
       periodic_return_per_lakh: metrics.periodicReturn,
-      maturity_amount_per_lakh: 100000 + metrics.totalInterest
+      maturity_amount_per_lakh: metrics.maturityAmount
     };
     if (!payload.scheme_code || !payload.scheme_name) return alert("திட்டக் குறியீடு மற்றும் பெயரை உள்ளிடவும்!");
     const res = await fetch('/api/admin/si-scheme/create', {
@@ -8478,7 +8472,7 @@
     }
   }
 
-  // selectCustomer & restoreCustomerDraft ஆகியவற்றுடன் தானாக இணைத்தல்
+  // வாடிக்கையாளரைத் தேர்ந்தெடுக்கும்போதும், ஹோல்டில் இருந்து எடுக்கும்போதும், ரீஃப்ரெஷ் செய்யும்போதும் தானாக இணைத்தல்
   const _origSelectCustomer = selectCustomer;
   selectCustomer = async function(cust) {
     await _origSelectCustomer(cust);
@@ -8489,6 +8483,14 @@
   restoreCustomerDraft = function(customerId) {
     _origRestoreDraft(customerId);
     if (customerId) updateCustomerActionBadges(customerId);
+  };
+
+  const _origRestoreSession = restoreActiveSessionOnLoad;
+  restoreActiveSessionOnLoad = function() {
+    _origRestoreSession();
+    if (activeCustomer && activeCustomer.id) {
+      updateCustomerActionBadges(activeCustomer.id);
+    }
   };
 </script>
 </body>

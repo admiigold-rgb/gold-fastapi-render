@@ -1648,7 +1648,7 @@ def receive_packets_hq_vault(data: dict):
 
 @app.post("/api/hq/packets/bank-pledge")
 def pledge_packets_in_bank(data: dict):
-    """படி 1: முதல் HQ பணியாளர் வங்கி லாக்கரில் வைக்கப் பதிவு செய்தல் (2-வது HQ சரிபார்ப்புக்கு அனுப்புதல்)"""
+    """படி 1: HQ லாக்கரில் உள்ள பாக்கெட்டுகளை மட்டுமே வங்கி லாக்கரில் வைக்கப் பதிவு செய்தல்"""
     try:
         loan_nos = data.get("loan_nos") or []
         bank_name = str(data.get("bank_name") or "").strip()
@@ -1661,15 +1661,22 @@ def pledge_packets_in_bank(data: dict):
         if not loan_nos or not bank_name or total_received <= 0:
             raise HTTPException(status_code=400, detail="வங்கிப் பெயர், தொகை மற்றும் பாக்கெட்டுகளைச் சரியாக உள்ளிடவும்.")
 
-        now_t = datetime.now(IST).isoformat()
+        # 🔒 கண்டிப்பான விதி: அனைத்துப் பாக்கெட்டுகளும் HQ லாக்கரில் (HQ_VAULT) இருக்க வேண்டும்
+        valid_packets = []
         for lno in loan_nos:
             pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
             if not pkt_res.data:
                 continue
             pkt = pkt_res.data[0]
-            if pkt.get("current_location") != "HQ_VAULT":
-                continue
+            if pkt.get("current_location") != "HQ_VAULT" or pkt.get("packet_status") != "AT_HQ_VAULT":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"❌ பாக்கெட் ({lno}) தலைமையக லாக்கரில் (HQ_VAULT) இல்லை! HQ லாக்கரில் உள்ள பாக்கெட்டுகளை மட்டுமே வங்கி லாக்கரில் வைக்க முடியும்."
+                )
+            valid_packets.append(pkt)
 
+        now_t = datetime.now(IST).isoformat()
+        for pkt in valid_packets:
             supabase.table("test_gold_packets").update({
                 "bank_verify_status": "PENDING_PLEDGE_VERIFY",
                 "bank_initiated_by": staff_id,
@@ -1681,13 +1688,13 @@ def pledge_packets_in_bank(data: dict):
                     "total_received": total_received,
                     "bank_charges": bank_charges,
                     "company_bank_id": comp_bank_id,
-                    "packet_count": len(loan_nos)
+                    "packet_count": len(valid_packets)
                 },
                 "audit_notes": f"வங்கி லாக்கர் வைப்பு பதிவு செய்யப்பட்டது ({bank_name}) - 2-வது HQ சரிபார்ப்பு நிலுவை",
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
-        return {"status": "success", "message": f"{len(loan_nos)} பாக்கெட்டுகள் வங்கி லாக்கரில் வைக்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் வங்கியில் வரவு வைக்கப்படும்."}
+        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் வங்கி லாக்கரில் வைக்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
     except HTTPException:
         raise
     except Exception as e:
@@ -1696,7 +1703,7 @@ def pledge_packets_in_bank(data: dict):
 
 @app.post("/api/hq/packets/bank-redeem")
 def redeem_packets_from_bank(data: dict):
-    """படி 1: முதல் HQ பணியாளர் வங்கியிலிருந்து மீட்கப் பதிவு செய்தல் (2-வது HQ சரிபார்ப்புக்கு அனுப்புதல்)"""
+    """படி 1: வங்கி லாக்கரில் உள்ள பாக்கெட்டுகளை மட்டுமே மீட்கப் பதிவு செய்தல்"""
     try:
         loan_nos = data.get("loan_nos") or []
         prin_paid = float(data.get("principal_paid") or 0)
@@ -1707,15 +1714,22 @@ def redeem_packets_from_bank(data: dict):
         if not loan_nos:
             raise HTTPException(status_code=400, detail="மீட்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.")
 
-        now_t = datetime.now(IST).isoformat()
+        # 🔒 கண்டிப்பான விதி: வங்கி லாக்கரில் (BANK_LOCKER) உள்ள பாக்கெட்டுகளை மட்டுமே மீட்க முடியும்
+        valid_packets = []
         for lno in loan_nos:
             pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
             if not pkt_res.data:
                 continue
             pkt = pkt_res.data[0]
-            if pkt.get("current_location") != "BANK_LOCKER":
-                continue
+            if pkt.get("current_location") != "BANK_LOCKER" or pkt.get("packet_status") != "PLEDGED_IN_BANK":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"❌ பாக்கெட் ({lno}) வங்கி லாக்கரில் இல்லை! வங்கி லாக்கரில் உள்ள பாக்கெட்டுகளை மட்டுமே மீட்க முடியும்."
+                )
+            valid_packets.append(pkt)
 
+        now_t = datetime.now(IST).isoformat()
+        for pkt in valid_packets:
             supabase.table("test_gold_packets").update({
                 "bank_verify_status": "PENDING_REDEEM_VERIFY",
                 "bank_initiated_by": staff_id,
@@ -1725,13 +1739,13 @@ def redeem_packets_from_bank(data: dict):
                     "principal_paid": prin_paid,
                     "interest_paid": int_paid,
                     "company_bank_id": comp_bank_id,
-                    "packet_count": len(loan_nos)
+                    "packet_count": len(valid_packets)
                 },
                 "audit_notes": "வங்கியிலிருந்து மீட்பு பதிவு செய்யப்பட்டது - 2-வது HQ சரிபார்ப்பு நிலுவை",
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
-        return {"status": "success", "message": f"{len(loan_nos)} பாக்கெட்டுகள் வங்கியிலிருந்து மீட்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
+        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் வங்கியிலிருந்து மீட்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
     except HTTPException:
         raise
     except Exception as e:

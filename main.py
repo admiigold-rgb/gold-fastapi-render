@@ -391,7 +391,7 @@ def staff_unified_login(data: LoginRequest):
                 "can_manage_treasury": True if is_admin_role else bool(user.get("can_manage_treasury", False)),
                 "can_approve_rebate": True if is_admin_role else bool(user.get("can_approve_rebate", False)),
                 "can_manage_gp_stock": True if is_admin_role else bool(user.get("can_manage_gp_stock", False)),
-                "can_approve_gss_benefit": True if is_admin_role else bool(user.get("can_approve_gss_benefit", False))
+                "can_approve_gss_benefit": True if is_admin_role else bool(user.get("can_approve_gss_benefit", False)),
                 "can_access_hq_packets": bool(user.get("can_access_hq_packets", False)),
                 "can_approve_hq_packets": bool(user.get("can_approve_hq_packets", False))
             }

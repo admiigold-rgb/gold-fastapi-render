@@ -1648,20 +1648,25 @@ def receive_packets_hq_vault(data: dict):
 
 @app.post("/api/hq/packets/bank-pledge")
 def pledge_packets_in_bank(data: dict):
-    """படி 1: HQ லாக்கரில் உள்ள பாக்கெட்டுகளை மட்டுமே வங்கி லாக்கரில் வைக்கப் பதிவு செய்தல்"""
+    """படி 1: HQ லாக்கரில் உள்ள பாக்கெட்டுகளை நிறுவன வங்கி & டோக்கன் படத்துடன் வங்கி லாக்கரில் வைக்கப் பதிவு செய்தல்"""
     try:
         loan_nos = data.get("loan_nos") or []
-        bank_name = str(data.get("bank_name") or "").strip()
+        comp_bank_id = int(data.get("company_bank_id") or 0)
         bank_loan_ref = str(data.get("bank_loan_ref") or "-").strip()
         total_received = float(data.get("total_received_amount") or 0)
         bank_charges = float(data.get("bank_charges") or 0)
-        comp_bank_id = int(data.get("company_bank_id") or 1)
+        token_photo = data.get("token_photo")
         staff_id = int(data.get("staff_id") or 1)
 
-        if not loan_nos or not bank_name or total_received <= 0:
-            raise HTTPException(status_code=400, detail="வங்கிப் பெயர், தொகை மற்றும் பாக்கெட்டுகளைச் சரியாக உள்ளிடவும்.")
+        if not loan_nos or not comp_bank_id or total_received <= 0:
+            raise HTTPException(status_code=400, detail="நிறுவன வங்கி, தொகை மற்றும் பாக்கெட்டுகளைச் சரியாக உள்ளிடவும்.")
+        if not token_photo:
+            raise HTTPException(status_code=400, detail="📸 வங்கி அளித்த டோக்கன் படத்தைக் கட்டாயம் பதிவேற்றவும்!")
 
-        # 🔒 கண்டிப்பான விதி: அனைத்துப் பாக்கெட்டுகளும் HQ லாக்கரில் (HQ_VAULT) இருக்க வேண்டும்
+        # நிறுவன வங்கியின் பெயரை எடுத்தல்
+        bk_res = supabase.table("test_company_banks").select("bank_name, account_no").eq("id", comp_bank_id).execute()
+        bank_name = f"{bk_res.data[0]['bank_name']} ({bk_res.data[0]['account_no']})" if bk_res.data else "Company Bank"
+
         valid_packets = []
         for lno in loan_nos:
             pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
@@ -1680,6 +1685,7 @@ def pledge_packets_in_bank(data: dict):
             supabase.table("test_gold_packets").update({
                 "bank_verify_status": "PENDING_PLEDGE_VERIFY",
                 "bank_initiated_by": staff_id,
+                "bank_token_photo": token_photo,
                 "pending_request_type": "BANK_PLEDGE_VERIFY",
                 "pending_request_status": "PENDING",
                 "pending_request_data": {
@@ -1690,11 +1696,11 @@ def pledge_packets_in_bank(data: dict):
                     "company_bank_id": comp_bank_id,
                     "packet_count": len(valid_packets)
                 },
-                "audit_notes": f"வங்கி லாக்கர் வைப்பு பதிவு செய்யப்பட்டது ({bank_name}) - 2-வது HQ சரிபார்ப்பு நிலுவை",
+                "audit_notes": f"வங்கி லாக்கர் வைப்பு பதிவு ({bank_name}) - 2-வது HQ சரிபார்ப்பு நிலுவை",
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
-        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் வங்கி லாக்கரில் வைக்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
+        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் டோக்கனுடன் வங்கி லாக்கரில் வைக்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
     except HTTPException:
         raise
     except Exception as e:
@@ -1703,18 +1709,20 @@ def pledge_packets_in_bank(data: dict):
 
 @app.post("/api/hq/packets/bank-redeem")
 def redeem_packets_from_bank(data: dict):
-    """படி 1: வங்கி லாக்கரில் உள்ள பாக்கெட்டுகளை மட்டுமே மீட்கப் பதிவு செய்தல்"""
+    """படி 1: வங்கி லாக்கரில் உள்ள பாக்கெட்டுகளை வட்டி & ரசீது படத்துடன் மீட்கப் பதிவு செய்தல்"""
     try:
         loan_nos = data.get("loan_nos") or []
         prin_paid = float(data.get("principal_paid") or 0)
         int_paid = float(data.get("interest_paid") or 0)
         comp_bank_id = int(data.get("company_bank_id") or 1)
+        receipt_photo = data.get("receipt_photo")
         staff_id = int(data.get("staff_id") or 1)
 
         if not loan_nos:
             raise HTTPException(status_code=400, detail="மீட்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.")
+        if not receipt_photo:
+            raise HTTPException(status_code=400, detail="📄 வங்கியிடம் பெற்ற ரசீதுப் படத்தைக் கட்டாயம் பதிவேற்றவும்!")
 
-        # 🔒 கண்டிப்பான விதி: வங்கி லாக்கரில் (BANK_LOCKER) உள்ள பாக்கெட்டுகளை மட்டுமே மீட்க முடியும்
         valid_packets = []
         for lno in loan_nos:
             pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
@@ -1733,6 +1741,7 @@ def redeem_packets_from_bank(data: dict):
             supabase.table("test_gold_packets").update({
                 "bank_verify_status": "PENDING_REDEEM_VERIFY",
                 "bank_initiated_by": staff_id,
+                "bank_redeem_receipt_photo": receipt_photo,
                 "pending_request_type": "BANK_REDEEM_VERIFY",
                 "pending_request_status": "PENDING",
                 "pending_request_data": {
@@ -1745,7 +1754,96 @@ def redeem_packets_from_bank(data: dict):
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
-        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் வங்கியிலிருந்து மீட்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
+        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் ரசீதுடன் மீட்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/hq/packets/action")
+def hq_packet_action(data: dict):
+    try:
+        lno = str(data.get("loan_no") or "").strip()
+        act_type = str(data.get("action_type") or "").strip()
+        carrier = str(data.get("carrier_person") or "").strip()
+        admin_id = data.get("admin_id") or 1
+
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
+        pkt = pkt_res.data[0]
+        now_t = datetime.now(IST).isoformat()
+
+        if act_type == "SEND_TO_BRANCH":
+            if pkt.get("current_location") == "BANK_LOCKER":
+                raise HTTPException(status_code=400, detail="இந்தப் பாக்கெட் வங்கி லாக்கரில் உள்ளது! முதலில் வங்கியிலிருந்து மீட்டு HQ கொண்டு வந்த பின்னரே கிளைக்கு அனுப்ப முடியும்.")
+            # 🔒 கிளை கோரிக்கை வைத்த பாக்கெட்டுகளை மட்டுமே கிளைக்கு அனுப்ப முடியும்
+            if pkt.get("packet_status") != "REQUESTED_BY_BRANCH":
+                raise HTTPException(status_code=400, detail=f"❌ பாக்கெட் ({lno})-க்கு கிளையிலிருந்து கோரிக்கை வரவில்லை! கிளை கோரிக்கை வைத்த பாக்கெட்டுகளை மட்டுமே அனுப்ப முடியும்.")
+
+            supabase.table("test_gold_packets").update({
+                "packet_status": "IN_TRANSIT_TO_BRANCH",
+                "current_location": "TRANSIT",
+                "updated_at": now_t
+            }).eq("id", pkt["id"]).execute()
+            supabase.table("test_gold_packet_movements").insert({
+                "packet_id": pkt["id"],
+                "loan_no": lno,
+                "action_type": "DISPATCH_TO_BRANCH",
+                "from_location": "HQ_VAULT",
+                "to_location": "BRANCH",
+                "carrier_person": carrier,
+                "performed_by": admin_id,
+                "remarks": f"கிளை கோரிக்கையின் பேரில் தலைமையகத்திலிருந்து அனுப்பப்பட்டது (கொண்டு செல்பவர்: {carrier})"
+            }).execute()
+            return {"status": "success", "message": f"பாக்கெட் ({lno}) கிளைக்கு அனுப்பப்பட்டது."}
+
+        if act_type == "APPROVE_SPECIAL":
+            r_type = pkt.get("pending_request_type")
+            r_data = pkt.get("pending_request_data") or {}
+            if r_type == "DIRECT_RELEASE":
+                supabase.table("test_gold_packets").update({
+                    "packet_status": "AT_BRANCH_FOR_RELEASE",
+                    "pending_request_status": "APPROVED",
+                    "audit_notes": "HQ அனுமதியுடன் கிளையிலேயே நேரடியாக விடுவிக்க அனுமதிக்கப்பட்டது",
+                    "updated_at": now_t
+                }).eq("id", pkt["id"]).execute()
+            elif r_type == "RETURN_UNCLAIMED":
+                supabase.table("test_gold_packets").update({
+                    "packet_status": "IN_TRANSIT_TO_HQ",
+                    "current_location": "TRANSIT",
+                    "pending_request_status": "APPROVED",
+                    "audit_notes": "வாடிக்கையாளர் வராததால் HQ ஒப்புதலுடன் திரும்ப அனுப்பப்பட்டது",
+                    "updated_at": now_t
+                }).eq("id", pkt["id"]).execute()
+            elif r_type == "REPLEDGE_TRANSFER":
+                new_lno = str(r_data.get("new_loan_no") or "").strip()
+                old_lno = pkt["loan_no"]
+                note = f"பழைய கடன் ({old_lno}) முடித்து, புதிய கடன் ({new_lno})-க்கு மறு-அடகு மாற்றப்பட்டது."
+                supabase.table("test_gold_packets").update({
+                    "loan_no": new_lno,
+                    "previous_loan_no": old_lno,
+                    "is_loan_closed": False,
+                    "is_handed_over": False,
+                    "pending_request_status": "APPROVED",
+                    "audit_notes": note,
+                    "updated_at": now_t
+                }).eq("id", pkt["id"]).execute()
+                supabase.table("test_gold_packet_movements").insert({
+                    "packet_id": pkt["id"],
+                    "loan_no": new_lno,
+                    "action_type": "REPLEDGE_NUMBER_CHANGED",
+                    "from_location": pkt["current_location"],
+                    "to_location": pkt["current_location"],
+                    "verified_by_hq": True,
+                    "performed_by": admin_id,
+                    "remarks": note
+                }).execute()
+            return {"status": "success", "message": "சிறப்பு ஒப்புதல் வெற்றிகரமாக வழங்கப்பட்டது!"}
+
+        supabase.table("test_gold_packets").update({"pending_request_status": "REJECTED", "updated_at": now_t}).eq("id", pkt["id"]).execute()
+        return {"status": "success", "message": "கோரிக்கை நிராகரிக்கப்பட்டது."}
     except HTTPException:
         raise
     except Exception as e:
@@ -1893,90 +1991,6 @@ def create_packet_special_request(data: dict):
         }).eq("id", pkt["id"]).execute()
 
         return {"status": "success", "message": "தலைமையக ஒப்புதலுக்குக் கோரிக்கை அனுப்பப்பட்டது."}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/hq/packets/action")
-def hq_packet_action(data: dict):
-    try:
-        lno = str(data.get("loan_no") or "").strip()
-        act_type = str(data.get("action_type") or "").strip()
-        carrier = str(data.get("carrier_person") or "").strip()
-        admin_id = data.get("admin_id") or 1
-
-        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
-        if not pkt_res.data:
-            raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
-        pkt = pkt_res.data[0]
-        now_t = datetime.now(IST).isoformat()
-
-        if act_type == "SEND_TO_BRANCH":
-            if pkt.get("current_location") == "BANK_LOCKER":
-                raise HTTPException(status_code=400, detail="இந்தப் பாக்கெட் வங்கி லாக்கரில் உள்ளது! முதலில் வங்கியிலிருந்து மீட்ட பின்னரே கிளைக்கு அனுப்ப முடியும்.")
-            supabase.table("test_gold_packets").update({
-                "packet_status": "IN_TRANSIT_TO_BRANCH",
-                "current_location": "TRANSIT",
-                "updated_at": now_t
-            }).eq("id", pkt["id"]).execute()
-            supabase.table("test_gold_packet_movements").insert({
-                "packet_id": pkt["id"],
-                "loan_no": lno,
-                "action_type": "DISPATCH_TO_BRANCH",
-                "from_location": "HQ_VAULT",
-                "to_location": "BRANCH",
-                "carrier_person": carrier,
-                "performed_by": admin_id,
-                "remarks": f"தலைமையகத்திலிருந்து கிளைக்கு அனுப்பப்பட்டது (கொண்டு செல்பவர்: {carrier})"
-            }).execute()
-            return {"status": "success", "message": f"பாக்கெட் ({lno}) கிளைக்கு அனுப்பப்பட்டது."}
-
-        if act_type == "APPROVE_SPECIAL":
-            r_type = pkt.get("pending_request_type")
-            r_data = pkt.get("pending_request_data") or {}
-            if r_type == "DIRECT_RELEASE":
-                supabase.table("test_gold_packets").update({
-                    "packet_status": "AT_BRANCH_FOR_RELEASE",
-                    "pending_request_status": "APPROVED",
-                    "audit_notes": "HQ அனுமதியுடன் கிளையிலேயே நேரடியாக விடுவிக்க அனுமதிக்கப்பட்டது",
-                    "updated_at": now_t
-                }).eq("id", pkt["id"]).execute()
-            elif r_type == "RETURN_UNCLAIMED":
-                supabase.table("test_gold_packets").update({
-                    "packet_status": "IN_TRANSIT_TO_HQ",
-                    "current_location": "TRANSIT",
-                    "pending_request_status": "APPROVED",
-                    "audit_notes": "வாடிக்கையாளர் வராததால் HQ ஒப்புதலுடன் திரும்ப அனுப்பப்பட்டது",
-                    "updated_at": now_t
-                }).eq("id", pkt["id"]).execute()
-            elif r_type == "REPLEDGE_TRANSFER":
-                new_lno = str(r_data.get("new_loan_no") or "").strip()
-                old_lno = pkt["loan_no"]
-                note = f"பழைய கடன் ({old_lno}) முடித்து, புதிய கடன் ({new_lno})-க்கு மறு-அடகு மாற்றப்பட்டது."
-                supabase.table("test_gold_packets").update({
-                    "loan_no": new_lno,
-                    "previous_loan_no": old_lno,
-                    "is_loan_closed": False,
-                    "is_handed_over": False,
-                    "pending_request_status": "APPROVED",
-                    "audit_notes": note,
-                    "updated_at": now_t
-                }).eq("id", pkt["id"]).execute()
-                supabase.table("test_gold_packet_movements").insert({
-                    "packet_id": pkt["id"],
-                    "loan_no": new_lno,
-                    "action_type": "REPLEDGE_NUMBER_CHANGED",
-                    "from_location": pkt["current_location"],
-                    "to_location": pkt["current_location"],
-                    "verified_by_hq": True,
-                    "performed_by": admin_id,
-                    "remarks": note
-                }).execute()
-            return {"status": "success", "message": "சிறப்பு ஒப்புதல் வெற்றிகரமாக வழங்கப்பட்டது!"}
-
-        supabase.table("test_gold_packets").update({"pending_request_status": "REJECTED", "updated_at": now_t}).eq("id", pkt["id"]).execute()
-        return {"status": "success", "message": "கோரிக்கை நிராகரிக்கப்பட்டது."}
     except HTTPException:
         raise
     except Exception as e:

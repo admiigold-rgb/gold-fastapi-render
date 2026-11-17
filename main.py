@@ -111,6 +111,8 @@ class StaffPayload(BaseModel):
     can_approve_rebate: bool = False
     can_manage_gp_stock: bool = False
     can_approve_gss_benefit: bool = False
+    can_access_hq_packets: bool = False
+    can_approve_hq_packets: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -390,6 +392,8 @@ def staff_unified_login(data: LoginRequest):
                 "can_approve_rebate": True if is_admin_role else bool(user.get("can_approve_rebate", False)),
                 "can_manage_gp_stock": True if is_admin_role else bool(user.get("can_manage_gp_stock", False)),
                 "can_approve_gss_benefit": True if is_admin_role else bool(user.get("can_approve_gss_benefit", False))
+                "can_access_hq_packets": bool(user.get("can_access_hq_packets", False)),
+                "can_approve_hq_packets": bool(user.get("can_approve_hq_packets", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -1799,6 +1803,11 @@ def hq_packet_action(data: dict):
             }).execute()
             return {"status": "success", "message": f"பாக்கெட் ({lno}) கிளைக்கு அனுப்பப்பட்டது."}
 
+        # 🔒 சிறப்பு ஒப்புதல் அல்லது நிராகரிப்பு வழங்குவதற்கு முன் பணியாளரின் உரிமையைச் சரிபார்த்தல்
+        staff_chk = supabase.table("test_staff_users").select("can_approve_hq_packets").eq("id", admin_id).execute()
+        if not staff_chk.data or not staff_chk.data[0].get("can_approve_hq_packets"):
+            raise HTTPException(status_code=403, detail="❌ பாதுகாப்பு மறுப்பு: இந்த ஒப்புதலை வழங்க உங்களுக்கு நிர்வாக அனுமதி வழங்கப்படவில்லை!")
+
         if act_type == "APPROVE_SPECIAL":
             r_type = pkt.get("pending_request_type")
             r_data = pkt.get("pending_request_data") or {}
@@ -2339,6 +2348,8 @@ def update_staff(staff_id: int, data: StaffPayload):
         "can_approve_rebate": data.can_approve_rebate,
         "can_manage_gp_stock": data.can_manage_gp_stock,
         "can_approve_gss_benefit": data.can_approve_gss_benefit,
+        "can_access_hq_packets": data.can_access_hq_packets,
+        "can_approve_hq_packets": data.can_approve_hq_packets,
     }
     if data.password:
         update_dict["password"] = data.password

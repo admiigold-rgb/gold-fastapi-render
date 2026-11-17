@@ -8577,11 +8577,11 @@
 </div>
 
 <!-- 🏦 வங்கி லாக்கரில் வைக்கும் படிவம் (HQ Bank Pledge Modal) -->
-<div id="hqBankPledgeModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-3 z-[9999]">
+<div id="hqBankPledgeModal" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.78); backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center; padding:14px;">
   <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 border-2 border-amber-500">
     <div class="flex justify-between items-center border-b border-amber-100 pb-2">
       <h3 class="text-base font-extrabold text-amber-950">🏦 வங்கி லாக்கரில் வைத்தல் (Bank Pledge)</h3>
-      <button type="button" onclick="closeHqBankPledgeModal()" class="text-slate-400 font-bold text-lg">✕</button>
+      <button type="button" onclick="closeHqBankPledgeModal()" class="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer">✕</button>
     </div>
     <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs font-bold text-amber-950">
       தேர்வு செய்த பாக்கெட்டுகள்: <span id="bp_selected_loans_lbl" class="font-mono text-brand-violet"></span>
@@ -8611,8 +8611,8 @@
       </div>
     </div>
     <div class="flex justify-end gap-2 pt-2 border-t border-amber-100">
-      <button type="button" onclick="closeHqBankPledgeModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து</button>
-      <button type="button" onclick="submitHqBankPledgeForm()" style="background-color:#d97706;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
+      <button type="button" onclick="closeHqBankPledgeModal()" class="px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer">ரத்து</button>
+      <button type="button" id="btnSubmitBankPledge" onclick="submitHqBankPledgeForm()" style="background-color:#d97706;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
         ✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு
       </button>
     </div>
@@ -8620,11 +8620,11 @@
 </div>
 
 <!-- 🔓 வங்கி லாக்கரிலிருந்து மீட்கும் படிவம் (HQ Bank Redeem Modal) -->
-<div id="hqBankRedeemModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-3 z-[9999]">
+<div id="hqBankRedeemModal" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.78); backdrop-blur:blur(4px); z-index:999999; align-items:center; justify-content:center; padding:14px;">
   <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 border-2 border-teal-500">
     <div class="flex justify-between items-center border-b border-teal-100 pb-2">
       <h3 class="text-base font-extrabold text-teal-950">🔓 வங்கி லாக்கரிலிருந்து மீட்டல் (Bank Redeem)</h3>
-      <button type="button" onclick="closeHqBankRedeemModal()" class="text-slate-400 font-bold text-lg">✕</button>
+      <button type="button" onclick="closeHqBankRedeemModal()" class="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer">✕</button>
     </div>
     
     <!-- படி 1: ஏற்கனவே பதிவு செய்த அசல் & கடன் எண்ணை உறுதிப்படுத்துதல் -->
@@ -8654,8 +8654,8 @@
         <input type="file" id="br_receipt_photo" accept="image/*" class="w-full text-xs bg-teal-50 p-1.5 rounded-xl border border-teal-200">
       </div>
       <div class="flex justify-end gap-2 pt-2 border-t border-teal-100">
-        <button type="button" onclick="closeHqBankRedeemModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து</button>
-        <button type="button" onclick="submitHqBankRedeemForm()" style="background-color:#0d9488;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
+        <button type="button" onclick="closeHqBankRedeemModal()" class="px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer">ரத்து</button>
+        <button type="button" id="btnSubmitBankRedeem" onclick="submitHqBankRedeemForm()" style="background-color:#0d9488;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
           ✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு
         </button>
       </div>
@@ -8668,6 +8668,18 @@
   let currentPacketViewRole = 'BRANCH';
   let currentRedeemLoanNos = [];
   let currentRedeemTotalPrincipal = 0;
+
+  // நிறுவன வங்கிகளை எந்தத் தடையுமின்றி நேரடியாகப் பெறும் பாதுகாப்பு செயல்பாடு
+  async function fetchCompanyBanksSafe() {
+    try {
+      const res = await fetch('/api/admin/company-banks');
+      const data = await res.json();
+      companyBanksCache = data.data || [];
+    } catch (e) {
+      console.warn("Company banks fetch error:", e);
+    }
+    return companyBanksCache || [];
+  }
 
   async function openPacketManagementModal(role = 'BRANCH') {
     currentPacketViewRole = role;
@@ -8757,10 +8769,9 @@
     };
 
     if (selectedPkts.length === 0) {
-      const hasAnyInBank = allGoldPacketsCache.some(p => p.current_location === 'BANK_LOCKER' && p.packet_status === 'PLEDGED_IN_BANK');
       setBtn(btnVerify, false);
       setBtn(btnPledge, false);
-      setBtn(btnRedeem, hasAnyInBank);
+      setBtn(btnRedeem, false);
       setBtn(btnSendBr, false);
       return;
     }
@@ -8958,30 +8969,37 @@
     loadGoldPacketsList();
   }
 
-  // 🏦 வங்கி லாக்கரில் வைக்கும் படிவத்தைத் திறத்தல்
+  // 🏦 வங்கி லாக்கரில் வைக்கும் படிவத்தைத் திறத்தல் (உடனடியாகத் திறக்கும்படி மாற்றப்பட்டுள்ளது)
   async function openHqBankPledgeModal() {
     const lnos = getSelectedPacketLoanNos();
     if (lnos.length === 0) return alert("வங்கி லாக்கரில் வைக்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.");
+
     document.getElementById('bp_selected_loans_lbl').innerText = lnos.join(', ');
     document.getElementById('bp_bank_loan_ref').value = '';
     document.getElementById('bp_received_amt').value = '';
     document.getElementById('bp_charges_amt').value = '0';
     document.getElementById('bp_token_photo').value = '';
 
-    if (!companyBanksCache || companyBanksCache.length === 0) await loadCompanyBanksList();
-    const sel = document.getElementById('bp_company_bank_id');
-    sel.innerHTML = (companyBanksCache || []).map(b =>
-      `<option value="${b.id}">${b.bank_name} - ${b.account_no} (${b.branch_name})</option>`
-    ).join('');
-
+    // முதலில் சாளரத்தை உடனடியாகத் திறத்தல்
     const m = document.getElementById('hqBankPledgeModal');
-    m.classList.remove('hidden');
     m.style.display = 'flex';
+
+    // பின்னர் நிறுவன வங்கிகளை Dropdown-ல் ஏற்றுதல்
+    const sel = document.getElementById('bp_company_bank_id');
+    sel.innerHTML = `<option value="">வங்கிகள் ஏற்றப்படுகின்றன...</option>`;
+    const banks = await fetchCompanyBanksSafe();
+    if (banks.length === 0) {
+      sel.innerHTML = `<option value="">-- முதலில் நிர்வாகம் பகுதியில் நிறுவன வங்கி சேர்க்கவும் --</option>`;
+    } else {
+      sel.innerHTML = banks.map(b =>
+        `<option value="${b.id}">${b.bank_name} - ${b.account_no} (${b.branch_name || ''})</option>`
+      ).join('');
+    }
   }
 
   function closeHqBankPledgeModal() {
     const m = document.getElementById('hqBankPledgeModal');
-    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+    if (m) m.style.display = 'none';
   }
 
   async function submitHqBankPledgeForm() {
@@ -8995,21 +9013,30 @@
     if (!compBankId || !bankRef || amt <= 0) return alert("நிறுவன வங்கி, கடன் எண் மற்றும் பெற்ற தொகையை உள்ளிடவும்.");
     if (!tokenInput || !tokenInput.files || !tokenInput.files[0]) return alert("📸 வங்கி அளித்த டோக்கன் படத்தைக் கட்டாயம் இணைக்கவும்!");
 
-    const tokenBase64 = await readFileAsBase64(tokenInput);
-    const res = await fetch('/api/hq/packets/bank-pledge', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        loan_nos: lnos, company_bank_id: parseInt(compBankId), bank_loan_ref: bankRef,
-        total_received_amount: amt, bank_charges: chg, token_photo: tokenBase64,
-        staff_id: currentUser?.id || 1
-      })
-    });
-    const out = await res.json();
-    if (res.ok) {
-      alert("✅ " + out.message);
-      closeHqBankPledgeModal();
-      loadGoldPacketsList();
-    } else alert("❌ " + (out.detail || "பிழை"));
+    const btn = document.getElementById('btnSubmitBankPledge');
+    if (btn) { btn.disabled = true; btn.innerText = "அனுப்பப்படுகிறது..."; }
+
+    try {
+      const tokenBase64 = await readFileAsBase64(tokenInput);
+      const res = await fetch('/api/hq/packets/bank-pledge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loan_nos: lnos, company_bank_id: parseInt(compBankId), bank_loan_ref: bankRef,
+          total_received_amount: amt, bank_charges: chg, token_photo: tokenBase64,
+          staff_id: currentUser?.id || 1
+        })
+      });
+      const out = await res.json();
+      if (res.ok) {
+        alert("✅ " + out.message);
+        closeHqBankPledgeModal();
+        loadGoldPacketsList();
+      } else alert("❌ " + (out.detail || "பிழை"));
+    } catch (e) {
+      alert("❌ இணைப்புப் பிழை: " + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerText = "✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு"; }
+    }
   }
 
   // 🔓 வங்கி லாக்கரிலிருந்து மீட்கும் படிவத்தைத் திறத்தல்
@@ -9030,15 +9057,15 @@
     document.getElementById('br_interest_amt').value = '0';
     document.getElementById('br_receipt_photo').value = '';
 
-    if (!companyBanksCache || companyBanksCache.length === 0) await loadCompanyBanksList();
-    const sel = document.getElementById('br_company_bank_id');
-    sel.innerHTML = (companyBanksCache || []).map(b =>
-      `<option value="${b.id}">${b.bank_name} - ${b.account_no} (${b.branch_name})</option>`
-    ).join('');
-
+    // முதலில் சாளரத்தை உடனடியாகத் திறத்தல்
     const m = document.getElementById('hqBankRedeemModal');
-    m.classList.remove('hidden');
     m.style.display = 'flex';
+
+    const sel = document.getElementById('br_company_bank_id');
+    const banks = await fetchCompanyBanksSafe();
+    sel.innerHTML = banks.map(b =>
+      `<option value="${b.id}">${b.bank_name} - ${b.account_no} (${b.branch_name || ''})</option>`
+    ).join('');
   }
 
   function confirmRedeemPrincipalStep() {
@@ -9048,7 +9075,7 @@
 
   function closeHqBankRedeemModal() {
     const m = document.getElementById('hqBankRedeemModal');
-    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+    if (m) m.style.display = 'none';
   }
 
   async function submitHqBankRedeemForm() {
@@ -9060,24 +9087,33 @@
       return alert("📄 வங்கியிடம் பெற்ற ரசீதுப் படத்தைக் கட்டாயம் பதிவேற்றவும்!");
     }
 
-    const receiptBase64 = await readFileAsBase64(receiptInput);
-    const res = await fetch('/api/hq/packets/bank-redeem', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        loan_nos: currentRedeemLoanNos,
-        principal_paid: currentRedeemTotalPrincipal,
-        interest_paid: intr,
-        company_bank_id: parseInt(compBankId),
-        receipt_photo: receiptBase64,
-        staff_id: currentUser?.id || 1
-      })
-    });
-    const out = await res.json();
-    if (res.ok) {
-      alert("✅ " + out.message);
-      closeHqBankRedeemModal();
-      loadGoldPacketsList();
-    } else alert("❌ " + (out.detail || "பிழை"));
+    const btn = document.getElementById('btnSubmitBankRedeem');
+    if (btn) { btn.disabled = true; btn.innerText = "அனுப்பப்படுகிறது..."; }
+
+    try {
+      const receiptBase64 = await readFileAsBase64(receiptInput);
+      const res = await fetch('/api/hq/packets/bank-redeem', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loan_nos: currentRedeemLoanNos,
+          principal_paid: currentRedeemTotalPrincipal,
+          interest_paid: intr,
+          company_bank_id: parseInt(compBankId),
+          receipt_photo: receiptBase64,
+          staff_id: currentUser?.id || 1
+        })
+      });
+      const out = await res.json();
+      if (res.ok) {
+        alert("✅ " + out.message);
+        closeHqBankRedeemModal();
+        loadGoldPacketsList();
+      } else alert("❌ " + (out.detail || "பிழை"));
+    } catch (e) {
+      alert("❌ இணைப்புப் பிழை: " + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerText = "✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு"; }
+    }
   }
 
   async function hqVerifyBankAction(loanNo, action) {

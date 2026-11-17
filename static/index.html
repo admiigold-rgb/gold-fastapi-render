@@ -8514,7 +8514,12 @@
         <h3 class="text-base font-extrabold text-brand-violet" id="pktModalTitle">🔐 நகைக்கடன் பாக்கெட் & லாக்கர் மேலாண்மை</h3>
         <p class="text-[11px] text-slate-500" id="pktModalSubTitle">கிளை ➔ HQ லாக்கர் ➔ வங்கி லாக்கர் ➔ HQ லாக்கர் ➔ கிளை ➔ SMS OTP வாடிக்கையாளர் ஒப்படைப்பு</p>
       </div>
-      <button type="button" onclick="closePacketManagementModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="loadGoldPacketsList()" class="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-brand-violet rounded-xl text-xs font-black border border-purple-300 cursor-pointer transition">
+          🔄 புதுப்பி (Refresh)
+        </button>
+        <button type="button" onclick="closePacketManagementModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2">✕</button>
+      </div>
     </div>
 
     <!-- முக்கிய சுருக்க அட்டைகள் (கிளைக்கு 3 அட்டைகள், HQ-க்கு 4 அட்டைகள்) -->
@@ -8556,7 +8561,7 @@
       <table class="w-full text-xs text-left">
         <thead class="bg-purple-100 text-brand-violet border-b border-purple-200">
           <tr>
-            <th class="p-2.5 text-center"><input type="checkbox" onclick="document.querySelectorAll('.pkt-chk').forEach(c=>c.checked=this.checked)"></th>
+            <th class="p-2.5 text-center"><input type="checkbox" onclick="document.querySelectorAll('.pkt-chk:not(:disabled)').forEach(c=>{c.checked=this.checked; updateBulkActionButtonsState();})"></th>
             <th class="p-2.5 font-extrabold">கடன் எண் (Loan No)</th>
             <th class="p-2.5 font-extrabold">வாடிக்கையாளர்</th>
             <th id="pktColLocationHeader" class="p-2.5 font-extrabold">தற்போதைய இடம் & நிலை</th>
@@ -8571,9 +8576,98 @@
   </div>
 </div>
 
+<!-- 🏦 வங்கி லாக்கரில் வைக்கும் படிவம் (HQ Bank Pledge Modal) -->
+<div id="hqBankPledgeModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-3 z-[60]">
+  <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 border-2 border-amber-500">
+    <div class="flex justify-between items-center border-b border-amber-100 pb-2">
+      <h3 class="text-base font-extrabold text-amber-950">🏦 வங்கி லாக்கரில் வைத்தல் (Bank Pledge)</h3>
+      <button type="button" onclick="closeHqBankPledgeModal()" class="text-slate-400 font-bold">✕</button>
+    </div>
+    <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs font-bold text-amber-950">
+      தேர்வு செய்த பாக்கெட்டுகள்: <span id="bp_selected_loans_lbl" class="font-mono text-brand-violet"></span>
+    </div>
+    <div class="space-y-3 text-xs">
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">நமது நிறுவன வங்கி கணக்கு (வங்கி & வரவு கணக்கு) *</label>
+        <select id="bp_company_bank_id" class="w-full border-2 border-amber-300 p-2 rounded-xl bg-white font-bold text-brand-violet"></select>
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">வங்கி கடன் / லாக்கர் எண் (Bank Loan Ref No) *</label>
+        <input type="text" id="bp_bank_loan_ref" placeholder="எ.கா: GL-HDFC-9821" class="w-full border-2 border-amber-200 p-2 rounded-xl font-mono font-bold">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">வங்கியில் பெற்ற தொகை (₹) *</label>
+          <input type="number" id="bp_received_amt" placeholder="500000" class="w-full border-2 border-amber-200 p-2 rounded-xl font-black text-emerald-700">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">வங்கி சார்ஜஸ் / கட்டணம் (₹)</label>
+          <input type="number" id="bp_charges_amt" value="0" class="w-full border-2 border-amber-200 p-2 rounded-xl font-bold text-rose-600">
+        </div>
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">வங்கி அளித்த டோக்கன் புகைப்படம் (Bank Token Photo) * 📸</label>
+        <input type="file" id="bp_token_photo" accept="image/*" class="w-full text-xs bg-amber-50 p-1.5 rounded-xl border border-amber-200">
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 pt-2 border-t border-amber-100">
+      <button type="button" onclick="closeHqBankPledgeModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து</button>
+      <button type="button" onclick="submitHqBankPledgeForm()" style="background-color:#d97706;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
+        ✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 🔓 வங்கி லாக்கரிலிருந்து மீட்கும் படிவம் (HQ Bank Redeem Modal) -->
+<div id="hqBankRedeemModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-3 z-[60]">
+  <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 border-2 border-teal-500">
+    <div class="flex justify-between items-center border-b border-teal-100 pb-2">
+      <h3 class="text-base font-extrabold text-teal-950">🔓 வங்கி லாக்கரிலிருந்து மீட்டல் (Bank Redeem)</h3>
+      <button type="button" onclick="closeHqBankRedeemModal()" class="text-slate-400 font-bold">✕</button>
+    </div>
+    
+    <!-- படி 1: ஏற்கனவே பதிவு செய்த அசல் & கடன் எண்ணை உறுதிப்படுத்துதல் -->
+    <div class="bg-teal-50 p-3 rounded-2xl border-2 border-teal-200 text-xs space-y-1.5">
+      <div class="font-black text-teal-950">📋 வங்கி கடன் விபரம் சரிபார்ப்பு:</div>
+      <div>வங்கி & கடன் எண்: <b id="br_bank_ref_disp" class="font-mono text-brand-violet">-</b></div>
+      <div>வங்கியில் வாங்கிய அசல் தொகை: <b id="br_prin_disp" class="text-sm font-black text-rose-700 font-mono">₹ 0.00</b></div>
+      <div id="br_confirm_box" class="pt-2">
+        <button type="button" onclick="confirmRedeemPrincipalStep()" style="background-color:#059669;color:#fff;" class="w-full py-2 rounded-xl font-black shadow cursor-pointer">
+          ✓ வங்கி கடன் எண் & அசல் தொகை சரிதான் (OK)
+        </button>
+      </div>
+    </div>
+
+    <!-- படி 2: OK அழுத்திய பின் வட்டி மற்றும் ரசீது பதிவேற்றம் -->
+    <div id="br_step2_fields" class="hidden space-y-3 text-xs pt-1">
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">பணம் செலுத்தப்பட்ட நமது நிறுவன வங்கி *</label>
+        <select id="br_company_bank_id" class="w-full border-2 border-teal-300 p-2 rounded-xl bg-white font-bold text-brand-violet"></select>
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">வங்கிக்குச் செலுத்திய வட்டி / சார்ஜஸ் (₹) *</label>
+        <input type="number" id="br_interest_amt" value="0" class="w-full border-2 border-teal-200 p-2 rounded-xl font-black text-rose-600">
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">வங்கியிடம் பெற்ற ரசீதுப் படம் (Bank Receipt Photo) * 📄</label>
+        <input type="file" id="br_receipt_photo" accept="image/*" class="w-full text-xs bg-teal-50 p-1.5 rounded-xl border border-teal-200">
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-teal-100">
+        <button type="button" onclick="closeHqBankRedeemModal()" class="px-4 py-2 border rounded-xl text-xs font-bold">ரத்து</button>
+        <button type="button" onclick="submitHqBankRedeemForm()" style="background-color:#0d9488;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">
+          ✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   let allGoldPacketsCache = [];
   let currentPacketViewRole = 'BRANCH';
+  let currentRedeemLoanNos = [];
+  let currentRedeemTotalPrincipal = 0;
 
   async function openPacketManagementModal(role = 'BRANCH') {
     currentPacketViewRole = role;
@@ -8593,7 +8687,7 @@
       if (locHeader) locHeader.classList.add('hidden');
 
       grp.innerHTML = `
-        <button type="button" onclick="dispatchSelectedPacketsToHq()" style="background-color:#4f46e5;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">🚚 HQ-க்கு அனுப்பு (Dispatch)</button>
+        <button type="button" id="btnBulkDispatchHq" onclick="dispatchSelectedPacketsToHq()" style="background-color:#4f46e5;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">🚚 HQ-க்கு அனுப்பு (Dispatch)</button>
       `;
     } else {
       document.getElementById('pktModalTitle').innerText = '🛡️ தலைமையக நகை பாக்கெட் & வங்கி லாக்கர் கட்டுப்பாட்டு மையம்';
@@ -8604,10 +8698,10 @@
       if (locHeader) locHeader.classList.remove('hidden');
 
       grp.innerHTML = `
-        <button type="button" onclick="hqVerifyReceivedPackets()" style="background-color:#059669;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">✓ HQ லாக்கரில் சேர் (Verify)</button>
-        <button type="button" onclick="hqBankPledgePackets()" style="background-color:#d97706;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">🏦 வங்கி லாக்கரில் வை (Pledge)</button>
-        <button type="button" onclick="hqBankRedeemPackets()" style="background-color:#0d9488;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">🔓 வங்கியிலிருந்து மீட்டு சரிபார் (Redeem)</button>
-        <button type="button" onclick="hqSendPacketsToBranch()" style="background-color:#7c3aed;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">📦 கிளைக்கு அனுப்பு (Send to Branch)</button>
+        <button type="button" id="btnHqVerifyVault" onclick="hqVerifyReceivedPackets()" style="background-color:#059669;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">✓ HQ லாக்கரில் சேர் (Verify)</button>
+        <button type="button" id="btnHqBankPledge" onclick="openHqBankPledgeModal()" style="background-color:#d97706;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">🏦 வங்கி லாக்கரில் வை (Pledge)</button>
+        <button type="button" id="btnHqBankRedeem" onclick="openHqBankRedeemModal()" style="background-color:#0d9488;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">🔓 வங்கியிலிருந்து மீட்டு சரிபார் (Redeem)</button>
+        <button type="button" id="btnHqSendBranch" onclick="hqSendPacketsToBranch()" style="background-color:#7c3aed;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">📦 கிளைக்கு அனுப்பு (Send to Branch)</button>
       `;
     }
 
@@ -8634,7 +8728,6 @@
 
     document.getElementById('pkt_stat_branch').innerText = branchCount;
     if (currentPacketViewRole === 'BRANCH') {
-      // கிளைக்கு வங்கி லாக்கர் / HQ லாக்கர் எனப் பிரிக்காமல் மொத்தமாக "தலைமையகத்தில் உள்ளவை" எனக் காட்டுதல்
       document.getElementById('pkt_stat_hq').innerText = hqVaultCount + bankLockerCount + transitToHqCount;
     } else {
       document.getElementById('pkt_stat_hq').innerText = hqVaultCount;
@@ -8643,6 +8736,52 @@
     document.getElementById('pkt_stat_pending_handover').innerText = allGoldPacketsCache.filter(p => p.is_loan_closed && !p.is_handed_over).length;
 
     renderPacketsTable(allGoldPacketsCache);
+    updateBulkActionButtonsState();
+  }
+
+  // 🔒 தேர்வு செய்த பாக்கெட்டுகளின் நிலைக்கு ஏற்ப மேலே உள்ள பட்டன்களை மட்டும் Enable/Disable செய்தல்
+  function updateBulkActionButtonsState() {
+    if (currentPacketViewRole !== 'HQ') return;
+    const selectedLnos = getSelectedPacketLoanNos();
+    const selectedPkts = allGoldPacketsCache.filter(p => selectedLnos.includes(p.loan_no));
+
+    const btnVerify = document.getElementById('btnHqVerifyVault');
+    const btnPledge = document.getElementById('btnHqBankPledge');
+    const btnRedeem = document.getElementById('btnHqBankRedeem');
+    const btnSendBr = document.getElementById('btnHqSendBranch');
+
+    const setBtn = (btn, enabled) => {
+      if (!btn) return;
+      btn.disabled = !enabled;
+      btn.style.opacity = enabled ? '1' : '0.35';
+      btn.style.cursor = enabled ? 'pointer' : 'not-allowed';
+    };
+
+    if (selectedPkts.length === 0) {
+      // எதுவும் தேர்வு செய்யப்படாவிட்டால், வங்கி லாக்கரில் பாக்கெட் இருந்தால் மட்டுமே Redeem பட்டன் இயங்கும்
+      const hasAnyInBank = allGoldPacketsCache.some(p => p.current_location === 'BANK_LOCKER' && p.packet_status === 'PLEDGED_IN_BANK');
+      setBtn(btnVerify, false);
+      setBtn(btnPledge, false);
+      setBtn(btnRedeem, hasAnyInBank);
+      setBtn(btnSendBr, false);
+      return;
+    }
+
+    // 1. IN_TRANSIT_TO_HQ என்றால் மட்டுமே "✓ HQ லாக்கரில் சேர்" இயங்கும் (ஏற்கனவே HQ லாக்கரில் இருந்தால் இயங்காது)
+    const allInTransitToHq = selectedPkts.every(p => p.packet_status === 'IN_TRANSIT_TO_HQ');
+    setBtn(btnVerify, allInTransitToHq);
+
+    // 2. HQ_VAULT என்றால் மட்டுமே "🏦 வங்கி லாக்கரில் வை" இயங்கும்
+    const allInHqVault = selectedPkts.every(p => p.current_location === 'HQ_VAULT' && p.packet_status === 'AT_HQ_VAULT');
+    setBtn(btnPledge, allInHqVault);
+
+    // 3. BANK_LOCKER என்றால் மட்டுமே "🔓 வங்கியிலிருந்து மீட்டு சரிபார்" இயங்கும்
+    const allInBankLocker = selectedPkts.every(p => p.current_location === 'BANK_LOCKER' && p.packet_status === 'PLEDGED_IN_BANK');
+    setBtn(btnRedeem, allInBankLocker);
+
+    // 4. கிளை கோரிக்கை வைத்த பாக்கெட்டுகள் (REQUESTED_BY_BRANCH & HQ_VAULT) மட்டுமே "📦 கிளைக்கு அனுப்பு" இயங்கும்
+    const allBranchRequestedInHq = selectedPkts.every(p => p.packet_status === 'REQUESTED_BY_BRANCH' && p.current_location === 'HQ_VAULT');
+    setBtn(btnSendBr, allBranchRequestedInHq);
   }
 
   function filterPacketsTable(mode) {
@@ -8655,6 +8794,7 @@
     } else {
       renderPacketsTable(allGoldPacketsCache);
     }
+    updateBulkActionButtonsState();
   }
 
   function renderPacketsTable(list) {
@@ -8673,7 +8813,6 @@
       const bVer = p.bank_verify_status || 'NONE';
       const branchName = p.test_branches?.branch_name || '';
 
-      // 1. கடன் & ஒப்படைப்பு நிலை பேட்ஜ்
       let statusBadge = `<span class="px-2 py-0.5 bg-blue-50 text-blue-800 rounded font-bold text-[10px]">நடப்புக் கடன் (Active)</span>`;
       if (isHanded) {
         statusBadge = `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded font-black text-[10px]">✅ வாடிக்கையாளரிடம் ஒப்படைக்கப்பட்டது</span>`;
@@ -8688,6 +8827,17 @@
       const reqInfo = (p.pending_request_data && p.pending_request_data.new_loan_no)
         ? ` (புதிய எண்: <b>${p.pending_request_data.new_loan_no}</b>)` : '';
 
+      // டோக்கன் & ரசீது படங்கள் இணைப்பு (HQ-க்கு மட்டும்)
+      let docLinksHtml = '';
+      if (currentPacketViewRole === 'HQ') {
+        if (p.bank_token_photo) {
+          docLinksHtml += `<button type="button" onclick="previewDocImage('${p.bank_token_photo}')" class="mt-1 mr-1 px-2 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px] font-bold underline cursor-pointer">🎫 வங்கி டோக்கன்</button>`;
+        }
+        if (p.bank_redeem_receipt_photo) {
+          docLinksHtml += `<button type="button" onclick="previewDocImage('${p.bank_redeem_receipt_photo}')" class="mt-1 px-2 py-0.5 bg-teal-100 text-teal-900 rounded text-[10px] font-bold underline cursor-pointer">📄 மீட்பு ரசீது</button>`;
+        }
+      }
+
       let specBadge = '';
       if (st === 'REQUESTED_BY_BRANCH') {
         specBadge += `<span class="block mt-1 px-2 py-0.5 bg-indigo-100 text-indigo-950 border border-indigo-300 rounded font-black text-[10px]">📥 கிளை பாக்கெட் கேட்டுள்ளது!</span>`;
@@ -8699,39 +8849,32 @@
         specBadge += `<span class="block mt-1 px-2 py-0.5 bg-yellow-200 text-amber-950 rounded font-black text-[10px]">⏳ HQ ஒப்புதல் நிலுவை: ${p.pending_request_type}${reqInfo}</span>`;
       }
 
-      // 2. Checkbox கட்டுப்பாடு
+      // Checkbox கட்டுப்பாடு
       let canSelectCheckbox = false;
       if (!isHanded && bVer !== 'PENDING_PLEDGE_VERIFY' && bVer !== 'PENDING_REDEEM_VERIFY') {
         if (currentPacketViewRole === 'BRANCH' && st === 'AT_BRANCH_NEW') canSelectCheckbox = true;
         if (currentPacketViewRole === 'HQ' && (st === 'IN_TRANSIT_TO_HQ' || st === 'AT_HQ_VAULT' || st === 'PLEDGED_IN_BANK' || st === 'REQUESTED_BY_BRANCH')) canSelectCheckbox = true;
       }
       const checkboxHtml = canSelectCheckbox
-        ? `<input type="checkbox" class="pkt-chk" value="${p.loan_no}">`
+        ? `<input type="checkbox" class="pkt-chk" value="${p.loan_no}" onchange="updateBulkActionButtonsState()">`
         : `<span class="text-slate-300">🔒</span>`;
 
-      // 3. பட்டன்கள் கட்டுப்பாடு (Branch & HQ)
       let actionBtns = '';
       if (isHanded) {
         actionBtns = `<span class="text-[11px] font-bold text-slate-400">🔒 நிறைவடைந்தது</span>`;
       } else if (currentPacketViewRole === 'BRANCH') {
-        // பாக்கெட் தலைமையகத்தில் (HQ_VAULT / BANK_LOCKER / TRANSIT_TO_HQ) இருந்தால்: கடன் முடித்தாலும் முடிக்காவிட்டாலும் பாக்கெட் கோரிக்கை வைக்கலாம்!
         if (loc === 'HQ_VAULT' || loc === 'BANK_LOCKER' || st === 'IN_TRANSIT_TO_HQ') {
           if (st === 'REQUESTED_BY_BRANCH') {
             actionBtns += `<span class="px-2.5 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-lg font-bold text-[10px] block mx-auto mb-1">⏳ HQ-விலிருந்து பாக்கெட் கோரப்பட்டுள்ளது</span>`;
           } else {
             actionBtns += `<button type="button" onclick="sendPacketSpecialReq('${p.loan_no}', 'REQUEST_FROM_HQ')" class="px-2.5 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 rounded-lg font-bold text-[10px] mb-1 block mx-auto cursor-pointer">📥 பாக்கெட் கேட்டு HQ-க்கு அனுப்பு</button>`;
           }
-          // கடன் முடிந்திருந்தால் மறு-அடகு (லாக்கரில் இருந்தபடியே எண் மாற்றம்) பட்டனையும் காட்டுதல்
           if (isClosed && p.pending_request_status !== 'PENDING') {
             actionBtns += `<button type="button" onclick="requestRepledgeTransfer('${p.loan_no}')" style="background-color:#7c3aed;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] block mx-auto shadow cursor-pointer">🔄 மறு-அடகு (லாக்கரில் எண் மாற்று)</button>`;
           }
-        }
-        // பாக்கெட் HQ-விலிருந்து கிளைக்கு வரும் வழியில் இருந்தால்:
-        else if (st === 'IN_TRANSIT_TO_BRANCH') {
+        } else if (st === 'IN_TRANSIT_TO_BRANCH') {
           actionBtns += `<button type="button" onclick="receivePacketAtBranch('${p.loan_no}')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] cursor-pointer">✓ கிளையில் பாக்கெட் பெறு</button>`;
-        }
-        // பாக்கெட் கிளையில் இருந்தால்:
-        else if (loc === 'BRANCH') {
+        } else if (loc === 'BRANCH') {
           if (isClosed) {
             if (st === 'AT_BRANCH_NEW') {
               if (p.pending_request_status === 'PENDING') {
@@ -8752,7 +8895,6 @@
           }
         }
       } else {
-        // 🛡️ HQ Actions (தலைமையகப் பார்வை)
         if (bVer === 'PENDING_PLEDGE_VERIFY' || bVer === 'PENDING_REDEEM_VERIFY') {
           const isSameStaff = p.bank_initiated_by && Number(p.bank_initiated_by) === Number(currentUser?.id);
           if (isSameStaff) {
@@ -8776,9 +8918,8 @@
         }
       }
 
-      // கிளைக்கு 'தற்போதைய இடம் & நிலை' பத்தியை மறைத்து, HQ-க்கு மட்டும் காட்டுதல்
       const locationTd = currentPacketViewRole === 'HQ'
-        ? `<td class="p-2.5"><b>${loc}</b><br><span class="text-[11px] text-purple-800 font-bold">${st}</span>${specBadge}</td>`
+        ? `<td class="p-2.5"><b>${loc}</b><br><span class="text-[11px] text-purple-800 font-bold">${st}</span>${specBadge}${docLinksHtml}</td>`
         : '';
 
       return `
@@ -8793,27 +8934,7 @@
       `;
     }).join('');
   }
-</script>
 
-<script>
-  async function hqVerifyBankAction(loanNo, action) {
-    if (!confirm(action === 'APPROVE'
-      ? `பாக்கெட் (${loanNo}) வங்கி லாக்கர் நடவடிக்கையை நேரில் சரிபார்த்து உறுதி செய்கிறீர்களா?`
-      : `பாக்கெட் (${loanNo}) வங்கி லாக்கர் நடவடிக்கையை நிராகரிக்கிறீர்களா?`)) return;
-
-    const res = await fetch('/api/hq/packets/verify-bank-action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loan_no: loanNo, action: action, verifier_id: currentUser?.id || 1 })
-    });
-    const out = await res.json();
-    if (res.ok) {
-      alert(out.message);
-      loadGoldPacketsList();
-    } else {
-      alert("❌ " + (out.detail || "பிழை ஏற்பட்டது"));
-    }
-  }
   function getSelectedPacketLoanNos() {
     return Array.from(document.querySelectorAll('.pkt-chk:checked')).map(c => c.value);
   }
@@ -8845,43 +8966,146 @@
     loadGoldPacketsList();
   }
 
-  async function hqBankPledgePackets() {
+  // 🏦 வங்கி லாக்கரில் வைக்கும் படிவத்தைத் திறத்தல்
+  async function openHqBankPledgeModal() {
     const lnos = getSelectedPacketLoanNos();
     if (lnos.length === 0) return alert("வங்கி லாக்கரில் வைக்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.");
-    const bankName = prompt("வங்கியின் பெயர் (எ.கா: HDFC / SBI / Federal Bank):");
-    const bankRef = prompt("வங்கி கடன் எண் (Bank Loan / Locker Ref No):");
-    const amt = parseFloat(prompt("வங்கியிலிருந்து பெற்ற மொத்தத் தொகை (₹):")) || 0;
-    const chg = parseFloat(prompt("வங்கி சார்ஜஸ் / கட்டணம் (₹):", "0")) || 0;
-    const compBankId = parseInt(prompt("பணம் வரவு வைக்கப்பட்ட நமது நிறுவன வங்கி ID (எ.கா: 1):", "1")) || 1;
-    if (!bankName || amt <= 0) return alert("விவரங்கள் முழுமையடையவில்லை.");
+    document.getElementById('bp_selected_loans_lbl').innerText = lnos.join(', ');
+    document.getElementById('bp_bank_loan_ref').value = '';
+    document.getElementById('bp_received_amt').value = '';
+    document.getElementById('bp_charges_amt').value = '0';
+    document.getElementById('bp_token_photo').value = '';
 
+    // நிறுவன வங்கிகளை Dropdown-ல் ஏற்றுதல்
+    if (!companyBanksCache || companyBanksCache.length === 0) await loadCompanyBanksList();
+    const sel = document.getElementById('bp_company_bank_id');
+    sel.innerHTML = (companyBanksCache || []).map(b =>
+      `<option value="${b.id}">${b.bank_name} - ${b.account_no} (${b.branch_name})</option>`
+    ).join('');
+
+    const m = document.getElementById('hqBankPledgeModal');
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+  }
+
+  function closeHqBankPledgeModal() {
+    const m = document.getElementById('hqBankPledgeModal');
+    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+  }
+
+  async function submitHqBankPledgeForm() {
+    const lnos = getSelectedPacketLoanNos();
+    const compBankId = document.getElementById('bp_company_bank_id').value;
+    const bankRef = document.getElementById('bp_bank_loan_ref').value.trim();
+    const amt = parseFloat(document.getElementById('bp_received_amt').value) || 0;
+    const chg = parseFloat(document.getElementById('bp_charges_amt').value) || 0;
+    const tokenInput = document.getElementById('bp_token_photo');
+
+    if (!compBankId || !bankRef || amt <= 0) return alert("நிறுவன வங்கி, கடன் எண் மற்றும் பெற்ற தொகையை உள்ளிடவும்.");
+    if (!tokenInput || !tokenInput.files || !tokenInput.files[0]) return alert("📸 வங்கி அளித்த டோக்கன் படத்தைக் கட்டாயம் இணைக்கவும்!");
+
+    const tokenBase64 = await readFileAsBase64(tokenInput);
     const res = await fetch('/api/hq/packets/bank-pledge', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        loan_nos: lnos, bank_name: bankName, bank_loan_ref: bankRef || '-',
-        total_received_amount: amt, bank_charges: chg, company_bank_id: compBankId, staff_id: currentUser?.id || 1
+        loan_nos: lnos, company_bank_id: parseInt(compBankId), bank_loan_ref: bankRef,
+        total_received_amount: amt, bank_charges: chg, token_photo: tokenBase64,
+        staff_id: currentUser?.id || 1
       })
     });
     const out = await res.json();
-    alert("✅ " + out.message);
-    loadGoldPacketsList();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      closeHqBankPledgeModal();
+      loadGoldPacketsList();
+    } else alert("❌ " + (out.detail || "பிழை"));
   }
 
-  async function hqBankRedeemPackets() {
+  // 🔓 வங்கி லாக்கரிலிருந்து மீட்கும் படிவத்தைத் திறத்தல்
+  async function openHqBankRedeemModal() {
     const lnos = getSelectedPacketLoanNos();
     if (lnos.length === 0) return alert("வங்கியிலிருந்து மீட்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.");
-    const prin = parseFloat(prompt("வங்கிக்குச் செலுத்திய அசல் தொகை (₹):")) || 0;
-    const intr = parseFloat(prompt("வங்கிக்குச் செலுத்திய வட்டி / சார்ஜஸ் (₹):", "0")) || 0;
-    const compBankId = parseInt(prompt("பணம் செலுத்தப்பட்ட நமது நிறுவன வங்கி ID (எ.கா: 1):", "1")) || 1;
-    if (!confirm(`பாக்கெட் வாரியாக சரிபார்க்கப்பட்டதா? மொத்தம் ₹${prin + intr} நிறுவன வங்கியில் கழிக்கப்படும்.`)) return;
 
+    const pkts = allGoldPacketsCache.filter(p => lnos.includes(p.loan_no));
+    currentRedeemLoanNos = lnos;
+    currentRedeemTotalPrincipal = pkts.reduce((sum, p) => sum + parseFloat(p.bank_pledge_amount || 0), 0);
+
+    const bankRefs = [...new Set(pkts.map(p => `${p.bank_name || '-'} [கடன் எண்: ${p.bank_loan_ref || '-'}]`).filter(Boolean))];
+    document.getElementById('br_bank_ref_disp').innerText = bankRefs.join(', ');
+    document.getElementById('br_prin_disp').innerText = `₹ ${currentRedeemTotalPrincipal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+    // படி 1-ஐக் காட்டி படி 2-ஐ மறைத்தல்
+    document.getElementById('br_confirm_box').classList.remove('hidden');
+    document.getElementById('br_step2_fields').classList.add('hidden');
+    document.getElementById('br_interest_amt').value = '0';
+    document.getElementById('br_receipt_photo').value = '';
+
+    if (!companyBanksCache || companyBanksCache.length === 0) await loadCompanyBanksList();
+    const sel = document.getElementById('br_company_bank_id');
+    sel.innerHTML = (companyBanksCache || []).map(b =>
+      `<option value="${b.id}">${b.bank_name} - ${b.account_no} (${b.branch_name})</option>`
+    ).join('');
+
+    const m = document.getElementById('hqBankRedeemModal');
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+  }
+
+  function confirmRedeemPrincipalStep() {
+    document.getElementById('br_confirm_box').classList.add('hidden');
+    document.getElementById('br_step2_fields').classList.remove('hidden');
+  }
+
+  function closeHqBankRedeemModal() {
+    const m = document.getElementById('hqBankRedeemModal');
+    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+  }
+
+  async function submitHqBankRedeemForm() {
+    const compBankId = document.getElementById('br_company_bank_id').value;
+    const intr = parseFloat(document.getElementById('br_interest_amt').value) || 0;
+    const receiptInput = document.getElementById('br_receipt_photo');
+
+    if (!receiptInput || !receiptInput.files || !receiptInput.files[0]) {
+      return alert("📄 வங்கியிடம் பெற்ற ரசீதுப் படத்தைக் கட்டாயம் பதிவேற்றவும்!");
+    }
+
+    const receiptBase64 = await readFileAsBase64(receiptInput);
     const res = await fetch('/api/hq/packets/bank-redeem', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loan_nos: lnos, principal_paid: prin, interest_paid: intr, company_bank_id: compBankId, staff_id: currentUser?.id || 1 })
+      body: JSON.stringify({
+        loan_nos: currentRedeemLoanNos,
+        principal_paid: currentRedeemTotalPrincipal,
+        interest_paid: intr,
+        company_bank_id: parseInt(compBankId),
+        receipt_photo: receiptBase64,
+        staff_id: currentUser?.id || 1
+      })
     });
     const out = await res.json();
-    alert("✅ " + out.message);
-    loadGoldPacketsList();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      closeHqBankRedeemModal();
+      loadGoldPacketsList();
+    } else alert("❌ " + (out.detail || "பிழை"));
+  }
+
+  async function hqVerifyBankAction(loanNo, action) {
+    if (!confirm(action === 'APPROVE'
+      ? `பாக்கெட் (${loanNo}) வங்கி லாக்கர் நடவடிக்கையை நேரில் சரிபார்த்து உறுதி செய்கிறீர்களா?`
+      : `பாக்கெட் (${loanNo}) வங்கி லாக்கர் நடவடிக்கையை நிராகரிக்கிறீர்களா?`)) return;
+
+    const res = await fetch('/api/hq/packets/verify-bank-action', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loan_no: loanNo, action: action, verifier_id: currentUser?.id || 1 })
+    });
+    const out = await res.json();
+    if (res.ok) {
+      alert(out.message);
+      loadGoldPacketsList();
+    } else {
+      alert("❌ " + (out.detail || "பிழை ஏற்பட்டது"));
+    }
   }
 
   async function hqSendPacketsToBranch() {
@@ -8890,10 +9114,14 @@
     const carrier = prompt("கிளைக்கு எடுத்துச் செல்லும் பணியாளர் பெயர்:");
     if (!carrier) return;
     for (const lno of lnos) {
-      await fetch('/api/hq/packets/action', {
+      const r = await fetch('/api/hq/packets/action', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loan_no: lno, action_type: 'SEND_TO_BRANCH', carrier_person: carrier, admin_id: currentUser?.id || 1 })
       });
+      if (!r.ok) {
+        const err = await r.json();
+        return alert("❌ " + (err.detail || "பிழை"));
+      }
     }
     alert("✅ பாக்கெட்டுகள் கிளைக்கு அனுப்பப்பட்டன.");
     loadGoldPacketsList();
@@ -8907,8 +9135,10 @@
       body: JSON.stringify({ loan_no: loanNo, request_type: reqType, remarks: rem, staff_id: currentUser?.id || 1 })
     });
     const out = await res.json();
-    alert("✅ " + out.message);
-    loadGoldPacketsList();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      loadGoldPacketsList();
+    } else alert("❌ " + (out.detail || "பிழை"));
   }
 
   async function requestRepledgeTransfer(oldLoanNo) {
@@ -8919,8 +9149,10 @@
       body: JSON.stringify({ loan_no: oldLoanNo, request_type: 'REPLEDGE_TRANSFER', new_loan_no: newLoanNo.trim(), staff_id: currentUser?.id || 1 })
     });
     const out = await res.json();
-    alert("✅ " + out.message);
-    loadGoldPacketsList();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      loadGoldPacketsList();
+    } else alert("❌ " + (out.detail || "பிழை"));
   }
 
   async function hqApproveSpecial(loanNo, actionType) {

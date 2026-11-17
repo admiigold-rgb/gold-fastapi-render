@@ -612,12 +612,12 @@
           <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition cursor-pointer">புதுப்பி 🔄</button>
         </div>
 
-        <button type="button" onclick="openPacketManagementModal('HQ')" 
+        <button type="button" id="btnOpenHqPacketHub" onclick="openPacketManagementModal('HQ')" 
                 style="background-color: #4c1d95 !important; color: #ffffff !important;" 
-                class="px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition cursor-pointer">
+                class="hidden px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition cursor-pointer">
           🔐 HQ பாக்கெட் & வங்கி லாக்கர் மேலாண்மை
         </button>
-
+  
         <!-- 🏷️ வட்டி தள்ளுபடி (Interest Rebate) ஒப்புதல் கோரிக்கைகள் -->
         <div id="hqRebateSection" class="space-y-2 bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl border-2 border-purple-400 shadow-sm">
           <div class="flex justify-between items-center border-b border-purple-200 pb-2">
@@ -1180,6 +1180,15 @@
               <label class="flex items-center space-x-2.5 font-bold text-purple-950 col-span-1 sm:col-span-2 bg-purple-100/70 p-2 rounded-xl border border-purple-300 hover:bg-purple-100 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_gss_benefit" class="w-4 h-4 text-purple-700 rounded">
                 <span class="text-xs font-bold">🎁 10. GSS மெச்சியுரிட்டி பெனிபிட் ஒப்புதல் உரிமை</span>
+              </label>
+              <label class="flex items-center space-x-2.5 font-bold text-indigo-950 col-span-1 sm:col-span-2 bg-indigo-50 p-2 rounded-xl border border-indigo-300 hover:bg-indigo-100 cursor-pointer shadow-xs">
+                <input type="checkbox" id="perm_hq_packet_access" class="w-4 h-4 text-indigo-700 rounded">
+                <span class="text-xs font-bold">🔐 11. HQ பாக்கெட் & வங்கி லாக்கர் மைய அணுகல் (Vault Access)</span>
+              </label>
+              
+              <label class="flex items-center space-x-2.5 font-bold text-rose-950 col-span-1 sm:col-span-2 bg-rose-50 p-2 rounded-xl border border-rose-300 hover:bg-rose-100 cursor-pointer shadow-xs">
+                <input type="checkbox" id="perm_hq_packet_approve" class="w-4 h-4 text-rose-700 rounded">
+                <span class="text-xs font-bold">🛡️ 12. பாக்கெட் சிறப்பு ஒப்புதல்கள் (நேரடி விடுவிப்பு / திரும்பப் பெறுதல் / மறு-அடகு) & 2-வது வங்கி லாக்கர் சரிபார்ப்பு</span>
               </label>
             </div>
         
@@ -2463,16 +2472,24 @@
     }
 
     function renderNavMenu(user) {
-      const container = document.getElementById('navButtonsContainer');
-      container.innerHTML = '';
-      const p = user.permissions || {};
-      const activeTabs = [];
+   const container = document.getElementById('navButtonsContainer');
+   container.innerHTML = '';
+   const p = user.permissions || {};
+   const activeTabs = [];
 
-      if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
-      if (p.can_approve_kyc === true || p.can_approve_updates === true || p.can_approve_otp_exempt === true || p.can_approve_rebate === true || p.can_approve_gss_benefit === true) {
-        activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
-      }
-      if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
+   if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
+   if (
+     p.can_approve_kyc === true ||
+     p.can_approve_updates === true ||
+     p.can_approve_otp_exempt === true ||
+     p.can_approve_rebate === true ||
+     p.can_approve_gss_benefit === true ||
+     p.can_access_hq_packets === true ||
+     p.can_approve_hq_packets === true
+   ) {
+     activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
+   }
+   if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
       
       activeTabs.forEach((tab, index) => {
         const btn = document.createElement('button');
@@ -2512,6 +2529,16 @@
         loadCompanyBanksList();
         loadTodayGoldRate();
         loadStaffList();
+      }
+
+      // 🔐 நிர்வாக உரிமை இல்லாவிட்டாலும், பாக்கெட் உரிமை உள்ள அனைவருக்கும் பட்டனைக் காட்டுதல்
+      const btnHqPkt = document.getElementById('btnOpenHqPacketHub');
+      if (btnHqPkt) {
+        if (user.permissions?.can_access_hq_packets === true || user.permissions?.can_approve_hq_packets === true) {
+          btnHqPkt.classList.remove('hidden');
+        } else {
+          btnHqPkt.classList.add('hidden');
+        }
       }
     }
 
@@ -5550,6 +5577,8 @@
       document.getElementById('perm_rebate').checked = !!s.can_approve_rebate;
       document.getElementById('perm_gp_stock').checked = !!s.can_manage_gp_stock;
       document.getElementById('perm_gss_benefit').checked = !!s.can_approve_gss_benefit;
+      document.getElementById('perm_hq_packet_access').checked = !!s.can_access_hq_packets;
+      document.getElementById('perm_hq_packet_approve').checked = !!s.can_approve_hq_packets;
     }
 
     function cancelStaffEdit() {
@@ -5572,6 +5601,8 @@
       document.getElementById('perm_rebate').checked = false;
       document.getElementById('perm_gp_stock').checked = false;
       document.getElementById('perm_gss_benefit').checked = false;
+      document.getElementById('perm_hq_packet_access').checked = false;
+      document.getElementById('perm_hq_packet_approve').checked = false;
     }
 
     async function submitStaffForm() {
@@ -5596,6 +5627,8 @@
         can_approve_rebate: document.getElementById('perm_rebate').checked,
         can_manage_gp_stock: document.getElementById('perm_gp_stock').checked,
         can_approve_gss_benefit: document.getElementById('perm_gss_benefit').checked,
+        can_access_hq_packets: document.getElementById('perm_hq_packet_access').checked,
+        can_approve_hq_packets: document.getElementById('perm_hq_packet_approve').checked,
       };
 
       const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
@@ -8898,9 +8931,14 @@
           }
         }
       } else {
+        // 🔒 நிர்வாகத்தில் ஒப்புதல் உரிமை (can_approve_hq_packets) டிக் செய்யப்பட்டவருக்கு மட்டுமே 4 ஒப்புதல் பட்டன்கள் தெரியும்
+        const canApprovePackets = currentUser?.permissions?.can_approve_hq_packets === true;
+
         if (bVer === 'PENDING_PLEDGE_VERIFY' || bVer === 'PENDING_REDEEM_VERIFY') {
           const isSameStaff = p.bank_initiated_by && Number(p.bank_initiated_by) === Number(currentUser?.id);
-          if (isSameStaff) {
+          if (!canApprovePackets) {
+            actionBtns = `<span class="text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-1 rounded border border-rose-200 block">🔒 2-வது சரிபார்ப்பு அதிகாரம் இல்லை</span>`;
+          } else if (isSameStaff) {
             actionBtns = `<span class="text-[10px] text-amber-800 font-bold bg-amber-50 px-2 py-1 rounded border border-amber-300 block">⏳ மற்றொரு HQ பணியாளர் சரிபார்க்க வேண்டும்</span>`;
           } else {
             actionBtns = `
@@ -8909,18 +8947,21 @@
             `;
           }
         } else if (p.pending_request_status === 'PENDING') {
-          const btnLabel = p.pending_request_type === 'REPLEDGE_TRANSFER' ? '✓ மறு-அடகு எண் மாற்ற அனுமதி' : '✓ சிறப்பு அனுமதி வழங்கு';
-          actionBtns += `
-            <button type="button" onclick="hqApproveSpecial('${p.loan_no}', 'APPROVE_SPECIAL')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] mr-1 shadow cursor-pointer">${btnLabel}</button>
-            <button type="button" onclick="hqApproveSpecial('${p.loan_no}', 'REJECT_SPECIAL')" style="background-color:#dc2626;color:#fff;" class="px-2 py-1 rounded-lg font-bold text-[10px] cursor-pointer">✕ நிராகரி</button>
-          `;
+          if (!canApprovePackets) {
+            actionBtns = `<span class="text-[10px] text-rose-700 font-bold bg-rose-50 px-2 py-1 rounded border border-rose-200 block">🔒 சிறப்பு ஒப்புதல் அதிகாரம் இல்லை</span>`;
+          } else {
+            const btnLabel = p.pending_request_type === 'REPLEDGE_TRANSFER' ? '✓ மறு-அடகு எண் மாற்ற அனுமதி' : '✓ சிறப்பு அனுமதி வழங்கு';
+            actionBtns += `
+              <button type="button" onclick="hqApproveSpecial('${p.loan_no}', 'APPROVE_SPECIAL')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] mr-1 shadow cursor-pointer">${btnLabel}</button>
+              <button type="button" onclick="hqApproveSpecial('${p.loan_no}', 'REJECT_SPECIAL')" style="background-color:#dc2626;color:#fff;" class="px-2 py-1 rounded-lg font-bold text-[10px] cursor-pointer">✕ நிராகரி</button>
+            `;
+          }
         } else if (st === 'REQUESTED_BY_BRANCH' && loc === 'HQ_VAULT') {
           actionBtns += `<span class="text-[10px] text-indigo-800 font-black">📥 கிளை கேட்டுள்ளது (தேர்வு செய்து கிளைக்கு அனுப்பவும்)</span>`;
         } else if (st === 'REQUESTED_BY_BRANCH' && loc === 'BANK_LOCKER') {
           actionBtns += `<span class="text-[10px] text-rose-700 font-black">🏦 வங்கியில் உள்ளது (முதலில் Redeem செய்து HQ கொண்டு வரவும்)</span>`;
         }
       }
-
       const locationTd = currentPacketViewRole === 'HQ'
         ? `<td class="p-2.5"><b>${loc}</b><br><span class="text-[11px] text-purple-800 font-bold">${st}</span>${specBadge}${docLinksHtml}</td>`
         : '';

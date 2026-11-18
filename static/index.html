@@ -8978,13 +8978,22 @@
         ? `<td class="p-2.5"><b>${loc}</b><br><span class="text-[11px] text-purple-800 font-bold">${st}</span>${specBadge}${docLinksHtml}</td>`
         : '';
 
+      // 🔒 கிளைப் பார்வையில் வங்கி லாக்கர் தொடர்பான ரகசியக் குறிப்புகளை மறைத்தல்
+      let displayAuditNotes = p.audit_notes || '';
+      if (currentPacketViewRole === 'BRANCH') {
+        const rawNote = displayAuditNotes.toLowerCase();
+        if (loc === 'BANK_LOCKER' || rawNote.includes('வங்கி') || rawNote.includes('bank') || rawNote.includes('லாக்கர்') || rawNote.includes('மீட்பு')) {
+          displayAuditNotes = '🏛️ பாக்கெட் தலைமையகப் பாதுகாப்பில் உள்ளது';
+        }
+      }
+
       return `
         <tr class="${isHanded ? 'bg-slate-50 opacity-75' : (st === 'REQUESTED_BY_BRANCH' && currentPacketViewRole === 'HQ' ? 'bg-indigo-50/70' : '')}">
           <td class="p-2.5 text-center">${checkboxHtml}</td>
           <td class="p-2.5 font-mono font-black text-brand-violet">${p.loan_no}${branchTag}${prevNote}</td>
           <td class="p-2.5"><b>${p.test_customers?.name || '-'}</b><br><span class="font-mono text-[11px]">${p.test_customers?.mobile || '-'}</span></td>
           ${locationTd}
-          <td class="p-2.5">${statusBadge}${currentPacketViewRole === 'BRANCH' ? specBadge : ''}<br><span class="text-[10px] text-slate-500">${p.audit_notes || ''}</span></td>
+          <td class="p-2.5">${statusBadge}${currentPacketViewRole === 'BRANCH' ? specBadge : ''}<br><span class="text-[10px] text-slate-500">${displayAuditNotes}</span></td>
           <td class="p-2.5 text-center">${actionBtns || '-'}</td>
         </tr>
       `;

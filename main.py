@@ -1829,6 +1829,14 @@ def hq_packet_action(data: dict):
             elif r_type == "REPLEDGE_TRANSFER":
                 new_lno = str(r_data.get("new_loan_no") or "").strip()
                 old_lno = pkt["loan_no"]
+
+                # புதிய கடன் எண்ணில் ஏற்கனவே ஒரு காலி பாக்கெட் உருவாகியிருந்தால், முதலில் அதை நீக்குதல்
+                dup_res = supabase.table("test_gold_packets").select("id, current_location").eq("loan_no", new_lno).execute()
+                for d in (dup_res.data or []):
+                    if d["id"] != pkt["id"]:
+                        supabase.table("test_gold_packet_movements").delete().eq("packet_id", d["id"]).execute()
+                        supabase.table("test_gold_packets").delete().eq("id", d["id"]).execute()
+
                 note = f"பழைய கடன் ({old_lno}) முடித்து, புதிய கடன் ({new_lno})-க்கு மறு-அடகு மாற்றப்பட்டது."
                 supabase.table("test_gold_packets").update({
                     "loan_no": new_lno,

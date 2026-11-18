@@ -2332,29 +2332,33 @@ def create_staff(data: StaffPayload):
     return {"status": "success", "message": "பணியாளர் கணக்கு உருவாக்கப்பட்டது.", "data": res.data}
 
 @app.put("/api/admin/staff/{staff_id}")
-def update_staff(staff_id: int, data: StaffPayload):
-    update_dict = {
-        "full_name": data.full_name,
-        "mobile": data.mobile,
-        "role_key": data.role_key,
-        "branch_id": data.branch_id,
-        "can_access_counter": data.can_access_counter,
-        "can_approve_kyc": data.can_approve_kyc,
-        "can_approve_updates": data.can_approve_updates,
-        "can_manage_users": data.can_manage_users,
-        "can_approve_otp_exempt": data.can_approve_otp_exempt,
-        "can_approve_expenses": data.can_approve_expenses,
-        "can_manage_treasury": data.can_manage_treasury,
-        "can_approve_rebate": data.can_approve_rebate,
-        "can_manage_gp_stock": data.can_manage_gp_stock,
-        "can_approve_gss_benefit": data.can_approve_gss_benefit,
-        "can_access_hq_packets": data.can_access_hq_packets,
-        "can_approve_hq_packets": data.can_approve_hq_packets,
-    }
-    if data.password:
-        update_dict["password"] = data.password
-    supabase.table("test_staff_users").update(update_dict).eq("id", staff_id).execute()
-    return {"status": "success", "message": "பணியாளர் விபரங்கள் புதுப்பிக்கப்பட்டன."}
+def update_staff(staff_id: int, data: dict):
+    try:
+        update_dict = {
+            "full_name": data.get("full_name"),
+            "mobile": data.get("mobile"),
+            "role_key": data.get("role_key"),
+            "branch_id": data.get("branch_id"),
+            "can_access_counter": bool(data.get("can_access_counter", False)),
+            "can_approve_kyc": bool(data.get("can_approve_kyc", False)),
+            "can_approve_updates": bool(data.get("can_approve_updates", False)),
+            "can_manage_users": bool(data.get("can_manage_users", False)),
+            "can_approve_otp_exempt": bool(data.get("can_approve_otp_exempt", False)),
+            "can_approve_expenses": bool(data.get("can_approve_expenses", False)),
+            "can_manage_treasury": bool(data.get("can_manage_treasury", False)),
+            "can_approve_rebate": bool(data.get("can_approve_rebate", False)),
+            "can_manage_gp_stock": bool(data.get("can_manage_gp_stock", False)),
+            "can_approve_gss_benefit": bool(data.get("can_approve_gss_benefit", False)),
+            "can_access_hq_packets": bool(data.get("can_access_hq_packets", False)),
+            "can_approve_hq_packets": bool(data.get("can_approve_hq_packets", False)),
+        }
+        if data.get("password"):
+            update_dict["password"] = data.get("password")
+
+        supabase.table("test_staff_users").update(update_dict).eq("id", staff_id).execute()
+        return {"status": "success", "message": "பணியாளர் விவரங்கள் வெற்றிகரமாகப் புதுப்பிக்கப்பட்டன!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/admin/staff/{staff_id}")
 def delete_staff(staff_id: int):

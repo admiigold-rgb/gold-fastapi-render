@@ -9245,13 +9245,22 @@
 
   async function hqApproveSpecial(loanNo, actionType) {
     if (!confirm("உறுதி செய்கிறீர்களா?")) return;
-    const res = await fetch('/api/hq/packets/action', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ loan_no: loanNo, action_type: actionType, admin_id: currentUser?.id || 1 })
-    });
-    const out = await res.json();
-    alert("✅ " + out.message);
-    loadGoldPacketsList();
+    try {
+      const res = await fetch('/api/hq/packets/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loan_no: loanNo, action_type: actionType, admin_id: currentUser?.id || 1 })
+      });
+      const out = await res.json();
+      if (res.ok) {
+        alert("✅ " + (out.message || "நிறைவேற்றப்பட்டது!"));
+        loadGoldPacketsList();
+      } else {
+        alert("❌ பிழை: " + (out.detail || out.message || "செயல்பாடு தோல்வியடைந்தது"));
+      }
+    } catch (err) {
+      alert("❌ இணைப்புப் பிழை: " + err.message);
+    }
   }
 
   async function receivePacketAtBranch(loanNo) {

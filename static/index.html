@@ -5609,7 +5609,7 @@
       const editId = document.getElementById('edit_staff_id').value;
       const branchId = parseInt(document.getElementById('new_staff_branch').value);
       if (!branchId) return alert("கிளையைத் தேர்வு செய்யவும்.");
-
+  
       const payload = {
         username: document.getElementById('new_staff_user').value.trim(),
         password: document.getElementById('new_staff_pass').value.trim() || (editId ? null : "gold123"),
@@ -5627,18 +5627,30 @@
         can_approve_rebate: document.getElementById('perm_rebate').checked,
         can_manage_gp_stock: document.getElementById('perm_gp_stock').checked,
         can_approve_gss_benefit: document.getElementById('perm_gss_benefit').checked,
-        can_access_hq_packets: document.getElementById('perm_hq_packet_access').checked,
-        can_approve_hq_packets: document.getElementById('perm_hq_packet_approve').checked,
+        can_access_hq_packets: document.getElementById('perm_hq_packet_access')?.checked || false,
+        can_approve_hq_packets: document.getElementById('perm_hq_packet_approve')?.checked || false
       };
-
-      const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
-        method: editId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (res.ok) { alert("✅ " + data.message); cancelStaffEdit(); loadStaffList(); } 
-      else alert("❌ பிழை: " + data.detail);
+  
+      try {
+        const res = await fetch(editId ? `/api/admin/staff/${editId}` : '/api/admin/staff/create', {
+          method: editId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const text = await res.text();
+        let data = {};
+        try { data = JSON.parse(text); } catch { data = { detail: text }; }
+  
+        if (res.ok) {
+          alert("✅ " + (data.message || "வெற்றிகரமாகப் புதுப்பிக்கப்பட்டது!"));
+          cancelStaffEdit();
+          loadStaffList();
+        } else {
+          alert("❌ பிழை: " + (data.detail || "செயல்பாடு தோல்வியடைந்தது"));
+        }
+      } catch (err) {
+        alert("❌ இணைப்புப் பிழை: " + err.message);
+      }
     }
 
     async function deleteStaff(id) {

@@ -8550,11 +8550,12 @@
     }
   };
 </script>
-<!-- 🔐 நகைக்கடன் பாக்கெட் & லாக்கர் மேலாண்மை சாளரம் (Branch & HQ Vault System) -->
+<!-- 🔐 நகைக்கடன் பாக்கெட் & லாக்கர் மேலாண்மை சாளரம் (Branch & HQ Vault System - 10,000+ Scale) -->
 <div id="goldPacketModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
-  <div class="bg-white rounded-3xl p-5 max-w-5xl w-full shadow-2xl space-y-4 border-2 border-brand-violet my-auto max-h-[94vh] overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-6xl w-full shadow-2xl space-y-3.5 border-2 border-brand-violet my-auto max-h-[94vh] overflow-y-auto">
     
-    <div class="flex justify-between items-center border-b border-purple-100 pb-3">
+    <!-- தலைப்பு & புதுப்பி பட்டன் -->
+    <div class="flex justify-between items-center border-b border-purple-100 pb-2.5">
       <div>
         <h3 class="text-base font-extrabold text-brand-violet" id="pktModalTitle">🔐 நகைக்கடன் பாக்கெட் & லாக்கர் மேலாண்மை</h3>
         <p class="text-[11px] text-slate-500" id="pktModalSubTitle">கிளை ➔ HQ லாக்கர் ➔ வங்கி லாக்கர் ➔ HQ லாக்கர் ➔ கிளை ➔ SMS OTP வாடிக்கையாளர் ஒப்படைப்பு</p>
@@ -8563,7 +8564,7 @@
         <button type="button" onclick="loadGoldPacketsList()" class="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-brand-violet rounded-xl text-xs font-black border border-purple-300 cursor-pointer transition">
           🔄 புதுப்பி (Refresh)
         </button>
-        <button type="button" onclick="closePacketManagementModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2">✕</button>
+        <button type="button" onclick="closePacketManagementModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2 cursor-pointer">✕</button>
       </div>
     </div>
 
@@ -8587,16 +8588,26 @@
       </div>
     </div>
 
-    <!-- வடிகட்டி பட்டன்கள் (Filter Tabs) -->
-    <div class="flex flex-wrap gap-2 text-xs border-b border-slate-100 pb-2">
-      <button type="button" onclick="filterPacketsTable('ALL')" class="px-3 py-1.5 rounded-xl bg-slate-800 text-white font-bold cursor-pointer">அனைத்துப் பாக்கெட்டுகள்</button>
-      <button type="button" onclick="filterPacketsTable('PENDING_HANDOVER')" class="px-3 py-1.5 rounded-xl bg-rose-100 text-rose-900 border border-rose-300 font-black cursor-pointer">🚨 கடன் முடிந்து ஒப்படைக்காதவை (Report)</button>
-      <button type="button" onclick="filterPacketsTable('SPECIAL_REQ')" class="px-3 py-1.5 rounded-xl bg-amber-100 text-amber-950 border border-amber-300 font-bold cursor-pointer">🛡️ HQ ஒப்புதல் நிலுவை</button>
-      <button type="button" onclick="filterPacketsTable('BRANCH_REQUESTED')" class="px-3 py-1.5 rounded-xl bg-indigo-100 text-indigo-950 border border-indigo-300 font-black cursor-pointer">📥 கிளை பாக்கெட் கோரியவை</button>
+    <!-- 🔍 உடனடித் தேடல் & கிளை வடிகட்டி பட்டை (10,000+ Packets Search & Branch Filter) -->
+    <div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 flex flex-wrap items-center gap-2 text-xs">
+      <div class="flex-1 min-w-[220px]">
+        <input type="text" id="pktSearchInput" oninput="onPacketSearchOrFilterChange()" placeholder="🔍 கடன் எண் (AVL/0048), வாடிக்கையாளர் பெயர், மொபைல் அல்லது வங்கி கடன் எண் தேடுக..." class="w-full border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-white font-bold text-slate-800 focus:outline-none focus:border-brand-violet">
+      </div>
+      <div id="pktHqBranchFilterBox" class="hidden min-w-[180px]">
+        <select id="pktHqBranchFilter" onchange="onPacketSearchOrFilterChange()" class="w-full border-2 border-purple-200 px-3 py-1.5 rounded-xl bg-white font-bold text-brand-violet focus:outline-none">
+          <option value="ALL">🏢 அனைத்துக் கிளைகளும் (All Branches)</option>
+        </select>
+      </div>
+      <button type="button" onclick="resetPacketSearchFilters()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold cursor-pointer">
+        ✕ தேடல் அழி
+      </button>
     </div>
 
+    <!-- 🗂️ நிலை வாரியான டேப்கள் (கிளைக்கு 6 டேப்கள், HQ-க்கு 7 டேப்கள்) -->
+    <div id="pktStatusTabsContainer" class="flex flex-wrap gap-1.5 text-xs border-b border-slate-200 pb-2"></div>
+
     <!-- கிளை மற்றும் HQ கூட்டு நடவடிக்கைப் பெட்டி -->
-    <div id="pktBulkActionBar" class="bg-purple-50/80 p-3.5 rounded-2xl border border-purple-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+    <div id="pktBulkActionBar" class="bg-purple-50/80 p-3 rounded-2xl border border-purple-200 flex flex-wrap items-center justify-between gap-2 text-xs">
       <div class="font-bold text-brand-violet">தேர்வு செய்த பாக்கெட்டுகளுக்கான நடவடிக்கை:</div>
       <div class="flex flex-wrap gap-2" id="pktActionButtonsGroup"></div>
     </div>
@@ -8606,7 +8617,7 @@
       <table class="w-full text-xs text-left">
         <thead class="bg-purple-100 text-brand-violet border-b border-purple-200">
           <tr>
-            <th class="p-2.5 text-center"><input type="checkbox" onclick="document.querySelectorAll('.pkt-chk:not(:disabled)').forEach(c=>{c.checked=this.checked; updateBulkActionButtonsState();})"></th>
+            <th class="p-2.5 text-center"><input type="checkbox" id="pktSelectAllChk" onclick="toggleSelectAllVisiblePackets(this.checked)"></th>
             <th class="p-2.5 font-extrabold">கடன் எண் (Loan No)</th>
             <th class="p-2.5 font-extrabold">வாடிக்கையாளர்</th>
             <th id="pktColLocationHeader" class="p-2.5 font-extrabold">தற்போதைய இடம் & நிலை</th>
@@ -8616,6 +8627,20 @@
         </thead>
         <tbody id="goldPacketsTbody" class="divide-y divide-purple-100 text-slate-700"></tbody>
       </table>
+    </div>
+
+    <!-- 📄 50-50 ஆகப் பிரித்துக் காட்டும் பக்கம் நகர்த்தும் பட்டை (Pagination Controls) -->
+    <div class="flex flex-wrap items-center justify-between gap-2 bg-purple-50/60 px-4 py-2.5 rounded-2xl border border-purple-100 text-xs">
+      <div id="pktPaginationInfo" class="font-bold text-slate-700">காட்டப்படுபவை: 0 - 0 / மொத்தம் 0</div>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btnPktPrevPage" onclick="changePacketPage(-1)" class="px-3.5 py-1.5 bg-white border-2 border-purple-200 hover:bg-purple-100 text-brand-violet font-black rounded-xl disabled:opacity-40 cursor-pointer">
+          ⬅ முந்தைய 50
+        </button>
+        <span id="pktPageNumberBadge" class="px-3 py-1 bg-brand-violet text-white font-black rounded-xl">பக்கம் 1</span>
+        <button type="button" id="btnPktNextPage" onclick="changePacketPage(1)" class="px-3.5 py-1.5 bg-white border-2 border-purple-200 hover:bg-purple-100 text-brand-violet font-black rounded-xl disabled:opacity-40 cursor-pointer">
+          அடுத்த 50 ➡
+        </button>
+      </div>
     </div>
 
   </div>
@@ -8665,14 +8690,14 @@
 </div>
 
 <!-- 🔓 வங்கி லாக்கரிலிருந்து மீட்கும் படிவம் (HQ Bank Redeem Modal) -->
-<div id="hqBankRedeemModal" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.78); backdrop-blur:blur(4px); z-index:999999; align-items:center; justify-content:center; padding:14px;">
+<div id="hqBankRedeemModal" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.78); backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center; padding:14px;">
   <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl space-y-4 border-2 border-teal-500">
     <div class="flex justify-between items-center border-b border-teal-100 pb-2">
       <h3 class="text-base font-extrabold text-teal-950">🔓 வங்கி லாக்கரிலிருந்து மீட்டல் (Bank Redeem)</h3>
       <button type="button" onclick="closeHqBankRedeemModal()" class="text-slate-400 hover:text-slate-700 font-bold text-lg cursor-pointer">✕</button>
     </div>
     
-    <!-- படி 1: ஏற்கனவே பதிவு செய்த அசல் & கடன் எண்ணை உறுதிப்படுத்துதல் -->
+    <!-- படி 1 -->
     <div class="bg-teal-50 p-3 rounded-2xl border-2 border-teal-200 text-xs space-y-1.5">
       <div class="font-black text-teal-950">📋 வங்கி கடன் விபரம் சரிபார்ப்பு:</div>
       <div>வங்கி & கடன் எண்: <b id="br_bank_ref_disp" class="font-mono text-brand-violet">-</b></div>
@@ -8684,7 +8709,7 @@
       </div>
     </div>
 
-    <!-- படி 2: OK அழுத்திய பின் வட்டி மற்றும் ரசீது பதிவேற்றம் -->
+    <!-- படி 2 -->
     <div id="br_step2_fields" class="hidden space-y-3 text-xs pt-1">
       <div>
         <label class="block font-bold text-slate-700 mb-1">பணம் செலுத்தப்பட்ட நமது நிறுவன வங்கி *</label>
@@ -8710,29 +8735,37 @@
 
 <script>
   let allGoldPacketsCache = [];
+  let filteredGoldPacketsCache = [];
   let currentPacketViewRole = 'BRANCH';
+  let currentPacketStatusTab = 'ALL';
+  let currentPacketPage = 1;
+  const PACKETS_PER_PAGE = 50;
+
   let currentRedeemLoanNos = [];
   let currentRedeemTotalPrincipal = 0;
 
-  // நிறுவன வங்கிகளை எந்தத் தடையுமின்றி நேரடியாகப் பெறும் பாதுகாப்பு செயல்பாடு
   async function fetchCompanyBanksSafe() {
     try {
       const res = await fetch('/api/admin/company-banks');
       const data = await res.json();
       companyBanksCache = data.data || [];
-    } catch (e) {
-      console.warn("Company banks fetch error:", e);
-    }
+    } catch (e) {}
     return companyBanksCache || [];
   }
 
   async function openPacketManagementModal(role = 'BRANCH') {
     currentPacketViewRole = role;
+    currentPacketStatusTab = 'ALL';
+    currentPacketPage = 1;
+    const searchEl = document.getElementById('pktSearchInput');
+    if (searchEl) searchEl.value = '';
+
     const modal = document.getElementById('goldPacketModal');
     const cardsGrid = document.getElementById('pktSummaryCardsGrid');
     const bankCard = document.getElementById('pkt_card_bank_only');
     const hqLabel = document.getElementById('pkt_stat_hq_label');
     const locHeader = document.getElementById('pktColLocationHeader');
+    const branchFilterBox = document.getElementById('pktHqBranchFilterBox');
 
     const grp = document.getElementById('pktActionButtonsGroup');
     if (role === 'BRANCH') {
@@ -8742,6 +8775,7 @@
       if (bankCard) bankCard.classList.add('hidden');
       if (hqLabel) hqLabel.innerText = '🏛️ தலைமையகத்தில் உள்ளவை:';
       if (locHeader) locHeader.classList.add('hidden');
+      if (branchFilterBox) branchFilterBox.classList.add('hidden');
 
       grp.innerHTML = `
         <button type="button" id="btnBulkDispatchHq" onclick="dispatchSelectedPacketsToHq()" style="background-color:#4f46e5;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">🚚 HQ-க்கு அனுப்பு (Dispatch)</button>
@@ -8753,6 +8787,7 @@
       if (bankCard) bankCard.classList.remove('hidden');
       if (hqLabel) hqLabel.innerText = '🏛️ HQ லாக்கரில் உள்ளவை:';
       if (locHeader) locHeader.classList.remove('hidden');
+      if (branchFilterBox) branchFilterBox.classList.remove('hidden');
 
       grp.innerHTML = `
         <button type="button" id="btnHqVerifyVault" onclick="hqVerifyReceivedPackets()" style="background-color:#059669;color:#fff;" class="px-3.5 py-2 rounded-xl font-black shadow cursor-pointer">✓ HQ லாக்கரில் சேர் (Verify)</button>
@@ -8778,10 +8813,11 @@
     const out = await res.json();
     allGoldPacketsCache = out.data || [];
 
-    const branchCount = allGoldPacketsCache.filter(p => p.current_location === 'BRANCH').length;
-    const hqVaultCount = allGoldPacketsCache.filter(p => p.current_location === 'HQ_VAULT').length;
-    const bankLockerCount = allGoldPacketsCache.filter(p => p.current_location === 'BANK_LOCKER').length;
-    const transitToHqCount = allGoldPacketsCache.filter(p => p.packet_status === 'IN_TRANSIT_TO_HQ').length;
+    // சுருக்க அட்டைகள் எண்ணிக்கை
+    const branchCount = allGoldPacketsCache.filter(p => p.current_location === 'BRANCH' && !p.is_handed_over).length;
+    const hqVaultCount = allGoldPacketsCache.filter(p => p.current_location === 'HQ_VAULT' && !p.is_handed_over).length;
+    const bankLockerCount = allGoldPacketsCache.filter(p => p.current_location === 'BANK_LOCKER' && !p.is_handed_over).length;
+    const transitToHqCount = allGoldPacketsCache.filter(p => p.packet_status === 'IN_TRANSIT_TO_HQ' && !p.is_handed_over).length;
 
     document.getElementById('pkt_stat_branch').innerText = branchCount;
     if (currentPacketViewRole === 'BRANCH') {
@@ -8789,10 +8825,194 @@
     } else {
       document.getElementById('pkt_stat_hq').innerText = hqVaultCount;
       document.getElementById('pkt_stat_bank').innerText = bankLockerCount;
+      populateHqBranchFilterDropdown();
     }
     document.getElementById('pkt_stat_pending_handover').innerText = allGoldPacketsCache.filter(p => p.is_loan_closed && !p.is_handed_over).length;
 
-    renderPacketsTable(allGoldPacketsCache);
+    renderPacketStatusTabs();
+    applyPacketFiltersAndPagination();
+  }
+
+  // HQ-வில் கிளை வாரியாகப் பிரித்துப் பார்க்கும் Dropdown நிரப்புதல்
+  function populateHqBranchFilterDropdown() {
+    const sel = document.getElementById('pktHqBranchFilter');
+    if (!sel) return;
+    const prevVal = sel.value;
+    const branchMap = new Map();
+    allGoldPacketsCache.forEach(p => {
+      if (p.branch_id) {
+        branchMap.set(String(p.branch_id), p.test_branches?.branch_name || `கிளை #${p.branch_id}`);
+      }
+    });
+    let opts = `<option value="ALL">🏢 அனைத்துக் கிளைகளும் (All Branches)</option>`;
+    branchMap.forEach((name, id) => {
+      opts += `<option value="${id}">🏢 ${name}</option>`;
+    });
+    sel.innerHTML = opts;
+    if ([...branchMap.keys()].includes(prevVal)) sel.value = prevVal;
+  }
+
+  // கிளை மற்றும் HQ-க்கான தனித்தனி நிலை வாரியான டேப்களை (Tabs) வரைதல்
+  function renderPacketStatusTabs() {
+    const container = document.getElementById('pktStatusTabsContainer');
+    if (!container) return;
+
+    const list = allGoldPacketsCache;
+    let tabs = [];
+
+    if (currentPacketViewRole === 'BRANCH') {
+      // கிளைப் பார்வை: கிளையில் உள்ளவை / வழியில் உள்ளவை / (HQ லாக்கர் + வங்கி லாக்கர் = தலைமையகத்தில் உள்ளவை) / ஒப்படைக்கப்பட்டவை / ஒப்படைக்காதவை
+      const cAll = list.length;
+      const cBranch = list.filter(p => !p.is_handed_over && p.current_location === 'BRANCH').length;
+      const cTransit = list.filter(p => !p.is_handed_over && (p.current_location === 'TRANSIT' || p.packet_status === 'IN_TRANSIT_TO_HQ' || p.packet_status === 'IN_TRANSIT_TO_BRANCH')).length;
+      const cHqCombined = list.filter(p => !p.is_handed_over && (p.current_location === 'HQ_VAULT' || p.current_location === 'BANK_LOCKER')).length;
+      const cHanded = list.filter(p => p.is_handed_over === true).length;
+      const cPendingHandover = list.filter(p => p.is_loan_closed && !p.is_handed_over).length;
+
+      tabs = [
+        { key: 'ALL', label: `அனைத்தும் (${cAll})`, activeCls: 'bg-slate-800 text-white', idleCls: 'bg-slate-100 text-slate-800' },
+        { key: 'AT_BRANCH', label: `📦 கிளையில் உள்ளவை (${cBranch})`, activeCls: 'bg-purple-700 text-white', idleCls: 'bg-purple-50 text-purple-900 border border-purple-200' },
+        { key: 'IN_TRANSIT', label: `🚚 வழியில் உள்ளவை (${cTransit})`, activeCls: 'bg-blue-700 text-white', idleCls: 'bg-blue-50 text-blue-900 border border-blue-200' },
+        { key: 'AT_HQ_COMBINED', label: `🏛️ தலைமையகத்தில் உள்ளவை (${cHqCombined})`, activeCls: 'bg-indigo-700 text-white', idleCls: 'bg-indigo-50 text-indigo-900 border border-indigo-200' },
+        { key: 'HANDED_OVER', label: `✅ ஒப்படைக்கப்பட்டவை (${cHanded})`, activeCls: 'bg-emerald-700 text-white', idleCls: 'bg-emerald-50 text-emerald-900 border border-emerald-200' },
+        { key: 'PENDING_HANDOVER', label: `🚨 கடன் முடிந்து ஒப்படைக்காதவை (${cPendingHandover})`, activeCls: 'bg-rose-700 text-white', idleCls: 'bg-rose-100 text-rose-900 border border-rose-300 font-black' }
+      ];
+    } else {
+      // தலைமையகப் பார்வை (HQ): கிளையில் உள்ளவை / வழியில் உள்ளவை / HQ லாக்கர் / வங்கி லாக்கர் / ஒப்படைக்கப்பட்டவை / சிறப்பு ஒப்புதல்
+      const cAll = list.length;
+      const cBranch = list.filter(p => !p.is_handed_over && p.current_location === 'BRANCH').length;
+      const cTransit = list.filter(p => !p.is_handed_over && (p.current_location === 'TRANSIT' || p.packet_status === 'IN_TRANSIT_TO_HQ' || p.packet_status === 'IN_TRANSIT_TO_BRANCH')).length;
+      const cHqVault = list.filter(p => !p.is_handed_over && p.current_location === 'HQ_VAULT').length;
+      const cBankLocker = list.filter(p => !p.is_handed_over && p.current_location === 'BANK_LOCKER').length;
+      const cHanded = list.filter(p => p.is_handed_over === true).length;
+      const cActionNeeded = list.filter(p => !p.is_handed_over && (p.pending_request_status === 'PENDING' || p.packet_status === 'REQUESTED_BY_BRANCH' || p.bank_verify_status === 'PENDING_PLEDGE_VERIFY' || p.bank_verify_status === 'PENDING_REDEEM_VERIFY')).length;
+
+      tabs = [
+        { key: 'ALL', label: `அனைத்தும் (${cAll})`, activeCls: 'bg-slate-800 text-white', idleCls: 'bg-slate-100 text-slate-800' },
+        { key: 'AT_BRANCH', label: `🏢 கிளையில் உள்ளவை (${cBranch})`, activeCls: 'bg-purple-700 text-white', idleCls: 'bg-purple-50 text-purple-900 border border-purple-200' },
+        { key: 'IN_TRANSIT', label: `🚚 வழியில் உள்ளவை (${cTransit})`, activeCls: 'bg-blue-700 text-white', idleCls: 'bg-blue-50 text-blue-900 border border-blue-200' },
+        { key: 'HQ_VAULT', label: `🏛️ HQ லாக்கர் (${cHqVault})`, activeCls: 'bg-indigo-700 text-white', idleCls: 'bg-indigo-50 text-indigo-900 border border-indigo-200' },
+        { key: 'BANK_LOCKER', label: `🏦 வங்கி லாக்கர் (${cBankLocker})`, activeCls: 'bg-amber-700 text-white', idleCls: 'bg-amber-50 text-amber-950 border border-amber-300' },
+        { key: 'HANDED_OVER', label: `✅ ஒப்படைக்கப்பட்டவை (${cHanded})`, activeCls: 'bg-emerald-700 text-white', idleCls: 'bg-emerald-50 text-emerald-900 border border-emerald-200' },
+        { key: 'HQ_PENDING_ACTIONS', label: `🛡️ ஒப்புதல் & கிளை கோரியவை (${cActionNeeded})`, activeCls: 'bg-rose-700 text-white', idleCls: 'bg-rose-100 text-rose-900 border border-rose-300 font-black' }
+      ];
+    }
+
+    container.innerHTML = tabs.map(t => {
+      const isActive = currentPacketStatusTab === t.key;
+      return `<button type="button" onclick="selectPacketStatusTab('${t.key}')" class="px-3 py-1.5 rounded-xl font-bold cursor-pointer transition ${isActive ? t.activeCls + ' shadow-sm' : t.idleCls}">${t.label}</button>`;
+    }).join('');
+  }
+
+  function selectPacketStatusTab(tabKey) {
+    currentPacketStatusTab = tabKey;
+    currentPacketPage = 1;
+    renderPacketStatusTabs();
+    applyPacketFiltersAndPagination();
+  }
+
+  function onPacketSearchOrFilterChange() {
+    currentPacketPage = 1;
+    applyPacketFiltersAndPagination();
+  }
+
+  function resetPacketSearchFilters() {
+    const sEl = document.getElementById('pktSearchInput');
+    if (sEl) sEl.value = '';
+    const bEl = document.getElementById('pktHqBranchFilter');
+    if (bEl) bEl.value = 'ALL';
+    currentPacketStatusTab = 'ALL';
+    currentPacketPage = 1;
+    renderPacketStatusTabs();
+    applyPacketFiltersAndPagination();
+  }
+
+  function applyPacketFiltersAndPagination() {
+    let list = [...allGoldPacketsCache];
+
+    // 1. நிலை வாரியான டேப் வடிகட்டி
+    if (currentPacketStatusTab === 'AT_BRANCH') {
+      list = list.filter(p => !p.is_handed_over && p.current_location === 'BRANCH');
+    } else if (currentPacketStatusTab === 'IN_TRANSIT') {
+      list = list.filter(p => !p.is_handed_over && (p.current_location === 'TRANSIT' || p.packet_status === 'IN_TRANSIT_TO_HQ' || p.packet_status === 'IN_TRANSIT_TO_BRANCH'));
+    } else if (currentPacketStatusTab === 'AT_HQ_COMBINED') {
+      // கிளைக்கு மட்டும்: HQ லாக்கர் + வங்கி லாக்கர் இரண்டையும் சேர்த்து தலைமையகத்தில் உள்ளவை எனக் காட்டுதல்
+      list = list.filter(p => !p.is_handed_over && (p.current_location === 'HQ_VAULT' || p.current_location === 'BANK_LOCKER'));
+    } else if (currentPacketStatusTab === 'HQ_VAULT') {
+      list = list.filter(p => !p.is_handed_over && p.current_location === 'HQ_VAULT');
+    } else if (currentPacketStatusTab === 'BANK_LOCKER') {
+      list = list.filter(p => !p.is_handed_over && p.current_location === 'BANK_LOCKER');
+    } else if (currentPacketStatusTab === 'HANDED_OVER') {
+      list = list.filter(p => p.is_handed_over === true);
+    } else if (currentPacketStatusTab === 'PENDING_HANDOVER') {
+      list = list.filter(p => p.is_loan_closed && !p.is_handed_over);
+    } else if (currentPacketStatusTab === 'HQ_PENDING_ACTIONS') {
+      list = list.filter(p => !p.is_handed_over && (p.pending_request_status === 'PENDING' || p.packet_status === 'REQUESTED_BY_BRANCH' || p.bank_verify_status === 'PENDING_PLEDGE_VERIFY' || p.bank_verify_status === 'PENDING_REDEEM_VERIFY'));
+    }
+
+    // 2. HQ கிளை வடிகட்டி
+    if (currentPacketViewRole === 'HQ') {
+      const selBranch = document.getElementById('pktHqBranchFilter')?.value || 'ALL';
+      if (selBranch !== 'ALL') {
+        list = list.filter(p => String(p.branch_id) === String(selBranch));
+      }
+    }
+
+    // 3. உடனடித் தேடல் பெட்டி (Loan No / பழைய கடன் எண் / பெயர் / மொபைல் / HQ-க்கு வங்கி கடன் எண்)
+    const q = (document.getElementById('pktSearchInput')?.value || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter(p => {
+        const lno = (p.loan_no || '').toLowerCase();
+        const prevLno = (p.previous_loan_no || '').toLowerCase();
+        const cName = (p.test_customers?.name || '').toLowerCase();
+        const cMob = (p.test_customers?.mobile || '').toLowerCase();
+        const bRef = currentPacketViewRole === 'HQ' ? (p.bank_loan_ref || '').toLowerCase() : '';
+        return lno.includes(q) || prevLno.includes(q) || cName.includes(q) || cMob.includes(q) || bRef.includes(q);
+      });
+    }
+
+    filteredGoldPacketsCache = list;
+
+    // 4. 50-50 ஆகப் பிரித்துக் காட்டும் கணக்கீடு (Pagination)
+    const totalItems = filteredGoldPacketsCache.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / PACKETS_PER_PAGE));
+    if (currentPacketPage > totalPages) currentPacketPage = totalPages;
+
+    const startIdx = (currentPacketPage - 1) * PACKETS_PER_PAGE;
+    const endIdx = Math.min(startIdx + PACKETS_PER_PAGE, totalItems);
+    const pageSlice = filteredGoldPacketsCache.slice(startIdx, endIdx);
+
+    const infoEl = document.getElementById('pktPaginationInfo');
+    if (infoEl) {
+      infoEl.innerText = totalItems === 0
+        ? 'காட்டப்படுபவை: 0 / மொத்தம் 0'
+        : `காட்டப்படுபவை: ${startIdx + 1} - ${endIdx} / மொத்தம் ${totalItems} பாக்கெட்டுகள்`;
+    }
+    const pageBadge = document.getElementById('pktPageNumberBadge');
+    if (pageBadge) pageBadge.innerText = `பக்கம் ${currentPacketPage} / ${totalPages}`;
+
+    const btnPrev = document.getElementById('btnPktPrevPage');
+    const btnNext = document.getElementById('btnPktNextPage');
+    if (btnPrev) btnPrev.disabled = currentPacketPage <= 1;
+    if (btnNext) btnNext.disabled = currentPacketPage >= totalPages;
+
+    const selectAllChk = document.getElementById('pktSelectAllChk');
+    if (selectAllChk) selectAllChk.checked = false;
+
+    renderPacketsTable(pageSlice);
+    updateBulkActionButtonsState();
+  }
+
+  function changePacketPage(delta) {
+    currentPacketPage += delta;
+    if (currentPacketPage < 1) currentPacketPage = 1;
+    applyPacketFiltersAndPagination();
+  }
+
+  function toggleSelectAllVisiblePackets(checked) {
+    document.querySelectorAll('.pkt-chk:not(:disabled)').forEach(c => {
+      c.checked = checked;
+    });
     updateBulkActionButtonsState();
   }
 
@@ -8834,24 +9054,11 @@
     setBtn(btnSendBr, allBranchRequestedInHq);
   }
 
-  function filterPacketsTable(mode) {
-    if (mode === 'PENDING_HANDOVER') {
-      renderPacketsTable(allGoldPacketsCache.filter(p => p.is_loan_closed && !p.is_handed_over));
-    } else if (mode === 'SPECIAL_REQ') {
-      renderPacketsTable(allGoldPacketsCache.filter(p => p.pending_request_status === 'PENDING'));
-    } else if (mode === 'BRANCH_REQUESTED') {
-      renderPacketsTable(allGoldPacketsCache.filter(p => p.packet_status === 'REQUESTED_BY_BRANCH'));
-    } else {
-      renderPacketsTable(allGoldPacketsCache);
-    }
-    updateBulkActionButtonsState();
-  }
-
   function renderPacketsTable(list) {
     const tbody = document.getElementById('goldPacketsTbody');
     const colCount = currentPacketViewRole === 'BRANCH' ? 5 : 6;
     if (list.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${colCount}" class="p-6 text-center text-slate-400 font-bold">பாக்கெட் பதிவுகள் ஏதுமில்லை</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${colCount}" class="p-6 text-center text-slate-400 font-bold">இந்தப் பிரிவில் பாக்கெட் பதிவுகள் ஏதுமில்லை</td></tr>`;
       return;
     }
 
@@ -8974,6 +9181,7 @@
           actionBtns += `<span class="text-[10px] text-rose-700 font-black">🏦 வங்கியில் உள்ளது (முதலில் Redeem செய்து HQ கொண்டு வரவும்)</span>`;
         }
       }
+
       const locationTd = currentPacketViewRole === 'HQ'
         ? `<td class="p-2.5"><b>${loc}</b><br><span class="text-[11px] text-purple-800 font-bold">${st}</span>${specBadge}${docLinksHtml}</td>`
         : '';
@@ -9031,7 +9239,6 @@
     loadGoldPacketsList();
   }
 
-  // 🏦 வங்கி லாக்கரில் வைக்கும் படிவத்தைத் திறத்தல் (உடனடியாகத் திறக்கும்படி மாற்றப்பட்டுள்ளது)
   async function openHqBankPledgeModal() {
     const lnos = getSelectedPacketLoanNos();
     if (lnos.length === 0) return alert("வங்கி லாக்கரில் வைக்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.");
@@ -9042,11 +9249,9 @@
     document.getElementById('bp_charges_amt').value = '0';
     document.getElementById('bp_token_photo').value = '';
 
-    // முதலில் சாளரத்தை உடனடியாகத் திறத்தல்
     const m = document.getElementById('hqBankPledgeModal');
     m.style.display = 'flex';
 
-    // பின்னர் நிறுவன வங்கிகளை Dropdown-ல் ஏற்றுதல்
     const sel = document.getElementById('bp_company_bank_id');
     sel.innerHTML = `<option value="">வங்கிகள் ஏற்றப்படுகின்றன...</option>`;
     const banks = await fetchCompanyBanksSafe();
@@ -9101,7 +9306,6 @@
     }
   }
 
-  // 🔓 வங்கி லாக்கரிலிருந்து மீட்கும் படிவத்தைத் திறத்தல்
   async function openHqBankRedeemModal() {
     const lnos = getSelectedPacketLoanNos();
     if (lnos.length === 0) return alert("வங்கியிலிருந்து மீட்க வேண்டிய பாக்கெட்டுகளைத் தேர்வு செய்யவும்.");
@@ -9119,7 +9323,6 @@
     document.getElementById('br_interest_amt').value = '0';
     document.getElementById('br_receipt_photo').value = '';
 
-    // முதலில் சாளரத்தை உடனடியாகத் திறத்தல்
     const m = document.getElementById('hqBankRedeemModal');
     m.style.display = 'flex';
 

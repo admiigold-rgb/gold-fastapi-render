@@ -8861,11 +8861,11 @@
     let tabs = [];
 
     if (currentPacketViewRole === 'BRANCH') {
-      // கிளைப் பார்வை: கிளையில் உள்ளவை / வழியில் உள்ளவை / (HQ லாக்கர் + வங்கி லாக்கர் = தலைமையகத்தில் உள்ளவை) / ஒப்படைக்கப்பட்டவை / ஒப்படைக்காதவை
       const cAll = list.length;
       const cBranch = list.filter(p => !p.is_handed_over && p.current_location === 'BRANCH').length;
       const cTransit = list.filter(p => !p.is_handed_over && (p.current_location === 'TRANSIT' || p.packet_status === 'IN_TRANSIT_TO_HQ' || p.packet_status === 'IN_TRANSIT_TO_BRANCH')).length;
       const cHqCombined = list.filter(p => !p.is_handed_over && (p.current_location === 'HQ_VAULT' || p.current_location === 'BANK_LOCKER')).length;
+      const cBranchPendingHq = list.filter(p => !p.is_handed_over && (p.packet_status === 'REQUESTED_BY_BRANCH' || p.pending_request_status === 'PENDING')).length;
       const cHanded = list.filter(p => p.is_handed_over === true).length;
       const cPendingHandover = list.filter(p => p.is_loan_closed && !p.is_handed_over).length;
 
@@ -8874,11 +8874,12 @@
         { key: 'AT_BRANCH', label: `📦 கிளையில் உள்ளவை (${cBranch})`, activeCls: 'bg-purple-700 text-white', idleCls: 'bg-purple-50 text-purple-900 border border-purple-200' },
         { key: 'IN_TRANSIT', label: `🚚 வழியில் உள்ளவை (${cTransit})`, activeCls: 'bg-blue-700 text-white', idleCls: 'bg-blue-50 text-blue-900 border border-blue-200' },
         { key: 'AT_HQ_COMBINED', label: `🏛️ தலைமையகத்தில் உள்ளவை (${cHqCombined})`, activeCls: 'bg-indigo-700 text-white', idleCls: 'bg-indigo-50 text-indigo-900 border border-indigo-200' },
+        { key: 'BRANCH_PENDING_HQ', label: `⏳ HQ கோரிக்கை & ஒப்புதல் நிலுவை (${cBranchPendingHq})`, activeCls: 'bg-amber-600 text-white', idleCls: 'bg-amber-50 text-amber-950 border border-amber-300 font-black' },
         { key: 'HANDED_OVER', label: `✅ ஒப்படைக்கப்பட்டவை (${cHanded})`, activeCls: 'bg-emerald-700 text-white', idleCls: 'bg-emerald-50 text-emerald-900 border border-emerald-200' },
         { key: 'PENDING_HANDOVER', label: `🚨 கடன் முடிந்து ஒப்படைக்காதவை (${cPendingHandover})`, activeCls: 'bg-rose-700 text-white', idleCls: 'bg-rose-100 text-rose-900 border border-rose-300 font-black' }
       ];
     } else {
-      // தலைமையகப் பார்வை (HQ): கிளையில் உள்ளவை / வழியில் உள்ளவை / HQ லாக்கர் / வங்கி லாக்கர் / ஒப்படைக்கப்பட்டவை / சிறப்பு ஒப்புதல்
+      // தலைமையகப் பார்வை (HQ): ஏற்கனவே உள்ள அமைப்பு அப்படியே தொடரும்
       const cAll = list.length;
       const cBranch = list.filter(p => !p.is_handed_over && p.current_location === 'BRANCH').length;
       const cTransit = list.filter(p => !p.is_handed_over && (p.current_location === 'TRANSIT' || p.packet_status === 'IN_TRANSIT_TO_HQ' || p.packet_status === 'IN_TRANSIT_TO_BRANCH')).length;
@@ -8936,8 +8937,10 @@
     } else if (currentPacketStatusTab === 'IN_TRANSIT') {
       list = list.filter(p => !p.is_handed_over && (p.current_location === 'TRANSIT' || p.packet_status === 'IN_TRANSIT_TO_HQ' || p.packet_status === 'IN_TRANSIT_TO_BRANCH'));
     } else if (currentPacketStatusTab === 'AT_HQ_COMBINED') {
-      // கிளைக்கு மட்டும்: HQ லாக்கர் + வங்கி லாக்கர் இரண்டையும் சேர்த்து தலைமையகத்தில் உள்ளவை எனக் காட்டுதல்
       list = list.filter(p => !p.is_handed_over && (p.current_location === 'HQ_VAULT' || p.current_location === 'BANK_LOCKER'));
+    } else if (currentPacketStatusTab === 'BRANCH_PENDING_HQ') {
+      // கிளைக்கு மட்டும்: கிளை கோரிய பாக்கெட்டுகள் + HQ அனுமதிக்காகக் காத்திருக்கும் பாக்கெட்டுகள்
+      list = list.filter(p => !p.is_handed_over && (p.packet_status === 'REQUESTED_BY_BRANCH' || p.pending_request_status === 'PENDING'));
     } else if (currentPacketStatusTab === 'HQ_VAULT') {
       list = list.filter(p => !p.is_handed_over && p.current_location === 'HQ_VAULT');
     } else if (currentPacketStatusTab === 'BANK_LOCKER') {
@@ -8958,7 +8961,7 @@
       }
     }
 
-    // 3. உடனடித் தேடல் பெட்டி (Loan No / பழைய கடன் எண் / பெயர் / மொபைல் / HQ-க்கு வங்கி கடன் எண்)
+    // 3. உடனடித் தேடல் பெட்டி
     const q = (document.getElementById('pktSearchInput')?.value || '').trim().toLowerCase();
     if (q) {
       list = list.filter(p => {

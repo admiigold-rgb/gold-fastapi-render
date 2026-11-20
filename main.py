@@ -15,7 +15,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 app = FastAPI(
     title="Muthusise Gold Loan Management - Enterprise Core",
-    version="6.5.0"
+    version="6.6.0"
 )
 
 app.add_middleware(
@@ -83,6 +83,152 @@ def send_packet_handover_sms(mobile_no: str, otp_code: str, loan_no: str):
     except Exception as e:
         return False, f"SMS இணைப்புப் பிழை: {str(e)}"
 
+# ==============================================================================
+# 🏆 புள்ளி அடிப்படையிலான பணியாளர் இன்சென்டிவ் இயந்திரம் (STAFF INCENTIVE ENGINE)
+# ==============================================================================
+def get_active_incentive_settings():
+    try:
+        res = supabase.table("test_incentive_settings").select("*").eq("id", 1).execute()
+        if res.data:
+            return res.data[0]
+    except Exception:
+        pass
+    return {
+        "point_value_inr": 10.0,
+        "gl_new_per_10k": 1.0,
+        "gl_close_per_10k": 1.0,
+        "gold_sale_per_gram": 5.0,
+        "old_gold_per_gram": 3.0,
+        "gss_rd_join_points": 5.0,
+        "gss_rd_installment_points": 1.0,
+        "fd_per_10k": 2.0,
+    }
+
+def calculate_branch_walkin_shares(branch_id: int):
+    """
+    கிளையில் Active நிலையில் உள்ள மேலாளர் மற்றும் பணியாளர்களின் எண்ணிக்கைக்கு ஏற்ப
+    விகிதாச்சாரப் பகிர்வு:
+    - 1 Manager + 1 Staff => 60% / 40%
+    - 1 Manager + 2 Staff => 50% / 25% / 25%
+    - 1 Manager + 3 Staff => 40% / 20% / 20% / 20%
+    - 1 Manager + 4+ Staff => 30% Manager / 70% சரிசமம்
+    - Manager இல்லையெனில் => அனைவருக்கும் 100% சரிசமம்
+    """
+    staff_res = (
+        supabase.table("test_staff_users")
+        .select("id, full_name, role_key, is_active, is_branch_manager")
+        .eq("branch_id", branch_id)
+        .execute()
+    )
+    active_staff = [s for s in (staff_res.data or []) if s.get("is_active", True) is not False]
+    if not active_staff:
+        return []
+
+    managers = [
+        s for s in active_staff
+        if s.get("is_branch_manager") is True or str(s.get("role_key") or "").upper() in ["BRANCH_MANAGER", "MANAGER"]
+    ]
+    regulars = [s for s in active_staff if s not in managers]
+
+    shares = []
+    if len(managers) == 1 and len(regulars) >= 1:
+        mgr = managers[0]
+        n = len(regulars)
+        if n == 1:
+            mgr_pct, reg_pct = 60.0, 40.0
+        elif n == 2:
+            mgr_pct, reg_pct = 50.0, 25.0
+        elif n == 3:
+            mgr_pct, reg_pct = 40.0, 20.0
+        else:
+            mgr_pct = 30.0
+            reg_pct = round(70.0 / n, 4)
+
+        shares.append({"staff_id": mgr["id"], "staff_name": mgr["full_name"], "pct": mgr_pct})
+        for r in regulars:
+            shares.append({"staff_id": r["id"], "staff_name": r["full_name"], "pct": reg_pct})
+    else:
+        equal_pct = round(100.0 / len(active_staff), 4)
+        for s in active_staff:
+            shares.append({"staff_id": s["id"], "staff_name": s["full_name"], "pct": equal_pct})
+
+    return shares
+
+def record_incentive_points(
+    branch_id: int,
+    txn_type: str,
+    ref_no: str,
+    amount_or_grams: float,
+    source_staff_id: Optional[int] = None,
+    txn_date: Optional[str] = None,
+    remarks: str = ""
+):
+    try:
+        cfg = get_active_incentive_settings()
+        pt_val = float(cfg.get("point_value_inr") or 10.0)
+        val = float(amount_or_grams or 0.0)
+        total_points = 0.0
+
+        if txn_type == "GL_NEW":
+            total_points = (val / 10000.0) * float(cfg.get("gl_new_per_10k") or 1.0)
+        elif txn_type in ["GL_PART_PRINCIPAL", "GL_CLOSE"]:
+            total_points = -1.0 * (val / 10000.0) * float(cfg.get("gl_close_per_10k") or 1.0)
+        elif txn_type == "GOLD_SALE":
+            total_points = val * float(cfg.get("gold_sale_per_gram") or 5.0)
+        elif txn_type == "OLD_GOLD":
+            total_points = val * float(cfg.get("old_gold_per_gram") or 3.0)
+        elif txn_type in ["GSS_JOIN", "RD_JOIN"]:
+            total_points = float(cfg.get("gss_rd_join_points") or 5.0)
+        elif txn_type in ["GSS_INST", "RD_INST"]:
+            total_points = float(cfg.get("gss_rd_installment_points") or 1.0)
+        elif txn_type == "FD_NEW":
+            total_points = (val / 10000.0) * float(cfg.get("fd_per_10k") or 2.0)
+
+        total_points = round(total_points, 4)
+        if total_points == 0:
+            return
+
+        effective_date = txn_date or datetime.now(IST).strftime("%Y-%m-%d")
+        rows_to_insert = []
+        if source_staff_id and int(source_staff_id) > 0:
+            inc_amt = round(total_points * pt_val, 2)
+            rows_to_insert.append({
+                "branch_id": branch_id,
+                "staff_id": int(source_staff_id),
+                "txn_date": effective_date,
+                "txn_type": txn_type,
+                "ref_no": str(ref_no),
+                "source_type": "DIRECT",
+                "share_percent": 100.0,
+                "points": total_points,
+                "point_value_inr": pt_val,
+                "incentive_amount": inc_amt,
+                "remarks": remarks or f"நேரடி வணிகம் ({txn_type})"
+            })
+        else:
+            shares = calculate_branch_walkin_shares(branch_id)
+            for sh in shares:
+                staff_pts = round(total_points * (sh["pct"] / 100.0), 4)
+                inc_amt = round(staff_pts * pt_val, 2)
+                rows_to_insert.append({
+                    "branch_id": branch_id,
+                    "staff_id": sh["staff_id"],
+                    "txn_date": effective_date,
+                    "txn_type": txn_type,
+                    "ref_no": str(ref_no),
+                    "source_type": "WALKIN",
+                    "share_percent": sh["pct"],
+                    "points": staff_pts,
+                    "point_value_inr": pt_val,
+                    "incentive_amount": inc_amt,
+                    "remarks": remarks or f"Walk-in பகிர்வு ({sh['pct']}%)"
+                })
+
+        if rows_to_insert:
+            supabase.table("test_staff_incentive_ledger").insert(rows_to_insert).execute()
+    except Exception as e:
+        print("Incentive Ledger Note:", e)
+
 # Pydantic Schemas
 class LoginRequest(BaseModel):
     username: str
@@ -101,6 +247,8 @@ class StaffPayload(BaseModel):
     mobile: str
     role_key: str = "BRANCH_STAFF"
     branch_id: int
+    is_active: bool = True
+    is_branch_manager: bool = False
     can_access_counter: bool = True
     can_approve_kyc: bool = False
     can_approve_updates: bool = False
@@ -240,6 +388,7 @@ class SettleWithOtpPayload(BaseModel):
     denominations: Optional[DenominationCounts] = None
     transaction_date: Optional[str] = None
     actions_summary: Optional[str] = None
+    business_source_staff_id: Optional[int] = None
     cart_items: Optional[List[Dict[str, Any]]] = []
 
 class OtpExemptRequestPayload(BaseModel):
@@ -262,6 +411,47 @@ class TreasuryApprovalPayload(BaseModel):
     transfer_id: int
     action: str
     admin_id: int
+
+# ==========================================
+# 🏆 இன்சென்டிவ் அமைப்புகள் & அறிக்கை API-கள்
+# ==========================================
+@app.get("/api/admin/incentive-settings")
+def api_get_incentive_settings():
+    return {"status": "success", "data": get_active_incentive_settings()}
+
+@app.post("/api/admin/incentive-settings")
+def api_save_incentive_settings(data: dict):
+    try:
+        payload = {
+            "point_value_inr": float(data.get("point_value_inr", 10.0)),
+            "gl_new_per_10k": float(data.get("gl_new_per_10k", 1.0)),
+            "gl_close_per_10k": float(data.get("gl_close_per_10k", 1.0)),
+            "gold_sale_per_gram": float(data.get("gold_sale_per_gram", 5.0)),
+            "old_gold_per_gram": float(data.get("old_gold_per_gram", 3.0)),
+            "gss_rd_join_points": float(data.get("gss_rd_join_points", 5.0)),
+            "gss_rd_installment_points": float(data.get("gss_rd_installment_points", 1.0)),
+            "fd_per_10k": float(data.get("fd_per_10k", 2.0)),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        supabase.table("test_incentive_settings").update(payload).eq("id", 1).execute()
+        return {"status": "success", "message": "இன்சென்டிவ் புள்ளி விதிகள் வெற்றிகரமாகச் சேமிக்கப்பட்டன!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/incentive/report")
+def api_get_incentive_report(from_date: str = "", to_date: str = "", branch_id: int = 0):
+    try:
+        q = supabase.table("test_staff_incentive_ledger").select("*, test_staff_users(full_name, username, role_key, is_active, is_branch_manager), test_branches(branch_name)").order("id", desc=True)
+        if from_date:
+            q = q.gte("txn_date", from_date)
+        if to_date:
+            q = q.lte("txn_date", to_date)
+        if branch_id and branch_id > 0:
+            q = q.eq("branch_id", branch_id)
+        res = q.limit(2000).execute()
+        return {"status": "success", "data": res.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
 # 🧾 கிளை தினசரி செலவு மேலாண்மை (Branch Expenses)
@@ -349,7 +539,7 @@ def serve_ui():
 
 @app.get("/health")
 def health_check():
-    return {"status": "active", "service": "Enterprise API v6.5"}
+    return {"status": "active", "service": "Enterprise API v6.6"}
 
 # 1. Staff Login
 @app.post("/api/auth/staff-login")
@@ -381,6 +571,7 @@ def staff_unified_login(data: LoginRequest):
             "branch_id": user.get("branch_id") or 1,
             "branch_code": branch_info.get("branch_code", "BR"),
             "branch_name": branch_info.get("branch_name", "Branch"),
+            "is_branch_manager": bool(user.get("is_branch_manager", False)),
             "permissions": {
                 "can_access_counter": True if is_admin_role else bool(user.get("can_access_counter", True)),
                 "can_approve_kyc": True if is_admin_role else bool(user.get("can_approve_kyc", False)),
@@ -1125,7 +1316,7 @@ def check_otp_exemption_status(visit_id: int = Query(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 10. Settle with OTP (+ Automatic Gold Packet Lifecycle Integration)
+# 10. Settle with OTP (+ Automatic Gold Packet Lifecycle & Staff Incentive Integration)
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
     otp_code = str(random.randint(100000, 999999))
@@ -1231,8 +1422,12 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை நிறைவுற்றது"
             }).eq("id", target_visit_id).execute()
 
+        default_src_staff = data.business_source_staff_id
+
         for item in (data.cart_items or []):
-            # 🔐 0. புதிய அடகுக் கடனுக்கு OTP சரிபார்க்கப்பட்டவுடன் தானாகவே பாக்கெட் பதிவு உருவாக்குதல்
+            item_src_staff = item.get("business_source_staff_id") or default_src_staff
+
+            # 🔐 0. புதிய அடகுக் கடனுக்கு OTP சரிபார்க்கப்பட்டவுடன் பாக்கெட் உருவாக்குதல் + இன்சென்டிவ் புள்ளிகள் (+)
             if not item.get("is_repayment") and not item.get("is_gold_purchase") and not item.get("is_gold_sale") and not item.get("is_gss_account") and not item.get("is_rd_account") and not item.get("is_si_account") and item.get("loan_no"):
                 try:
                     l_no = str(item.get("loan_no")).strip()
@@ -1259,8 +1454,25 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 "to_location": "BRANCH",
                                 "remarks": "புதிய நகைக்கடன் அடகு மூலம் பாக்கெட் உருவாக்கப்பட்டது"
                             }).execute()
+
+                    # 🏆 புதிய நகைக்கடன் இன்சென்டிவ் புள்ளிகள் (+)
+                    loan_amt_val = float(item.get("loan_amount") or 0)
+                    if loan_amt_val <= 0 and l_id:
+                        l_chk = supabase.table("test_gold_loans").select("loan_amount").eq("id", l_id).execute()
+                        if l_chk.data:
+                            loan_amt_val = float(l_chk.data[0].get("loan_amount") or 0)
+                    if loan_amt_val > 0:
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="GL_NEW",
+                            ref_no=l_no,
+                            amount_or_grams=loan_amt_val,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"புதிய நகைக்கடன் ({l_no}) - ₹{loan_amt_val:,.0f}"
+                        )
                 except Exception as pkt_err:
-                    print("Packet creation note:", pkt_err)
+                    print("Packet/Incentive creation note:", pkt_err)
 
             if item.get("is_repayment") is True:
                 loan_id = item.get("loan_id")
@@ -1293,6 +1505,19 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     curr_prin = float(loan_row.get("outstanding_principal") or loan_row.get("loan_amount") or 0)
                     new_prin = max(0.0, curr_prin - prin_paid)
 
+                    # 🏆 பகுதி அசல் வசூல் / கடன் முடிப்பு இன்சென்டிவ் புள்ளிகள் கழித்தல் (-)
+                    if prin_paid > 0:
+                        inc_code = "GL_CLOSE" if (action_type == "FULL_CLOSURE" or new_prin <= 0) else "GL_PART_PRINCIPAL"
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type=inc_code,
+                            ref_no=loan_row.get("loan_no", str(loan_id)),
+                            amount_or_grams=prin_paid,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"கடன் அசல் வரவு/முடிப்பு ({loan_row.get('loan_no')}) - ₹{prin_paid:,.0f}"
+                        )
+
                     update_fields = {
                         "outstanding_principal": new_prin,
                         "last_interest_paid_date": txn_date
@@ -1300,7 +1525,6 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     if action_type == "FULL_CLOSURE" or new_prin <= 0:
                         update_fields["status"] = "CLOSED"
                         update_fields["closed_date"] = txn_date
-                        # 🔐 கடன் முடிந்ததைப் பாக்கெட் அட்டவணையிலும் பதிவு செய்தல் (ஒப்படைப்பு நிலுவை அறிக்கைக்கு)
                         try:
                             supabase.table("test_gold_packets").update({
                                 "is_loan_closed": True,
@@ -1360,6 +1584,18 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             })
                         supabase.table("test_gold_purchase_items").insert(items_to_save).execute()
 
+                    # 🏆 பழைய தங்கம் வாங்குதல் இன்சென்டிவ் புள்ளிகள் (கிராம் கணக்கில்)
+                    if tot_net > 0:
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="OLD_GOLD",
+                            ref_no=final_gp_no,
+                            amount_or_grams=tot_net,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"பழைய தங்கம் கொள்முதல் ({final_gp_no}) - {tot_net:.3f}g"
+                        )
+
             elif item.get("is_gold_sale") is True:
                 gs_meta = item.get("gs_meta") or {}
                 stock_item_id = gs_meta.get("stock_item_id")
@@ -1369,6 +1605,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     cnt_res = supabase.table("test_gold_sales").select("id", count="exact").eq("branch_id", data.branch_id).execute()
                     next_gs_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
                     final_gs_no = f"{b_code}/GS/{next_gs_seq:04d}"
+                    sale_net_wt = float(gs_meta.get("net_weight") or 0)
 
                     gs_record = {
                         "gs_no": final_gs_no,
@@ -1378,7 +1615,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                         "purchase_item_id": stock_item_id,
                         "item_tag_no": gs_meta.get("item_tag_no", "-"),
                         "transaction_date": txn_date,
-                        "net_weight": float(gs_meta.get("net_weight") or 0),
+                        "net_weight": sale_net_wt,
                         "gold_value": float(gs_meta.get("gold_value") or 0),
                         "making_charge": float(gs_meta.get("making_charge") or 0),
                         "gst_amount": float(gs_meta.get("gst_amount") or 0),
@@ -1386,6 +1623,18 @@ def settle_with_otp(data: SettleWithOtpPayload):
                     }
                     supabase.table("test_gold_sales").insert(gs_record).execute()
                     supabase.table("test_gold_purchase_items").update({"stock_status": "SOLD"}).eq("id", stock_item_id).execute()
+
+                    # 🏆 நகை விற்பனை இன்சென்டிவ் புள்ளிகள் (கிராம் கணக்கில்)
+                    if sale_net_wt > 0:
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="GOLD_SALE",
+                            ref_no=final_gs_no,
+                            amount_or_grams=sale_net_wt,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"நகை விற்பனை ({final_gs_no}) - {sale_net_wt:.3f}g"
+                        )
 
             elif item.get("is_gss_account") is True:
                 gss_meta = item.get("gss_meta") or {}
@@ -1430,6 +1679,17 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             "total_accumulated_weight": round(old_wt + wt_credited, 3),
                             "total_penalty_accrued": round(old_penalty + penalty_amt, 2)
                         }).eq("id", account_id).execute()
+
+                        # 🏆 GSS தவணை வசூல் இன்சென்டிவ் புள்ளிகள்
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="GSS_INST",
+                            ref_no=gss_no,
+                            amount_or_grams=1,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"GSS தவணை வசூல் ({gss_no})"
+                        )
                     else:
                         new_acc_res = supabase.table("test_customer_savings_accounts").insert({
                             "gss_no": gss_no,
@@ -1456,6 +1716,17 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 "penalty_amount": penalty_amt,
                                 "receipt_no": f"{gss_no}/NEW"
                             }).execute()
+
+                        # 🏆 GSS புதிய சேர்க்கை இன்சென்டிவ் புள்ளிகள்
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="GSS_JOIN",
+                            ref_no=gss_no,
+                            amount_or_grams=1,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"புதிய GSS திட்டம் துவக்கம் ({gss_no})"
+                        )
 
             elif item.get("is_rd_account") is True:
                 rd_meta = item.get("rd_meta") or {}
@@ -1484,6 +1755,17 @@ def settle_with_otp(data: SettleWithOtpPayload):
                         supabase.table("test_customer_rd_accounts").update({
                             "total_amount_paid": round(old_total + init_amount, 2)
                         }).eq("id", account_id).execute()
+
+                        # 🏆 RD தவணை வசூல் இன்சென்டிவ் புள்ளிகள்
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="RD_INST",
+                            ref_no=rd_no,
+                            amount_or_grams=1,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"RD தவணை வசூல் ({rd_no})"
+                        )
                     else:
                         new_acc = supabase.table("test_customer_rd_accounts").insert({
                             "rd_no": rd_no,
@@ -1507,19 +1789,44 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 "receipt_no": f"{rd_no}/NEW"
                             }).execute()
 
+                        # 🏆 RD புதிய சேர்க்கை இன்சென்டிவ் புள்ளிகள்
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="RD_JOIN",
+                            ref_no=rd_no,
+                            amount_or_grams=1,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"புதிய RD திட்டம் துவக்கம் ({rd_no})"
+                        )
+
             elif item.get("is_si_account") and item.get("si_meta"):
                 sm = item["si_meta"]
                 s_mode = sm.get("mode")
                 if s_mode == "NEW":
+                    prin_val = float(sm.get("principal_amount") or 0)
+                    si_no_val = sm.get("si_no")
                     supabase.table("test_si_accounts").insert({
-                        "si_no": sm.get("si_no"),
+                        "si_no": si_no_val,
                         "customer_id": data.customer_id,
                         "branch_id": data.branch_id,
                         "scheme_id": sm.get("scheme_id"),
-                        "principal_amount": sm.get("principal_amount", 0),
+                        "principal_amount": prin_val,
                         "nominees": sm.get("nominees", []),
                         "status": "ACTIVE"
                     }).execute()
+
+                    # 🏆 FD / SI புதிய வைப்பு இன்சென்டிவ் புள்ளிகள்
+                    if prin_val > 0:
+                        record_incentive_points(
+                            branch_id=data.branch_id,
+                            txn_type="FD_NEW",
+                            ref_no=si_no_val,
+                            amount_or_grams=prin_val,
+                            source_staff_id=item_src_staff,
+                            txn_date=txn_date,
+                            remarks=f"புதிய FD / SI வைப்பு ({si_no_val}) - ₹{prin_val:,.0f}"
+                        )
                 elif s_mode == "RETURN_PAYOUT":
                     acc_id = sm.get("account_id")
                     ret_amt = float(sm.get("return_amount", 0))
@@ -1589,7 +1896,6 @@ def dispatch_packets_to_hq(data: dict):
             if not pkt_res.data:
                 continue
             pkt = pkt_res.data[0]
-            # 🔒 ஒப்படைக்கப்பட்ட அல்லது ஏற்கனவே HQ-வில் உள்ள பாக்கெட்டுகளை அனுப்பத் தடை
             if pkt.get("is_handed_over") or pkt.get("packet_status") != "AT_BRANCH_NEW":
                 continue
 
@@ -1652,7 +1958,6 @@ def receive_packets_hq_vault(data: dict):
 
 @app.post("/api/hq/packets/bank-pledge")
 def pledge_packets_in_bank(data: dict):
-    """படி 1: HQ லாக்கரில் உள்ள பாக்கெட்டுகளை நிறுவன வங்கி & டோக்கன் படத்துடன் வங்கி லாக்கரில் வைக்கப் பதிவு செய்தல்"""
     try:
         loan_nos = data.get("loan_nos") or []
         comp_bank_id = int(data.get("company_bank_id") or 0)
@@ -1667,7 +1972,6 @@ def pledge_packets_in_bank(data: dict):
         if not token_photo:
             raise HTTPException(status_code=400, detail="📸 வங்கி அளித்த டோக்கன் படத்தைக் கட்டாயம் பதிவேற்றவும்!")
 
-        # நிறுவன வங்கியின் பெயரை எடுத்தல்
         bk_res = supabase.table("test_company_banks").select("bank_name, account_no").eq("id", comp_bank_id).execute()
         bank_name = f"{bk_res.data[0]['bank_name']} ({bk_res.data[0]['account_no']})" if bk_res.data else "Company Bank"
 
@@ -1710,10 +2014,8 @@ def pledge_packets_in_bank(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/api/hq/packets/bank-redeem")
 def redeem_packets_from_bank(data: dict):
-    """படி 1: வங்கி லாக்கரில் உள்ள பாக்கெட்டுகளை வட்டி & ரசீது படத்துடன் மீட்கப் பதிவு செய்தல்"""
     try:
         loan_nos = data.get("loan_nos") or []
         prin_paid = float(data.get("principal_paid") or 0)
@@ -1764,7 +2066,6 @@ def redeem_packets_from_bank(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/api/hq/packets/action")
 def hq_packet_action(data: dict):
     try:
@@ -1782,7 +2083,6 @@ def hq_packet_action(data: dict):
         if act_type == "SEND_TO_BRANCH":
             if pkt.get("current_location") == "BANK_LOCKER":
                 raise HTTPException(status_code=400, detail="இந்தப் பாக்கெட் வங்கி லாக்கரில் உள்ளது! முதலில் வங்கியிலிருந்து மீட்டு HQ கொண்டு வந்த பின்னரே கிளைக்கு அனுப்ப முடியும்.")
-            # 🔒 கிளை கோரிக்கை வைத்த பாக்கெட்டுகளை மட்டுமே கிளைக்கு அனுப்ப முடியும்
             if pkt.get("packet_status") != "REQUESTED_BY_BRANCH":
                 raise HTTPException(status_code=400, detail=f"❌ பாக்கெட் ({lno})-க்கு கிளையிலிருந்து கோரிக்கை வரவில்லை! கிளை கோரிக்கை வைத்த பாக்கெட்டுகளை மட்டுமே அனுப்ப முடியும்.")
 
@@ -1803,7 +2103,6 @@ def hq_packet_action(data: dict):
             }).execute()
             return {"status": "success", "message": f"பாக்கெட் ({lno}) கிளைக்கு அனுப்பப்பட்டது."}
 
-        # 🔒 சிறப்பு ஒப்புதல் அல்லது நிராகரிப்பு வழங்குவதற்கு முன் பணியாளரின் உரிமையைச் சரிபார்த்தல்
         staff_chk = supabase.table("test_staff_users").select("can_approve_hq_packets").eq("id", admin_id).execute()
         if not staff_chk.data or not staff_chk.data[0].get("can_approve_hq_packets"):
             raise HTTPException(status_code=403, detail="❌ பாதுகாப்பு மறுப்பு: இந்த ஒப்புதலை வழங்க உங்களுக்கு நிர்வாக அனுமதி வழங்கப்படவில்லை!")
@@ -1830,7 +2129,6 @@ def hq_packet_action(data: dict):
                 new_lno = str(r_data.get("new_loan_no") or "").strip()
                 old_lno = pkt["loan_no"]
 
-                # புதிய கடன் எண்ணில் ஏற்கனவே ஒரு காலி பாக்கெட் உருவாகியிருந்தால், முதலில் அதை நீக்குதல்
                 dup_res = supabase.table("test_gold_packets").select("id, current_location").eq("loan_no", new_lno).execute()
                 for d in (dup_res.data or []):
                     if d["id"] != pkt["id"]:
@@ -1866,10 +2164,8 @@ def hq_packet_action(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.post("/api/hq/packets/verify-bank-action")
 def verify_bank_locker_second_staff(data: dict):
-    """படி 2: மற்றொரு HQ பணியாளர் பாக்கெட் வாரியாகச் சரிபார்த்து உறுதி செய்தல்"""
     try:
         lno = str(data.get("loan_no") or "").strip()
         verifier_id = int(data.get("verifier_id") or 1)
@@ -1880,7 +2176,6 @@ def verify_bank_locker_second_staff(data: dict):
             raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
         pkt = pkt_res.data[0]
 
-        # 🔒 பாதுகாப்பு விதி: பதிவு செய்த அதே பணியாளர் சரிபார்க்க முடியாது!
         if pkt.get("bank_initiated_by") and int(pkt.get("bank_initiated_by")) == verifier_id:
             raise HTTPException(status_code=400, detail="❌ பாதுகாப்பு விதி: இந்தப் பதிவைச் செய்த அதே பணியாளர் சரிபார்க்க முடியாது! மற்றொரு தலைமையகப் பணியாளர் சரிபார்க்க வேண்டும்.")
 
@@ -1928,7 +2223,6 @@ def verify_bank_locker_second_staff(data: dict):
                 "performed_by": verifier_id, "remarks": f"2-வது HQ சரிபார்ப்பு முடிந்து வங்கியில் வைக்கப்பட்டது ({bank_name})"
             }).execute()
 
-            # நிறுவன வங்கியில் வரவு வைத்தல்
             bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
             if bk_res.data:
                 for bal_col in ["current_balance", "balance", "opening_balance"]:
@@ -1959,7 +2253,6 @@ def verify_bank_locker_second_staff(data: dict):
                 "performed_by": verifier_id, "remarks": "2-வது HQ சரிபார்ப்பு முடிந்து வங்கியிலிருந்து மீட்கப்பட்டது"
             }).execute()
 
-            # நிறுவன வங்கியிலிருந்து கழித்தல்
             bk_res = supabase.table("test_company_banks").select("*").eq("id", comp_bank_id).execute()
             if bk_res.data:
                 for bal_col in ["current_balance", "balance", "opening_balance"]:
@@ -1988,7 +2281,6 @@ def create_packet_special_request(data: dict):
         pkt = pkt_res.data[0]
         now_t = datetime.now(IST).isoformat()
 
-        # 🔒 மறு-அடகு மற்றும் நேரடி விடுவிப்புக்கு கடன் முடிந்திருக்க வேண்டும்
         if req_type in ["DIRECT_RELEASE", "REPLEDGE_TRANSFER"] and not pkt.get("is_loan_closed"):
             raise HTTPException(status_code=400, detail="❌ முதலில் கவுண்ட்டரில் நகைக்கடனை முழுமையாக முடித்த பின்னரே இந்தக் கோரிக்கையை அனுப்ப முடியும்!")
 
@@ -2037,19 +2329,15 @@ def trigger_packet_handover_otp(loan_no: str = Query(...)):
             raise HTTPException(status_code=404, detail="பாக்கெட் இல்லை")
         pkt = pkt_res.data[0]
 
-        # 🔒 1. கடன் முடிக்கப்பட்டிருக்க வேண்டும்
         if not pkt.get("is_loan_closed"):
             raise HTTPException(status_code=400, detail="❌ இந்த நகைக்கடன் இன்னும் முடிக்கப்படவில்லை! முதலில் கவுண்ட்டரில் கடனை முடிக்கவும்.")
 
-        # 🔒 2. ஏற்கனவே ஒப்படைக்கப்பட்டிருந்தால் தடுத்தல்
         if pkt.get("is_handed_over"):
             raise HTTPException(status_code=400, detail="❌ இந்தப் பாக்கெட் ஏற்கனவே வாடிக்கையாளரிடம் ஒப்படைக்கப்பட்டுவிட்டது!")
 
-        # 🔒 3. HQ செல்லாமல் கிளையிலேயே இருந்தால் HQ நேரடி விடுவிப்பு ஒப்புதல் கட்டாயம்
         if pkt.get("packet_status") == "AT_BRANCH_NEW" and pkt.get("pending_request_status") != "APPROVED":
             raise HTTPException(status_code=400, detail="❌ HQ செல்லாமல் கிளையிலேயே வைத்துத் திருப்ப தலைமையக ஒப்புதல் அவசியம்!")
 
-        # 🔒 4. பாக்கெட் கிளையில் இருக்க வேண்டும்
         if pkt.get("current_location") != "BRANCH" or pkt.get("packet_status") != "AT_BRANCH_FOR_RELEASE":
             raise HTTPException(status_code=400, detail="❌ பாக்கெட் இன்னும் கிளையில் ஒப்படைப்புக்குத் தயாராக இல்லை!")
 
@@ -2324,6 +2612,7 @@ def delete_branch(branch_id: int):
     return {"status": "success", "message": "கிளை நீக்கப்பட்டது."}
 
 @app.get("/api/admin/staff")
+@app.get("/api/admin/staff/list")
 def get_staff_list():
     res = supabase.table("test_staff_users").select("*, test_branches(branch_name)").order("id", desc=True).execute()
     return {"status": "success", "data": res.data or []}
@@ -2347,6 +2636,8 @@ def update_staff(staff_id: int, data: dict):
             "mobile": data.get("mobile"),
             "role_key": data.get("role_key"),
             "branch_id": data.get("branch_id"),
+            "is_active": bool(data.get("is_active", True)),
+            "is_branch_manager": bool(data.get("is_branch_manager", False)),
             "can_access_counter": bool(data.get("can_access_counter", False)),
             "can_approve_kyc": bool(data.get("can_approve_kyc", False)),
             "can_approve_updates": bool(data.get("can_approve_updates", False)),

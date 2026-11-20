@@ -575,7 +575,13 @@
               <p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>
             </div>
           </div>
-
+          <!-- 🏆 வணிக ஆதாரம் (Business Source) Dropdown -->
+          <div class="bg-amber-50 p-3 rounded-2xl border-2 border-amber-300 text-xs">
+            <label class="block font-black text-amber-950 mb-1">🏆 வணிக ஆதாரம் (Incentive Business Source):</label>
+            <select id="cart_business_source_staff" class="business-source-staff-select w-full border-2 border-amber-400 p-2 rounded-xl bg-white font-bold text-slate-800 focus:outline-none">
+              <option value="0">🚶 Walk-in (கிளைப் பொது வாடிக்கையாளர் - குழுப் பகிர்வு)</option>
+            </select>
+          </div>
           <div class="bg-purple-50/50 p-4 rounded-2xl border-2 border-purple-100 space-y-2">
             <div class="flex justify-between text-xs text-slate-600">
               <span>நாம் தர வேண்டியது (-):</span>
@@ -939,9 +945,14 @@
     <!-- TAB C: நிர்வாகம் -->
     <div id="adminPanelTab" class="hidden space-y-6">
       <div class="bg-gradient-to-r from-amber-50 to-purple-50 p-5 rounded-2xl border-2 border-brand-gold shadow-sm space-y-3">
-        <h3 class="text-sm font-extrabold text-amber-900 flex items-center gap-2">
-          <span>💰</span> அன்றைய தங்க விலை நிர்ணயம் (Today's Gold Rate per Gram)
-        </h3>
+        <div class="flex flex-wrap justify-between items-center gap-2">
+          <h3 class="text-sm font-extrabold text-amber-900 flex items-center gap-2">
+            <span>💰</span> அன்றைய தங்க விலை நிர்ணயம் (Today's Gold Rate per Gram)
+          </h3>
+          <button type="button" onclick="openIncentiveDashboardModal()" style="background-color:#723a91;color:#fff;" class="px-4 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 cursor-pointer">
+            🏆 பணியாளர் இன்சென்டிவ் விதிகள் & அறிக்கை
+          </button>
+        </div>
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div><label class="block text-[11px] font-bold text-slate-700 mb-1">24K தூய தங்கம் (₹/g) *</label><input type="number" id="gr_24k" placeholder="7800" class="w-full border-2 border-yellow-200 p-2 rounded-xl text-xs font-bold bg-white"></div>
           <div><label class="block text-[11px] font-bold text-slate-700 mb-1">22K / 916 தங்கம் (₹/g) *</label><input type="number" id="gr_22k" placeholder="7150" class="w-full border-2 border-yellow-300 p-2 rounded-xl text-xs font-black bg-white text-brand-violet"></div>
@@ -1129,7 +1140,16 @@
               </select>
               <select id="new_staff_branch" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white font-bold text-brand-violet"></select>
             </div>
-        
+            <div class="flex flex-wrap gap-4 bg-amber-50 p-3 rounded-2xl border-2 border-amber-300 text-xs font-bold">
+              <label class="flex items-center gap-2 cursor-pointer text-emerald-900">
+                <input type="checkbox" id="new_staff_is_active" checked class="w-4 h-4 accent-emerald-600">
+                <span>✅ பணியில் உள்ளார் (Active Staff - Walk-in இன்சென்டிவில் இணைக்கப்படுவார்)</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer text-brand-violet">
+                <input type="checkbox" id="new_staff_is_manager" class="w-4 h-4 accent-purple-700">
+                <span>👑 கிளை மேலாளர் (Branch Manager - 60% / 50% / 40% பங்கு)</span>
+              </label>
+            </div>
             <!-- அணுகல் உரிமைகள் செக்பாக்ஸ் கட்டமைப்பு (ஒரே சீரான எழுத்து வடிவம்) -->
             <div class="bg-purple-50 p-4 rounded-2xl border-2 border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <label class="flex items-center space-x-2.5 font-bold text-brand-violet p-2 bg-white rounded-xl border border-purple-200 hover:bg-purple-50 cursor-pointer shadow-xs">
@@ -2521,6 +2541,7 @@
       fetchAndSetupPurityDropdown();
       initTxnDate();
       renderHeldDraftsBar(); // ஹோல்ட் செய்யப்பட்ட வாடிக்கையாளர் பட்டையை ஏற்றுதல்
+      if (typeof populateBusinessSourceDropdowns === 'function') populateBusinessSourceDropdowns();
       restoreActiveSessionOnLoad();
       
       if (user.permissions?.can_manage_users === true) {
@@ -4213,6 +4234,7 @@
         denominations: denomPayload,
         transaction_date: selDate,
         actions_summary: cartItems.map(c => c.title).join(", "),
+        business_source_staff_id: parseInt(document.getElementById('cart_business_source_staff')?.value) || 0,
         cart_items: cartItems
       };
     
@@ -5579,6 +5601,8 @@
       document.getElementById('perm_gss_benefit').checked = !!s.can_approve_gss_benefit;
       document.getElementById('perm_hq_packet_access').checked = !!s.can_access_hq_packets;
       document.getElementById('perm_hq_packet_approve').checked = !!s.can_approve_hq_packets;
+      document.getElementById('new_staff_is_active').checked = s.is_active !== false;
+      document.getElementById('new_staff_is_manager').checked = !!s.is_branch_manager;
     }
 
     function cancelStaffEdit() {
@@ -5603,6 +5627,8 @@
       document.getElementById('perm_gss_benefit').checked = false;
       document.getElementById('perm_hq_packet_access').checked = false;
       document.getElementById('perm_hq_packet_approve').checked = false;
+      document.getElementById('new_staff_is_active').checked = true;
+      document.getElementById('new_staff_is_manager').checked = false;
     }
 
     async function submitStaffForm() {
@@ -5617,6 +5643,8 @@
         mobile: document.getElementById('new_staff_mobile').value.trim(),
         role_key: document.getElementById('new_staff_role').value,
         branch_id: branchId,
+        is_active: document.getElementById('new_staff_is_active')?.checked ?? true,
+        is_branch_manager: document.getElementById('new_staff_is_manager')?.checked ?? false,
         can_access_counter: document.getElementById('perm_counter').checked,
         can_approve_kyc: document.getElementById('perm_kyc').checked,
         can_approve_updates: document.getElementById('perm_updates').checked,
@@ -9494,6 +9522,256 @@
     } else {
       alert("❌ " + verOut.detail);
     }
+  }
+</script>
+<!-- 🏆 பணியாளர் இன்சென்டிவ் விதிகள் & மாதாந்திர அறிக்கை சாளரம் -->
+<div id="incentiveDashboardModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-6xl w-full shadow-2xl space-y-4 border-2 border-amber-500 my-auto max-h-[94vh] overflow-y-auto">
+    
+    <div class="flex justify-between items-center border-b border-amber-100 pb-3">
+      <div>
+        <h3 class="text-base font-extrabold text-brand-violet">🏆 பணியாளர் வணிக இன்சென்டிவ் & புள்ளி மேலாண்மை</h3>
+        <p class="text-[11px] text-slate-500">நேரடி வணிகம் (100%) & Walk-in வணிகம் (கிளை மேலாளர் 60%/50%/40% & Active பணியாளர் விகிதாச்சாரம்)</p>
+      </div>
+      <button type="button" onclick="closeIncentiveDashboardModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2 cursor-pointer">✕</button>
+    </div>
+
+    <!-- உள் டேப்கள்: அறிக்கை vs விதிகள் அமைப்பு -->
+    <div class="flex gap-2 border-b border-slate-200 pb-2 text-xs">
+      <button type="button" id="tabBtnIncReport" onclick="switchIncentiveTab('REPORT')" class="px-4 py-1.5 rounded-xl bg-brand-violet text-white font-black cursor-pointer">📊 பணியாளர் இன்சென்டிவ் அறிக்கை</button>
+      <button type="button" id="tabBtnIncSettings" onclick="switchIncentiveTab('SETTINGS')" class="px-4 py-1.5 rounded-xl bg-amber-100 text-amber-950 font-bold cursor-pointer">⚙️ புள்ளி விகிதம் & ரூபாய் மதிப்பு அமைப்பு</button>
+    </div>
+
+    <!-- 1. இன்சென்டிவ் அறிக்கை பகுதி -->
+    <div id="incReportSection" class="space-y-3 text-xs">
+      <div class="flex flex-wrap items-end gap-2 bg-purple-50 p-3 rounded-2xl border border-purple-200">
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">தொடக்க தேதி:</label>
+          <input type="date" id="inc_from_date" class="border border-purple-200 p-1.5 rounded-xl bg-white font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">இறுதி தேதி:</label>
+          <input type="date" id="inc_to_date" class="border border-purple-200 p-1.5 rounded-xl bg-white font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">கிளை:</label>
+          <select id="inc_branch_filter" class="border border-purple-200 p-1.5 rounded-xl bg-white font-bold text-brand-violet">
+            <option value="0">அனைத்துக் கிளைகளும்</option>
+          </select>
+        </div>
+        <button type="button" onclick="loadIncentiveReportData()" style="background-color:#723a91;color:#fff;" class="px-4 py-2 rounded-xl font-black shadow cursor-pointer">🔍 அறிக்கை காட்டு</button>
+      </div>
+
+      <!-- பணியாளர் வாரியான சுருக்க அட்டவணை -->
+      <div class="overflow-x-auto border-2 border-purple-100 rounded-2xl">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-purple-100 text-brand-violet border-b border-purple-200">
+            <tr>
+              <th class="p-2.5 font-extrabold">பணியாளர் பெயர்</th>
+              <th class="p-2.5 font-extrabold">நிலை & பதவி</th>
+              <th class="p-2.5 text-right font-extrabold">நேரடிப் புள்ளிகள் (100%)</th>
+              <th class="p-2.5 text-right font-extrabold">Walk-in பகிர்வு புள்ளிகள்</th>
+              <th class="p-2.5 text-right font-extrabold">கழிக்கப்பட்டவை (-)</th>
+              <th class="p-2.5 text-right font-extrabold">நிகர புள்ளிகள் (Net)</th>
+              <th class="p-2.5 text-right font-extrabold">மொத்த இன்சென்டிவ் (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="incSummaryTbody" class="divide-y divide-purple-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 2. புள்ளி விதிகள் & ரூபாய் மதிப்பு அமைப்பு பகுதி -->
+    <div id="incSettingsSection" class="hidden space-y-3 text-xs">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-amber-50/70 p-4 rounded-2xl border border-amber-300">
+        <div>
+          <label class="block font-black text-amber-950 mb-1">💰 1 புள்ளியின் ரூபாய் மதிப்பு (₹)</label>
+          <input type="number" step="0.5" id="cfg_pt_val" class="w-full border-2 border-amber-400 p-2 rounded-xl font-black text-emerald-700 bg-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">➕ புதிய நகைக்கடன் (₹10,000-க்கு புள்ளி)</label>
+          <input type="number" step="0.1" id="cfg_gl_new" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">➖ கடன் முடிப்பு / அசல் வரவு (₹10,000-க்கு)</label>
+          <input type="number" step="0.1" id="cfg_gl_close" class="w-full border border-amber-200 p-2 rounded-xl font-bold text-rose-600 bg-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">💍 நகை விற்பனை (1 கிராமிற்கு புள்ளி)</label>
+          <input type="number" step="0.1" id="cfg_gold_sale" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">🪙 பழைய தங்கம் கொள்முதல் (1 கிராமிற்கு)</label>
+          <input type="number" step="0.1" id="cfg_old_gold" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">🆕 GSS / RD புதிய சேர்க்கை புள்ளி</label>
+          <input type="number" step="0.1" id="cfg_gss_join" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">📅 GSS / RD மாதத் தவணை புள்ளி</label>
+          <input type="number" step="0.1" id="cfg_gss_inst" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">🏦 FD புதிய வைப்பு (₹10,000-க்கு புள்ளி)</label>
+          <input type="number" step="0.1" id="cfg_fd_new" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <button type="button" onclick="saveIncentiveSettingsForm()" style="background-color:#059669;color:#fff;" class="px-6 py-2.5 rounded-xl font-black shadow cursor-pointer">
+          💾 இன்சென்டிவ் விதிகளைச் சேமி
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  async function populateBusinessSourceDropdowns() {
+    try {
+      const res = await fetch('/api/admin/staff/list');
+      const out = await res.json();
+      const activeStaff = (out.data || []).filter(s => s.is_active !== false);
+      const optsHtml = `<option value="0">🚶 Walk-in (கிளைப் பொது வாடிக்கையாளர் - குழுப் பகிர்வு)</option>` +
+        activeStaff.map(s => `<option value="${s.id}">👤 ${s.full_name} (${s.test_branches?.branch_name || 'Staff'}) - 100% நேரடி</option>`).join('');
+
+      document.querySelectorAll('.business-source-staff-select').forEach(sel => {
+        sel.innerHTML = optsHtml;
+      });
+    } catch (e) {}
+  }
+
+  function openIncentiveDashboardModal() {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+    const currDay = today.toISOString().split('T')[0];
+    document.getElementById('inc_from_date').value = firstDay;
+    document.getElementById('inc_to_date').value = currDay;
+
+    const brSel = document.getElementById('inc_branch_filter');
+    if (brSel && typeof branchesCache !== 'undefined' && branchesCache.length > 0) {
+      brSel.innerHTML = `<option value="0">அனைத்துக் கிளைகளும்</option>` +
+        branchesCache.map(b => `<option value="${b.id}">${b.branch_name}</option>`).join('');
+    }
+
+    const m = document.getElementById('incentiveDashboardModal');
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+    switchIncentiveTab('REPORT');
+    loadIncentiveReportData();
+    loadIncentiveSettingsForm();
+  }
+
+  function closeIncentiveDashboardModal() {
+    const m = document.getElementById('incentiveDashboardModal');
+    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+  }
+
+  function switchIncentiveTab(tab) {
+    const repSec = document.getElementById('incReportSection');
+    const setSec = document.getElementById('incSettingsSection');
+    if (tab === 'REPORT') {
+      repSec.classList.remove('hidden');
+      setSec.classList.add('hidden');
+    } else {
+      repSec.classList.add('hidden');
+      setSec.classList.remove('hidden');
+    }
+  }
+
+  async function loadIncentiveSettingsForm() {
+    const res = await fetch('/api/admin/incentive-settings');
+    const out = await res.json();
+    const d = out.data || {};
+    document.getElementById('cfg_pt_val').value = d.point_value_inr ?? 10;
+    document.getElementById('cfg_gl_new').value = d.gl_new_per_10k ?? 1;
+    document.getElementById('cfg_gl_close').value = d.gl_close_per_10k ?? 1;
+    document.getElementById('cfg_gold_sale').value = d.gold_sale_per_gram ?? 5;
+    document.getElementById('cfg_old_gold').value = d.old_gold_per_gram ?? 3;
+    document.getElementById('cfg_gss_join').value = d.gss_rd_join_points ?? 5;
+    document.getElementById('cfg_gss_inst').value = d.gss_rd_installment_points ?? 1;
+    document.getElementById('cfg_fd_new').value = d.fd_per_10k ?? 2;
+  }
+
+  async function saveIncentiveSettingsForm() {
+    const payload = {
+      point_value_inr: parseFloat(document.getElementById('cfg_pt_val').value) || 10,
+      gl_new_per_10k: parseFloat(document.getElementById('cfg_gl_new').value) || 0,
+      gl_close_per_10k: parseFloat(document.getElementById('cfg_gl_close').value) || 0,
+      gold_sale_per_gram: parseFloat(document.getElementById('cfg_gold_sale').value) || 0,
+      old_gold_per_gram: parseFloat(document.getElementById('cfg_old_gold').value) || 0,
+      gss_rd_join_points: parseFloat(document.getElementById('cfg_gss_join').value) || 0,
+      gss_rd_installment_points: parseFloat(document.getElementById('cfg_gss_inst').value) || 0,
+      fd_per_10k: parseFloat(document.getElementById('cfg_fd_new').value) || 0
+    };
+    const res = await fetch('/api/admin/incentive-settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const out = await res.json();
+    alert(res.ok ? "✅ " + out.message : "❌ " + (out.detail || "பிழை"));
+  }
+
+  async function loadIncentiveReportData() {
+    const fDate = document.getElementById('inc_from_date').value;
+    const tDate = document.getElementById('inc_to_date').value;
+    const bId = document.getElementById('inc_branch_filter').value || 0;
+
+    const res = await fetch(`/api/incentive/report?from_date=${fDate}&to_date=${tDate}&branch_id=${bId}`);
+    const out = await res.json();
+    const rows = out.data || [];
+
+    const staffMap = new Map();
+    rows.forEach(r => {
+      const sid = r.staff_id;
+      if (!staffMap.has(sid)) {
+        staffMap.set(sid, {
+          name: r.test_staff_users?.full_name || `Staff #${sid}`,
+          isActive: r.test_staff_users?.is_active !== false,
+          isMgr: r.test_staff_users?.is_branch_manager === true,
+          directPts: 0,
+          walkinPts: 0,
+          minusPts: 0,
+          netPts: 0,
+          totalAmt: 0
+        });
+      }
+      const item = staffMap.get(sid);
+      const pts = parseFloat(r.points || 0);
+      const amt = parseFloat(r.incentive_amount || 0);
+
+      if (pts < 0) {
+        item.minusPts += pts;
+      } else if (r.source_type === 'DIRECT') {
+        item.directPts += pts;
+      } else {
+        item.walkinPts += pts;
+      }
+      item.netPts += pts;
+      item.totalAmt += amt;
+    });
+
+    const tbody = document.getElementById('incSummaryTbody');
+    if (staffMap.size === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-bold">இந்தத் தேதிகளில் இன்சென்டிவ் பதிவுகள் ஏதுமில்லை</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = Array.from(staffMap.values()).map(s => `
+      <tr class="hover:bg-purple-50/40">
+        <td class="p-2.5 font-black text-brand-violet">${s.name}</td>
+        <td class="p-2.5">
+          ${s.isMgr ? '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px]">👑 கிளை மேலாளர்</span>' : '<span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold text-[10px]">👤 பணியாளர்</span>'}
+          ${s.isActive ? '<span class="ml-1 text-[10px] text-emerald-700 font-bold">● Active</span>' : '<span class="ml-1 text-[10px] text-rose-600 font-bold">● Inactive</span>'}
+        </td>
+        <td class="p-2.5 text-right font-mono font-bold text-indigo-700">+${s.directPts.toFixed(2)}</td>
+        <td class="p-2.5 text-right font-mono font-bold text-purple-700">+${s.walkinPts.toFixed(2)}</td>
+        <td class="p-2.5 text-right font-mono font-bold text-rose-600">${s.minusPts.toFixed(2)}</td>
+        <td class="p-2.5 text-right font-mono font-black text-slate-900">${s.netPts.toFixed(2)}</td>
+        <td class="p-2.5 text-right font-mono font-black text-emerald-700 text-sm">₹ ${s.totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    `).join('');
   }
 </script>
 </body>

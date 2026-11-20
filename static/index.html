@@ -1388,6 +1388,14 @@
               <input type="number" step="1" id="rd_adm_mat_per_1000" readonly class="w-full border-2 border-indigo-300 p-2.5 rounded-xl font-mono font-black text-indigo-950 bg-indigo-100/70 cursor-not-allowed">
               <span id="rd_adm_mat_breakdown" class="text-[10px] text-indigo-700 font-bold block mt-0.5"></span>
             </div>
+            <div>
+              <label class="block font-bold text-purple-900 mb-1">🏆 துவக்கப் புள்ளி (Join Points) *</label>
+              <input type="number" step="0.1" id="rd_adm_join_pts" value="5" class="w-full border-2 border-purple-200 p-2.5 rounded-xl font-mono font-bold text-purple-900 bg-purple-50/40">
+            </div>
+            <div>
+              <label class="block font-bold text-purple-900 mb-1">🏆 தவணைப் புள்ளி (₹1,000-க்கு) *</label>
+              <input type="number" step="0.1" id="rd_adm_1k_pts" value="1" class="w-full border-2 border-purple-200 p-2.5 rounded-xl font-mono font-bold text-purple-900 bg-purple-50/40">
+            </div>
             <div class="flex items-end justify-end">
               <button type="button" onclick="createRdSchemeAdmin()" style="background-color:#4338ca;color:#fff;" class="w-full py-2.5 px-4 rounded-xl text-xs font-black shadow-md cursor-pointer">
                 + RD திட்டத்தை உருவாக்கு
@@ -7867,6 +7875,7 @@
             <td class="p-2.5">Grace: ${s.grace_period_days ?? 5}d<br><span class="text-rose-600 font-mono font-bold">₹${s.penalty_per_thousand ?? 2}/₹1000</span></td>
             <td class="p-2.5">${intType}<br><span class="font-mono font-bold">${roi}%</span></td>
             <td class="p-2.5 font-mono font-black text-indigo-900">₹${mat1000.toLocaleString('en-IN')}</td>
+            <td class="p-2.5 text-[11px] font-bold text-purple-900">Join: ${s.join_bonus_points ?? 5} pt<br>₹1000: ${s.per_1k_points ?? 1} pt</td>
             <td class="p-2.5 text-center">
               <button type="button" onclick="deleteRdScheme(${s.id})" class="text-rose-600 font-bold hover:underline cursor-pointer">டிலீட்</button>
             </td>
@@ -7893,7 +7902,9 @@
       penalty_per_thousand: parseFloat(document.getElementById('rd_adm_penalty').value) || 0,
       interest_calculation_type: document.getElementById('rd_adm_int_type').value,
       interest_rate: parseFloat(document.getElementById('rd_adm_roi').value) || 0,
-      maturity_per_thousand: parseFloat(document.getElementById('rd_adm_mat_per_1000').value) || 0
+      maturity_per_thousand: parseFloat(document.getElementById('rd_adm_mat_per_1000').value) || 0,
+     join_bonus_points: parseFloat(document.getElementById('rd_adm_join_pts')?.value) || 0,
+     per_1k_points: parseFloat(document.getElementById('rd_adm_1k_pts')?.value) || 0
     };
     if (!payload.scheme_code || !payload.scheme_name || payload.min_installment_amount <= 0) {
       return alert("திட்டக் குறியீடு, பெயர் மற்றும் குறைந்தபட்ச தவணைத் தொகையை உள்ளிடவும்!");

@@ -2686,6 +2686,22 @@ def delete_staff(staff_id: int):
     supabase.table("test_staff_users").delete().eq("id", staff_id).execute()
     return {"status": "success", "message": "பணியாளர் நீக்கப்பட்டது."}
 
+@app.patch("/api/admin/staff/{staff_id}/toggle-active")
+def toggle_staff_active_status(staff_id: int):
+    try:
+        curr = supabase.table("test_staff_users").select("full_name, is_active").eq("id", staff_id).execute()
+        if not curr.data:
+            raise HTTPException(status_code=404, detail="பணியாளர் விபரம் கிடைக்கவில்லை.")
+        current_active = curr.data[0].get("is_active")
+        new_active = False if current_active is not False else True
+        supabase.table("test_staff_users").update({"is_active": new_active}).eq("id", staff_id).execute()
+        st_txt = "Active (பணியில் உள்ளார்)" if new_active else "Inactive (பணியிலிருந்து நீக்கப்பட்டார்)"
+        return {"status": "success", "message": f"{curr.data[0]['full_name']} நிலை '{st_txt}' என மாற்றப்பட்டது!", "is_active": new_active}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/bank/request-transfer")
 def create_bank_transfer(data: BankTransferPayload):
     record = data.model_dump()

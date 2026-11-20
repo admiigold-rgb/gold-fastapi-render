@@ -367,6 +367,10 @@
                         <input type="number" id="charges_amount" value="0" readonly class="w-full border-2 border-emerald-200 p-2 rounded-xl text-xs font-black text-emerald-700 bg-slate-100 cursor-not-allowed focus:outline-none" title="திட்டத்தின் விதிப்படி தானாகக் கணக்கிடப்படும். இதை மாற்ற முடியாது.">
                       </div>
                     </div>
+                    <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300 text-xs mt-2">
+                      <label class="block font-bold text-amber-950 mb-1">🏆 புதிய அடகு வணிக ஆதாரம்:</label>
+                      <select id="src_staff_pawn" class="business-source-staff-select w-full border border-amber-400 p-1.5 rounded-lg bg-white font-bold text-slate-800"></select>
+                    </div>
         
                     <div class="flex justify-end pt-2">
                       <button type="button" id="btnAddToCart" onclick="submitPawnToDatabase()" class="brand-gradient-gold-btn font-black text-xs px-6 py-3 rounded-xl shadow-lg border border-yellow-500 transition transform active:scale-95">
@@ -459,6 +463,10 @@
               <span id="gp_total_purchase_display" class="text-lg font-black text-rose-600 font-mono">₹ 0.00</span>
             </div>
           </div>
+          <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300 text-xs">
+            <label class="block font-bold text-amber-950 mb-1">🏆 நகை கொள்முதல் வணிக ஆதாரம்:</label>
+            <select id="src_staff_gp" class="business-source-staff-select w-full border border-amber-400 p-1.5 rounded-lg bg-white font-bold text-slate-800"></select>
+          </div>
 
           <div class="flex justify-end">
             <button type="button" onclick="addGoldPurchaseToCart()" class="brand-gradient-gold-btn font-black text-xs px-6 py-3 rounded-xl shadow-lg border border-yellow-500 cursor-pointer">
@@ -511,6 +519,10 @@
               <span class="text-[11px] text-slate-500 block">மொத்த விற்பனை விலை:</span>
               <span id="gs_total_sale_lbl" class="text-lg font-black text-emerald-700 font-mono">₹ 0.00</span>
             </div>
+          </div>
+          <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300 text-xs">
+            <label class="block font-bold text-amber-950 mb-1">🏆 நகை விற்பனை வணிக ஆதாரம்:</label>
+            <select id="src_staff_gs" class="business-source-staff-select w-full border border-amber-400 p-1.5 rounded-lg bg-white font-bold text-slate-800"></select>
           </div>
 
           <div class="flex justify-end">
@@ -574,13 +586,6 @@
             <div id="cartItemsList" class="mt-3 space-y-2 max-h-60 overflow-y-auto">
               <p class="text-xs text-slate-400 text-center py-6">கூடை காலியாக உள்ளது</p>
             </div>
-          </div>
-          <!-- 🏆 வணிக ஆதாரம் (Business Source) Dropdown -->
-          <div class="bg-amber-50 p-3 rounded-2xl border-2 border-amber-300 text-xs">
-            <label class="block font-black text-amber-950 mb-1">🏆 வணிக ஆதாரம் (Incentive Business Source):</label>
-            <select id="cart_business_source_staff" class="business-source-staff-select w-full border-2 border-amber-400 p-2 rounded-xl bg-white font-bold text-slate-800 focus:outline-none">
-              <option value="0">🚶 Walk-in (கிளைப் பொது வாடிக்கையாளர் - குழுப் பகிர்வு)</option>
-            </select>
           </div>
           <div class="bg-purple-50/50 p-4 rounded-2xl border-2 border-purple-100 space-y-2">
             <div class="flex justify-between text-xs text-slate-600">
@@ -3697,6 +3702,7 @@
             loan_id: data.loan_id, loan_no: loanNo,
             title: `நகைக்கடன் (${loanNo})`,
             details: `${ornamentList.length} நகைகள் | திட்டம்: ${scheme}`,
+            business_source_staff_id: parseInt(document.getElementById('src_staff_pawn')?.value) || 0,
             debit: loanAmt, credit: chgAmt
           });
           renderCart();
@@ -6488,6 +6494,7 @@
 
     cartItems.push({
       is_gold_purchase: true,
+      business_source_staff_id: parseInt(document.getElementById('src_staff_gp')?.value) || 0,
       gp_no: gpNo,
       title: `நகை வாங்குதல் (${gpNo})`,
       details: `${gpOrnamentList.length} நகைகள் | நிகர எடை: ${totalNetWt.toFixed(3)}g`,
@@ -6588,6 +6595,7 @@
 
     cartItems.push({
       is_gold_sale: true,
+      business_source_staff_id: parseInt(document.getElementById('src_staff_gs')?.value) || 0,
       gs_no: gsNo,
       title: `நகை விற்பனை (${gsNo})`,
       details: `Tag: ${selectedGsStockItem.item_tag_no} | ${selectedGsStockItem.item_type} (${selectedGsStockItem.net_weight}g)`,
@@ -6865,6 +6873,10 @@
         </div>
       </div>
     </div>
+    <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300 text-xs">
+      <label class="block font-bold text-amber-950 mb-1">🏆 GSS வணிக ஆதாரம்:</label>
+      <select id="src_staff_gss" class="business-source-staff-select w-full border border-amber-400 p-1.5 rounded-lg bg-white font-bold text-slate-800"></select>
+    </div>
 
     <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
       <button type="button" onclick="resetGssFormToNew()" class="px-3 py-2 bg-slate-100 rounded-xl text-xs font-bold">புதிய கணக்கு</button>
@@ -6965,6 +6977,10 @@
           </div>
         </div>
       </div>
+    </div>
+    <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300 text-xs">
+      <label class="block font-bold text-amber-950 mb-1">🏆 RD வணிக ஆதாரம்:</label>
+      <select id="src_staff_rd" class="business-source-staff-select w-full border border-amber-400 p-1.5 rounded-lg bg-white font-bold text-slate-800"></select>
     </div>
 
     <div class="flex justify-end gap-2 pt-2 border-t border-indigo-100">
@@ -7235,6 +7251,7 @@
     if (typeof cartItems !== 'undefined') {
       cartItems.push({
         is_gss_account: true,
+        business_source_staff_id: parseInt(document.getElementById('src_staff_gss')?.value) || 0,
         title: title,
         details: details,
         debit: 0,
@@ -7795,6 +7812,7 @@
 
     cartItems.push({
       is_rd_account: true,
+      business_source_staff_id: parseInt(document.getElementById('src_staff_rd')?.value) || 0,
       title: title,
       details: details,
       debit: 0,
@@ -8035,6 +8053,10 @@
           </div>
         </div>
       </div>
+    </div>
+    <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-300 text-xs">
+      <label class="block font-bold text-amber-950 mb-1">🏆 SI / FD வணிக ஆதாரம்:</label>
+      <select id="src_staff_si" class="business-source-staff-select w-full border border-amber-400 p-1.5 rounded-lg bg-white font-bold text-slate-800"></select>
     </div>
 
     <div class="flex justify-end gap-2 pt-2 border-t border-teal-100">
@@ -8277,6 +8299,7 @@
 
     cartItems.push({
       is_si_account: true,
+      business_source_staff_id: parseInt(document.getElementById('src_staff_si')?.value) || 0,
       title: `💎 புதிய SI முதலீடு (${siNo})`,
       details: `${sch.scheme_name} | முதலீடு: ₹${amt.toLocaleString('en-IN')} | நாமினிகள்: ${nominees.length}`,
       debit: 0,
@@ -9583,38 +9606,51 @@
 
     <!-- 2. புள்ளி விதிகள் & ரூபாய் மதிப்பு அமைப்பு பகுதி -->
     <div id="incSettingsSection" class="hidden space-y-3 text-xs">
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-amber-50/70 p-4 rounded-2xl border border-amber-300">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-amber-50/70 p-4 rounded-2xl border border-amber-300">
         <div>
           <label class="block font-black text-amber-950 mb-1">💰 1 புள்ளியின் ரூபாய் மதிப்பு (₹)</label>
           <input type="number" step="0.5" id="cfg_pt_val" class="w-full border-2 border-amber-400 p-2 rounded-xl font-black text-emerald-700 bg-white">
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">➕ புதிய நகைக்கடன் (₹10,000-க்கு புள்ளி)</label>
+          <label class="block font-bold text-slate-700 mb-1">➕ புதிய நகைக்கடன் (₹10,000-க்கு)</label>
           <input type="number" step="0.1" id="cfg_gl_new" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">➖ கடன் முடிப்பு / அசல் வரவு (₹10,000-க்கு)</label>
+          <label class="block font-bold text-slate-700 mb-1">➖ கடன் முடிப்பு/அசல் (₹10,000-க்கு)</label>
           <input type="number" step="0.1" id="cfg_gl_close" class="w-full border border-amber-200 p-2 rounded-xl font-bold text-rose-600 bg-white">
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">💍 நகை விற்பனை (1 கிராமிற்கு புள்ளி)</label>
+          <label class="block font-bold text-slate-700 mb-1">💍 நகை விற்பனை (1 கிராமிற்கு)</label>
           <input type="number" step="0.1" id="cfg_gold_sale" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">🪙 பழைய தங்கம் கொள்முதல் (1 கிராமிற்கு)</label>
+          <label class="block font-bold text-slate-700 mb-1">🪙 பழைய தங்கம் (1 கிராமிற்கு)</label>
           <input type="number" step="0.1" id="cfg_old_gold" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
         </div>
+
+        <!-- GSS தனித்தனிப் புள்ளிகள் -->
         <div>
-          <label class="block font-bold text-slate-700 mb-1">🆕 GSS / RD புதிய சேர்க்கை புள்ளி</label>
-          <input type="number" step="0.1" id="cfg_gss_join" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+          <label class="block font-bold text-purple-900 mb-1">🆕 புதிய GSS துவக்கப் புள்ளி (Join)</label>
+          <input type="number" step="0.1" id="cfg_gss_join_bonus" class="w-full border-2 border-purple-200 p-2 rounded-xl font-bold bg-white">
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">📅 GSS / RD மாதத் தவணை புள்ளி</label>
-          <input type="number" step="0.1" id="cfg_gss_inst" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+          <label class="block font-bold text-purple-900 mb-1">✨ GSS தொகைப் புள்ளி (₹1,000-க்கு)</label>
+          <input type="number" step="0.1" id="cfg_gss_per_1k" class="w-full border-2 border-purple-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+
+        <!-- RD தனித்தனிப் புள்ளிகள் -->
+        <div>
+          <label class="block font-bold text-indigo-900 mb-1">🆕 புதிய RD துவக்கப் புள்ளி (Join)</label>
+          <input type="number" step="0.1" id="cfg_rd_join_bonus" class="w-full border-2 border-indigo-200 p-2 rounded-xl font-bold bg-white">
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">🏦 FD புதிய வைப்பு (₹10,000-க்கு புள்ளி)</label>
-          <input type="number" step="0.1" id="cfg_fd_new" class="w-full border border-amber-200 p-2 rounded-xl font-bold bg-white">
+          <label class="block font-bold text-indigo-900 mb-1">💰 RD தொகைப் புள்ளி (₹1,000-க்கு)</label>
+          <input type="number" step="0.1" id="cfg_rd_per_1k" class="w-full border-2 border-indigo-200 p-2 rounded-xl font-bold bg-white">
+        </div>
+
+        <div>
+          <label class="block font-bold text-teal-900 mb-1">🏦 FD / SI வைப்பு (₹10,000-க்கு)</label>
+          <input type="number" step="0.1" id="cfg_fd_new" class="w-full border-2 border-teal-200 p-2 rounded-xl font-bold bg-white">
         </div>
       </div>
       <div class="flex justify-end">
@@ -9689,8 +9725,10 @@
     document.getElementById('cfg_gl_close').value = d.gl_close_per_10k ?? 1;
     document.getElementById('cfg_gold_sale').value = d.gold_sale_per_gram ?? 5;
     document.getElementById('cfg_old_gold').value = d.old_gold_per_gram ?? 3;
-    document.getElementById('cfg_gss_join').value = d.gss_rd_join_points ?? 5;
-    document.getElementById('cfg_gss_inst').value = d.gss_rd_installment_points ?? 1;
+    document.getElementById('cfg_gss_join_bonus').value = d.gss_join_bonus_points ?? 5;
+    document.getElementById('cfg_gss_per_1k').value = d.gss_per_1k_points ?? 1;
+    document.getElementById('cfg_rd_join_bonus').value = d.rd_join_bonus_points ?? 5;
+    document.getElementById('cfg_rd_per_1k').value = d.rd_per_1k_points ?? 1;
     document.getElementById('cfg_fd_new').value = d.fd_per_10k ?? 2;
   }
 
@@ -9701,8 +9739,10 @@
       gl_close_per_10k: parseFloat(document.getElementById('cfg_gl_close').value) || 0,
       gold_sale_per_gram: parseFloat(document.getElementById('cfg_gold_sale').value) || 0,
       old_gold_per_gram: parseFloat(document.getElementById('cfg_old_gold').value) || 0,
-      gss_rd_join_points: parseFloat(document.getElementById('cfg_gss_join').value) || 0,
-      gss_rd_installment_points: parseFloat(document.getElementById('cfg_gss_inst').value) || 0,
+      gss_join_bonus_points: parseFloat(document.getElementById('cfg_gss_join_bonus').value) || 0,
+      gss_per_1k_points: parseFloat(document.getElementById('cfg_gss_per_1k').value) || 0,
+      rd_join_bonus_points: parseFloat(document.getElementById('cfg_rd_join_bonus').value) || 0,
+      rd_per_1k_points: parseFloat(document.getElementById('cfg_rd_per_1k').value) || 0,
       fd_per_10k: parseFloat(document.getElementById('cfg_fd_new').value) || 0
     };
     const res = await fetch('/api/admin/incentive-settings', {

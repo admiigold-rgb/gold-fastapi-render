@@ -154,6 +154,7 @@ def record_incentive_points(
     amount_or_grams: float,
     source_staff_id: Optional[int] = None,
     txn_date: Optional[str] = None,
+    scheme_id: Optional[int] = None,
     remarks: str = ""
 ):
     try:
@@ -178,12 +179,24 @@ def record_incentive_points(
             total_points = join_pts + amt_pts
         elif txn_type == "GSS_INST":
             total_points = (val / 1000.0) * float(cfg.get("gss_per_1k_points") or 1.0)
-        elif txn_type == "RD_JOIN":
-            join_pts = float(cfg.get("rd_join_bonus_points") or 5.0)
-            amt_pts = (val / 1000.0) * float(cfg.get("rd_per_1k_points") or 1.0)
-            total_points = join_pts + amt_pts
-        elif txn_type == "RD_INST":
-            total_points = (val / 1000.0) * float(cfg.get("rd_per_1k_points") or 1.0)
+        elif txn_type in ["RD_JOIN", "RD_INST"]:
+            # குறிப்பிட்ட RD திட்டத்தின் புள்ளிகளை எடுத்தல் (இல்லையெனில் பொது அமைப்பை எடுக்கும்)
+            rd_join_pts = float(cfg.get("rd_join_bonus_points") or 5.0)
+            rd_1k_pts = float(cfg.get("rd_per_1k_points") or 1.0)
+            if scheme_id:
+                try:
+                    sch_res = supabase.table("test_rd_schemes").select("join_bonus_points, per_1k_points").eq("id", int(scheme_id)).execute()
+                    if sch_res.data:
+                        if sch_res.data[0].get("join_bonus_points") is not None:
+                            rd_join_pts = float(sch_res.data[0]["join_bonus_points"])
+                        if sch_res.data[0].get("per_1k_points") is not None:
+                            rd_1k_pts = float(sch_res.data[0]["per_1k_points"])
+                except Exception:
+                    pass
+
+            amt_pts = (val / 1000.0) * rd_1k_pts
+            total_points = (rd_join_pts + amt_pts) if txn_type == "RD_JOIN" else amt_pts
+            
         elif txn_type == "FD_NEW":
             total_points = (val / 10000.0) * float(cfg.get("fd_per_10k") or 2.0)
 
@@ -1769,6 +1782,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             amount_or_grams=init_amount,
                             source_staff_id=item_src_staff,
                             txn_date=txn_date,
+                            scheme_id=scheme_id,
                             remarks=f"RD தவணை வசூல் ({rd_no})"
                         )
                     else:
@@ -1802,6 +1816,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             amount_or_grams=init_amount,
                             source_staff_id=item_src_staff,
                             txn_date=txn_date,
+                            scheme_id=scheme_id,
                             remarks=f"புதிய RD திட்டம் துவக்கம் ({rd_no})"
                         )
 
@@ -2467,6 +2482,8 @@ def create_rd_scheme(data: dict):
             "interest_calculation_type": str(data.get("interest_calculation_type") or "COMPOUND"),
             "interest_rate": float(data.get("interest_rate") or 0),
             "maturity_per_thousand": float(data.get("maturity_per_thousand") or 0),
+            "join_bonus_points": float(data.get("join_bonus_points") if data.get("join_bonus_points") is not None else 5.0),
+            "per_1k_points": float(data.get("per_1k_points") if data.get("per_1k_points") is not None else 1.0),
             "is_active": True
         }
         res = supabase.table("test_rd_schemes").insert(rec).execute()

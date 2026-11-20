@@ -99,21 +99,14 @@ def get_active_incentive_settings():
         "gl_close_per_10k": 1.0,
         "gold_sale_per_gram": 5.0,
         "old_gold_per_gram": 3.0,
-        "gss_rd_join_points": 5.0,
-        "gss_rd_installment_points": 1.0,
+        "gss_join_bonus_points": 5.0,
+        "gss_per_1k_points": 1.0,
+        "rd_join_bonus_points": 5.0,
+        "rd_per_1k_points": 1.0,
         "fd_per_10k": 2.0,
     }
 
 def calculate_branch_walkin_shares(branch_id: int):
-    """
-    கிளையில் Active நிலையில் உள்ள மேலாளர் மற்றும் பணியாளர்களின் எண்ணிக்கைக்கு ஏற்ப
-    விகிதாச்சாரப் பகிர்வு:
-    - 1 Manager + 1 Staff => 60% / 40%
-    - 1 Manager + 2 Staff => 50% / 25% / 25%
-    - 1 Manager + 3 Staff => 40% / 20% / 20% / 20%
-    - 1 Manager + 4+ Staff => 30% Manager / 70% சரிசமம்
-    - Manager இல்லையெனில் => அனைவருக்கும் 100% சரிசமம்
-    """
     staff_res = (
         supabase.table("test_staff_users")
         .select("id, full_name, role_key, is_active, is_branch_manager")
@@ -172,15 +165,25 @@ def record_incentive_points(
         if txn_type == "GL_NEW":
             total_points = (val / 10000.0) * float(cfg.get("gl_new_per_10k") or 1.0)
         elif txn_type in ["GL_PART_PRINCIPAL", "GL_CLOSE"]:
+            # கடன் முடிப்பு மற்றும் பகுதி அசல் எப்போதும் Walk-in ஆக மட்டுமே கணக்கிடப்படும்
+            source_staff_id = None
             total_points = -1.0 * (val / 10000.0) * float(cfg.get("gl_close_per_10k") or 1.0)
         elif txn_type == "GOLD_SALE":
             total_points = val * float(cfg.get("gold_sale_per_gram") or 5.0)
         elif txn_type == "OLD_GOLD":
             total_points = val * float(cfg.get("old_gold_per_gram") or 3.0)
-        elif txn_type in ["GSS_JOIN", "RD_JOIN"]:
-            total_points = float(cfg.get("gss_rd_join_points") or 5.0)
-        elif txn_type in ["GSS_INST", "RD_INST"]:
-            total_points = float(cfg.get("gss_rd_installment_points") or 1.0)
+        elif txn_type == "GSS_JOIN":
+            join_pts = float(cfg.get("gss_join_bonus_points") or 5.0)
+            amt_pts = (val / 1000.0) * float(cfg.get("gss_per_1k_points") or 1.0)
+            total_points = join_pts + amt_pts
+        elif txn_type == "GSS_INST":
+            total_points = (val / 1000.0) * float(cfg.get("gss_per_1k_points") or 1.0)
+        elif txn_type == "RD_JOIN":
+            join_pts = float(cfg.get("rd_join_bonus_points") or 5.0)
+            amt_pts = (val / 1000.0) * float(cfg.get("rd_per_1k_points") or 1.0)
+            total_points = join_pts + amt_pts
+        elif txn_type == "RD_INST":
+            total_points = (val / 1000.0) * float(cfg.get("rd_per_1k_points") or 1.0)
         elif txn_type == "FD_NEW":
             total_points = (val / 10000.0) * float(cfg.get("fd_per_10k") or 2.0)
 
@@ -228,7 +231,7 @@ def record_incentive_points(
             supabase.table("test_staff_incentive_ledger").insert(rows_to_insert).execute()
     except Exception as e:
         print("Incentive Ledger Note:", e)
-
+        
 # Pydantic Schemas
 class LoginRequest(BaseModel):
     username: str
@@ -428,8 +431,10 @@ def api_save_incentive_settings(data: dict):
             "gl_close_per_10k": float(data.get("gl_close_per_10k", 1.0)),
             "gold_sale_per_gram": float(data.get("gold_sale_per_gram", 5.0)),
             "old_gold_per_gram": float(data.get("old_gold_per_gram", 3.0)),
-            "gss_rd_join_points": float(data.get("gss_rd_join_points", 5.0)),
-            "gss_rd_installment_points": float(data.get("gss_rd_installment_points", 1.0)),
+            "gss_join_bonus_points": float(data.get("gss_join_bonus_points", 5.0)),
+            "gss_per_1k_points": float(data.get("gss_per_1k_points", 1.0)),
+            "rd_join_bonus_points": float(data.get("rd_join_bonus_points", 5.0)),
+            "rd_per_1k_points": float(data.get("rd_per_1k_points", 1.0)),
             "fd_per_10k": float(data.get("fd_per_10k", 2.0)),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
@@ -437,7 +442,7 @@ def api_save_incentive_settings(data: dict):
         return {"status": "success", "message": "இன்சென்டிவ் புள்ளி விதிகள் வெற்றிகரமாகச் சேமிக்கப்பட்டன!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+        
 @app.get("/api/incentive/report")
 def api_get_incentive_report(from_date: str = "", to_date: str = "", branch_id: int = 0):
     try:
@@ -1685,7 +1690,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             branch_id=data.branch_id,
                             txn_type="GSS_INST",
                             ref_no=gss_no,
-                            amount_or_grams=1,
+                            amount_or_grams=init_amount,
                             source_staff_id=item_src_staff,
                             txn_date=txn_date,
                             remarks=f"GSS தவணை வசூல் ({gss_no})"
@@ -1722,7 +1727,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             branch_id=data.branch_id,
                             txn_type="GSS_JOIN",
                             ref_no=gss_no,
-                            amount_or_grams=1,
+                            amount_or_grams=init_amount,
                             source_staff_id=item_src_staff,
                             txn_date=txn_date,
                             remarks=f"புதிய GSS திட்டம் துவக்கம் ({gss_no})"
@@ -1761,7 +1766,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             branch_id=data.branch_id,
                             txn_type="RD_INST",
                             ref_no=rd_no,
-                            amount_or_grams=1,
+                            amount_or_grams=init_amount,
                             source_staff_id=item_src_staff,
                             txn_date=txn_date,
                             remarks=f"RD தவணை வசூல் ({rd_no})"
@@ -1794,7 +1799,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             branch_id=data.branch_id,
                             txn_type="RD_JOIN",
                             ref_no=rd_no,
-                            amount_or_grams=1,
+                            amount_or_grams=init_amount,
                             source_staff_id=item_src_staff,
                             txn_date=txn_date,
                             remarks=f"புதிய RD திட்டம் துவக்கம் ({rd_no})"

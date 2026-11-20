@@ -5582,10 +5582,52 @@
       if (tbody) {
         tbody.innerHTML = '';
         staffCache.forEach(s => {
+          const isActive = s.is_active !== false;
+          const isMgr = s.is_branch_manager === true;
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="p-2 font-mono font-bold text-brand-violet">${s.username}</td><td class="p-2 font-bold">${s.full_name}</td><td class="p-2">${s.test_branches?.branch_name || s.branch_id}</td><td class="p-2">${s.role_key}</td><td class="p-2 text-[11px]">${s.can_access_counter ? 'கவுண்ட்டர் ' : ''}${s.can_approve_kyc ? 'KYC ' : ''}${s.can_manage_users ? 'அட்மின்' : ''}</td><td class="p-2 text-center space-x-1"><button type="button" onclick="editStaff(${s.id})" class="px-2 py-0.5 bg-yellow-100 text-amber-900 rounded text-[11px] font-bold">எடிட்</button><button type="button" onclick="deleteStaff(${s.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded text-[11px] font-bold">டிலீட்</button></td>`;
+          tr.className = isActive ? '' : 'bg-rose-50/50 opacity-75';
+          tr.innerHTML = `
+            <td class="p-2 font-mono font-bold text-brand-violet">
+              ${s.username}
+              <span class="block text-[10px] font-sans font-black ${isActive ? 'text-emerald-700' : 'text-rose-600'}">
+                ${isActive ? '● Active (பணியில்)' : '○ Inactive (நிறுத்தப்பட்டது)'}
+              </span>
+            </td>
+            <td class="p-2 font-bold">
+              ${s.full_name}
+              ${isMgr ? '<span class="ml-1 px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-black">👑 கிளை மேலாளர்</span>' : ''}
+            </td>
+            <td class="p-2">${s.test_branches?.branch_name || s.branch_id}</td>
+            <td class="p-2">${s.role_key}</td>
+            <td class="p-2 text-[11px]">${s.can_access_counter ? 'கவுண்ட்டர் ' : ''}${s.can_approve_kyc ? 'KYC ' : ''}${s.can_manage_users ? 'அட்மின்' : ''}</td>
+            <td class="p-2 text-center space-x-1 whitespace-nowrap">
+              <button type="button" onclick="toggleStaffActiveStatus(${s.id})" class="px-2 py-0.5 ${isActive ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300' : 'bg-rose-100 hover:bg-rose-200 text-rose-900 border-rose-300'} border rounded text-[11px] font-black cursor-pointer">
+                ${isActive ? '✅ Active' : '⛔ Inactive'}
+              </button>
+              <button type="button" onclick="editStaff(${s.id})" class="px-2 py-0.5 bg-yellow-100 hover:bg-yellow-200 text-amber-900 border border-amber-300 rounded text-[11px] font-bold cursor-pointer">✏️ எடிட்</button>
+              <button type="button" onclick="deleteStaff(${s.id})" class="px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded text-[11px] font-bold cursor-pointer">டிலீட்</button>
+            </td>
+          `;
           tbody.appendChild(tr);
         });
+      }
+      if (typeof populateBusinessSourceDropdowns === 'function') {
+        populateBusinessSourceDropdowns();
+      }
+    }
+
+    async function toggleStaffActiveStatus(id) {
+      try {
+        const res = await fetch(`/api/admin/staff/${id}/toggle-active`, { method: 'PATCH' });
+        const data = await res.json();
+        if (res.ok) {
+          alert("✅ " + data.message);
+          loadStaffList();
+        } else {
+          alert("❌ பிழை: " + (data.detail || "மாற்ற முடியவில்லை"));
+        }
+      } catch (err) {
+        alert("❌ இணைப்புப் பிழை: " + err.message);
       }
     }
 

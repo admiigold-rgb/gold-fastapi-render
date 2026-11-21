@@ -277,6 +277,7 @@ class StaffPayload(BaseModel):
     can_approve_gss_benefit: bool = False
     can_access_hq_packets: bool = False
     can_approve_hq_packets: bool = False
+    can_audit_documents: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -602,7 +603,8 @@ def staff_unified_login(data: LoginRequest):
                 "can_manage_gp_stock": True if is_admin_role else bool(user.get("can_manage_gp_stock", False)),
                 "can_approve_gss_benefit": True if is_admin_role else bool(user.get("can_approve_gss_benefit", False)),
                 "can_access_hq_packets": bool(user.get("can_access_hq_packets", False)),
-                "can_approve_hq_packets": bool(user.get("can_approve_hq_packets", False))
+                "can_approve_hq_packets": bool(user.get("can_approve_hq_packets", False)),
+                "can_audit_documents": True if is_admin_role else bool(user.get("can_audit_documents", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -2672,6 +2674,7 @@ def update_staff(staff_id: int, data: dict):
             "can_approve_gss_benefit": bool(data.get("can_approve_gss_benefit", False)),
             "can_access_hq_packets": bool(data.get("can_access_hq_packets", False)),
             "can_approve_hq_packets": bool(data.get("can_approve_hq_packets", False)),
+            "can_audit_documents": bool(data.get("can_audit_documents", False)),
         }
         if data.get("password"):
             update_dict["password"] = data.get("password")
@@ -2831,15 +2834,75 @@ def get_all_pending_approvals():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தலைமையக நிலுவைகள் பிழை: {str(e)}")
 
+def detect_visit_activities(actions_summary: str):
+    txt = (actions_summary or "").lower()
+    acts = set()
+    if "நகைக்கடன் (" in txt or "new loan" in txt or "pledge" in txt:
+        acts.add("GL_NEW")
+    if "முழு கடன் முடிப்பு" in txt or "closure" in txt:
+        acts.add("GL_CLOSE")
+    if "வட்டி வரவு" in txt or "பகுதி அசல்" in txt:
+        acts.add("GL_PART_PRINCIPAL")
+    if "நகை வாங்குதல்" in txt or "gp/" in txt:
+        acts.add("OLD_GOLD")
+    if "நகை விற்பனை" in txt or "gs/" in txt:
+        acts.add("GOLD_SALE")
+    if "gss" in txt:
+        acts.add("GSS")
+    if "rd" in txt:
+        acts.add("RD")
+    if "si " in txt or "si/" in txt:
+        acts.add("SI")
+    if not acts:
+        acts.add("GL_NEW")
+    return list(acts)
+
 @app.post("/api/hq/approve-visit")
 def process_visit_approval(data: ApprovalActionPayload):
     try:
-        status = "VERIFIED" if data.action == "APPROVE" else "REJECTED"
+        if data.action != "APPROVE":
+            supabase.table("test_customer_visits").update({
+                "status": "REJECTED",
+                "audit_status": "REJECTED"
+            }).eq("id", data.request_id).execute()
+            return {"status": "success", "message": "வருகை நிராகரிக்கப்பட்டது."}
+
+        v_res = supabase.table("test_customer_visits").select("*").eq("id", data.request_id).execute()
+        if not v_res.data:
+            raise HTTPException(status_code=404, detail="வருகை விபரம் கிடைக்கவில்லை.")
+        visit = v_res.data[0]
+
+        activities = detect_visit_activities(visit.get("actions_summary") or "")
+        rules_res = supabase.table("test_audit_document_rules").select("*").in_("activity_type", activities).execute()
+        rules = rules_res.data or []
+
+        if rules:
+            docs_payload = []
+            for r in rules:
+                docs_payload.append({
+                    "visit_id": visit["id"],
+                    "branch_id": visit.get("branch_id") or 1,
+                    "customer_id": visit.get("customer_id"),
+                    "transaction_date": visit.get("transaction_date"),
+                    "activity_type": r["activity_type"],
+                    "document_name": r["document_name"],
+                    "doc_status": "PENDING_UPLOAD"
+                })
+            supabase.table("test_visit_audit_documents").insert(docs_payload).execute()
+            new_audit_st = "DOCS_PENDING"
+            msg = f"வருகை அங்கீகரிக்கப்பட்டது! கிளை இணைக்க வேண்டிய {len(docs_payload)} ஆவணங்கள் பட்டியலிடப்பட்டன."
+        else:
+            new_audit_st = "AUDITED"
+            msg = "வருகை அங்கீகரிக்கப்பட்டு தணிக்கை நிறைவடைந்தது."
+
         supabase.table("test_customer_visits").update({
-            "status": status,
-            "audit_status": "AUDITED" if status == "VERIFIED" else "REJECTED"
+            "status": "VERIFIED",
+            "audit_status": new_audit_st
         }).eq("id", data.request_id).execute()
-        return {"status": "success", "message": f"வருகை நிலை '{status}' என மாற்றப்பட்டது."}
+
+        return {"status": "success", "message": msg}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -3512,5 +3575,122 @@ def approve_si_closure(data: dict):
                 "approval_status": "REJECTED"
             }).eq("id", acc_id).execute()
             return {"status": "success", "message": "SI கோரிக்கை நிராகரிக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# 📋 DOCUMENT CHECKLIST MASTER & INTERNAL AUDIT APIs
+# ==============================================================================
+@app.get("/api/admin/audit-doc-rules")
+def get_audit_doc_rules():
+    res = supabase.table("test_audit_document_rules").select("*").order("activity_type").order("id").execute()
+    return {"status": "success", "data": res.data or []}
+
+@app.post("/api/admin/audit-doc-rule/create")
+def create_audit_doc_rule(data: dict):
+    act = str(data.get("activity_type") or "").strip()
+    doc_name = str(data.get("document_name") or "").strip()
+    if not act or not doc_name:
+        raise HTTPException(status_code=400, detail="நடவடிக்கை மற்றும் ஆவணத்தின் பெயரை உள்ளிடவும்.")
+    supabase.table("test_audit_document_rules").insert({"activity_type": act, "document_name": doc_name}).execute()
+    return {"status": "success", "message": "புதிய ஆவண விதி சேர்க்கப்பட்டது!"}
+
+@app.delete("/api/admin/audit-doc-rule/{rule_id}")
+def delete_audit_doc_rule(rule_id: int):
+    supabase.table("test_audit_document_rules").delete().eq("id", rule_id).execute()
+    return {"status": "success", "message": "ஆவண விதி நீக்கப்பட்டது."}
+
+@app.get("/api/audit/visits")
+def get_audit_visits_list(branch_id: int = 0, txn_date: str = "", role: str = "AUDITOR"):
+    try:
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        c_map = {c["id"]: c for c in (cust_res.data or [])}
+
+        br_res = supabase.table("test_branches").select("id, branch_name").execute()
+        b_map = {b["id"]: b.get("branch_name") for b in (br_res.data or [])}
+
+        q = supabase.table("test_customer_visits").select("*").eq("status", "VERIFIED").order("id", desc=True)
+        if branch_id and branch_id > 0:
+            q = q.eq("branch_id", branch_id)
+        if txn_date:
+            q = q.eq("transaction_date", txn_date)
+
+        visits = q.limit(300).execute().data or []
+        visit_ids = [v["id"] for v in visits]
+        docs_map = {}
+        if visit_ids:
+            d_res = supabase.table("test_visit_audit_documents").select("*").in_("visit_id", visit_ids).order("id").execute()
+            for d in (d_res.data or []):
+                docs_map.setdefault(d["visit_id"], []).append(d)
+
+        for v in visits:
+            v["customer_name"] = c_map.get(v.get("customer_id"), {}).get("name", "-")
+            v["customer_mobile"] = c_map.get(v.get("customer_id"), {}).get("mobile", "-")
+            v["branch_name"] = b_map.get(v.get("branch_id"), f"கிளை #{v.get('branch_id')}")
+            v["documents"] = docs_map.get(v["id"], [])
+
+        return {"status": "success", "data": visits}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/audit/branch-upload-docs")
+def branch_upload_audit_docs(data: dict):
+    try:
+        visit_id = int(data.get("visit_id"))
+        updates = data.get("docs") or [] # [{id, doc_file_url, branch_reply}]
+        staff_id = int(data.get("staff_id") or 1)
+        now_t = datetime.now(IST).isoformat()
+
+        for item in updates:
+            upd = {"updated_at": now_t, "uploaded_by": staff_id}
+            if item.get("doc_file_url"):
+                upd["doc_file_url"] = item["doc_file_url"]
+                upd["doc_status"] = "UPLOADED"
+            if item.get("branch_reply") is not None:
+                upd["branch_reply"] = item["branch_reply"]
+                if not item.get("doc_file_url"):
+                    upd["doc_status"] = "UPLOADED"
+            supabase.table("test_visit_audit_documents").update(upd).eq("id", item["id"]).execute()
+
+        # அனைத்து ஆவணங்களும் பதிவேற்றப்பட்டதா எனச் சரிபார்த்தல்
+        chk = supabase.table("test_visit_audit_documents").select("doc_status").eq("visit_id", visit_id).execute()
+        all_docs = chk.data or []
+        if all(d.get("doc_status") in ["UPLOADED", "APPROVED"] for d in all_docs):
+            supabase.table("test_customer_visits").update({"audit_status": "AUDIT_PENDING"}).eq("id", visit_id).execute()
+            return {"status": "success", "message": "✅ அனைத்து ஆவணங்களும் அகத்தணிக்கையருக்கு அனுப்பப்பட்டன!"}
+
+        return {"status": "success", "message": "பதிவேற்றிய ஆவணங்கள் சேமிக்கப்பட்டன. மீதமுள்ள ஆவணங்களையும் இணைக்கவும்."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/audit/auditor-review")
+def auditor_review_visit_docs(data: dict):
+    try:
+        visit_id = int(data.get("visit_id"))
+        reviews = data.get("reviews") or [] # [{id, action: 'APPROVE'|'QUERY', query_text}]
+        auditor_id = int(data.get("auditor_id") or 1)
+        now_t = datetime.now(IST).isoformat()
+
+        has_query = False
+        for r in reviews:
+            if r.get("action") == "QUERY":
+                has_query = True
+                supabase.table("test_visit_audit_documents").update({
+                    "doc_status": "QUERY",
+                    "auditor_query": r.get("query_text") or "ஆவணம் தெளிவாக இல்லை / சரிபார்க்கவும்",
+                    "audited_by": auditor_id,
+                    "updated_at": now_t
+                }).eq("id", r["id"]).execute()
+            else:
+                supabase.table("test_visit_audit_documents").update({
+                    "doc_status": "APPROVED",
+                    "audited_by": auditor_id,
+                    "updated_at": now_t
+                }).eq("id", r["id"]).execute()
+
+        new_status = "QUERY_RAISED" if has_query else "AUDITED"
+        supabase.table("test_customer_visits").update({"audit_status": new_status}).eq("id", visit_id).execute()
+        msg = "❓ தணிக்கை கேள்வி (Query) கிளைக்கு அனுப்பப்பட்டது!" if has_query else "✅ தணிக்கை அனுமதி வழங்கப்பட்டு நடவடிக்கை முடிவு செய்யப்பட்டது!"
+        return {"status": "success", "message": msg}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -3597,6 +3597,9 @@
 
     // 5. ⚡ OTP விலக்குக் கோரியவுடன் ஆட்டோ-ஹோல்டு செய்யும் மேம்படுத்தப்பட்ட செயல்பாடு
     async function triggerOtpExemptDirectly(e) {
+      if (!activeCustomer || activeCustomer.kyc_status !== 'VERIFIED') {
+        return alert("⚠️ KYC சரிபார்ப்பு (VERIFIED) முடிந்த வாடிக்கையாளருக்கு மட்டுமே SMS OTP அனுப்ப முடியும்!");
+      }
       if (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -3912,6 +3915,9 @@
   
     // 7. Checkout & Settlement
     async function openCheckoutModal(defaultMode = null) {
+      if (!activeCustomer || activeCustomer.kyc_status !== 'VERIFIED') {
+     return alert(`⚠️ KYC சரிபார்ப்பு இன்னும் முடியவில்லை (நிலை: ${activeCustomer?.kyc_status || 'PENDING'})!\nதலைமையகம் KYC-க்கு ஒப்புதல் (VERIFIED) அளித்த பிறகு மட்டுமே டினாமினேஷன் & OTP அனுப்ப முடியும்.`);
+   }
       if (!cartItems || cartItems.length === 0 || currentNetAbs <= 0) {
         return alert("⚠️ பரிவர்த்தனை கூடையில் உருப்படிகள் இல்லை (သို့) தொகை 0 ஆக உள்ளது.");
       }
@@ -4097,6 +4103,9 @@
     }
 
     async function requestOtpFromCustomer() {
+      if (!activeCustomer || activeCustomer.kyc_status !== 'VERIFIED') {
+        return alert("⚠️ KYC சரிபார்ப்பு (VERIFIED) முடிந்த வாடிக்கையாளருக்கு மட்டுமே SMS OTP அனுப்ப முடியும்!");
+      }
       if (!validatePaymentAndDenomMatch()) return;
       const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
       if (bVal > 0 && currentDirection === "COMPANY_PAYABLE") {

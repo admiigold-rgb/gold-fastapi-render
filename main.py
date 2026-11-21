@@ -2810,10 +2810,10 @@ def get_all_pending_approvals():
         visits_res = supabase.table("test_customer_visits").select("*").eq("status", "PENDING_HQ").order("id", desc=True).limit(20).execute()
         visits_data = visits_res.data or []
         for v in visits_data:
-            c = cust_map.get(v.get("customer_id"), {})
-            v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
-
-        kyc_res = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
+         c = cust_map.get(v.get("customer_id"), {})
+         b = branch_map.get(v.get("branch_id"), {})
+         v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+         v["test_branches"] = {"branch_name": b.get("branch_name", f"கிளை #{v.get('branch_id')}"), "branch_code": b.get("branch_code", "BR")}
 
         updates_res = supabase.table("test_customer_update_requests").select("*").eq("status", "PENDING").order("id", desc=True).execute()
         updates_data = updates_res.data or []
@@ -3829,6 +3829,7 @@ def hq_master_audit_search(query: str = Query(..., min_length=1)):
         b_map = {b["id"]: b.get("branch_name", "-") for b in br_res}
 
         customer = None
+        customer_id = None
         visit = None
         matched_loan = None
         matched_packet = None
@@ -3932,19 +3933,20 @@ def hq_master_audit_search(query: str = Query(..., min_length=1)):
             vid = visit["id"]
             visit["branch_name"] = b_map.get(visit.get("branch_id"), f"கிளை #{visit.get('branch_id')}")
 
-            s_res = supabase.table("test_transaction_settlements").select("*, test_cash_denominations(*)").eq("customer_id", customer["id"]).eq("transaction_date", visit.get("transaction_date")).order("id", desc=True).limit(1).execute().data
-            if s_res:
-                settlement = s_res[0]
-                if settlement.get("test_cash_denominations"):
-                    denominations = settlement["test_cash_denominations"][0]
-                bt_r = supabase.table("test_bank_transfers").select("*").eq("settlement_id", settlement["id"]).execute().data or []
-                for bt in bt_r:
-                    bt["approved_by_name"] = s_map.get(bt.get("approved_by"), "-")
-                bank_transfers = bt_r
+            if customer and customer.get("id"):
+                s_res = supabase.table("test_transaction_settlements").select("*, test_cash_denominations(*)").eq("customer_id", customer.get("id")).eq("transaction_date", visit.get("transaction_date")).order("id", desc=True).limit(1).execute().data
+                if s_res:
+                    settlement = s_res[0]
+                    if settlement.get("test_cash_denominations"):
+                        denominations = settlement["test_cash_denominations"][0]
+                    bt_r = supabase.table("test_bank_transfers").select("*").eq("settlement_id", settlement["id"]).execute().data or []
+                    for bt in bt_r:
+                        bt["approved_by_name"] = s_map.get(bt.get("approved_by"), "-")
+                    bank_transfers = bt_r
 
-            o_res = supabase.table("test_transaction_otps").select("*").eq("customer_id", customer["id"]).order("id", desc=True).limit(1).execute().data
-            if o_res:
-                otp_info = o_res[0]
+                o_res = supabase.table("test_transaction_otps").select("*").eq("customer_id", customer.get("id")).order("id", desc=True).limit(1).execute().data
+                if o_res:
+                    otp_info = o_res[0]
 
             d_res = supabase.table("test_visit_audit_documents").select("*").eq("visit_id", vid).order("id").execute().data or []
             for d in d_res:

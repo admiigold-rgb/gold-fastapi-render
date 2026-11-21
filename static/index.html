@@ -1476,6 +1476,7 @@
                   <th class="p-2.5">கிரேஸ் & அபராதம்</th>
                   <th class="p-2.5">வட்டி முறை</th>
                   <th class="p-2.5">₹1000-க்கு முதிர்வு</th>
+                  <th class="p-2.5">இன்சென்டிவ் புள்ளி</th>
                   <th class="p-2.5 text-center">செயல்</th>
                 </tr>
               </thead>
@@ -9820,7 +9821,7 @@
 <script>
   async function populateBusinessSourceDropdowns() {
     try {
-      const res = await fetch('/api/admin/staff/list');
+      const res = await fetch('/api/admin/staff/staff');
       const out = await res.json();
       const activeStaff = (out.data || []).filter(s => s.is_active !== false);
       const optsHtml = `<option value="0">🚶 Walk-in (கிளைப் பொது வாடிக்கையாளர் - குழுப் பகிர்வு)</option>` +
@@ -9859,6 +9860,7 @@
   }
 
   function switchIncentiveTab(tab) {
+    closeStaffDetailedLedger();
     const repSec = document.getElementById('incReportSection');
     const setSec = document.getElementById('incSettingsSection');
     if (tab === 'REPORT') {

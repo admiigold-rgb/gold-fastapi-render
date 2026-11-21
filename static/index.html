@@ -625,6 +625,11 @@
           <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
             <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
           </h2>
+          <button type="button" onclick="openMasterAudit360Modal()" 
+                  style="background-color: #1e1b4b !important; color: #fde047 !important;" 
+                  class="px-4 py-2 rounded-xl text-xs font-black shadow-lg border-2 border-yellow-400 hover:opacity-90 transition cursor-pointer">
+            🔎 360° முழு பரிவர்த்தனை வரலாறு தேடல்
+          </button>
           <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition cursor-pointer">புதுப்பி 🔄</button>
         </div>
 
@@ -10509,6 +10514,219 @@
     alert(out.message);
     closeAuditDocsModal();
     loadInternalAuditorDashboard(currentAudPage);
+  }
+</script>
+  <!-- 🔎 தலைமையகத்தின் 360° முழு பரிவர்த்தனை வரலாற்றுத் தேடல் மையம் (Master Audit Search Modal) -->
+<div id="masterAudit360Modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-6xl w-full shadow-2xl space-y-4 border-2 border-brand-gold my-auto max-h-[94vh] overflow-y-auto">
+    
+    <div class="flex justify-between items-center border-b border-purple-100 pb-3">
+      <div>
+        <h3 class="text-base font-extrabold text-brand-violet">🔎 360° முழு பரிவர்த்தனை வரலாற்றுத் தேடல் மையம் (HQ Master Audit Search)</h3>
+        <p class="text-[11px] text-slate-500">நகைக்கடன் எண் (AVL/0050), GP/GS/GSS/RD/SI எண், வருகை எண் அல்லது மொபைல் எண் உள்ளிட்டு ஆரம்பம் முதல் இன்று வரையிலான முழு வரலாற்றையும் காண்க</p>
+      </div>
+      <button type="button" onclick="closeMasterAudit360Modal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2 cursor-pointer">✕</button>
+    </div>
+
+    <!-- தேடல் பட்டை -->
+    <div class="flex flex-col sm:flex-row gap-2 bg-purple-50 p-3.5 rounded-2xl border-2 border-purple-200">
+      <input type="text" id="m360_search_input" onkeyup="if(event.key==='Enter') runMasterAudit360Search()" placeholder="எ.கா: AVL/0050 அல்லது AVL/GP/0001 அல்லது 9876543210 அல்லது 186" class="flex-1 border-2 border-purple-300 px-4 py-2.5 rounded-xl text-sm font-mono font-bold bg-white focus:outline-none">
+      <button type="button" onclick="runMasterAudit360Search()" style="background-color:#4c1d95;color:#fde047;" class="px-6 py-2.5 rounded-xl text-xs font-black shadow-md border border-yellow-400 cursor-pointer">
+        🔍 360° வரலாறு தேடு
+      </button>
+    </div>
+
+    <!-- முடிவுகள் காட்டும் பகுதி -->
+    <div id="m360_result_container" class="space-y-4 text-xs">
+      <p class="p-8 text-center text-slate-400 font-bold">மேலே கடன் எண் அல்லது வருகை எண்ணை உள்ளிட்டுத் தேடவும்...</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function openMasterAudit360Modal() {
+    const m = document.getElementById('masterAudit360Modal');
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+    document.getElementById('m360_search_input')?.focus();
+  }
+
+  function closeMasterAudit360Modal() {
+    const m = document.getElementById('masterAudit360Modal');
+    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+  }
+
+  async function runMasterAudit360Search() {
+    const q = document.getElementById('m360_search_input')?.value.trim();
+    if (!q) return alert("கடன் எண் அல்லது மொபைல் எண்ணை உள்ளிடவும்!");
+
+    const box = document.getElementById('m360_result_container');
+    box.innerHTML = `<p class="p-8 text-center text-brand-violet font-black">360° முழு வரலாறும் திரட்டப்படுகிறது...</p>`;
+
+    try {
+      const res = await fetch(`/api/hq/master-audit-search?query=${encodeURIComponent(q)}`);
+      const d = await res.json();
+      if (!res.ok) {
+        box.innerHTML = `<p class="p-6 text-center text-rose-600 font-black bg-rose-50 rounded-2xl border border-rose-200">❌ ${d.detail || 'தகவல் கிடைக்கவில்லை'}</p>`;
+        return;
+      }
+
+      const c = d.customer || {};
+      const v = d.visit || {};
+      const l = d.loan;
+      const pkt = d.packet;
+      const s = d.settlement || {};
+      const den = d.denominations || {};
+      const otp = d.otp_info || {};
+
+      // 1. வாடிக்கையாளர் KYC & புகைப்படங்கள் / கையொப்பம்
+      const kycHtml = `
+        <div class="bg-purple-50/70 p-4 rounded-2xl border-2 border-purple-200 space-y-3">
+          <div class="font-black text-brand-violet text-sm border-b border-purple-200 pb-1.5">1️⃣ வாடிக்கையாளர் முழு KYC & அடையாள ஆவணங்கள்</div>
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-center">
+            <div class="flex gap-2 justify-center">
+              ${c.customer_photo ? `<img src="${c.customer_photo}" onclick="previewDocImage('${c.customer_photo}')" class="w-20 h-20 rounded-xl object-cover border-2 border-brand-gold cursor-pointer" title="வாடிக்கையாளர் படம்">` : '<div class="w-20 h-20 rounded-xl bg-white border flex items-center justify-center text-slate-400">படம் இல்லை</div>'}
+              ${c.signature_photo ? `<img src="${c.signature_photo}" onclick="previewDocImage('${c.signature_photo}')" class="w-24 h-20 rounded-xl object-contain bg-white border-2 border-purple-300 cursor-pointer" title="கையொப்பம்">` : '<div class="w-24 h-20 rounded-xl bg-white border flex items-center justify-center text-slate-400">கையொப்பம் இல்லை</div>'}
+            </div>
+            <div class="md:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div><span class="text-slate-500 block">பெயர்:</span><b class="text-sm text-brand-violet">${c.name || '-'}</b></div>
+              <div><span class="text-slate-500 block">மொபைல்:</span><b class="font-mono">${c.mobile || '-'}</b></div>
+              <div><span class="text-slate-500 block">KYC நிலை:</span><span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-black">${c.kyc_status || '-'}</span></div>
+              <div><span class="text-slate-500 block">உறவினர்:</span><b>${c.relation_type || ''} ${c.guardian_name || '-'}</b></div>
+              <div><span class="text-slate-500 block">சான்று:</span><b>${c.id_proof_type || ''} (${c.id_proof_no || '-'})</b></div>
+              <div>${c.id_proof_photo ? `<button type="button" onclick="previewDocImage('${c.id_proof_photo}')" class="text-blue-700 font-bold underline cursor-pointer">🪪 சான்றுப் படம் பார்</button>` : ''}</div>
+              <div class="col-span-2 sm:col-span-3"><span class="text-slate-500">முழு முகவரி:</span> <b>${c.address || '-'}</b></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 2. வருகை, OTP நிலை, பணம்/வங்கி தீர்வு & வணிக ஆதாரம்
+      const otpBadge = v.otp_exempted
+        ? `<span class="px-2.5 py-1 bg-amber-200 text-amber-950 rounded-lg font-black">⚡ OTP EXEMPTED (விலக்கு அளிக்கப்பட்டது)</span>`
+        : (otp.otp_code ? `<span class="px-2.5 py-1 bg-emerald-100 text-emerald-900 rounded-lg font-black">🔐 WITH OTP (${otp.otp_code})</span>` : `<span class="px-2 py-0.5 bg-slate-100 rounded font-bold">-</span>`);
+
+      const incHtml = (d.incentive_entries || []).map(ie =>
+        `<span class="inline-block mr-2 px-2 py-0.5 bg-amber-100 text-amber-950 rounded font-bold">${ie.staff_name} (${ie.source_type} - ${ie.share_percent}% | ${ie.points} pts)</span>`
+      ).join('') || 'Walk-in / பதிவு இல்லை';
+
+      const visitSettleHtml = `
+        <div class="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 space-y-2.5">
+          <div class="font-black text-slate-900 text-sm border-b border-slate-200 pb-1.5">2️⃣ வருகை, OTP நிலை, பணம்/வங்கி தீர்வு & வணிக ஆதாரம்</div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div><span class="text-slate-500 block">வருகை எண் & தேதி:</span><b class="font-mono text-brand-violet">#VIS-${v.id || '-'}</b> (${v.transaction_date || '-'})</div>
+            <div><span class="text-slate-500 block">கிளை:</span><b>${v.branch_name || '-'}</b></div>
+            <div><span class="text-slate-500 block">வருகை நிலை:</span><b class="text-emerald-700">${v.status || '-'}</b></div>
+            <div><span class="text-slate-500 block">தணிக்கை நிலை:</span><b class="text-indigo-800">${v.audit_status || '-'}</b></div>
+            <div class="col-span-2"><span class="text-slate-500 block mb-1">OTP / விலக்கு நிலை:</span>${otpBadge} <span class="text-[11px] text-rose-700 font-bold block mt-0.5">${v.otp_exempted ? (v.purpose || '') : ''}</span></div>
+            <div class="col-span-2"><span class="text-slate-500 block">தீர்வு விவரம்:</span>
+              ரொக்கம்: <b>₹${parseFloat(s.cash_amount || v.cash_amount || 0).toLocaleString()}</b> |
+              வங்கி: <b>₹${parseFloat(s.bank_amount || v.bank_amount || 0).toLocaleString()}</b>
+              ${den.c_500 || den.c_200 || den.c_100 ? `<span class="block text-[10px] font-mono text-slate-600">தாள்கள்: 500x${den.c_500||0}, 200x${den.c_200||0}, 100x${den.c_100||0}, 50x${den.c_50||0}</span>` : ''}
+            </div>
+            <div class="col-span-2 sm:col-span-4"><span class="text-slate-500">🏆 வணிக ஆதாரம் (Business Source):</span> ${incHtml}</div>
+          </div>
+          ${(d.bank_transfers || []).map(bt => `
+            <div class="p-2 bg-white rounded-xl border border-blue-200 text-[11px]">
+              🏦 <b>வங்கிப் பரிமாற்றம் (${bt.direction}):</b> ₹${bt.amount} | பயனாளி: ${bt.beneficiary_name || '-'} (${bt.account_no || bt.upi_id || '-'}) | வங்கி: ${bt.company_bank_name || '-'} | UTR: <b>${bt.receipt_ref_no || '-'}</b> | ஒப்புதல்: <b>${bt.approved_by_name}</b>
+              ${bt.passbook_photo ? `<button type="button" onclick="previewDocImage('${bt.passbook_photo}')" class="ml-2 text-blue-700 underline font-bold cursor-pointer">பாஸ்புக் பார்</button>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // 3. கடன் விவரம், நகைப் படம், வட்டி வரவுகள் & தள்ளுபடி
+      let loanHtml = '';
+      if (l) {
+        const itemsStr = (l.test_gold_loan_items || []).map(it => `${it.item_type} (${it.item_count}) - Gross: ${it.gross_weight}g, Net: ${it.net_weight}g (${it.purity})`).join(' | ');
+        loanHtml = `
+          <div class="bg-amber-50/60 p-4 rounded-2xl border-2 border-amber-300 space-y-3">
+            <div class="flex justify-between items-center border-b border-amber-200 pb-1.5">
+              <span class="font-black text-amber-950 text-sm">3️⃣ நகைக்கடன் விவரம், நகைப் படம் & வட்டி வரவு வரலாறு (${l.loan_no})</span>
+              ${l.ornament_photo ? `<button type="button" onclick="previewDocImage('${l.ornament_photo}')" style="background-color:#d97706;color:#fff;" class="px-3 py-1 rounded-lg font-black cursor-pointer">📸 நகைப் படம் பார்</button>` : ''}
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div><span class="text-slate-500 block">திட்டம்:</span><b>${l.scheme_name}</b></div>
+              <div><span class="text-slate-500 block">அடகு தொகை:</span><b class="text-rose-700 font-mono text-sm">₹${parseFloat(l.loan_amount).toLocaleString()}</b></div>
+              <div><span class="text-slate-500 block">நிலுவை அசல்:</span><b class="text-indigo-900 font-mono text-sm">₹${parseFloat(l.outstanding_principal ?? l.loan_amount).toLocaleString()}</b></div>
+              <div><span class="text-slate-500 block">கடன் நிலை:</span><span class="px-2 py-0.5 rounded font-black ${l.status==='CLOSED' ? 'bg-emerald-100 text-emerald-900' : 'bg-blue-100 text-blue-900'}">${l.status}</span></div>
+              <div class="col-span-2 sm:col-span-4"><span class="text-slate-500">நகைகள்:</span> <b>${itemsStr}</b></div>
+            </div>
+            ${(d.rebates || []).map(rb => `
+              <div class="p-2 bg-purple-100 text-purple-950 rounded-xl font-bold">
+                🏷️ வட்டி தள்ளுபடி (Rebate): ₹${rb.requested_rebate} | காரணம்: ${rb.reason} | நிலை: ${rb.status} | அனுமதித்தவர்: ${rb.approved_by_name}
+              </div>
+            `).join('')}
+            ${(d.repayments || []).length > 0 ? `
+              <div class="bg-white rounded-xl border border-amber-200 overflow-hidden">
+                <div class="bg-amber-100 px-3 py-1 font-black text-amber-950">💵 வட்டி & பகுதி அசல் வரவுப் பட்டியல்:</div>
+                <table class="w-full text-[11px] text-left">
+                  <thead class="bg-slate-50 border-b"><tr><th class="p-1.5">தேதி</th><th class="p-1.5">வகை</th><th class="p-1.5 text-right">வட்டி</th><th class="p-1.5 text-right">அசல்</th><th class="p-1.5 text-right">தள்ளுபடி</th></tr></thead>
+                  <tbody class="divide-y">${d.repayments.map(rp => `<tr><td class="p-1.5 font-mono">${rp.transaction_date}</td><td class="p-1.5 font-bold">${rp.action_type}</td><td class="p-1.5 text-right font-mono">₹${rp.interest_paid}</td><td class="p-1.5 text-right font-mono font-bold">₹${rp.principal_paid}</td><td class="p-1.5 text-right font-mono text-rose-600">₹${rp.discount_amount}</td></tr>`).join('')}</tbody>
+                </table>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      // 4. பாக்கெட் நகர்வு வரலாறு (Packet Movement Trail)
+      let packetHtml = '';
+      if (pkt) {
+        packetHtml = `
+          <div class="bg-indigo-50/60 p-4 rounded-2xl border-2 border-indigo-200 space-y-2.5">
+            <div class="flex flex-wrap justify-between items-center border-b border-indigo-200 pb-1.5">
+              <span class="font-black text-indigo-950 text-sm">4️⃣ நகை பாக்கெட் & லாக்கர் நகர்வு வரலாறு</span>
+              <span class="px-2.5 py-0.5 bg-indigo-900 text-white rounded-lg font-black">தற்போதைய இடம்: ${pkt.current_location} (${pkt.packet_status})</span>
+            </div>
+            <div class="text-[11px] flex flex-wrap gap-3">
+              <span>கடன் முடிந்ததா: <b>${pkt.is_loan_closed ? 'ஆம் (Closed)' : 'இல்லை'}</b></span>
+              <span>வாடிக்கையாளரிடம் ஒப்படைக்கப்பட்டதா: <b>${pkt.is_handed_over ? '✅ ஆம் (' + (pkt.handed_over_at || '').slice(0,16) + ')' : 'இல்லை'}</b></span>
+              ${pkt.bank_name ? `<span>🏦 வங்கி லாக்கர்: <b>${pkt.bank_name} (${pkt.bank_loan_ref})</b></span>` : ''}
+              ${pkt.bank_token_photo ? `<button type="button" onclick="previewDocImage('${pkt.bank_token_photo}')" class="text-amber-800 font-bold underline cursor-pointer">🎫 வங்கி டோக்கன்</button>` : ''}
+              ${pkt.bank_redeem_receipt_photo ? `<button type="button" onclick="previewDocImage('${pkt.bank_redeem_receipt_photo}')" class="text-teal-800 font-bold underline cursor-pointer">📄 மீட்பு ரசீது</button>` : ''}
+            </div>
+            <div class="overflow-x-auto bg-white rounded-xl border border-indigo-200">
+              <table class="w-full text-[11px] text-left">
+                <thead class="bg-indigo-100 text-indigo-950"><tr><th class="p-1.5">நேரம்</th><th class="p-1.5">நடவடிக்கை</th><th class="p-1.5">இருந்து ➔ எங்கே</th><th class="p-1.5">கொண்டு செல்பவர்</th><th class="p-1.5">செய்தவர்</th><th class="p-1.5">குறிப்பு</th></tr></thead>
+                <tbody class="divide-y">${(d.packet_movements || []).map(m => `<tr><td class="p-1.5 font-mono">${(m.created_at || '').slice(0,16).replace('T',' ')}</td><td class="p-1.5 font-bold">${m.action_type}</td><td class="p-1.5">${m.from_location} ➔ ${m.to_location}</td><td class="p-1.5">${m.carrier_person || '-'}</td><td class="p-1.5 font-bold">${m.performed_by_name}</td><td class="p-1.5">${m.remarks || '-'}</td></tr>`).join('')}</tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      // 5. பெறப்பட்ட ஆவணங்கள் & அகத்தணிக்கையர் அனுமதி விவரம்
+      const docsHtml = `
+        <div class="bg-emerald-50/60 p-4 rounded-2xl border-2 border-emerald-200 space-y-2.5">
+          <div class="font-black text-emerald-950 text-sm border-b border-emerald-200 pb-1.5">5️⃣ பெறப்பட்ட தணிக்கை ஆவணங்கள் & அகத்தணிக்கையர் அனுமதி விவரம்</div>
+          ${(d.audit_docs || []).length === 0 ? `<p class="text-slate-500">இந்த வருகைக்கு ஆவணப் பட்டியல் இல்லை.</p>` : `
+            <div class="overflow-x-auto bg-white rounded-xl border border-emerald-200">
+              <table class="w-full text-[11px] text-left">
+                <thead class="bg-emerald-100 text-emerald-950"><tr><th class="p-2">நடவடிக்கை & எண்</th><th class="p-2">ஆவணத்தின் பெயர்</th><th class="p-2">நிலை</th><th class="p-2">இணைத்தவர்</th><th class="p-2">அனுமதித்த தணிக்கையர்</th><th class="p-2 text-center">ஆவணம்</th></tr></thead>
+                <tbody class="divide-y">
+                  ${(d.audit_docs || []).map(ad => `
+                    <tr>
+                      <td class="p-2 font-mono font-bold">${ad.activity_type} (${ad.ref_no || '-'})</td>
+                      <td class="p-2 font-bold">${ad.document_name}</td>
+                      <td class="p-2 font-black ${ad.doc_status==='APPROVED' ? 'text-emerald-700' : 'text-amber-700'}">${ad.doc_status}</td>
+                      <td class="p-2">${ad.uploaded_by_name}</td>
+                      <td class="p-2 font-bold text-indigo-900">${ad.audited_by_name}</td>
+                      <td class="p-2 text-center">${ad.doc_file_url ? `<button type="button" onclick="previewDocImage('${ad.doc_file_url}')" style="background-color:#2563eb;color:#fff;" class="px-2.5 py-1 rounded font-bold cursor-pointer">👁️ ஆவணம் பார்</button>` : 'இல்லை'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      `;
+
+      box.innerHTML = kycHtml + visitSettleHtml + loanHtml + packetHtml + docsHtml;
+    } catch (err) {
+      box.innerHTML = `<p class="p-6 text-center text-rose-600 font-bold">❌ பிழை: ${err.message}</p>`;
+    }
   }
 </script>
 </body>

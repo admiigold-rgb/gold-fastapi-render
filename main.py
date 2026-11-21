@@ -3808,3 +3808,176 @@ def auditor_review_visit_docs(data: dict):
         return {"status": "success", "message": msg}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+# ==============================================================================
+# 🔎 தலைமையகத்தின் 360° முழு பரிவர்த்தனை வரலாற்றுத் தேடல் API (HQ 360° Master Audit Search)
+# ==============================================================================
+@app.get("/api/hq/master-audit-search")
+def hq_master_audit_search(query: str = Query(..., min_length=1)):
+    """
+    கடன் எண் (AVL/0050), GP/GS/GSS/RD/SI எண், வருகை எண் (#VIS-186) அல்லது மொபைல் எண் மூலம்
+    ஆரம்பம் முதல் இன்று வரையிலான 360° முழு வரலாற்றையும் திரட்டிக் கொடுக்கும் API.
+    """
+    try:
+        q = query.strip()
+        q_upper = q.upper()
+
+        # 1. பணியாளர்கள் & கிளைகள் பெயர் அகராதி (Staff & Branch Map)
+        staff_res = supabase.table("test_staff_users").select("id, full_name, role_key").execute().data or []
+        s_map = {s["id"]: f"{s['full_name']} ({s.get('role_key', '')})" for s in staff_res}
+
+        br_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute().data or []
+        b_map = {b["id"]: b.get("branch_name", "-") for b in br_res}
+
+        customer = None
+        visit = None
+        matched_loan = None
+        matched_packet = None
+        extra_record = None
+        record_category = "GENERAL"
+
+        # A. நகைக்கடன் எண் (Loan No) மூலம் தேடுதல்
+        loan_chk = supabase.table("test_gold_loans").select("*, test_gold_loan_items(*)").ilike("loan_no", f"%{q_upper}%").limit(1).execute().data or []
+        if loan_chk:
+            matched_loan = loan_chk[0]
+            record_category = "GOLD_LOAN"
+            customer_id = matched_loan.get("customer_id")
+            if matched_loan.get("visit_id"):
+                v_r = supabase.table("test_customer_visits").select("*").eq("id", matched_loan["visit_id"]).execute().data
+                if v_r:
+                    visit = v_r[0]
+        else:
+            # B. நகை வாங்குதல் (GP), விற்பனை (GS), GSS, RD, SI எண் மூலம் தேடுதல்
+            for tbl, col, cat in [
+                ("test_gold_purchases", "gp_no", "GOLD_PURCHASE"),
+                ("test_gold_sales", "gs_no", "GOLD_SALE"),
+                ("test_customer_savings_accounts", "gss_no", "GSS"),
+                ("test_customer_rd_accounts", "rd_no", "RD"),
+                ("test_si_accounts", "si_no", "SI"),
+            ]:
+                try:
+                    r_chk = supabase.table(tbl).select("*").ilike(col, f"%{q_upper}%").limit(1).execute().data or []
+                    if r_chk:
+                        extra_record = r_chk[0]
+                        record_category = cat
+                        customer_id = extra_record.get("customer_id")
+                        if extra_record.get("visit_id"):
+                            v_r = supabase.table("test_customer_visits").select("*").eq("id", extra_record["visit_id"]).execute().data
+                            if v_r:
+                                visit = v_r[0]
+                        break
+                except Exception:
+                    continue
+
+        # C. வருகை எண் (Visit ID) அல்லது மொபைல் எண் மூலம் தேடுதல்
+        if not matched_loan and not extra_record:
+            clean_num = q_upper.replace("#VIS-", "").replace("VIS-", "").strip()
+            if clean_num.isdigit() and len(clean_num) < 10:
+                v_r = supabase.table("test_customer_visits").select("*").eq("id", int(clean_num)).execute().data
+                if v_r:
+                    visit = v_r[0]
+                    customer_id = visit.get("customer_id")
+            if not visit:
+                c_r = supabase.table("test_customers").select("*").or_(f"mobile.ilike.%{q}%,name.ilike.%{q}%").limit(1).execute().data
+                if c_r:
+                    customer = c_r[0]
+                    customer_id = customer["id"]
+                    v_last = supabase.table("test_customer_visits").select("*").eq("customer_id", customer_id).order("id", desc=True).limit(1).execute().data
+                    if v_last:
+                        visit = v_last[0]
+
+        if not matched_loan and not extra_record and not visit and not customer:
+            raise HTTPException(status_code=404, detail=f"'{query}' என்ற எண்ணில் எந்தப் பதிவும் கிடைக்கவில்லை.")
+
+        # வாடிக்கையாளர் முழு KYC விவரம்
+        if not customer and customer_id:
+            c_res = supabase.table("test_customers").select("*").eq("id", customer_id).execute().data
+            customer = c_res[0] if c_res else {}
+
+        # வருகை கிடைக்கவில்லை எனில் வாடிக்கையாளரின் சமீபத்திய வருகை எடுத்தல்
+        if not visit and customer_id:
+            v_q = supabase.table("test_customer_visits").select("*").eq("customer_id", customer_id).ilike("actions_summary", f"%{q_upper}%").limit(1).execute().data
+            if v_q:
+                visit = v_q[0]
+
+        # 2. கடன் தொடர்பான பாக்கெட் வரலாறு, வட்டி வரவுகள் & தள்ளுபடி விவரங்கள்
+        packet_movements = []
+        repayments = []
+        rebates = []
+        if matched_loan:
+            lno = matched_loan["loan_no"]
+            pkt_r = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute().data
+            if pkt_r:
+                matched_packet = pkt_r[0]
+                mov_r = supabase.table("test_gold_packet_movements").select("*").eq("packet_id", matched_packet["id"]).order("id").execute().data or []
+                for m in mov_r:
+                    m["performed_by_name"] = s_map.get(m.get("performed_by"), "-")
+                packet_movements = mov_r
+
+            repayments = supabase.table("test_loan_repayments").select("*").eq("loan_id", matched_loan["id"]).order("id").execute().data or []
+            reb_r = supabase.table("test_rebate_approvals").select("*").eq("loan_id", matched_loan["id"]).execute().data or []
+            for rb in reb_r:
+                rb["requested_by_name"] = s_map.get(rb.get("requested_by"), "-")
+                rb["approved_by_name"] = s_map.get(rb.get("approved_by"), "-")
+            rebates = reb_r
+
+        # 3. தீர்வு (Settlement), OTP & வங்கிப் பரிமாற்ற விவரங்கள்
+        settlement = {}
+        denominations = {}
+        otp_info = {}
+        bank_transfers = []
+        audit_docs = []
+        incentive_entries = []
+
+        if visit:
+            vid = visit["id"]
+            visit["branch_name"] = b_map.get(visit.get("branch_id"), f"கிளை #{visit.get('branch_id')}")
+
+            s_res = supabase.table("test_transaction_settlements").select("*, test_cash_denominations(*)").eq("customer_id", customer["id"]).eq("transaction_date", visit.get("transaction_date")).order("id", desc=True).limit(1).execute().data
+            if s_res:
+                settlement = s_res[0]
+                if settlement.get("test_cash_denominations"):
+                    denominations = settlement["test_cash_denominations"][0]
+                bt_r = supabase.table("test_bank_transfers").select("*").eq("settlement_id", settlement["id"]).execute().data or []
+                for bt in bt_r:
+                    bt["approved_by_name"] = s_map.get(bt.get("approved_by"), "-")
+                bank_transfers = bt_r
+
+            o_res = supabase.table("test_transaction_otps").select("*").eq("customer_id", customer["id"]).order("id", desc=True).limit(1).execute().data
+            if o_res:
+                otp_info = o_res[0]
+
+            d_res = supabase.table("test_visit_audit_documents").select("*").eq("visit_id", vid).order("id").execute().data or []
+            for d in d_res:
+                d["uploaded_by_name"] = s_map.get(d.get("uploaded_by"), "-")
+                d["audited_by_name"] = s_map.get(d.get("audited_by"), "-")
+            audit_docs = d_res
+
+        # இன்சென்டிவ் லெட்ஜரில் உள்ள வணிக ஆதார விவரம்
+        ref_search = matched_loan["loan_no"] if matched_loan else (q_upper)
+        inc_r = supabase.table("test_staff_incentive_ledger").select("*").ilike("ref_no", f"%{ref_search}%").execute().data or []
+        for ir in inc_r:
+            ir["staff_name"] = s_map.get(ir.get("staff_id"), "-")
+        incentive_entries = inc_r
+
+        return {
+            "status": "success",
+            "category": record_category,
+            "customer": customer,
+            "visit": visit,
+            "loan": matched_loan,
+            "extra_record": extra_record,
+            "packet": matched_packet,
+            "packet_movements": packet_movements,
+            "repayments": repayments,
+            "rebates": rebates,
+            "settlement": settlement,
+            "denominations": denominations,
+            "otp_info": otp_info,
+            "bank_transfers": bank_transfers,
+            "audit_docs": audit_docs,
+            "incentive_entries": incentive_entries
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"360° தேடல் பிழை: {str(e)}")

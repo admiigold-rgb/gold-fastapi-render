@@ -152,6 +152,11 @@
                     class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
               <span>🔐</span> நகை பாக்கெட் & லாக்கர்
             </button>
+            <button type="button" onclick="openBranchAuditDocsModal()" 
+                    style="background-color: #0d9488 !important; color: #ffffff !important;" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer">
+              <span>📄</span> ஆவண இணைப்பு & தணிக்கை
+            </button>
             
             <!-- 5. மாலை கணக்கு முடிவு -->
             <button type="button" onclick="openCashDayModal('CLOSE')" id="btnCloseDay" 
@@ -1216,6 +1221,10 @@
                 <span class="text-xs font-bold">🛡️ 12. பாக்கெட் சிறப்பு ஒப்புதல்கள் (நேரடி விடுவிப்பு / திரும்பப் பெறுதல் / மறு-அடகு) & 2-வது வங்கி லாக்கர் சரிபார்ப்பு</span>
               </label>
             </div>
+            <label class="flex items-center space-x-2.5 font-bold text-teal-950 col-span-1 sm:col-span-2 bg-teal-50 p-2 rounded-xl border border-teal-300 hover:bg-teal-100 cursor-pointer shadow-xs">
+              <input type="checkbox" id="perm_audit_docs" class="w-4 h-4 text-teal-700 rounded">
+              <span class="text-xs font-bold">🔍 13. அகத்தணிக்கை மையம் & ஆவணச் சரிபார்ப்பு உரிமை (Internal Auditor Hub)</span>
+            </label>
         
             <div class="flex justify-end">
               <button type="button" onclick="submitStaffForm()" id="btnSubmitStaff" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500 cursor-pointer">+ பணியாளரை உருவாக்கு</button>
@@ -1242,7 +1251,49 @@
             </div>
           </div>
         </div>
-
+        <!-- 📋 நடவடிக்கை வாரியான ஆவணப் பட்டியல் மாஸ்டர் (Document Checklist Master) -->
+        <div class="bg-white p-6 rounded-3xl shadow-md border-2 border-teal-300 space-y-4 mt-6">
+          <div class="flex justify-between items-center border-b border-teal-100 pb-3">
+            <h3 class="text-base font-black text-teal-900">📋 நடவடிக்கை வாரியான ஆவணப் பட்டியல் அமைப்பு (Document Checklist Master)</h3>
+            <button type="button" onclick="loadAuditDocRulesAdmin()" class="px-3 py-1 bg-teal-100 text-teal-900 rounded-xl text-xs font-bold cursor-pointer">🔄 புதுப்பி</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">வணிக நடவடிக்கை வகை *</label>
+              <select id="adm_doc_act_type" class="w-full border p-2.5 rounded-xl bg-white font-bold text-teal-950">
+                <option value="GL_NEW">புதிய நகைக்கடன் (New Gold Loan)</option>
+                <option value="GL_CLOSE">நகைக்கடன் முடிப்பு (Full Closure)</option>
+                <option value="GL_PART_PRINCIPAL">வட்டி / பகுதி அசல் (Interest / Part Principal)</option>
+                <option value="OLD_GOLD">பழைய தங்கம் வாங்குதல் (Old Gold Purchase)</option>
+                <option value="GOLD_SALE">நகை விற்பனை (Gold Sales)</option>
+                <option value="GSS">நகை சேமிப்புத் திட்டம் (GSS)</option>
+                <option value="RD">தொடர்வைப்புத் திட்டம் (RD)</option>
+                <option value="SI">நிலையான முதலீடு (SI / FD)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">தேவைப்படும் ஆவணத்தின் பெயர் *</label>
+              <input type="text" id="adm_doc_name" placeholder="எ.கா: கையொப்பமிட்ட அடகு விண்ணப்பம்" class="w-full border p-2.5 rounded-xl">
+            </div>
+            <div class="flex items-end">
+              <button type="button" onclick="addAuditDocRuleAdmin()" style="background-color:#0d9488;color:#fff;" class="w-full py-2.5 px-4 rounded-xl text-xs font-black shadow cursor-pointer">
+                + ஆவணத்தைச் சேர்
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto border border-teal-100 rounded-xl">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-teal-50 text-teal-950 border-b">
+                <tr>
+                  <th class="p-2.5">நடவடிக்கை வகை</th>
+                  <th class="p-2.5">கட்டாய ஆவணத்தின் பெயர்</th>
+                  <th class="p-2.5 text-center">நீக்கு</th>
+                </tr>
+              </thead>
+              <tbody id="admAuditDocRulesTbody" class="divide-y divide-teal-100"></tbody>
+            </table>
+          </div>
+        </div>
         <!-- 🪙 நகை சேமிப்புத் திட்டங்கள் (Gold Savings Schemes - GSS) மேலாண்மை -->
         <div class="bg-white p-6 rounded-3xl shadow-md border-2 border-purple-200 space-y-4 mt-6">
           <div class="flex justify-between items-center border-b border-purple-100 pb-3">
@@ -2522,6 +2573,12 @@
    ) {
      activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
    }
+      if (p.can_audit_documents === true) {
+   activeTabs.push({ id: 'internalAuditTab', label: '🔍 அகத்தணிக்கை (Audit)' });
+ }
+      if (p.can_audit_documents === true) {
+   activeTabs.push({ id: 'internalAuditTab', label: '🔍 அகத்தணிக்கை (Audit)' });
+ }
    if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
       
       activeTabs.forEach((tab, index) => {
@@ -2591,7 +2648,7 @@
     };
 
     function switchTab(tabId) {
-      ['counterTab', 'hqApprovalTab', 'adminPanelTab'].forEach(id => {
+      ['counterTab', 'hqApprovalTab', 'adminPanelTab', 'internalAuditTab'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
       });
@@ -2606,6 +2663,9 @@
       });
 
       if (tabId === 'hqApprovalTab') loadAllHqApprovals();
+      if (tabId === 'internalAuditTab' && typeof loadInternalAuditorDashboard === 'function') {
+        loadInternalAuditorDashboard();
+      }
       if (tabId === 'adminPanelTab') {
         loadBranchesList();
         loadStaffList();
@@ -2615,6 +2675,7 @@
         loadSiSchemesList();
         if (typeof loadGssSchemesList === 'function') loadGssSchemesList();
         if (typeof loadRdSchemesList === 'function') loadRdSchemesList();
+        if (typeof loadAuditDocRulesAdmin === 'function') loadAuditDocRulesAdmin();
       }
     }
 
@@ -5659,6 +5720,7 @@
       document.getElementById('perm_hq_packet_approve').checked = !!s.can_approve_hq_packets;
       document.getElementById('new_staff_is_active').checked = s.is_active !== false;
       document.getElementById('new_staff_is_manager').checked = !!s.is_branch_manager;
+      document.getElementById('perm_audit_docs').checked = !!s.can_audit_documents;
     }
 
     function cancelStaffEdit() {
@@ -5685,6 +5747,7 @@
       document.getElementById('perm_hq_packet_approve').checked = false;
       document.getElementById('new_staff_is_active').checked = true;
       document.getElementById('new_staff_is_manager').checked = false;
+      document.getElementById('perm_audit_docs').checked = false;
     }
 
     async function submitStaffForm() {
@@ -5712,7 +5775,8 @@
         can_manage_gp_stock: document.getElementById('perm_gp_stock').checked,
         can_approve_gss_benefit: document.getElementById('perm_gss_benefit').checked,
         can_access_hq_packets: document.getElementById('perm_hq_packet_access')?.checked || false,
-        can_approve_hq_packets: document.getElementById('perm_hq_packet_approve')?.checked || false
+        can_approve_hq_packets: document.getElementById('perm_hq_packet_approve')?.checked || false,
+        can_audit_documents: document.getElementById('perm_audit_docs')?.checked || false
       };
   
       try {
@@ -9969,6 +10033,362 @@
         </tr>
       `;
     }).join('');
+  }
+</script>
+
+      <!-- 🔍 TAB D: அகத்தணிக்கையர் டாஷ்போர்டு (Internal Auditor Hub) -->
+<div id="internalAuditTab" class="hidden space-y-4 max-w-6xl mx-auto pb-8">
+  <div class="bg-white p-5 rounded-3xl shadow-sm border-2 border-teal-300 space-y-4">
+    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-teal-100 pb-3">
+      <div>
+        <h2 class="text-base font-extrabold text-teal-950">🔍 அகத்தணிக்கையர் ஆவணச் சரிபார்ப்பு மையம் (Internal Audit Hub)</h2>
+        <p class="text-[11px] text-slate-500">கிளை வாரியாக & பரிவர்த்தனை தேதி வாரியாக ஆவணங்களைச் சரிபார்த்தல், கேள்வி எழுப்புதல் மற்றும் அனுமதி அளித்தல்</p>
+      </div>
+      <button type="button" onclick="loadInternalAuditorDashboard()" class="px-3.5 py-1.5 bg-teal-100 text-teal-950 rounded-xl text-xs font-black cursor-pointer">🔄 புதுப்பி</button>
+    </div>
+
+    <!-- கிளை வாரியான சுருக்க டாஷ்போர்டு அட்டைகள் -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+      <div class="p-3 rounded-2xl bg-amber-50 border border-amber-300">
+        <span class="text-amber-900 font-bold block">⏳ கிளையில் ஆவணம் நிலுவை:</span>
+        <b id="aud_stat_docs_pending" class="text-xl font-black text-amber-800">0</b>
+      </div>
+      <div class="p-3 rounded-2xl bg-indigo-50 border border-indigo-300">
+        <span class="text-indigo-900 font-bold block">🔍 தணிக்கை சரிபார்ப்பு நிலுவை:</span>
+        <b id="aud_stat_audit_pending" class="text-xl font-black text-indigo-800">0</b>
+      </div>
+      <div class="p-3 rounded-2xl bg-rose-50 border border-rose-300">
+        <span class="text-rose-900 font-bold block">❓ கேள்வி பதிலுக்கு நிலுவை:</span>
+        <b id="aud_stat_query_raised" class="text-xl font-black text-rose-700">0</b>
+      </div>
+      <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-300">
+        <span class="text-emerald-900 font-bold block">✅ தணிக்கை முடிக்கப்பட்டவை:</span>
+        <b id="aud_stat_audited" class="text-xl font-black text-emerald-700">0</b>
+      </div>
+    </div>
+
+    <!-- கிளை & தேதி வடிகட்டி -->
+    <div class="flex flex-wrap items-end gap-3 bg-teal-50/70 p-3 rounded-2xl border border-teal-200 text-xs">
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">🏢 கிளை தேர்வு:</label>
+        <select id="aud_branch_filter" onchange="loadInternalAuditorDashboard()" class="border-2 border-teal-200 p-2 rounded-xl bg-white font-bold text-teal-950">
+          <option value="0">அனைத்துக் கிளைகளும்</option>
+        </select>
+      </div>
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">📅 பரிவர்த்தனை தேதி:</label>
+        <input type="date" id="aud_date_filter" onchange="loadInternalAuditorDashboard()" class="border-2 border-teal-200 p-2 rounded-xl bg-white font-bold">
+      </div>
+      <button type="button" onclick="document.getElementById('aud_date_filter').value=''; loadInternalAuditorDashboard();" class="px-3 py-2 bg-slate-200 rounded-xl font-bold cursor-pointer">அனைத்து தேதிகளும்</button>
+    </div>
+
+    <!-- கிளை வாரியான நிலுவை & முடித்த விவரப் பட்டியல் -->
+    <div class="overflow-x-auto border-2 border-teal-100 rounded-2xl">
+      <table class="w-full text-xs text-left">
+        <thead class="bg-teal-100 text-teal-950 border-b border-teal-200">
+          <tr>
+            <th class="p-2.5 font-extrabold">தேதி & வருகை எண்</th>
+            <th class="p-2.5 font-extrabold">கிளை</th>
+            <th class="p-2.5 font-extrabold">வாடிக்கையாளர்</th>
+            <th class="p-2.5 font-extrabold">நடவடிக்கை</th>
+            <th class="p-2.5 font-extrabold">தணிக்கை நிலை</th>
+            <th class="p-2.5 text-center font-extrabold">ஆவணச் சரிபார்ப்பு</th>
+          </tr>
+        </thead>
+        <tbody id="auditorVisitsTbody" class="divide-y divide-teal-100"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 📄 கிளை ஆவண இணைப்பு & அகத்தணிக்கையர் சரிபார்ப்பு சாளரம் -->
+<div id="auditDocsReviewModal" class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-4xl w-full shadow-2xl space-y-4 border-2 border-teal-500 my-auto max-h-[92vh] overflow-y-auto">
+    <div class="flex justify-between items-center border-b border-teal-100 pb-2.5">
+      <div>
+        <h3 class="text-base font-extrabold text-teal-950" id="adModalTitle">📄 பரிவர்த்தனை ஆவணங்கள்</h3>
+        <p class="text-[11px] text-slate-500" id="adModalSubTitle">-</p>
+      </div>
+      <button type="button" onclick="closeAuditDocsModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2 cursor-pointer">✕</button>
+    </div>
+
+    <div id="adDocsListContainer" class="space-y-3 text-xs"></div>
+
+    <div class="flex justify-end gap-2 pt-3 border-t border-teal-100" id="adModalFooterActions"></div>
+  </div>
+</div>
+
+<script>
+  let auditVisitsCache = [];
+  let currentAuditReviewMode = 'BRANCH'; // BRANCH or AUDITOR
+  let currentAuditVisitId = null;
+
+  const ACT_NAMES_TA = {
+    'GL_NEW': 'புதிய நகைக்கடன்',
+    'GL_CLOSE': 'நகைக்கடன் முடிப்பு',
+    'GL_PART_PRINCIPAL': 'வட்டி / பகுதி அசல்',
+    'OLD_GOLD': 'பழைய தங்கம் வாங்குதல்',
+    'GOLD_SALE': 'நகை விற்பனை',
+    'GSS': 'நகை சேமிப்பு (GSS)',
+    'RD': 'தொடர்வைப்பு (RD)',
+    'SI': 'நிலையான முதலீடு (SI)'
+  };
+
+  async function loadAuditDocRulesAdmin() {
+    const tbody = document.getElementById('admAuditDocRulesTbody');
+    if (!tbody) return;
+    const res = await fetch('/api/admin/audit-doc-rules');
+    const out = await res.json();
+    const list = out.data || [];
+    tbody.innerHTML = list.map(r => `
+      <tr>
+        <td class="p-2.5 font-bold text-teal-900">${ACT_NAMES_TA[r.activity_type] || r.activity_type}</td>
+        <td class="p-2.5 font-bold">${r.document_name}</td>
+        <td class="p-2.5 text-center"><button type="button" onclick="deleteAuditDocRule(${r.id})" class="text-rose-600 font-bold hover:underline cursor-pointer">நீக்கு</button></td>
+      </tr>
+    `).join('');
+  }
+
+  async function addAuditDocRuleAdmin() {
+    const act = document.getElementById('adm_doc_act_type').value;
+    const name = document.getElementById('adm_doc_name').value.trim();
+    if (!name) return alert("ஆவணத்தின் பெயரை உள்ளிடவும்!");
+    const res = await fetch('/api/admin/audit-doc-rule/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activity_type: act, document_name: name })
+    });
+    const out = await res.json();
+    alert("✅ " + out.message);
+    document.getElementById('adm_doc_name').value = '';
+    loadAuditDocRulesAdmin();
+  }
+
+  async function deleteAuditDocRule(id) {
+    if (!confirm("இந்த ஆவண விதியை நீக்கவா?")) return;
+    await fetch(`/api/admin/audit-doc-rule/${id}`, { method: 'DELETE' });
+    loadAuditDocRulesAdmin();
+  }
+
+  // கிளைப் பணியாளர் ஆவணங்களை இணைக்கும் சாளரம் திறத்தல்
+  async function openBranchAuditDocsModal() {
+    const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+    const res = await fetch(`/api/audit/visits?branch_id=${branchId}&role=BRANCH`);
+    const out = await res.json();
+    auditVisitsCache = (out.data || []).filter(v => (v.documents || []).length > 0);
+
+    const modal = document.getElementById('auditDocsReviewModal');
+    document.getElementById('adModalTitle').innerText = '📄 கிளை ஆவணங்கள் இணைப்பு & தணிக்கை கேள்வி பதில்';
+    document.getElementById('adModalSubTitle').innerText = 'தலைமையகம் ஒப்புதல் அளித்த வருகைகளுக்குரிய கட்டாய ஆவணங்களை இணைக்கவும்';
+
+    const container = document.getElementById('adDocsListContainer');
+    if (auditVisitsCache.length === 0) {
+      container.innerHTML = `<p class="p-6 text-center text-slate-400 font-bold">ஆவணங்கள் இணைக்க வேண்டிய வருகைகள் ஏதுமில்லை</p>`;
+    } else {
+      container.innerHTML = auditVisitsCache.map(v => {
+        const st = v.audit_status || 'DOCS_PENDING';
+        const badge = st === 'AUDITED' ? '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-black">✅ தணிக்கை முடிந்தது</span>'
+          : (st === 'QUERY_RAISED' ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-900 rounded font-black animate-pulse">❓ தணிக்கையர் கேள்வி எழுப்பியுள்ளார்!</span>'
+          : (st === 'AUDIT_PENDING' ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold">⏳ தணிக்கையர் ஆய்வில் உள்ளது</span>'
+          : '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-black">📎 ஆவணங்கள் இணைக்கவும்</span>'));
+
+        return `
+          <div class="p-3.5 rounded-2xl border-2 border-teal-200 bg-teal-50/40 flex flex-wrap justify-between items-center gap-2">
+            <div>
+              <span class="font-mono font-black text-brand-violet">#VIS-${v.id}</span> | <b>${v.transaction_date}</b> | <b>${v.customer_name}</b> (${v.customer_mobile})
+              <p class="text-[11px] text-slate-600 mt-0.5">${v.actions_summary || '-'}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              ${badge}
+              <button type="button" onclick="openSingleVisitDocsForm(${v.id}, 'BRANCH')" style="background-color:#0d9488;color:#fff;" class="px-3 py-1.5 rounded-xl font-black cursor-pointer">
+                ${st === 'AUDITED' ? '👁️ ஆவணங்கள் பார்' : '📤 ஆவணங்கள் இணை / பதில் அளி'}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+    document.getElementById('adModalFooterActions').innerHTML = `<button type="button" onclick="closeAuditDocsModal()" class="px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer">மூடு</button>`;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  }
+
+  // அகத்தணிக்கையர் டாஷ்போர்டு ஏற்றுதல்
+  async function loadInternalAuditorDashboard() {
+    const brSel = document.getElementById('aud_branch_filter');
+    if (brSel && brSel.options.length <= 1 && typeof branchesCache !== 'undefined' && branchesCache.length > 0) {
+      brSel.innerHTML = `<option value="0">அனைத்துக் கிளைகளும்</option>` +
+        branchesCache.map(b => `<option value="${b.id}">${b.branch_name}</option>`).join('');
+    }
+
+    const bId = brSel?.value || 0;
+    const tDate = document.getElementById('aud_date_filter')?.value || '';
+    const res = await fetch(`/api/audit/visits?branch_id=${bId}&txn_date=${tDate}&role=AUDITOR`);
+    const out = await res.json();
+    auditVisitsCache = out.data || [];
+
+    document.getElementById('aud_stat_docs_pending').innerText = auditVisitsCache.filter(v => v.audit_status === 'DOCS_PENDING').length;
+    document.getElementById('aud_stat_audit_pending').innerText = auditVisitsCache.filter(v => v.audit_status === 'AUDIT_PENDING').length;
+    document.getElementById('aud_stat_query_raised').innerText = auditVisitsCache.filter(v => v.audit_status === 'QUERY_RAISED').length;
+    document.getElementById('aud_stat_audited').innerText = auditVisitsCache.filter(v => v.audit_status === 'AUDITED').length;
+
+    const tbody = document.getElementById('auditorVisitsTbody');
+    if (auditVisitsCache.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-bold">தேர்வு செய்த கிளை/தேதியில் பதிவுகள் ஏதுமில்லை</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = auditVisitsCache.map(v => {
+      const st = v.audit_status || 'DOCS_PENDING';
+      const stBadge = st === 'AUDITED' ? '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-black">✅ முடிந்தது (AUDITED)</span>'
+        : (st === 'QUERY_RAISED' ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-900 rounded font-black">❓ கேள்வி நிலுவை</span>'
+        : (st === 'AUDIT_PENDING' ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-black">🔍 சரிபார்க்கத் தயார்</span>'
+        : '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold">⏳ கிளை ஆவணம் நிலுவை</span>'));
+
+      return `
+        <tr class="hover:bg-teal-50/40">
+          <td class="p-2.5 font-mono"><b>${v.transaction_date || '-'}</b><br><span class="text-brand-violet font-black">#VIS-${v.id}</span></td>
+          <td class="p-2.5 font-bold">${v.branch_name}</td>
+          <td class="p-2.5"><b>${v.customer_name}</b><br><span class="font-mono text-[11px]">${v.customer_mobile}</span></td>
+          <td class="p-2.5 text-[11px]">${v.actions_summary || '-'}</td>
+          <td class="p-2.5">${stBadge}</td>
+          <td class="p-2.5 text-center">
+            <button type="button" onclick="openSingleVisitDocsForm(${v.id}, 'AUDITOR')" style="background-color:#4f46e5;color:#fff;" class="px-3 py-1.5 rounded-xl font-black text-xs shadow cursor-pointer">
+              🔍 ஆவணங்களைச் சரிபார் (${(v.documents || []).length})
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function openSingleVisitDocsForm(visitId, mode) {
+    currentAuditVisitId = visitId;
+    currentAuditReviewMode = mode;
+    const visit = auditVisitsCache.find(v => v.id === visitId);
+    if (!visit) return;
+
+    const modal = document.getElementById('auditDocsReviewModal');
+    document.getElementById('adModalTitle').innerText = mode === 'AUDITOR'
+      ? `🔍 அகத்தணிக்கை சரிபார்ப்பு — #VIS-${visit.id} (${visit.branch_name})`
+      : `📤 ஆவணங்கள் இணைப்பு — #VIS-${visit.id} (${visit.customer_name})`;
+    document.getElementById('adModalSubTitle').innerText = `தேதி: ${visit.transaction_date} | நடவடிக்கை: ${visit.actions_summary}`;
+
+    const docs = visit.documents || [];
+    const container = document.getElementById('adDocsListContainer');
+    container.innerHTML = docs.map((d, idx) => {
+      const hasFile = Boolean(d.doc_file_url);
+      const isApproved = d.doc_status === 'APPROVED';
+      const isQuery = d.doc_status === 'QUERY';
+
+      if (mode === 'BRANCH') {
+        return `
+          <div class="p-3.5 rounded-2xl border-2 ${isQuery ? 'border-rose-400 bg-rose-50/50' : 'border-slate-200 bg-slate-50'} space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="font-black text-slate-900">${idx + 1}. ${d.document_name}</span>
+              ${isApproved ? '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-bold">✅ தணிக்கையர் அனுமதித்தார்</span>'
+                : (hasFile ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold">📎 இணைக்கப்பட்டுள்ளது</span>'
+                : '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold">⚠️ இணைக்கப்படவில்லை</span>')}
+            </div>
+            ${isQuery ? `<div class="p-2 bg-rose-100 text-rose-950 rounded-xl font-bold">❓ தணிக்கையர் கேள்வி: ${d.auditor_query}</div>` : ''}
+            ${hasFile ? `<button type="button" onclick="previewDocImage('${d.doc_file_url}')" class="text-blue-700 font-bold underline cursor-pointer">👁️ இணைத்த ஆவணத்தைப் பார்</button>` : ''}
+            ${!isApproved ? `
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <input type="file" id="br_doc_file_${d.id}" accept="image/*" class="text-xs bg-white p-1.5 rounded-xl border">
+                <input type="text" id="br_doc_reply_${d.id}" value="${d.branch_reply || ''}" placeholder="கிளை குறிப்பு / கேள்விக்கான பதில்..." class="border p-2 rounded-xl bg-white">
+              </div>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        return `
+          <div class="p-3.5 rounded-2xl border-2 border-indigo-200 bg-indigo-50/30 space-y-2">
+            <div class="flex flex-wrap justify-between items-center gap-2">
+              <span class="font-black text-indigo-950">${idx + 1}. ${d.document_name}</span>
+              ${hasFile
+                ? `<button type="button" onclick="previewDocImage('${d.doc_file_url}')" style="background-color:#2563eb;color:#fff;" class="px-3 py-1 rounded-lg font-bold cursor-pointer">👁️ ஆவணத்தைப் பெரிதாக்கிப் பார்</button>`
+                : `<span class="text-rose-600 font-bold">❌ கிளை இன்னும் ஆவணம் இணைக்கவில்லை</span>`}
+            </div>
+            ${d.branch_reply ? `<div class="text-[11px] bg-white p-2 rounded-lg border">💬 கிளை பதில்: <b>${d.branch_reply}</b></div>` : ''}
+            <div class="flex flex-wrap items-center gap-3 pt-1">
+              <label class="flex items-center gap-1.5 font-bold text-emerald-800 cursor-pointer">
+                <input type="radio" name="aud_act_${d.id}" value="APPROVE" ${d.doc_status !== 'QUERY' ? 'checked' : ''}> ✅ சரி (Approve)
+              </label>
+              <label class="flex items-center gap-1.5 font-bold text-rose-700 cursor-pointer">
+                <input type="radio" name="aud_act_${d.id}" value="QUERY" ${d.doc_status === 'QUERY' ? 'checked' : ''}> ❓ கேள்வி எழுப்பு (Raise Query)
+              </label>
+              <input type="text" id="aud_query_txt_${d.id}" value="${d.auditor_query || ''}" placeholder="கேள்வி / குறைபாட்டை எழுதவும்..." class="flex-1 border p-1.5 rounded-xl bg-white">
+            </div>
+          </div>
+        `;
+      }
+    }).join('');
+
+    const footer = document.getElementById('adModalFooterActions');
+    if (mode === 'BRANCH') {
+      footer.innerHTML = `
+        <button type="button" onclick="closeAuditDocsModal()" class="px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer">ரத்து</button>
+        <button type="button" onclick="submitBranchAuditDocs()" style="background-color:#059669;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">📤 ஆவணங்களைத் தணிக்கைக்கு அனுப்பு</button>
+      `;
+    } else {
+      footer.innerHTML = `
+        <button type="button" onclick="closeAuditDocsModal()" class="px-4 py-2 border rounded-xl text-xs font-bold cursor-pointer">ரத்து</button>
+        <button type="button" onclick="submitAuditorReview()" style="background-color:#4f46e5;color:#fff;" class="px-5 py-2 rounded-xl text-xs font-black shadow cursor-pointer">✓ தணிக்கை முடிவைப் பதிவு செய்</button>
+      `;
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  }
+
+  function closeAuditDocsModal() {
+    const m = document.getElementById('auditDocsReviewModal');
+    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+  }
+
+  async function submitBranchAuditDocs() {
+    const visit = auditVisitsCache.find(v => v.id === currentAuditVisitId);
+    if (!visit) return;
+    const docsPayload = [];
+    for (const d of (visit.documents || [])) {
+      const fileInput = document.getElementById(`br_doc_file_${d.id}`);
+      const replyInput = document.getElementById(`br_doc_reply_${d.id}`);
+      let b64 = null;
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        b64 = await readFileAsBase64(fileInput);
+      }
+      const repTxt = replyInput ? replyInput.value.trim() : null;
+      if (b64 || repTxt) {
+        docsPayload.push({ id: d.id, doc_file_url: b64, branch_reply: repTxt });
+      }
+    }
+    if (docsPayload.length === 0) return alert("குறைந்தது ஒரு ஆவணத்தையாவது தேர்வு செய்யவும்!");
+
+    const res = await fetch('/api/audit/branch-upload-docs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: visit.id, docs: docsPayload, staff_id: currentUser?.id || 1 })
+    });
+    const out = await res.json();
+    alert(out.message);
+    closeAuditDocsModal();
+  }
+
+  async function submitAuditorReview() {
+    const visit = auditVisitsCache.find(v => v.id === currentAuditVisitId);
+    if (!visit) return;
+    const reviews = (visit.documents || []).map(d => {
+      const selRadio = document.querySelector(`input[name="aud_act_${d.id}"]:checked`)?.value || 'APPROVE';
+      const qTxt = document.getElementById(`aud_query_txt_${d.id}`)?.value.trim() || '';
+      return { id: d.id, action: selRadio, query_text: qTxt };
+    });
+
+    const res = await fetch('/api/audit/auditor-review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visit_id: visit.id, reviews: reviews, auditor_id: currentUser?.id || 1 })
+    });
+    const out = await res.json();
+    alert(out.message);
+    closeAuditDocsModal();
+    loadInternalAuditorDashboard();
   }
 </script>
 </body>

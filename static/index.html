@@ -9656,7 +9656,35 @@
         </table>
       </div>
     </div>
+  <!-- 📜 தேர்வு செய்த பணியாளரின் விரிவான புள்ளிகள் லெட்ஜர் (Detailed Ledger) -->
+    <div id="incDetailedLedgerBox" class="hidden bg-amber-50/70 p-4 rounded-2xl border-2 border-amber-300 space-y-2.5">
+      <div class="flex flex-wrap justify-between items-center gap-2 border-b border-amber-200 pb-2">
+        <div>
+          <h4 id="incDetailStaffTitle" class="text-sm font-black text-amber-950">📜 விரிவான பரிவர்த்தனை புள்ளிகள் பட்டியல்</h4>
+          <p class="text-[11px] text-slate-600">ஒவ்வொரு பரிவர்த்தனைக்கும் கிடைத்த புள்ளிகள் & பகிர்வு விவரம்</p>
+        </div>
+        <button type="button" onclick="closeStaffDetailedLedger()" class="px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-black cursor-pointer">
+          மூடு ✕
+        </button>
+      </div>
 
+      <div class="overflow-x-auto border border-amber-200 rounded-xl bg-white">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-amber-100 text-amber-950 border-b border-amber-200">
+            <tr>
+              <th class="p-2 font-extrabold">தேதி</th>
+              <th class="p-2 font-extrabold">பரிவர்த்தனை வகை</th>
+              <th class="p-2 font-extrabold">எண் (Ref No)</th>
+              <th class="p-2 font-extrabold">ஆதாரம் / பகிர்வு %</th>
+              <th class="p-2 font-extrabold">குறிப்பு</th>
+              <th class="p-2 text-right font-extrabold">புள்ளிகள்</th>
+              <th class="p-2 text-right font-extrabold">இன்சென்டிவ் (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="incDetailedLedgerTbody" class="divide-y divide-amber-100"></tbody>
+        </table>
+      </div>
+    </div>
     <!-- 2. புள்ளி விதிகள் & ரூபாய் மதிப்பு அமைப்பு பகுதி -->
     <div id="incSettingsSection" class="hidden space-y-3 text-xs">
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-amber-50/70 p-4 rounded-2xl border border-amber-300">
@@ -9806,7 +9834,72 @@
     alert(res.ok ? "✅ " + out.message : "❌ " + (out.detail || "பிழை"));
   }
 
+  let lastIncentiveRowsCache = [];
+
+  const TXN_TYPE_LABELS = {
+    'GL_NEW': '➕ புதிய நகைக்கடன்',
+    'GL_PART_PRINCIPAL': '➖ பகுதி அசல் வசூல்',
+    'GL_CLOSE': '➖ கடன் முடிப்பு',
+    'GOLD_SALE': '💍 நகை விற்பனை',
+    'OLD_GOLD': '🪙 பழைய தங்கம் கொள்முதல்',
+    'GSS_JOIN': '🆕 புதிய GSS சேர்க்கை',
+    'GSS_INST': '📅 GSS தவணை',
+    'RD_JOIN': '🆕 புதிய RD சேர்க்கை',
+    'RD_INST': '📅 RD தவணை',
+    'FD_NEW': '🏦 புதிய FD / SI வைப்பு'
+  };
+
+  function closeStaffDetailedLedger() {
+    const box = document.getElementById('incDetailedLedgerBox');
+    if (box) box.classList.add('hidden');
+  }
+
+  function openStaffDetailedLedger(staffId, staffName) {
+    const box = document.getElementById('incDetailedLedgerBox');
+    const titleEl = document.getElementById('incDetailStaffTitle');
+    const tbody = document.getElementById('incDetailedLedgerTbody');
+    if (!box || !tbody) return;
+
+    const staffRows = lastIncentiveRowsCache.filter(r => String(r.staff_id) === String(staffId));
+    if (titleEl) {
+      titleEl.innerText = `📜 ${staffName} — விரிவான பரிவர்த்தனை புள்ளிகள் பட்டியல் (${staffRows.length} பதிவுகள்)`;
+    }
+
+    if (staffRows.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 font-bold">இந்தப் பணியாளருக்குப் பதிவுகள் ஏதுமில்லை</td></tr>`;
+    } else {
+      tbody.innerHTML = staffRows.map(r => {
+        const pts = parseFloat(r.points || 0);
+        const amt = parseFloat(r.incentive_amount || 0);
+        const pct = parseFloat(r.share_percent || 100);
+        const isDirect = r.source_type === 'DIRECT';
+        const srcBadge = isDirect
+          ? `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold text-[10px]">👤 நேரடி (100%)</span>`
+          : `<span class="px-2 py-0.5 bg-purple-100 text-purple-900 rounded font-bold text-[10px]">🚶 Walk-in (${pct}%)</span>`;
+
+        const ptsColor = pts < 0 ? 'text-rose-600' : 'text-emerald-700';
+        const ptsSign = pts > 0 ? '+' : '';
+
+        return `
+          <tr class="hover:bg-amber-50/50">
+            <td class="p-2 font-mono text-[11px] whitespace-nowrap">${r.txn_date || '-'}</td>
+            <td class="p-2 font-bold text-slate-800">${TXN_TYPE_LABELS[r.txn_type] || r.txn_type}</td>
+            <td class="p-2 font-mono font-bold text-brand-violet">${r.ref_no || '-'}</td>
+            <td class="p-2">${srcBadge}</td>
+            <td class="p-2 text-[11px] text-slate-600">${r.remarks || '-'}</td>
+            <td class="p-2 text-right font-mono font-black ${ptsColor}">${ptsSign}${pts.toFixed(2)}</td>
+            <td class="p-2 text-right font-mono font-black ${amt < 0 ? 'text-rose-600' : 'text-emerald-700'}">₹ ${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    box.classList.remove('hidden');
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   async function loadIncentiveReportData() {
+    closeStaffDetailedLedger();
     const fDate = document.getElementById('inc_from_date').value;
     const tDate = document.getElementById('inc_to_date').value;
     const bId = document.getElementById('inc_branch_filter').value || 0;
@@ -9814,13 +9907,16 @@
     const res = await fetch(`/api/incentive/report?from_date=${fDate}&to_date=${tDate}&branch_id=${bId}`);
     const out = await res.json();
     const rows = out.data || [];
+    lastIncentiveRowsCache = rows;
 
     const staffMap = new Map();
     rows.forEach(r => {
       const sid = r.staff_id;
+      const sName = r.test_staff_users?.full_name || `Staff #${sid}`;
       if (!staffMap.has(sid)) {
         staffMap.set(sid, {
-          name: r.test_staff_users?.full_name || `Staff #${sid}`,
+          staffId: sid,
+          name: sName,
           isActive: r.test_staff_users?.is_active !== false,
           isMgr: r.test_staff_users?.is_branch_manager === true,
           directPts: 0,
@@ -9851,20 +9947,28 @@
       return;
     }
 
-    tbody.innerHTML = Array.from(staffMap.values()).map(s => `
-      <tr class="hover:bg-purple-50/40">
-        <td class="p-2.5 font-black text-brand-violet">${s.name}</td>
-        <td class="p-2.5">
-          ${s.isMgr ? '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px]">👑 கிளை மேலாளர்</span>' : '<span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold text-[10px]">👤 பணியாளர்</span>'}
-          ${s.isActive ? '<span class="ml-1 text-[10px] text-emerald-700 font-bold">● Active</span>' : '<span class="ml-1 text-[10px] text-rose-600 font-bold">● Inactive</span>'}
-        </td>
-        <td class="p-2.5 text-right font-mono font-bold text-indigo-700">+${s.directPts.toFixed(2)}</td>
-        <td class="p-2.5 text-right font-mono font-bold text-purple-700">+${s.walkinPts.toFixed(2)}</td>
-        <td class="p-2.5 text-right font-mono font-bold text-rose-600">${s.minusPts.toFixed(2)}</td>
-        <td class="p-2.5 text-right font-mono font-black text-slate-900">${s.netPts.toFixed(2)}</td>
-        <td class="p-2.5 text-right font-mono font-black text-emerald-700 text-sm">₹ ${s.totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = Array.from(staffMap.values()).map(s => {
+      const safeName = (s.name || '').replace(/'/g, "\\'");
+      return `
+        <tr class="hover:bg-purple-50/60">
+          <td class="p-2.5">
+            <button type="button" onclick="openStaffDetailedLedger(${s.staffId}, '${safeName}')" title="விரிவான பரிவர்த்தனை பட்டியலைப் பார்க்க கிளிக் செய்யவும்" class="font-black text-brand-violet hover:underline text-left cursor-pointer flex items-center gap-1">
+              <span>${s.name}</span>
+              <span class="text-[10px] bg-purple-100 text-purple-900 px-1.5 py-0.5 rounded font-bold">📜 விவரம்</span>
+            </button>
+          </td>
+          <td class="p-2.5">
+            ${s.isMgr ? '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px]">👑 கிளை மேலாளர்</span>' : '<span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold text-[10px]">👤 பணியாளர்</span>'}
+            ${s.isActive ? '<span class="ml-1 text-[10px] text-emerald-700 font-bold">● Active</span>' : '<span class="ml-1 text-[10px] text-rose-600 font-bold">● Inactive</span>'}
+          </td>
+          <td class="p-2.5 text-right font-mono font-bold text-indigo-700">+${s.directPts.toFixed(2)}</td>
+          <td class="p-2.5 text-right font-mono font-bold text-purple-700">+${s.walkinPts.toFixed(2)}</td>
+          <td class="p-2.5 text-right font-mono font-bold text-rose-600">${s.minusPts.toFixed(2)}</td>
+          <td class="p-2.5 text-right font-mono font-black text-slate-900">${s.netPts.toFixed(2)}</td>
+          <td class="p-2.5 text-right font-mono font-black text-emerald-700 text-sm">₹ ${s.totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      `;
+    }).join('');
   }
 </script>
 </body>

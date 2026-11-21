@@ -1953,14 +1953,14 @@
         <div class="space-y-3">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input type="text" id="fkyc_name" placeholder="பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-            <input type="tel" id="fkyc_mobile" placeholder="முதன்மை மொபைல் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
-            <input type="tel" id="fkyc_alt_mobile" placeholder="மாற்று மொபைல்" class="border-2 border-purple-100 p-2 rounded-xl text-xs">
+            <input type="tel" id="fkyc_mobile" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" placeholder="முதன்மை மொபைல் (10 எண்) *" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-mono">
+            <input type="tel" id="fkyc_alt_mobile" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" placeholder="மாற்று மொபைல் (10 எண்)" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-mono">
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <select id="fkyc_rel_type" class="border-2 border-purple-100 p-2 rounded-xl text-xs bg-white">
               <option value="தந்தை">தந்தை</option><option value="தாய்">தாய்</option><option value="கணவர்">கணவர்</option><option value="மகன்">மகன்</option>
             </select>
-            <input type="text" id="fkyc_guardian" placeholder="உறவினர் பெயர்" class="border-2 border-purple-100 p-2 rounded-xl text-xs sm:col-span-2">
+            <input type="text" id="fkyc_guardian" placeholder="உறவினர் பெயர் *" class="border-2 border-purple-100 p-2 rounded-xl text-xs sm:col-span-2">
           </div>
           <textarea id="fkyc_address" placeholder="முழு முகவரி *" rows="2" class="w-full border-2 border-purple-100 p-2 rounded-xl text-xs"></textarea>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1972,24 +1972,24 @@
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-purple-50 p-3 rounded-2xl border border-purple-100">
             <input type="text" id="fkyc_nominee_name" placeholder="நாமினி பெயர்" class="border p-2 rounded-xl text-xs bg-white">
             <input type="text" id="fkyc_nominee_rel" placeholder="நாமினி உறவு" class="border p-2 rounded-xl text-xs bg-white">
-            <input type="tel" id="fkyc_nominee_mob" placeholder="நாமினி மொபைல்" class="border p-2 rounded-xl text-xs bg-white">
+            <input type="tel" id="fkyc_nominee_mob" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" placeholder="நாமினி மொபைல் (10 எண்)" class="border p-2 rounded-xl text-xs bg-white font-mono">
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-purple-50 p-3 rounded-2xl border border-purple-100 text-xs">
             <div class="space-y-1">
-              <span class="font-bold text-brand-violet">ரெபரன்ஸ் 1:</span>
-              <input type="text" id="fkyc_ref1_name" placeholder="பெயர்" class="w-full border p-1.5 rounded-lg bg-white">
-              <input type="tel" id="fkyc_ref1_mob" placeholder="மொபைல்" class="w-full border p-1.5 rounded-lg bg-white">
+              <span class="font-bold text-brand-violet">ரெபரன்ஸ் 1 *:</span>
+              <input type="text" id="fkyc_ref1_name" placeholder="பெயர் *" class="w-full border p-1.5 rounded-lg bg-white">
+              <input type="tel" id="fkyc_ref1_mob" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" placeholder="மொபைல் (10 எண்) *" class="w-full border p-1.5 rounded-lg bg-white font-mono">
             </div>
             <div class="space-y-1">
-              <span class="font-bold text-brand-violet">ரெபரன்ஸ் 2:</span>
-              <input type="text" id="fkyc_ref2_name" placeholder="பெயர்" class="w-full border p-1.5 rounded-lg bg-white">
-              <input type="tel" id="fkyc_ref2_mob" placeholder="மொபைல்" class="w-full border p-1.5 rounded-lg bg-white">
+              <span class="font-bold text-brand-violet">ரெபரன்ஸ் 2 *:</span>
+              <input type="text" id="fkyc_ref2_name" placeholder="பெயர் *" class="w-full border p-1.5 rounded-lg bg-white">
+              <input type="tel" id="fkyc_ref2_mob" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" placeholder="மொபைல் (10 எண்) *" class="w-full border p-1.5 rounded-lg bg-white font-mono">
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-purple-100 pt-2">
-            <div><label class="block text-[11px] font-bold text-brand-violet">1. படம் 📷</label><input type="file" id="fkyc_file_photo" accept="image/*" class="text-[10px]"></div>
-            <div><label class="block text-[11px] font-bold text-brand-violet">2. கையொப்பம் ✍️</label><input type="file" id="fkyc_file_sign" accept="image/*" class="text-[10px]"></div>
-            <div><label class="block text-[11px] font-bold text-brand-violet">3. ஆவணப் படம் 🪪</label><input type="file" id="fkyc_file_proof" accept="image/*" class="text-[10px]"></div>
+            <div><label class="block text-[11px] font-bold text-brand-violet">1. படம் 📷 *</label><input type="file" id="fkyc_file_photo" accept="image/*" class="text-[10px]"></div>
+            <div><label class="block text-[11px] font-bold text-brand-violet">2. கையொப்பம் ✍️ *</label><input type="file" id="fkyc_file_sign" accept="image/*" class="text-[10px]"></div>
+            <div><label class="block text-[11px] font-bold text-brand-violet">3. ஆவணப் படம் 🪪 *</label><input type="file" id="fkyc_file_proof" accept="image/*" class="text-[10px]"></div>
           </div>
         </div>
         <div class="flex justify-end gap-2 pt-2 border-t border-purple-100">
@@ -5874,35 +5874,58 @@
     async function submitFullKycForm() {
       const name = document.getElementById('fkyc_name').value.trim();
       const mobile = document.getElementById('fkyc_mobile').value.trim();
+      const altMobile = document.getElementById('fkyc_alt_mobile').value.trim();
+      const guardian = document.getElementById('fkyc_guardian').value.trim();
       const address = document.getElementById('fkyc_address').value.trim();
       const proofNo = document.getElementById('fkyc_proof_no').value.trim();
+      const ref1Name = document.getElementById('fkyc_ref1_name').value.trim();
+      const ref1Mob = document.getElementById('fkyc_ref1_mob').value.trim();
+      const ref2Name = document.getElementById('fkyc_ref2_name').value.trim();
+      const ref2Mob = document.getElementById('fkyc_ref2_mob').value.trim();
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
 
-      if (!name || !mobile || !address || !proofNo) return alert("முக்கிய விபரங்களை உள்ளிடவும்.");
+      const tenDigitRegex = /^\d{10}$/;
+
+      if (!name || !address || !proofNo) return alert("⚠️ பெயர், முழு முகவரி மற்றும் சான்று எண்ணைக் கட்டாயம் உள்ளிடவும்.");
+      if (!tenDigitRegex.test(mobile)) return alert("⚠️ முதன்மை மொபைல் எண் சரியாக 10 எண்களாக இருக்க வேண்டும்!");
+      if (altMobile && !tenDigitRegex.test(altMobile)) return alert("⚠️ மாற்று மொபைல் எண் சரியாக 10 எண்களாக இருக்க வேண்டும்!");
+      if (!guardian) return alert("⚠️ உறவினர் பெயரைக் கட்டாயம் உள்ளிடவும்!");
+      if (!ref1Name || !tenDigitRegex.test(ref1Mob)) return alert("⚠️ ரெபரன்ஸ் 1 பெயர் மற்றும் 10 இலக்க மொபைல் எண்ணைக் கட்டாயம் உள்ளிடவும்!");
+      if (!ref2Name || !tenDigitRegex.test(ref2Mob)) return alert("⚠️ ரெபரன்ஸ் 2 பெயர் மற்றும் 10 இலக்க மொபைல் எண்ணைக் கட்டாயம் உள்ளிடவும்!");
+
+      const photoInput = document.getElementById('fkyc_file_photo');
+      const signInput = document.getElementById('fkyc_file_sign');
+      const proofInput = document.getElementById('fkyc_file_proof');
+
+      if (!photoInput?.files?.[0]) return alert("📷 வாடிக்கையாளரின் புகைப்படத்தைக் கட்டாயம் இணைக்கவும்!");
+      if (!signInput?.files?.[0]) return alert("✍️ வாடிக்கையாளரின் கையொப்பப் படத்தைக் கட்டாயம் இணைக்கவும்!");
+      if (!proofInput?.files?.[0]) return alert("🪪 அடையாள ஆவணப் படத்தைக் கட்டாயம் இணைக்கவும்!");
 
       const btn = document.getElementById('btnSubmitFullKyc');
       btn.innerText = "சமர்ப்பிக்கப்படுகிறது...";
       btn.disabled = true;
 
-      const photoBase64 = await readFileAsBase64(document.getElementById('fkyc_file_photo'));
-      const signBase64 = await readFileAsBase64(document.getElementById('fkyc_file_sign'));
-      const proofBase64 = await readFileAsBase64(document.getElementById('fkyc_file_proof'));
+      const photoBase64 = await readFileAsBase64(photoInput);
+      const signBase64 = await readFileAsBase64(signInput);
+      const proofBase64 = await readFileAsBase64(proofInput);
 
       const payload = {
         name, mobile, address, branch_id: branchId,
-        alt_mobile: document.getElementById('fkyc_alt_mobile').value.trim() || null,
+        alt_mobile: altMobile || null,
         relation_type: document.getElementById('fkyc_rel_type').value,
-        guardian_name: document.getElementById('fkyc_guardian').value.trim() || null,
+        guardian_name: guardian,
         id_proof_type: document.getElementById('fkyc_proof_type').value,
         id_proof_no: proofNo,
         nominee_name: document.getElementById('fkyc_nominee_name').value.trim() || null,
         nominee_relation: document.getElementById('fkyc_nominee_rel').value.trim() || null,
         nominee_mobile: document.getElementById('fkyc_nominee_mob').value.trim() || null,
-        ref1_name: document.getElementById('fkyc_ref1_name').value.trim() || null,
-        ref1_mobile: document.getElementById('fkyc_ref1_mob').value.trim() || null,
-        ref2_name: document.getElementById('fkyc_ref2_name').value.trim() || null,
-        ref2_mobile: document.getElementById('fkyc_ref2_mob').value.trim() || null,
-        customer_photo: photoBase64, signature_photo: signBase64, id_proof_photo: proofBase64
+        ref1_name: ref1Name,
+        ref1_mobile: ref1Mob,
+        ref2_name: ref2Name,
+        ref2_mobile: ref2Mob,
+        customer_photo: photoBase64,
+        signature_photo: signBase64,
+        id_proof_photo: proofBase64
       };
 
       const res = await fetch('/api/customer/new-full-kyc', {

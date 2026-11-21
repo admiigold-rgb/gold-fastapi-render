@@ -1339,6 +1339,9 @@ def check_otp_exemption_status(visit_id: int = Query(...)):
 # 10. Settle with OTP (+ Automatic Gold Packet Lifecycle & Staff Incentive Integration)
 @app.post("/api/otp/send")
 def trigger_otp_sms(payload: SendOtpPayload):
+    cust_chk = supabase.table("test_customers").select("kyc_status").eq("id", payload.customer_id).execute()
+    if not cust_chk.data or cust_chk.data[0].get("kyc_status") != "VERIFIED":
+        raise HTTPException(status_code=403, detail="⚠️ வாடிக்கையாளரின் KYC சரிபார்ப்பு இன்னும் முடியவில்லை (PENDING)! தலைமையக ஒப்புதலுக்குப் பிறகே OTP அனுப்ப முடியும்.")
     otp_code = str(random.randint(100000, 999999))
     txn_type = "receive" if payload.direction == "COMPANY_PAYABLE" else "pay"
     success, msg = send_fast2sms_otp(payload.mobile, otp_code, payload.customer_name, payload.net_amount, txn_type)

@@ -2680,7 +2680,7 @@ def delete_gold_purity_rate(rate_id: int):
         supabase.table("test_gold_purity_rates").delete().eq("id", rate_id).execute()
         return {"status": "success", "message": "தங்கத் தரம் நீக்கப்பட்டது."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
 # பழைய /api/admin/gold-rate/today அழைப்புகளைப் புதிய அட்டவணையுடன் இணைத்தல்
 @app.get("/api/admin/gold-rate/today")

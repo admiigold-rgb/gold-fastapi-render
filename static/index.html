@@ -11665,7 +11665,6 @@
     const addCartBtn = document.getElementById('btnAddToCart');
     if (!loanInput || !addCartBtn) return;
 
-    // ஏற்கனவே HQ ஒப்புதல் கிடைத்திருந்தால், அனுமதிக்கப்பட்ட தொகைக்கு மேல் போகாமல் தடுத்தல்
     if (activeApprovedDeviationData && activeApprovedDeviationData.status === 'APPROVED') {
       const capAmt = parseFloat(activeApprovedDeviationData.approved_loan_amount || 0);
       let entered = parseFloat(loanInput.value) || 0;
@@ -11707,25 +11706,6 @@
     }
   }
 
-  // change லਿਸனர் பாதுகாப்பாகக் கூடுதல் கடன் நிலையைச் சரிபார்க்கிறது
-  document.addEventListener('DOMContentLoaded', () => {
-    const loanInput = document.getElementById('loan_amount');
-    if (loanInput) {
-      loanInput.addEventListener('input', refreshDeviationUiState);
-      loanInput.addEventListener('change', (e) => {
-        if (activeApprovedDeviationData && activeApprovedDeviationData.status === 'APPROVED') {
-          refreshDeviationUiState();
-          return;
-        }
-        let entered = parseFloat(e.target.value) || 0;
-        if (maxEligibleLoanAmount > 0 && entered > maxEligibleLoanAmount) {
-          // கூடுதல் கடன் ஒப்புதலுக்குச் செல்ல அனுமதிக்கிறது
-          refreshDeviationUiState();
-        }
-      });
-    }
-  });
-
   const _origCalcEligible = calculateEligibleLoanAmount;
   calculateEligibleLoanAmount = function() {
     _origCalcEligible();
@@ -11756,9 +11736,10 @@
     const photoBase64 = await readFileAsBase64(ornamentInput);
     const totGross = ornamentList.reduce((s, x) => s + (parseFloat(x.gross_weight) || 0), 0);
     const totNet = ornamentList.reduce((s, x) => s + (parseFloat(x.net_weight) || 0), 0);
+    const custId = activeCustomer.id;
 
     const payload = {
-      customer_id: activeCustomer.id,
+      customer_id: custId,
       branch_id: parseInt(document.getElementById('active_branch_id')?.value) || 1,
       visit_id: activeVisitId,
       loan_no: document.getElementById('loan_no')?.value.trim() || '',
@@ -11783,19 +11764,16 @@
     const out = await res.json();
     if (!res.ok) return alert("❌ பிழை: " + (out.detail || "கோரிக்கை அனுப்ப முடியவில்லை"));
 
-    const devId = out.data?.id;
+    const devId = out.data?.id || null;
     alert("✅ கூடுதல் கடன் ஒப்புதல் கோரிக்கை தலைமையகத்திற்கு அனுப்பப்பட்டது!\nவாடிக்கையாளர் கணக்கு தானாகவே நிறுத்தி வைக்கப்படுகிறது (Auto-Hold).");
 
-    // Hold பட்டியலில் deviation_id சேமித்து வைத்தல்
     holdCurrentCustomerDraft("WAITING_HQ");
-    if (devId && activeCustomer?.id) {
-      let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
-      drafts = drafts.map(d => d.customer.id === payload.customer_id ? { ...d, loan_deviation_id: devId } : d);
-      localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
-    }
+    let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
+    drafts = drafts.map(d => d.customer.id === custId ? { ...d, loan_deviation_id: devId } : d);
+    localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
+    if (typeof renderHeldDraftsBar === 'function') renderHeldDraftsBar();
   }
 
-  // HQ ஒப்புதல் வந்ததும் தொகையைத் தானாகப் பூட்டுதல்
   const _origRestoreDraftForDev = restoreCustomerDraft;
   restoreCustomerDraft = function(customerId) {
     let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
@@ -11823,10 +11801,10 @@
     }
   };
 
-  // பின்னணியில் கூடுதல் கடன் ஒப்புதல் நிலையைக் கவனித்தல்
-  setInterval(async () => {
+  async function pollLoanDeviationApprovalsOnce() {
     let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
     let changed = false;
+
     for (let d of drafts) {
       if (d.exemption_status === 'WAITING_HQ' && d.loan_deviation_id) {
         try {
@@ -11847,13 +11825,16 @@
         } catch (e) {}
       }
     }
+
     if (changed) {
       localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
       if (typeof renderHeldDraftsBar === 'function') renderHeldDraftsBar();
     }
-  }, 5000);
+  }
 
-  // தலைமையகத்தில் கூடுதல் கடன் கோரிக்கைகளை ஏற்றுதல் & எடிட் செய்து ஒப்புதல் அளித்தல்
+  setInterval(pollLoanDeviationApprovalsOnce, 4000);
+  document.addEventListener('DOMContentLoaded', () => setTimeout(pollLoanDeviationApprovalsOnce, 1500));
+
   async function loadPendingLoanDeviationsHQ() {
     const tbody = document.getElementById('hqLoanDeviationTableBody');
     if (!tbody) return;
@@ -11942,7 +11923,6 @@
     }
   }
 
-  // தலைமையக ஒப்புதல்கள் பக்கம் திறக்கும்போது கூடுதல் கடன் கோரிக்கைகளையும் தானாக ஏற்றுதல்
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (btn && (btn.innerText.includes('தலைமையக ஒப்புதல்கள்') || btn.innerText.includes('புதுப்பி'))) {

@@ -1538,6 +1538,7 @@ def settle_with_otp(data: SettleWithOtpPayload):
         if target_visit_id:
             supabase.table("test_customer_visits").update({
                 "status": "PENDING_HQ",
+                "transaction_date": txn_date,
                 "net_amount": data.net_amount,
                 "cash_amount": data.cash_amount,
                 "bank_amount": data.bank_amount,
@@ -4350,7 +4351,7 @@ def get_counter_hq_approval_status(branch_id: int = 1, date_str: Optional[str] =
                 st = str(v.get("status") or "").strip().upper()
                 if st not in ["PENDING_HQ", "PENDING", "PENDING_APPROVAL", "REJECTED"]:
                     continue
-                if not row_matches_date(v):
+                if st == "REJECTED" and not row_matches_date(v):
                     continue
                 c_name = c_map.get(v.get("customer_id"), f"வாடிக்கையாளர் #{v.get('customer_id')}")
                 summary = (v.get("actions_summary") or "வாடிக்கையாளர் வருகை").strip()

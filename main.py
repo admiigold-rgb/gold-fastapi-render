@@ -1993,14 +1993,30 @@ def get_gold_packets(branch_id: Optional[int] = None, role: str = "BRANCH"):
         br_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute()
         b_map = {b["id"]: b for b in (br_res.data or [])}
 
-        query = supabase.table("test_gold_packets").select("*")
+        # ரத்து செய்யப்பட்ட (CANCELLED) கடன்களின் எண்களைப் பெற்று, ரத்து செய்யப்பட்ட பாக்கெட்டுகளை மறைத்தல்
+        cancelled_loan_nos = set()
+        try:
+            c_loans = supabase.table("test_gold_loans").select("loan_no, status").eq("status", "CANCELLED").execute().data or []
+            for cl in c_loans:
+                if cl.get("loan_no"):
+                    cancelled_loan_nos.add(str(cl["loan_no"]).strip().upper())
+        except Exception:
+            pass
+
+        query = supabase.table("test_gold_packets").select("*").neq("packet_status", "CANCELLED")
         if role != "HQ" and branch_id:
             query = query.eq("branch_id", branch_id)
         res = query.order("updated_at", desc=True).execute()
-        packets = res.data or []
-        for p in packets:
+
+        packets = []
+        for p in (res.data or []):
+            lno_clean = str(p.get("loan_no") or "").strip().upper()
+            if lno_clean in cancelled_loan_nos:
+                continue
             p["test_customers"] = c_map.get(p.get("customer_id"), {"name": "-", "mobile": "-"})
             p["test_branches"] = b_map.get(p.get("branch_id"), {"branch_name": "-", "branch_code": "BR"})
+            packets.append(p)
+
         return {"status": "success", "data": packets}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

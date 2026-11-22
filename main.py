@@ -4439,3 +4439,173 @@ def get_counter_hq_approval_status(branch_id: int = 1, date_str: Optional[str] =
         return {"status": "success", "pending": pending, "rejected": rejected}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# 🪙 கூடுதல் கடன் தொகை ஒப்புதல் (LTV Deviation Approval) APIs
+# ==============================================================================
+class LoanDeviationRequestPayload(BaseModel):
+    customer_id: int
+    branch_id: int = 1
+    visit_id: Optional[int] = None
+    loan_no: Optional[str] = None
+    scheme_name: Optional[str] = None
+    total_gross_weight: float = 0.0
+    total_net_weight: float = 0.0
+    gold_market_value: float = 0.0
+    eligible_loan_amount: float = 0.0
+    requested_loan_amount: float = 0.0
+    extra_per_gram: float = 0.0
+    ornaments: Optional[List[Dict[str, Any]]] = []
+    ornament_photo: Optional[str] = None
+    reason: str
+    requested_by: Optional[int] = 1
+
+
+class LoanDeviationDecisionPayload(BaseModel):
+    deviation_id: int
+    action: str  # "APPROVE" or "REJECT"
+    approved_loan_amount: Optional[float] = None
+    admin_id: int = 1
+    hq_notes: Optional[str] = None
+
+
+@app.post("/api/loan/request-deviation")
+def request_loan_deviation(payload: LoanDeviationRequestPayload):
+    try:
+        req_amt = float(payload.requested_loan_amount or 0)
+        elig_amt = float(payload.eligible_loan_amount or 0)
+        if req_amt <= 0:
+            raise HTTPException(status_code=400, detail="சரியான கடன் தொகையை உள்ளிடவும்.")
+        if not payload.reason or not payload.reason.strip():
+            raise HTTPException(status_code=400, detail="கூடுதல் கடன் கோருவதற்கான காரணத்தை உள்ளிடவும்.")
+
+        net_wt = float(payload.total_net_weight or 0)
+        extra_diff = max(0.0, req_amt - elig_amt)
+        calc_extra_per_g = float(payload.extra_per_gram or 0)
+        if calc_extra_per_g <= 0 and net_wt > 0 and extra_diff > 0:
+            calc_extra_per_g = round(extra_diff / net_wt, 2)
+
+        now_ist = datetime.now(IST).isoformat()
+        rec = {
+            "customer_id": payload.customer_id,
+            "branch_id": payload.branch_id or 1,
+            "visit_id": payload.visit_id,
+            "loan_no": (payload.loan_no or "").strip(),
+            "scheme_name": (payload.scheme_name or "").strip(),
+            "total_gross_weight": round(float(payload.total_gross_weight or 0), 3),
+            "total_net_weight": round(net_wt, 3),
+            "gold_market_value": round(float(payload.gold_market_value or 0), 2),
+            "eligible_loan_amount": round(elig_amt, 2),
+            "requested_loan_amount": round(req_amt, 2),
+            "extra_per_gram": calc_extra_per_g,
+            "approved_loan_amount": 0.0,
+            "ornaments_json": payload.ornaments or [],
+            "ornament_photo": payload.ornament_photo,
+            "reason": payload.reason.strip(),
+            "status": "PENDING",
+            "requested_by": payload.requested_by or 1,
+            "created_at": now_ist,
+        }
+
+        res = supabase.table("test_loan_deviation_approvals").insert(rec).execute()
+        dev_row = res.data[0] if res.data else {}
+        return {
+            "status": "success",
+            "message": "கூடுதல் கடன் ஒப்புதல் கோரிக்கை தலைமையகத்திற்கு அனுப்பப்பட்டது!",
+            "data": dev_row,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கூடுதல் கடன் கோரிக்கை பிழை: {str(e)}")
+
+
+@app.get("/api/hq/pending-loan-deviations")
+def get_pending_loan_deviations():
+    try:
+        cust_res = supabase.table("test_customers").select("id, name, mobile, id_proof_no, customer_photo").execute().data or []
+        c_map = {c["id"]: c for c in cust_res}
+
+        br_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute().data or []
+        b_map = {b["id"]: b for b in br_res}
+
+        st_res = supabase.table("test_staff_users").select("id, full_name").execute().data or []
+        s_map = {s["id"]: s.get("full_name", "-") for s in st_res}
+
+        rows = (
+            supabase.table("test_loan_deviation_approvals")
+            .select("*")
+            .eq("status", "PENDING")
+            .order("id", desc=True)
+            .execute()
+            .data
+            or []
+        )
+
+        for r in rows:
+            c = c_map.get(r.get("customer_id"), {})
+            b = b_map.get(r.get("branch_id"), {})
+            r["customer_name"] = c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}")
+            r["customer_mobile"] = c.get("mobile", "-")
+            r["customer_proof_no"] = c.get("id_proof_no", "-")
+            r["branch_name"] = b.get("branch_name", f"கிளை #{r.get('branch_id')}")
+            r["requested_by_name"] = s_map.get(r.get("requested_by"), "-")
+
+        return {"status": "success", "data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கூடுதல் கடன் பட்டியல் பிழை: {str(e)}")
+
+
+@app.get("/api/loan/deviation-status/{deviation_id}")
+def get_loan_deviation_status(deviation_id: int):
+    try:
+        res = supabase.table("test_loan_deviation_approvals").select("*").eq("id", deviation_id).execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="கோரிக்கை விபரம் கிடைக்கவில்லை.")
+        return {"status": "success", "data": res.data[0]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/hq/approve-loan-deviation")
+def approve_loan_deviation(payload: LoanDeviationDecisionPayload):
+    try:
+        res = supabase.table("test_loan_deviation_approvals").select("*").eq("id", payload.deviation_id).execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="கூடுதல் கடன் கோரிக்கை கிடைக்கவில்லை.")
+        dev_row = res.data[0]
+        now_ist = datetime.now(IST).isoformat()
+
+        if payload.action != "APPROVE":
+            supabase.table("test_loan_deviation_approvals").update({
+                "status": "REJECTED",
+                "approved_loan_amount": 0.0,
+                "approved_by": payload.admin_id,
+                "hq_notes": payload.hq_notes or "தலைமையகத்தால் நிராகரிக்கப்பட்டது",
+                "approved_at": now_ist,
+            }).eq("id", payload.deviation_id).execute()
+            return {"status": "success", "message": "கூடுதல் கடன் கோரிக்கை நிராகரிக்கப்பட்டது."}
+
+        edited_amt = float(payload.approved_loan_amount if payload.approved_loan_amount is not None else dev_row.get("requested_loan_amount") or 0)
+        if edited_amt <= 0:
+            raise HTTPException(status_code=400, detail="அனுமதிக்கும் கடன் தொகை ₹0-க்கு மேல் இருக்க வேண்டும்.")
+
+        supabase.table("test_loan_deviation_approvals").update({
+            "status": "APPROVED",
+            "approved_loan_amount": round(edited_amt, 2),
+            "approved_by": payload.admin_id,
+            "hq_notes": payload.hq_notes or "தலைமையகத்தால் தொகை சரிபார்க்கப்பட்டு அனுமதிக்கப்பட்டது",
+            "approved_at": now_ist,
+        }).eq("id", payload.deviation_id).execute()
+
+        return {
+            "status": "success",
+            "message": f"✅ ₹{edited_amt:,.2f} கடன் தொகைக்குத் தலைமையக ஒப்புதல் வழங்கப்பட்டது!",
+            "approved_loan_amount": round(edited_amt, 2),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"கூடுதல் கடன் ஒப்புதல் பிழை: {str(e)}")

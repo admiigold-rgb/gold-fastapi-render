@@ -281,7 +281,7 @@
             <h3 class="text-sm font-extrabold text-amber-950 flex items-center gap-2">
               <span>📋</span> நடப்பில் உள்ள அடமானக் கடன்கள் (Active Loans)
             </h3>
-            <button type="button" onclick="loadCustomerActiveLoans()" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-950 px-3 py-1 rounded-lg font-bold transition">புதுப்பி 🔄</button>
+            <button type="button" onclick="loadCustomerActiveLoans(true)" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-950 px-3 py-1 rounded-lg font-bold transition">புதுப்பி 🔄</button>
           </div>
           <div id="activeLoansListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <p class="text-xs text-slate-400 col-span-2 text-center py-4">நடப்புக் கடன்கள் ஏற்றப்படுகின்றன...</p>
@@ -6287,20 +6287,38 @@
     let customerActiveLoansCache = [];
     let currentRepayLoanObj = null;
 
-    async function loadCustomerActiveLoans() {
+    async function loadCustomerActiveLoans(forceRefresh = false) {
       const container = document.getElementById('activeLoansListContainer');
       if (!container || !activeCustomer) return;
 
-      container.innerHTML = `<p class="text-xs text-brand-violet font-bold col-span-2 text-center py-4">நடப்புக் கடன்கள் ஏற்றப்படுகின்றன...</p>`;
+      // ⚡ ஏற்கனவே இதே வாடிக்கையாளரின் கடன்கள் லோட் ஆகியிருந்தால் மீண்டும் சர்வரில் தேடாமல் உடனே காட்டுதல்
+      const alreadyLoaded = (
+        !forceRefresh &&
+        window._loansLoadedForCustId === activeCustomer.id &&
+        Array.isArray(customerActiveLoansCache)
+      );
+
+      if (!alreadyLoaded) {
+        container.innerHTML = `<p class="text-xs text-brand-violet font-bold col-span-2 text-center py-4">நடப்புக் கடன்கள் ஏற்றப்படுகின்றன...</p>`;
+      }
 
       try {
-        const res = await fetch(`/api/customer/${activeCustomer.id}/active-loans`);
-        const result = await res.json();
-        customerActiveLoansCache = result.data || [];
+        if (!alreadyLoaded) {
+          const res = await fetch(`/api/customer/${activeCustomer.id}/active-loans`);
+          const result = await res.json();
+          customerActiveLoansCache = result.data || [];
+          window._loansLoadedForCustId = activeCustomer.id;
+        }
 
-        if (customerActiveLoansCache.length === 0) {
-          container.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-4">இந்த வாடிக்கையாளருக்கு நடப்பில் அடமானக் கடன்கள் எதுவும் இல்லை.</p>`;
-          return;
+        // கடன்கள் எண்ணிக்கை பேட்ஜை உடனே புதுப்பித்தல்
+        const loanBadge = document.getElementById('qbadge_loans');
+        if (loanBadge) {
+          if (customerActiveLoansCache.length > 0) {
+            loanBadge.innerText = customerActiveLoansCache.length;
+            loanBadge.classList.remove('hidden');
+          } else {
+            loanBadge.classList.add('hidden');
+          }
         }
 
         container.innerHTML = customerActiveLoansCache.map(loan => {
@@ -9064,13 +9082,19 @@
   async function updateCustomerActionBadges(customerId) {
     if (!customerId) return;
     try {
-      const [lRes, gRes, rRes, sRes] = await Promise.all([
-        fetch(`/api/customer/${customerId}/active-loans`).then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`/api/customer/${customerId}/gss-accounts`).then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`/api/customer/${customerId}/rd-accounts`).then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`/api/customer/${customerId}/si-accounts`).then(r => r.json()).catch(() => ({ data: [] }))
-      ]);
+      // ⚡ ஏற்கனவே loadCustomerActiveLoans() எடுத்த தரவைப் பயன்படுத்துதல் (மீண்டும் சர்வரில் கேட்காது)
+      const loansCount = (window._loansLoadedForCustId === customerId && Array.isArray(customerActiveLoansCache))
+        ? customerActiveLoansCache.length
+        : 0;
 
+      // நடப்பில் கடன்கள் இருந்தால் உடனே அதைக் காட்டும்; இல்லையென்றால் புதிய அடகு படிவத்தைத் திறக்கும்
+      if (loansCount > 0) {
+        switchCounterActionPanel('active_loans');
+      } else {
+        switchCounterActionPanel('new_pawn');
+      }
+
+      // GSS, RD, SI எண்ணிக்கைகளைப் பின்னணியில் மெதுவாக (திரையைத் தடுக்காமல்) புதுப்பித்தல்
       const setBadge = (id, count) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -9082,22 +9106,21 @@
         }
       };
 
-      setBadge('qbadge_loans', (lRes.data || []).length);
-      setBadge('qbadge_gss', (gRes.data || []).length);
-      setBadge('qbadge_rd', (rRes.data || []).length);
-      setBadge('qbadge_si', (sRes.data || []).length);
+      setBadge('qbadge_loans', loansCount);
 
-      // நடப்பில் கடன்கள் இருந்தால் அதை முதலில் காட்டும்; இல்லையென்றால் புதிய அடகு படிவத்தைத் திறக்கும்
-      if ((lRes.data || []).length > 0) {
-        switchCounterActionPanel('active_loans');
-      } else {
-        switchCounterActionPanel('new_pawn');
-      }
+      Promise.all([
+        fetch(`/api/customer/${customerId}/gss-accounts`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`/api/customer/${customerId}/rd-accounts`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`/api/customer/${customerId}/si-accounts`).then(r => r.json()).catch(() => ({ data: [] }))
+      ]).then(([gRes, rRes, sRes]) => {
+        setBadge('qbadge_gss', (gRes.data || []).length);
+        setBadge('qbadge_rd', (rRes.data || []).length);
+        setBadge('qbadge_si', (sRes.data || []).length);
+      });
     } catch (e) {
       switchCounterActionPanel('active_loans');
     }
   }
-
   // வாடிக்கையாளரைத் தேர்ந்தெடுக்கும்போதும், ஹோல்டில் இருந்து எடுக்கும்போதும், ரீஃப்ரெஷ் செய்யும்போதும் தானாக இணைத்தல்
   const _origSelectCustomer = selectCustomer;
   selectCustomer = async function(cust) {

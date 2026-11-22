@@ -5530,9 +5530,11 @@
       loadPendingGssBenefitsHQ();
       loadPendingSiApprovalsHQ();
       if (typeof loadPendingRdBenefitsHQ === 'function') loadPendingRdBenefitsHQ();
-  
+
       try {
         const res = await fetch('/api/hq/all-pending-approvals?t=' + Date.now());
+        const data = await res.json();
+        window.latestHqApprovalsData = data;
 
         // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல் பட்டியல்
         const vBody = document.getElementById('pendingVisitsTableBody');

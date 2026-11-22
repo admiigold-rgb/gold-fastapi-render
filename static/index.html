@@ -10286,77 +10286,113 @@
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  async function loadIncentiveReportData() {
-    closeStaffDetailedLedger();
-    const fDate = document.getElementById('inc_from_date').value;
-    const tDate = document.getElementById('inc_to_date').value;
-    const bId = document.getElementById('inc_branch_filter').value || 0;
+  function switchIncentiveTab(tab) {
+    if (typeof closeStaffDetailedLedger === 'function') closeStaffDetailedLedger();
+    const repSec = document.getElementById('incReportSection');
+    const setSec = document.getElementById('incSettingsSection');
+    const btnRep = document.getElementById('tabBtnIncReport');
+    const btnSet = document.getElementById('tabBtnIncSettings');
 
-    const res = await fetch(`/api/incentive/report?from_date=${fDate}&to_date=${tDate}&branch_id=${bId}`);
-    const out = await res.json();
-    const rows = out.data || [];
-    lastIncentiveRowsCache = rows;
-
-    const staffMap = new Map();
-    rows.forEach(r => {
-      const sid = r.staff_id;
-      const sName = r.test_staff_users?.full_name || `Staff #${sid}`;
-      if (!staffMap.has(sid)) {
-        staffMap.set(sid, {
-          staffId: sid,
-          name: sName,
-          isActive: r.test_staff_users?.is_active !== false,
-          isMgr: r.test_staff_users?.is_branch_manager === true,
-          directPts: 0,
-          walkinPts: 0,
-          minusPts: 0,
-          netPts: 0,
-          totalAmt: 0
-        });
-      }
-      const item = staffMap.get(sid);
-      const pts = parseFloat(r.points || 0);
-      const amt = parseFloat(r.incentive_amount || 0);
-
-      if (pts < 0) {
-        item.minusPts += pts;
-      } else if (r.source_type === 'DIRECT') {
-        item.directPts += pts;
-      } else {
-        item.walkinPts += pts;
-      }
-      item.netPts += pts;
-      item.totalAmt += amt;
-    });
-
-    const tbody = document.getElementById('incSummaryTbody');
-    if (staffMap.size === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-bold">இந்தத் தேதிகளில் இன்சென்டிவ் பதிவுகள் ஏதுமில்லை</td></tr>`;
-      return;
+    if (tab === 'REPORT') {
+      if (repSec) { repSec.classList.remove('hidden'); repSec.style.display = 'block'; }
+      if (setSec) { setSec.classList.add('hidden'); setSec.style.display = 'none'; }
+      if (btnRep) btnRep.className = "px-4 py-1.5 rounded-xl bg-brand-violet text-white font-black cursor-pointer";
+      if (btnSet) btnSet.className = "px-4 py-1.5 rounded-xl bg-amber-100 text-amber-950 font-bold cursor-pointer";
+      loadIncentiveReportData();
+    } else {
+      if (setSec) { setSec.classList.remove('hidden'); setSec.style.display = 'block'; }
+      if (repSec) { repSec.classList.add('hidden'); repSec.style.display = 'none'; }
+      if (btnSet) btnSet.className = "px-4 py-1.5 rounded-xl bg-brand-violet text-white font-black cursor-pointer";
+      if (btnRep) btnRep.className = "px-4 py-1.5 rounded-xl bg-amber-100 text-amber-950 font-bold cursor-pointer";
+      if (typeof loadIncentiveSettingsForm === 'function') loadIncentiveSettingsForm();
     }
+  }
 
-    tbody.innerHTML = Array.from(staffMap.values()).map(s => {
-      const safeName = (s.name || '').replace(/'/g, "\\'");
-      return `
-        <tr class="hover:bg-purple-50/60">
-          <td class="p-2.5">
-            <button type="button" onclick="openStaffDetailedLedger(${s.staffId}, '${safeName}')" title="விரிவான பரிவர்த்தனை பட்டியலைப் பார்க்க கிளிக் செய்யவும்" class="font-black text-brand-violet hover:underline text-left cursor-pointer flex items-center gap-1">
-              <span>${s.name}</span>
-              <span class="text-[10px] bg-purple-100 text-purple-900 px-1.5 py-0.5 rounded font-bold">📜 விவரம்</span>
-            </button>
-          </td>
-          <td class="p-2.5">
-            ${s.isMgr ? '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px]">👑 கிளை மேலாளர்</span>' : '<span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold text-[10px]">👤 பணியாளர்</span>'}
-            ${s.isActive ? '<span class="ml-1 text-[10px] text-emerald-700 font-bold">● Active</span>' : '<span class="ml-1 text-[10px] text-rose-600 font-bold">● Inactive</span>'}
-          </td>
-          <td class="p-2.5 text-right font-mono font-bold text-indigo-700">+${s.directPts.toFixed(2)}</td>
-          <td class="p-2.5 text-right font-mono font-bold text-purple-700">+${s.walkinPts.toFixed(2)}</td>
-          <td class="p-2.5 text-right font-mono font-bold text-rose-600">${s.minusPts.toFixed(2)}</td>
-          <td class="p-2.5 text-right font-mono font-black text-slate-900">${s.netPts.toFixed(2)}</td>
-          <td class="p-2.5 text-right font-mono font-black text-emerald-700 text-sm">₹ ${s.totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        </tr>
-      `;
-    }).join('');
+  async function loadIncentiveReportData() {
+    if (typeof closeStaffDetailedLedger === 'function') closeStaffDetailedLedger();
+    const fDate = document.getElementById('inc_from_date')?.value || '';
+    const tDate = document.getElementById('inc_to_date')?.value || '';
+    const bId = document.getElementById('inc_branch_filter')?.value || 0;
+    const tbody = document.getElementById('incSummaryTbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-brand-violet font-bold">அறிக்கை ஏற்றப்படுகிறது...</td></tr>`;
+
+    try {
+      const res = await fetch(`/api/incentive/report?from_date=${encodeURIComponent(fDate)}&to_date=${encodeURIComponent(tDate)}&branch_id=${encodeURIComponent(bId)}&t=${Date.now()}`);
+      const out = await res.json();
+      if (!res.ok) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-rose-600 font-bold">❌ ${out.detail || 'அறிக்கை எடுப்பதில் பிழை'}</td></tr>`;
+        return;
+      }
+
+      const rows = out.data || [];
+      if (typeof lastIncentiveRowsCache !== 'undefined') {
+        lastIncentiveRowsCache = rows;
+      }
+
+      const staffMap = new Map();
+      rows.forEach(r => {
+        const sid = r.staff_id;
+        const sName = r.test_staff_users?.full_name || `Staff #${sid}`;
+        if (!staffMap.has(sid)) {
+          staffMap.set(sid, {
+            staffId: sid,
+            name: sName,
+            isActive: r.test_staff_users?.is_active !== false,
+            isMgr: r.test_staff_users?.is_branch_manager === true,
+            directPts: 0,
+            walkinPts: 0,
+            minusPts: 0,
+            netPts: 0,
+            totalAmt: 0
+          });
+        }
+        const item = staffMap.get(sid);
+        const pts = parseFloat(r.points || 0);
+        const amt = parseFloat(r.incentive_amount || 0);
+
+        if (pts < 0) {
+          item.minusPts += pts;
+        } else if (r.source_type === 'DIRECT') {
+          item.directPts += pts;
+        } else {
+          item.walkinPts += pts;
+        }
+        item.netPts += pts;
+        item.totalAmt += amt;
+      });
+
+      if (staffMap.size === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400 font-bold">இந்தத் தேதிகளில் இன்சென்டிவ் பதிவுகள் ஏதுமில்லை (பரிவர்த்தனைகள் முடிந்தவுடன் புள்ளிகள் இங்கே பதிவாகும்)</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = Array.from(staffMap.values()).map(s => {
+        const safeName = (s.name || '').replace(/'/g, "\\'");
+        return `
+          <tr class="hover:bg-purple-50/60">
+            <td class="p-2.5">
+              <button type="button" onclick="openStaffDetailedLedger(${s.staffId}, '${safeName}')" title="விரிவான பரிவர்த்தனை பட்டியலைப் பார்க்க கிளிக் செய்யவும்" class="font-black text-brand-violet hover:underline text-left cursor-pointer flex items-center gap-1">
+                <span>${s.name}</span>
+                <span class="text-[10px] bg-purple-100 text-purple-900 px-1.5 py-0.5 rounded font-bold">📜 விவரம்</span>
+              </button>
+            </td>
+            <td class="p-2.5">
+              ${s.isMgr ? '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold text-[10px]">👑 கிளை மேலாளர்</span>' : '<span class="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-bold text-[10px]">👤 பணியாளர்</span>'}
+              ${s.isActive ? '<span class="ml-1 text-[10px] text-emerald-700 font-bold">● Active</span>' : '<span class="ml-1 text-[10px] text-rose-600 font-bold">● Inactive</span>'}
+            </td>
+            <td class="p-2.5 text-right font-mono font-bold text-indigo-700">+${s.directPts.toFixed(2)}</td>
+            <td class="p-2.5 text-right font-mono font-bold text-purple-700">+${s.walkinPts.toFixed(2)}</td>
+            <td class="p-2.5 text-right font-mono font-bold text-rose-600">${s.minusPts.toFixed(2)}</td>
+            <td class="p-2.5 text-right font-mono font-black text-slate-900">${s.netPts.toFixed(2)}</td>
+            <td class="p-2.5 text-right font-mono font-black text-emerald-700 text-sm">₹ ${s.totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-rose-600 font-bold">❌ பிழை: ${err.message}</td></tr>`;
+    }
   }
 </script>
 

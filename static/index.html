@@ -10765,17 +10765,51 @@
     if (list.length === 0) {
       rowsHtml = `<p class="p-6 text-center text-slate-400 font-bold">இந்தப் பிரிவில் வருகைகள் ஏதுமில்லை</p>`;
     } else {
-      rowsHtml = list.map(v => `
-        <div class="p-3 rounded-2xl border-2 border-teal-200 bg-teal-50/30 flex flex-wrap justify-between items-center gap-2">
-          <div>
-            <span class="font-mono font-black text-brand-violet">#VIS-${v.id}</span> | <b>${v.transaction_date}</b> | <b>${v.customer_name}</b> (${v.customer_mobile})
-            <p class="text-[11px] text-slate-600 mt-0.5">${v.actions_summary || '-'}</p>
+      rowsHtml = list.map(v => {
+        let rightActionHtml = '';
+
+        if (currentBrDocStatus === 'AUDITED') {
+          // ✅ முடிந்தவை: ஆவணங்கள் திற பட்டன் இல்லை; சரிபார்க்கப்பட்டது & யாரால் என்பது மட்டும்
+          const auditorName = v.audited_by_name || v.auditor_name || 'அகத்தணிக்கையர்';
+          rightActionHtml = `
+            <div class="px-3 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-950 font-black text-xs text-right">
+              ✅ சரிபார்க்கப்பட்டது
+              <span class="block text-[10px] font-bold text-emerald-800">சரிபார்த்தவர்: ${auditorName}</span>
+            </div>
+          `;
+        } else if (currentBrDocStatus === 'AUDIT_PENDING') {
+          // 🔒 தணிக்கை ஆய்வில்: பட்டன் ஃப்ரீஸ் (Disabled)
+          rightActionHtml = `
+            <button type="button" disabled style="background-color:#94a3b8;color:#ffffff;opacity:0.6;cursor:not-allowed;" class="px-3.5 py-1.5 rounded-xl font-black text-xs">
+              🔒 தணிக்கை ஆய்வில் (${v.doc_count || 0})
+            </button>
+          `;
+        } else if (currentBrDocStatus === 'QUERY_RAISED') {
+          // ❓ கேள்வி எழுப்பப்பட்டவை: குறிப்பிட்ட ஆவணத்தை மட்டும் திறந்து அப்டேட் செய்ய
+          rightActionHtml = `
+            <button type="button" onclick="openSingleVisitDocsForm(${v.id}, 'BRANCH')" style="background-color:#e11d48;color:#fff;" class="px-3.5 py-1.5 rounded-xl font-black cursor-pointer shadow">
+              ❓ கேள்விக்குப் பதில் / பதிவேற்று (${v.doc_count || 0})
+            </button>
+          `;
+        } else {
+          // 📎 ஆவணம் இணைக்காதவை: வழக்கமான பட்டன்
+          rightActionHtml = `
+            <button type="button" onclick="openSingleVisitDocsForm(${v.id}, 'BRANCH')" style="background-color:#0d9488;color:#fff;" class="px-3.5 py-1.5 rounded-xl font-black cursor-pointer">
+              📤 ஆவணங்கள் திற (${v.doc_count || 0})
+            </button>
+          `;
+        }
+
+        return `
+          <div class="p-3 rounded-2xl border-2 border-teal-200 bg-teal-50/30 flex flex-wrap justify-between items-center gap-2">
+            <div>
+              <span class="font-mono font-black text-brand-violet">#VIS-${v.id}</span> | <b>${v.transaction_date}</b> | <b>${v.customer_name}</b> (${v.customer_mobile})
+              <p class="text-[11px] text-slate-600 mt-0.5">${v.actions_summary || '-'}</p>
+            </div>
+            ${rightActionHtml}
           </div>
-          <button type="button" onclick="openSingleVisitDocsForm(${v.id}, 'BRANCH')" style="background-color:#0d9488;color:#fff;" class="px-3.5 py-1.5 rounded-xl font-black cursor-pointer">
-            📤 ஆவணங்கள் திற (${v.doc_count || 0})
-          </button>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     container.innerHTML = tabsHtml + `<div class="space-y-2 max-h-[55vh] overflow-y-auto">${rowsHtml}</div>`;
@@ -10912,17 +10946,22 @@
               const isQuery = d.doc_status === 'QUERY';
 
               if (mode === 'BRANCH') {
+                // கேள்வி எழுப்பப்பட்ட வருகையில், தணிக்கையர் கேள்வி எழுப்பிய குறிப்பிட்ட ஆவணத்தை மட்டும் Upload செய்ய அனுமதித்தல்
+                const isQueryVisit = (visit.audit_status === 'QUERY_RAISED');
+                const canUploadThisDoc = isQueryVisit ? isQuery : !isApproved;
+
                 return `
                   <div class="p-3 rounded-xl border ${isQuery ? 'border-rose-400 bg-rose-50/50' : 'border-slate-200 bg-slate-50'} space-y-2">
                     <div class="flex justify-between items-center">
                       <span class="font-bold text-slate-900">${idx + 1}. ${d.document_name}</span>
                       ${isApproved ? '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-900 rounded font-bold">✅ தணிக்கையர் அனுமதித்தார்</span>'
-                        : (hasFile ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold">📎 இணைக்கப்பட்டுள்ளது</span>'
-                        : '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold">⚠️ இணைக்கப்படவில்லை</span>')}
+                        : (isQuery ? '<span class="px-2 py-0.5 bg-rose-100 text-rose-900 rounded font-black">❓ தணிக்கையர் கேள்வி</span>'
+                        : (hasFile ? '<span class="px-2 py-0.5 bg-indigo-100 text-indigo-900 rounded font-bold">🔒 இணைக்கப்பட்டுள்ளது (மாற்ற முடியாது)</span>'
+                        : '<span class="px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-bold">⚠️ இணைக்கப்படவில்லை</span>'))}
                     </div>
                     ${isQuery ? `<div class="p-2 bg-rose-100 text-rose-950 rounded-lg font-bold">❓ தணிக்கையர் கேள்வி: ${d.auditor_query}</div>` : ''}
                     ${hasFile ? `<button type="button" onclick="previewDocImage('${d.doc_file_url}')" class="text-blue-700 font-bold underline cursor-pointer">👁️ இணைத்த ஆவணத்தைப் பார்</button>` : ''}
-                    ${!isApproved ? `
+                    ${canUploadThisDoc ? `
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                         <input type="file" id="br_doc_file_${d.id}" accept="image/*" class="text-xs bg-white p-1.5 rounded-xl border">
                         <input type="text" id="br_doc_reply_${d.id}" value="${d.branch_reply || ''}" placeholder="கிளை குறிப்பு / கேள்விக்கான பதில்..." class="border p-2 rounded-xl bg-white">

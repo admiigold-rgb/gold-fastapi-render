@@ -2795,7 +2795,7 @@
       fetchAndSetupPurityDropdown();
       initTxnDate();
       renderHeldDraftsBar();
-      if (typeof populateBusinessSourceDropdowns === 'function') populateBusinessSourceDropdowns();
+      if (typeof populateBusinessSourceDropdowns === 'function') populateBusinessSourceDropdowns(true);
       restoreActiveSessionOnLoad();
       
       if (user.permissions?.can_manage_users === true) {
@@ -10132,18 +10132,76 @@
 </div>
 
 <script>
-  async function populateBusinessSourceDropdowns() {
-    try {
-      const res = await fetch('/api/admin/staff/staff');
-      const out = await res.json();
-      const activeStaff = (out.data || []).filter(s => s.is_active !== false);
-      const optsHtml = `<option value="0">🚶 Walk-in (கிளைப் பொது வாடிக்கையாளர் - குழுப் பகிர்வு)</option>` +
-        activeStaff.map(s => `<option value="${s.id}">👤 ${s.full_name} (${s.test_branches?.branch_name || 'Staff'}) - 100% நேரடி</option>`).join('');
+  async function populateBusinessSourceDropdowns(forceFetchStaff = false) {
+    if (forceFetchStaff || !Array.isArray(staffCache) || staffCache.length === 0) {
+      const bId = parseInt(document.getElementById('active_branch_id')?.value) || 0;
+      try {
+        const url = bId > 0 ? `/api/admin/staff?branch_id=${bId}` : `/api/admin/staff`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.data) && data.data.length > 0) {
+          staffCache = data.data;
+        } else if (bId > 0) {
+          const resAll = await fetch('/api/admin/staff');
+          const dataAll = await resAll.json();
+          if (resAll.ok && Array.isArray(dataAll.data)) {
+            staffCache = dataAll.data;
+          }
+        }
+      } catch (err) {
+        console.error("பணியாளர் பட்டியல் எடுக்கும் பிழை:", err);
+      }
+    }
 
-      document.querySelectorAll('.business-source-staff-select').forEach(sel => {
-        sel.innerHTML = optsHtml;
+    const activeStaff = (staffCache || []).filter(s => s.is_active !== false);
+    const staffOptionsHtml = activeStaff.map(s => {
+      const label = `${s.full_name}${s.role_key ? ' (' + s.role_key + ')' : ''}`;
+      return `<option value="STAFF:${s.id}">${label}</option>`;
+    }).join('');
+
+    const finalHtml = `<option value="WALK_IN">🚶 Walk-in (நேரடி வாடிக்கையாளர்)</option>` + staffOptionsHtml;
+
+    // அனைத்து நடவடிக்கைகளின் வணிக ஆதார Dropdown-களிலும் நிரப்புதல்
+    const targetIds = [
+      'business_source',
+      'loan_business_source',
+      'gp_business_source',
+      'gs_business_source',
+      'gs_source',
+      'sale_business_source',
+      'gss_business_source',
+      'rd_business_source',
+      'si_business_source'
+    ];
+
+    targetIds.forEach(id => {
+      const sel = document.getElementById(id);
+      if (sel) {
+        const prevVal = sel.value;
+        sel.innerHTML = finalHtml;
+        if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+          sel.value = prevVal;
+        }
+      }
+    });
+
+    // நகை விற்பனை (Gold Sale) பகுதியில் வேறு ஏதேனும் வணிக ஆதார select இருந்தால் அதிலும் நிரப்புதல்
+    const gsSection = document.getElementById('goldSaleSection') || document.getElementById('gsSection');
+    if (gsSection) {
+      gsSection.querySelectorAll('select').forEach(sel => {
+        const idLower = (sel.id || '').toLowerCase();
+        const nameLower = (sel.name || '').toLowerCase();
+        if (idLower.includes('source') || idLower.includes('staff') || idLower.includes('ref') || nameLower.includes('source')) {
+          if (!targetIds.includes(sel.id)) {
+            const prevVal = sel.value;
+            sel.innerHTML = finalHtml;
+            if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+              sel.value = prevVal;
+            }
+          }
+        }
       });
-    } catch (e) {}
+    }
   }
 
   function openIncentiveDashboardModal() {

@@ -3371,6 +3371,8 @@
       cartItems = [];
       selectedMode = "FULL_CASH"; // 👈 அடுத்த வாடிக்கையாளருக்கு இயல்புநிலை கட்டண முற
       window.currentActiveExemptionStatus = "NONE";
+      window.currentActiveBankTransferId = null;
+      window.currentActiveBankStatus = "NONE";
       renderOrnamentsTable();
       renderCart();
       document.getElementById('activeCustomerSection').classList.add('hidden');
@@ -3403,6 +3405,8 @@
         ornaments: [...ornamentList],
         saved_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         exemption_status: exemptionStatus, // NONE | WAITING_HQ | APPROVED
+        bank_transfer_id: window.currentActiveBankTransferId || null,
+        bank_status: window.currentActiveBankStatus || "NONE",
         pay_cash: cVal,
         pay_bank: bVal,
         selected_mode: selectedMode
@@ -3422,6 +3426,8 @@
       localStorage.removeItem('active_counter_session');
       activeCustomer = null;
       activeVisitId = null;
+      window.currentActiveBankTransferId = null;
+      window.currentActiveBankStatus = "NONE";
       cartItems = [];
       ornamentList = [];
       renderOrnamentsTable();
@@ -3431,7 +3437,6 @@
 
       renderHeldDraftsBar();
     }
-
     // 2. மேலே உள்ள மஞ்சள் பட்டையில் வாடிக்கையாளர் நிலையைப் புதுப்பித்தல்
     function renderHeldDraftsBar() {
       const container = document.getElementById('heldDraftsContainer');
@@ -3451,7 +3456,11 @@
 
       drafts.forEach(d => {
         let statusBadgeHtml = '';
-        if (d.exemption_status === 'WAITING_HQ') {
+        if (d.exemption_status === 'WAITING_BANK_HQ') {
+          statusBadgeHtml = `<span class="text-[10px] bg-indigo-100 text-indigo-900 border border-indigo-400 px-2 py-0.5 rounded font-black animate-pulse">🏦 வங்கி ஒப்புதல் நிலுவை</span>`;
+        } else if (d.exemption_status === 'BANK_APPROVED') {
+          statusBadgeHtml = `<span class="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-400 px-2 py-0.5 rounded font-black">✅ வங்கி அனுமதி (OTP அனுப்பலாம்)</span>`;
+        } else if (d.exemption_status === 'WAITING_HQ') {
           statusBadgeHtml = `<span class="text-[10px] bg-amber-200 text-amber-900 border border-yellow-400 px-2 py-0.5 rounded font-black animate-pulse">⏳ WAITING_HQ</span>`;
         } else if (d.exemption_status === 'APPROVED') {
           statusBadgeHtml = `<span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-400 px-2 py-0.5 rounded font-black">✅ APPROVED</span>`;
@@ -3467,7 +3476,6 @@
         badgesContainer.appendChild(btn);
       });
     }
-
     // 3. நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளரை மீட்டெடுத்தல் & லாக் செய்தல்
     function restoreCustomerDraft(customerId) {
       if (activeCustomer && activeCustomer.id) {
@@ -3521,6 +3529,8 @@
       // 🔒 அடகு படிவம் மற்றும் "முடி / மாற்று" பட்டனை முடக்குதல்
       toggleDraftLockMode(true);
       window.currentActiveExemptionStatus = target.exemption_status || "NONE";
+      window.currentActiveBankTransferId = target.bank_transfer_id || null;
+      window.currentActiveBankStatus = target.bank_status || "NONE";
       saveActiveSessionToStorage();
 
       // தலைமையகம் அனுமதி அளித்திருந்தால் உடனே செக்அவுட்டில் முடிக்க வாய்ப்பளித்தல்
@@ -3675,8 +3685,23 @@
       let updated = false;
 
       for (let d of drafts) {
+        if (d.exemption_status === 'WAITING_BANK_HQ' && d.bank_transfer_id) {
+          try {
+            const bRes = await fetch(`/api/bank/transfer-status/${d.bank_transfer_id}`);
+            const bData = await bRes.json();
+            if (bData.transfer_status === 'APPROVED') {
+              d.bank_status = 'APPROVED';
+              d.exemption_status = 'BANK_APPROVED';
+              updated = true;
+            } else if (bData.transfer_status === 'REJECTED') {
+              d.bank_status = 'REJECTED';
+              d.exemption_status = 'NONE';
+              updated = true;
+            }
+          } catch(e) {}
+        }
+
         if (d.exemption_status === 'WAITING_HQ') {
-          // 1. வட்டி தள்ளுபடி கோரிக்கை உள்ளதா எனப் பார்த்தல்
           const rebateItem = (d.cart || []).find(item => item.rebate_req_id);
           if (rebateItem) {
             try {
@@ -3690,9 +3715,7 @@
                 updated = true;
               }
             } catch(e) {}
-          } 
-          // 2. இல்லையெனில் அவசர OTP விலக்கு கோரிக்கையைப் பார்த்தல்
-          else if (d.visit_id) {
+          } else if (d.visit_id) {
             try {
               const res = await fetch(`/api/otp/exemption-status?visit_id=${d.visit_id}`);
               const data = await res.json();
@@ -3713,7 +3736,7 @@
         renderHeldDraftsBar();
       }
     }, 5000);
-
+    
     // 6. Cart & Loan Submission
     async function submitPawnToDatabase() {
       if (isDraftLocked) {
@@ -4064,6 +4087,124 @@
         else receiptSec.classList.remove('hidden');
       }
       denomSec.className = cVal > 0 ? "space-y-2 border-t border-purple-100 pt-2 text-xs" : "hidden";
+
+      // 🏦 வங்கித் தொகை > 0 இருந்தால், முதலில் வங்கி ஒப்புதலுக்கு அனுப்பும் பொத்தானைக் காட்டுதல்
+      const btnOtp = document.getElementById('btn_send_otp');
+      const btnExempt = document.getElementById('btnExemptOtpTrigger');
+      if (!btnOtp) return;
+
+      if (bVal > 0 && window.currentActiveBankStatus !== 'APPROVED') {
+        if (btnExempt) btnExempt.classList.add('hidden');
+        btnOtp.innerText = "🏦 வங்கி ஒப்புதலுக்கு அனுப்பு & Hold";
+        btnOtp.className = "px-5 py-2 rounded-xl text-xs font-black shadow bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer";
+        btnOtp.onclick = submitBankApprovalFirstAndHold;
+      } else if (window.currentActiveExemptionStatus === 'APPROVED') {
+        if (btnExempt) btnExempt.classList.add('hidden');
+        btnOtp.innerText = "✓ ஒப்புதலுடன் நிறைவு செய் (Complete)";
+        btnOtp.className = "px-5 py-2 rounded-xl text-xs font-black shadow bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
+        btnOtp.onclick = () => {
+          if (!validatePaymentAndDenomMatch()) return;
+          closeCheckoutModal();
+          confirmSettleWithOtp(true);
+        };
+      } else {
+        if (btnExempt) btnExempt.classList.remove('hidden');
+        btnOtp.innerText = "SMS OTP அனுப்பு 📲";
+        btnOtp.className = "brand-gradient-gold-btn px-5 py-2 rounded-xl text-xs font-black shadow border border-yellow-500 cursor-pointer";
+        btnOtp.onclick = requestOtpFromCustomer;
+      }
+    }
+
+    // 🏦 OTP-க்கு முன்பே வங்கிப் பரிவர்த்தனை விபரங்களைத் தலைமையக ஒப்புதலுக்கு அனுப்பி Auto-Hold செய்தல்
+    async function submitBankApprovalFirstAndHold() {
+      if (!activeCustomer || activeCustomer.kyc_status !== 'VERIFIED') {
+        return alert("⚠️ KYC சரிபார்ப்பு முடிந்த வாடிக்கையாளருக்கு மட்டுமே பரிவர்த்தனை செய்ய முடியும்!");
+      }
+      if (!validatePaymentAndDenomMatch()) return;
+
+      const bVal = parseFloat(document.getElementById('pay_bank').value) || 0;
+      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+      let payload = {
+        customer_id: activeCustomer.id,
+        branch_id: branchId,
+        settlement_id: null,
+        amount: bVal
+      };
+
+      if (currentDirection === "COMPANY_PAYABLE") {
+        const pMode = document.getElementById('payout_mode').value;
+        const bName = document.getElementById('payout_beneficiary').value.trim();
+        if (!bName) return alert("கணக்கு பெயர் உள்ளிடவும்.");
+        if (pMode === 'BANK_TRANSFER' && (!document.getElementById('payout_acc_no').value.trim() || !document.getElementById('payout_ifsc').value.trim())) {
+          return alert("கணக்கு எண் மற்றும் IFSC தேவை.");
+        }
+        if (pMode === 'UPI' && !document.getElementById('payout_upi_id').value.trim()) {
+          return alert("UPI ID தேவை.");
+        }
+        const passbookFile = document.getElementById('payout_file_passbook');
+        if (!passbookFile?.files?.[0]) return alert("📖 வங்கி பாஸ்புக் படத்தைக் கட்டாயம் இணைக்கவும்!");
+
+        const isThirdParty = document.getElementById('payout_is_third_party').checked;
+        const consentFile = document.getElementById('payout_file_consent');
+        if (isThirdParty && !consentFile?.files?.[0]) return alert("📄 மூன்றாம் நபர் கணக்கிற்கு ஒப்புதல் ஆவணத்தை இணைக்கவும்!");
+
+        payload = {
+          ...payload,
+          direction: "PAYOUT",
+          pay_mode: pMode,
+          beneficiary_name: bName,
+          account_no: document.getElementById('payout_acc_no').value.trim() || null,
+          ifsc_code: document.getElementById('payout_ifsc').value.trim() || null,
+          bank_name: document.getElementById('payout_bank_name').value.trim() || null,
+          upi_id: document.getElementById('payout_upi_id').value.trim() || null,
+          is_third_party: isThirdParty,
+          passbook_photo: await readFileAsBase64(passbookFile),
+          consent_doc_photo: isThirdParty ? await readFileAsBase64(consentFile) : null
+        };
+      } else {
+        const refNo = document.getElementById('receipt_ref_no').value.trim();
+        const screenFile = document.getElementById('receipt_file_screenshot');
+        if (!refNo) return alert("UTR / Ref No உள்ளிடவும்.");
+        if (!screenFile?.files?.[0]) return alert("📸 பணம் செலுத்திய ஸ்கிரீன்ஷாட்டைக் கட்டாயம் இணைக்கவும்!");
+
+        payload = {
+          ...payload,
+          direction: "RECEIPT",
+          pay_mode: "BANK_TRANSFER",
+          company_bank_name: document.getElementById('receipt_company_bank').value,
+          receipt_ref_no: refNo,
+          receipt_screenshot: await readFileAsBase64(screenFile)
+        };
+      }
+
+      const btn = document.getElementById('btn_send_otp');
+      btn.innerText = "தலைமையகத்திற்கு அனுப்பப்படுகிறது...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/bank/request-transfer', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        btn.disabled = false;
+
+        if (res.ok && data.data && data.data[0]) {
+          window.currentActiveBankTransferId = data.data[0].id;
+          window.currentActiveBankStatus = "PENDING";
+          alert("✅ " + data.message + "\nதலைமையகம் வங்கிப் பரிவர்த்தனைக்கு ஒப்புதல் அளித்த பின்பே OTP அனுப்ப முடியும். கணக்கு Auto-Hold செய்யப்படுகிறது.");
+          closeCheckoutModal();
+          holdCurrentCustomerDraft("WAITING_BANK_HQ");
+        } else {
+          alert("❌ பிழை: " + (data.detail || "வங்கி வேண்டுகோள் தோல்வியடைந்தது"));
+          toggleBankSections();
+        }
+      } catch (err) {
+        btn.disabled = false;
+        alert("❌ இணைப்புப் பிழை: " + err.message);
+        toggleBankSections();
+      }
     }
 
     function togglePayoutFields() {
@@ -4347,7 +4488,7 @@
         return alert("❌ பிழை: " + settleData.detail);
       }
     
-      if (bVal > 0) {
+      if (bVal > 0 && !window.currentActiveBankTransferId) {
         if (currentDirection === "COMPANY_PAYABLE") {
           const passbookBase64 = await readFileAsBase64(document.getElementById('payout_file_passbook'));
           const consentBase64 = await readFileAsBase64(document.getElementById('payout_file_consent'));
@@ -5381,19 +5522,17 @@
     }
 
     async function loadAllHqApprovals() {
-      await loadPendingRebatesHQ();
-      await loadHqOtpExemptions();
+      loadPendingRebatesHQ();
+      loadHqOtpExemptions();
       loadPendingExpensesHQ();
       loadPendingTreasuryTransfersHQ();
       loadHqGpStockList();
       loadPendingGssBenefitsHQ();
       loadPendingSiApprovalsHQ();
       if (typeof loadPendingRdBenefitsHQ === 'function') loadPendingRdBenefitsHQ();
-      
+  
       try {
-        const res = await fetch('/api/hq/all-pending-approvals');
-        const data = await res.json();
-        window.latestHqApprovalsData = data;
+        const res = await fetch('/api/hq/all-pending-approvals?t=' + Date.now());
 
         // 3. கிளைக் கவுண்டர் வருகை சரிபார்த்து ஒப்புதல் அளித்தல் பட்டியல்
         const vBody = document.getElementById('pendingVisitsTableBody');

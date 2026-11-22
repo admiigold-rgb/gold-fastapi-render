@@ -413,12 +413,7 @@
               <input type="number" id="gp_item_count" placeholder="எண்" min="1" value="1" class="border-2 border-emerald-100 p-2 rounded-xl text-xs bg-white text-center">
               <input type="number" id="gp_item_gross" step="0.001" placeholder="மொத்த எடை" class="border-2 border-emerald-100 p-2 rounded-xl text-xs bg-white text-right">
               <input type="number" id="gp_item_net" step="0.001" oninput="calcGpSingleItemAmount()" placeholder="நிகர எடை" class="border-2 border-emerald-100 p-2 rounded-xl text-xs bg-white text-right font-bold text-emerald-800">
-              <select id="gp_item_purity" onchange="onGpPurityChange()" class="border-2 border-emerald-200 p-2 rounded-xl text-xs bg-white font-bold text-emerald-950">
-                <option value="916">916 KDM</option>
-                <option value="22CT">22CT</option>
-                <option value="18CT">18CT</option>
-                <option value="24K">24K</option>
-              </select>
+              <select id="gp_item_purity" onchange="onGpPurityChange()" class="border-2 border-emerald-200 p-2 rounded-xl text-xs bg-white font-bold text-emerald-950"></select>
               <input type="number" id="gp_item_rate" oninput="calcGpSingleItemAmount()" placeholder="கிராம் விலை ₹" class="border-2 border-emerald-200 p-2 rounded-xl text-xs bg-white text-right font-bold text-brand-violet">
             </div>
 
@@ -982,21 +977,61 @@
     </div> <!-- 👈 இங்கே 'hqApprovalTab'-க்கான சரியான மூடும் டேக் இருக்க வேண்டும் -->
       
     <!-- TAB C: நிர்வாகம் -->
+    <!-- 💰 தங்கத்தின் தரம் & கிராம் விலை நிர்ணயம் (Admin Gold Purity & Rate Management) -->
     <div id="adminPanelTab" class="hidden space-y-6">
-      <div class="bg-gradient-to-r from-amber-50 to-purple-50 p-5 rounded-2xl border-2 border-brand-gold shadow-sm space-y-3">
-        <div class="flex flex-wrap justify-between items-center gap-2">
-          <h3 class="text-sm font-extrabold text-amber-900 flex items-center gap-2">
-            <span>💰</span> அன்றைய தங்க விலை நிர்ணயம் (Today's Gold Rate per Gram)
-          </h3>
-          <button type="button" onclick="openIncentiveDashboardModal()" style="background-color:#723a91;color:#fff;" class="px-4 py-2 rounded-xl text-xs font-black shadow-md hover:opacity-90 cursor-pointer">
-            🏆 பணியாளர் இன்சென்டிவ் விதிகள் & அறிக்கை
-          </button>
+      <div class="bg-gradient-to-r from-amber-50 to-purple-50 p-5 rounded-2xl border-2 border-brand-gold shadow-sm space-y-4">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-amber-200 pb-2">
+          <div>
+            <h3 class="text-sm font-extrabold text-amber-950 flex items-center gap-2">
+              <span>💰</span> தங்கத்தின் தரம் & கிராம் விலை நிர்ணயம் (Admin Gold Purity & Rate)
+            </h3>
+            <p class="text-[11px] text-slate-600">இங்கே நிர்ணயிக்கும் தரம் மற்றும் விலைகளே அடகு, GP மற்றும் GS ஆகிய அனைத்துப் படிவங்களிலும் பயன்படுத்தப்படும்</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="resetGoldPurityForm()" class="px-3 py-1.5 bg-white text-slate-800 border border-amber-300 rounded-xl text-xs font-bold cursor-pointer">+ புதிய தரம்</button>
+            <button type="button" onclick="openIncentiveDashboardModal()" style="background-color:#723a91;color:#fff;" class="px-4 py-1.5 rounded-xl text-xs font-black shadow-md hover:opacity-90 cursor-pointer">
+              🏆 பணியாளர் இன்சென்டிவ் விதிகள் & அறிக்கை
+            </button>
+          </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <div><label class="block text-[11px] font-bold text-slate-700 mb-1">24K தூய தங்கம் (₹/g) *</label><input type="number" id="gr_24k" placeholder="7800" class="w-full border-2 border-yellow-200 p-2 rounded-xl text-xs font-bold bg-white"></div>
-          <div><label class="block text-[11px] font-bold text-slate-700 mb-1">22K / 916 தங்கம் (₹/g) *</label><input type="number" id="gr_22k" placeholder="7150" class="w-full border-2 border-yellow-300 p-2 rounded-xl text-xs font-black bg-white text-brand-violet"></div>
-          <div><label class="block text-[11px] font-bold text-slate-700 mb-1">18K தங்கம் (₹/g) *</label><input type="number" id="gr_18k" placeholder="5850" class="w-full border-2 border-yellow-200 p-2 rounded-xl text-xs font-bold bg-white"></div>
-          <div class="flex items-end"><button type="button" onclick="submitTodayGoldRate()" class="w-full brand-gradient-gold-btn font-black py-2.5 rounded-xl text-xs shadow border border-yellow-500">விலையை சேமி 💾</button></div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs bg-white/80 p-3.5 rounded-2xl border border-amber-200">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">தரக் குறியீடு (Code) *</label>
+            <input type="text" id="gpr_code" placeholder="எ.கா: 916, 22CT, 18CT, 24K" class="w-full border-2 border-purple-200 p-2 rounded-xl font-mono font-black text-brand-violet uppercase bg-white">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">தரத்தின் பெயர் *</label>
+            <input type="text" id="gpr_label" placeholder="எ.கா: 916 KDM / 22K" class="w-full border-2 border-purple-200 p-2 rounded-xl font-bold bg-white">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">கிராம் விலை (₹/g) *</label>
+            <input type="number" step="0.01" id="gpr_rate" placeholder="கிராம் விலை உள்ளிடவும்" class="w-full border-2 border-yellow-400 p-2 rounded-xl font-black text-emerald-700 bg-white">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">வரிசை எண்</label>
+            <input type="number" id="gpr_order" value="1" class="w-full border-2 border-purple-200 p-2 rounded-xl font-bold text-center bg-white">
+          </div>
+          <div class="flex items-end">
+            <button type="button" onclick="saveGoldPurityRateAdmin()" class="w-full brand-gradient-gold-btn font-black py-2.5 px-3 rounded-xl text-xs shadow border border-yellow-500 cursor-pointer">
+              💾 தர & விலையை சேமி
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto border-2 border-amber-200 rounded-xl bg-white">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-amber-100 text-amber-950 border-b border-amber-200">
+              <tr>
+                <th class="p-2.5 font-extrabold">குறியீடு</th>
+                <th class="p-2.5 font-extrabold">தரத்தின் பெயர்</th>
+                <th class="p-2.5 text-right font-extrabold">கிராம் விலை (₹/g)</th>
+                <th class="p-2.5 text-center font-extrabold">வரிசை</th>
+                <th class="p-2.5 text-center font-extrabold">செயல்</th>
+              </tr>
+            </thead>
+            <tbody id="goldPurityRatesTbody" class="divide-y divide-amber-100"></tbody>
+          </table>
         </div>
       </div>
 
@@ -2455,13 +2490,127 @@
     let companyBanksCache = [];
     let currentSelectedScheme = null;
 
-    let todayGoldRates = { "24K": 7800, "22K": 7150, "916": 7150, "18K": 5850 };
+    // 👇 1. இங்கே இனி நிலையான (Fixed) டிபால்ட் விலை இல்லை; அட்மின் டேட்டாபேஸிலிருந்து நிரப்பப்படும்
+    let goldPurityRatesCache = [];
+    let todayGoldRates = {};
     let totalGoldMarketValue = 0;
     let maxEligibleLoanAmount = 0;
 
     let currentCashDayData = null;
     let currentDayMode = "OPEN";
     let currentSystemCash = 0;
+
+    function resetGoldPurityForm() {
+      const codeEl = document.getElementById('gpr_code');
+      const labelEl = document.getElementById('gpr_label');
+      const rateEl = document.getElementById('gpr_rate');
+      const orderEl = document.getElementById('gpr_order');
+      if (codeEl) { codeEl.value = ''; codeEl.disabled = false; }
+      if (labelEl) labelEl.value = '';
+      if (rateEl) rateEl.value = '';
+      if (orderEl) orderEl.value = (goldPurityRatesCache.length || 0) + 1;
+    }
+
+    function editGoldPurityRow(id) {
+      const item = goldPurityRatesCache.find(x => x.id === id);
+      if (!item) return;
+      document.getElementById('gpr_code').value = item.purity_code;
+      document.getElementById('gpr_code').disabled = true;
+      document.getElementById('gpr_label').value = item.purity_label;
+      document.getElementById('gpr_rate').value = item.rate_per_gram;
+      document.getElementById('gpr_order').value = item.sort_order || 1;
+      document.getElementById('gpr_rate').focus();
+    }
+
+    async function saveGoldPurityRateAdmin() {
+      const code = document.getElementById('gpr_code')?.value.trim().toUpperCase();
+      const label = document.getElementById('gpr_label')?.value.trim();
+      const rate = parseFloat(document.getElementById('gpr_rate')?.value) || 0;
+      const order = parseInt(document.getElementById('gpr_order')?.value) || 1;
+
+      if (!code || !label || rate <= 0) {
+        return alert("⚠️ தரக் குறியீடு, பெயர் மற்றும் சரியான கிராம் விலையை உள்ளிடவும்!");
+      }
+
+      const res = await fetch('/api/admin/gold-purity-rate/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          purity_code: code,
+          purity_label: label,
+          rate_per_gram: rate,
+          sort_order: order,
+          is_active: true
+        })
+      });
+      const out = await res.json();
+      if (res.ok) {
+        alert("✅ " + out.message);
+        resetGoldPurityForm();
+        await fetchAndSetupPurityDropdown();
+      } else {
+        alert("❌ பிழை: " + (out.detail || "சேமிக்க முடியவில்லை"));
+      }
+    }
+
+    async function deleteGoldPurityRow(id) {
+      if (!confirm("இந்தத் தங்கத் தரத்தை நீக்க விரும்புகிறீர்களா?")) return;
+      const res = await fetch(`/api/admin/gold-purity-rate/${id}`, { method: 'DELETE' });
+      const out = await res.json();
+      if (res.ok) {
+        alert("✅ " + out.message);
+        await fetchAndSetupPurityDropdown();
+      } else {
+        alert("❌ பிழை: " + (out.detail || "நீக்க முடியவில்லை"));
+      }
+    }
+
+    function applyGoldPurityDropdowns() {
+      todayGoldRates = {};
+      goldPurityRatesCache.forEach(r => {
+        const c = String(r.purity_code || '').toUpperCase();
+        todayGoldRates[c] = parseFloat(r.rate_per_gram) || 0;
+      });
+
+      const optsHtml = goldPurityRatesCache.map(r =>
+        `<option value="${r.purity_code}">${r.purity_label} (₹${parseFloat(r.rate_per_gram).toLocaleString('en-IN')}/g)</option>`
+      ).join('');
+
+      const pawnPuritySel = document.getElementById('item_purity');
+      if (pawnPuritySel) {
+        const prev = pawnPuritySel.value;
+        pawnPuritySel.innerHTML = optsHtml;
+        if (prev && goldPurityRatesCache.some(x => x.purity_code === prev)) pawnPuritySel.value = prev;
+      }
+
+      const gpPuritySel = document.getElementById('gp_item_purity');
+      if (gpPuritySel) {
+        const prevGp = gpPuritySel.value;
+        gpPuritySel.innerHTML = optsHtml;
+        if (prevGp && goldPurityRatesCache.some(x => x.purity_code === prevGp)) gpPuritySel.value = prevGp;
+        if (typeof onGpPurityChange === 'function') onGpPurityChange();
+      }
+
+      const tbody = document.getElementById('goldPurityRatesTbody');
+      if (tbody) {
+        if (goldPurityRatesCache.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 font-bold">தங்கத் தரங்கள் எதுவும் இல்லை. மேலே புதிதாகச் சேர்க்கவும்.</td></tr>`;
+        } else {
+          tbody.innerHTML = goldPurityRatesCache.map(r => `
+            <tr class="hover:bg-amber-50/50">
+              <td class="p-2.5 font-mono font-black text-brand-violet">${r.purity_code}</td>
+              <td class="p-2.5 font-bold text-slate-800">${r.purity_label}</td>
+              <td class="p-2.5 text-right font-mono font-black text-emerald-700">₹ ${parseFloat(r.rate_per_gram).toLocaleString('en-IN', { minimumFractionDigits: 2 })}/g</td>
+              <td class="p-2.5 text-center font-mono">${r.sort_order}</td>
+              <td class="p-2.5 text-center space-x-2">
+                <button type="button" onclick="editGoldPurityRow(${r.id})" class="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 rounded-lg font-bold cursor-pointer">✏️ விலை மாற்று</button>
+                <button type="button" onclick="deleteGoldPurityRow(${r.id})" class="px-2.5 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-lg font-bold cursor-pointer">நீக்கு</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      }
+    }
 
     // 📸 புகைப்படத்தைத் தரம் குறையாமல் 100KB-க்குள் தானாகச் சுருக்கி எடுத்தல் (Quota & Speed Fix)
     function readFileAsBase64(fileInput, maxWidth = 800, quality = 0.65) {
@@ -2574,6 +2723,7 @@
         console.error("Session restore error:", e);
       }
     }
+
     // 1. Auth & Navigation
     async function handleLogin() {
       const u = document.getElementById('login_username').value.trim();
@@ -2593,27 +2743,27 @@
     }
 
     function renderNavMenu(user) {
-   const container = document.getElementById('navButtonsContainer');
-   container.innerHTML = '';
-   const p = user.permissions || {};
-   const activeTabs = [];
+      const container = document.getElementById('navButtonsContainer');
+      container.innerHTML = '';
+      const p = user.permissions || {};
+      const activeTabs = [];
 
-   if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
-   if (
-     p.can_approve_kyc === true ||
-     p.can_approve_updates === true ||
-     p.can_approve_otp_exempt === true ||
-     p.can_approve_rebate === true ||
-     p.can_approve_gss_benefit === true ||
-     p.can_access_hq_packets === true ||
-     p.can_approve_hq_packets === true
-   ) {
-     activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
- }
+      if (p.can_access_counter === true) activeTabs.push({ id: 'counterTab', label: 'கவுண்ட்டர்' });
+      if (
+        p.can_approve_kyc === true ||
+        p.can_approve_updates === true ||
+        p.can_approve_otp_exempt === true ||
+        p.can_approve_rebate === true ||
+        p.can_approve_gss_benefit === true ||
+        p.can_access_hq_packets === true ||
+        p.can_approve_hq_packets === true
+      ) {
+        activeTabs.push({ id: 'hqApprovalTab', label: 'தலைமையக ஒப்புதல்கள் 🔔' });
+      }
       if (p.can_audit_documents === true) {
-   activeTabs.push({ id: 'internalAuditTab', label: '🔍 அகத்தணிக்கை (Audit)' });
- }
-   if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
+        activeTabs.push({ id: 'internalAuditTab', label: '🔍 அகத்தணிக்கை (Audit)' });
+      }
+      if (p.can_manage_users === true) activeTabs.push({ id: 'adminPanelTab', label: 'நிர்வாகம் ⚙️' });
       
       activeTabs.forEach((tab, index) => {
         const btn = document.createElement('button');
@@ -2644,7 +2794,7 @@
       loadCompanyBanksDropdown();
       fetchAndSetupPurityDropdown();
       initTxnDate();
-      renderHeldDraftsBar(); // ஹோல்ட் செய்யப்பட்ட வாடிக்கையாளர் பட்டையை ஏற்றுதல்
+      renderHeldDraftsBar();
       if (typeof populateBusinessSourceDropdowns === 'function') populateBusinessSourceDropdowns();
       restoreActiveSessionOnLoad();
       
@@ -2652,11 +2802,9 @@
         loadBranchesList();
         loadSchemesList();
         loadCompanyBanksList();
-        loadTodayGoldRate();
         loadStaffList();
       }
 
-      // 🔐 நிர்வாக உரிமை இல்லாவிட்டாலும், பாக்கெட் உரிமை உள்ள அனைவருக்கும் பட்டனைக் காட்டுதல்
       const btnHqPkt = document.getElementById('btnOpenHqPacketHub');
       if (btnHqPkt) {
         if (user.permissions?.can_access_hq_packets === true || user.permissions?.can_approve_hq_packets === true) {
@@ -2705,7 +2853,7 @@
         loadStaffList();
         loadSchemesList();
         loadCompanyBanksList();
-        loadTodayGoldRate();
+        fetchAndSetupPurityDropdown();
         loadSiSchemesList();
         if (typeof loadGssSchemesList === 'function') loadGssSchemesList();
         if (typeof loadRdSchemesList === 'function') loadRdSchemesList();
@@ -2713,7 +2861,6 @@
       }
     }
 
-    // கவுண்ட்டரின் பரிவர்த்தனை தேதியை கடைசியாகப் பூட்டிய நாளுக்கு அடுத்த நாளாக இயல்பாக அமைத்தல்
     async function initTxnDate() {
       const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
       const dateInput = document.getElementById('txn_date');
@@ -2741,19 +2888,17 @@
       const badge = document.getElementById('cashDayStatusBadge');
       const btnCloseDay = document.getElementById('btnCloseDay');
 
-      // 1. தொடர் நாள் விதி சரிபார்ப்பு (தாவிச் சென்று பணிபுரிய முடியாது)
       try {
         const seqRes = await fetch(`/api/cash-day/validate-date-sequence?branch_id=${branchId}&selected_date=${selDate}`);
         const seqData = await seqRes.json();
 
         if (seqRes.ok && !seqData.is_valid) {
           alert(seqData.message);
-          dateInput.value = seqData.allowed_date; // தானாக அனுமதிக்கப்பட்ட தொடர் நாளுக்கு மாற்றுதல்
-          return checkCurrentDateStatus(); // மீண்டும் சரிபார்த்தல்
+          dateInput.value = seqData.allowed_date;
+          return checkCurrentDateStatus();
         }
       } catch(e) {}
 
-      // 2. நாளின் பூட்டுதல் நிலை அறிதல்
       try {
         const res = await fetch(`/api/cash-day/status?branch_id=${branchId}&date=${selDate}&date_str=${selDate}`);
         const result = await res.json();
@@ -2767,7 +2912,7 @@
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300";
 
           if (btnCloseDay) btnCloseDay.classList.add('hidden');
-          toggleFormsLock(true); // பூட்டப்பட்ட நாளில் புதிய செலவு/அடகு எதுவும் செய்ய முடியாது
+          toggleFormsLock(true);
         } else {
           badge.innerText = `திறக்கப்பட்டுள்ளது (பரிவர்த்தனைக்குத் தயார்)`;
           badge.className = "px-2.5 py-1 rounded-lg font-bold text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300";
@@ -2779,8 +2924,8 @@
         console.error("நாள் நிலை அறியும் பிழை:", e);
       }
     }
+
     function toggleFormsLock(isLocked) {
-      // 1. செலவு மற்றும் உள்-பணப் பரிமாற்ற பட்டன்கள்
       const btnExpense = document.querySelector("button[onclick='openExpenseModal()']");
       const btnTreasury = document.querySelector("button[onclick='openTreasuryModal()']");
       
@@ -2793,7 +2938,6 @@
         }
       });
 
-      // 2. வாடிக்கையாளர் தேடல் மற்றும் புதிய KYC பட்டன்கள்
       const searchInput = document.getElementById('searchInput');
       const btnSearch = document.querySelector("button[onclick='handleSearch()']");
       const btnNewKyc = document.querySelector("button[onclick='openNewKycModal()']");
@@ -2807,7 +2951,6 @@
         }
       });
 
-      // 3. அடகு மற்றும் Checkout பட்டன்கள்
       const pawnBtn = document.getElementById('btnAddToCart') || document.querySelector("button[onclick='submitPawnToDatabase()']");
       const checkoutBtn = document.querySelector("button[onclick='openCheckoutModal()']");
 
@@ -2822,6 +2965,7 @@
         checkoutBtn.style.cursor = isLocked ? "not-allowed" : "pointer";
       }
     }
+
     async function openCashDayModal(mode) {
       currentDayMode = mode;
       const dateInput = document.getElementById('txn_date');
@@ -2834,7 +2978,6 @@
       });
       calcDayDenom();
 
-      // 👈 ஏற்கனவே பூட்டப்பட்டிருந்தால் மட்டுமே தடுக்க வேண்டும்
       if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
         return alert(`⚠️ ${selDate} நாளுக்கான கணக்கு ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED).`);
       }
@@ -2879,7 +3022,6 @@
         const diff = Math.round((total - currentSystemCash) * 100) / 100;
         const diffElem = document.getElementById('txtDiff');
         
-        // 👈 வேறுபாடு சரியாக 0 ஆக இருந்தால் மட்டுமே பட்டன் உயிர்ப்பிக்கப்படும்
         if (diff === 0 && total > 0) {
           diffElem.innerText = "சரியாகப் பொருந்தியது (Match: ₹0.00)";
           diffElem.className = "text-right text-xs font-bold text-emerald-600";
@@ -2893,7 +3035,6 @@
           diffElem.innerText = diff > 0 ? `கூடுதல்: +₹${diff.toFixed(2)}` : `குறைவு: -₹${Math.abs(diff).toFixed(2)}`;
           diffElem.className = "text-right text-xs font-bold text-rose-600";
           
-          // சமமாக இல்லாத வரை பட்டன் முடக்கப்பட்டிருக்கும்
           if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.style.opacity = "0.4";
@@ -2945,9 +3086,6 @@
           alert("❌ இணைப்புப் பிழை: " + err.message);
         }
       } else {
-        // மாலை நாள் பூட்டுதல் (Day Close)
-    
-        // சமர்ப்பிக்கும் முன் தாள்கள் மற்றும் கணினி ரொக்கம் சமமாக உள்ளதா என உறுதிசெய்தல்
         const diff = Math.round((countedTotal - currentSystemCash) * 100) / 100;
         if (diff !== 0.0) {
           return alert(`⚠️ தாள்கள் தொகை சமமாக இல்லை!\nகணினியின் தொகை: ₹${currentSystemCash.toLocaleString('en-IN')}\nஎண்ணிய தொகை: ₹${countedTotal.toLocaleString('en-IN')}\nவேறுபாடு: ₹${diff}\nதொகை சரியாகப் பொருந்தினால் மட்டுமே நாளைப் பூட்ட முடியும்.`);
@@ -2971,11 +3109,8 @@
           if (res.ok) {
             alert("✅ " + data.message);
             closeCashDayModal();
-    
-            // நாள் முடிந்ததும் தானாகவே அதன் அடுத்த நாளுக்கு கவுண்ட்டர் நகர்ந்துவிடும்
             await initTxnDate();
           } else {
-            // பிழை இருந்தால் தெளிவாகத் திரையில் காட்டப்படும்
             let errMsg = data.detail;
             if (Array.isArray(data.detail)) {
               errMsg = data.detail.map(d => `${d.loc ? d.loc.join('.') : ''}: ${d.msg}`).join('\n');
@@ -2990,7 +3125,6 @@
       }
     }
     
-    // சாளரத்தை மூடும் செயல்பாடு
     function closeDaySummaryReportModal() {
       const modal = document.getElementById('daySummaryReportModal');
       if (modal) {
@@ -2998,12 +3132,10 @@
       }
     }
 
-    // விசைப்பலகை Esc அழுத்தினால் மூடுதல்
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') closeDaySummaryReportModal();
     });
 
-    // அறிக்கையைத் திறந்து ஏற்றும் சரியான செயல்பாடு
     async function openDaySummaryReportModal() {
       const branchId = (currentUser && currentUser.branch_id) ? currentUser.branch_id : 1;
       const branchName = (currentUser && currentUser.branch_name) ? currentUser.branch_name : 'Aundivilai';
@@ -3031,7 +3163,6 @@
         const closeBal = data.calculated_closing || (openBal + totalCashIn - totalCashOut);
         const netCashChange = totalCashIn - totalCashOut;
 
-        // 1. கார்டுகள் விவரம்
         document.getElementById('rep_card_opening').innerText = '₹' + openBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_card_cash_in').innerText = '₹' + totalCashIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_card_cash_out').innerText = '₹' + totalCashOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
@@ -3045,17 +3176,14 @@
           netElem.innerText = `${sign}₹${Math.abs(netCashChange).toLocaleString('en-IN', {minimumFractionDigits: 2})} மாற்றம்`;
         }
 
-        // 2. வங்கிப் பட்டைகள்
         document.getElementById('rep_bank_in').innerText = '₹' + (data.total_bank_in || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('rep_bank_out').innerText = '₹' + (data.total_bank_out || 0).toLocaleString('en-IN', {minimumFractionDigits: 2});
 
-        // 3. அடிக்குறிப்பு கல்லா சமநிலை
         document.getElementById('recon_open').innerText = '₹' + openBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('recon_in').innerText = '₹' + totalCashIn.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('recon_out').innerText = '₹' + totalCashOut.toLocaleString('en-IN', {minimumFractionDigits: 2});
         document.getElementById('recon_close').innerText = '₹' + closeBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
 
-        // 4. அட்டவணை வரிசைகள்
         const tbody = document.getElementById('rep_unified_daybook_tbody');
         tbody.innerHTML = '';
 
@@ -3095,7 +3223,6 @@
             badgeColor = '#0369a1';
           }
 
-          // வகையை விவரத்தின் கீழே பேட்ஜாகக் கொண்டு வருதல்
           const partyAndType = `
             <div style="display:flex; flex-direction:column; gap:4px;">
               <span style="font-weight:800; color:#0f172a; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${e.party_name}">${e.party_name}</span>
@@ -3124,27 +3251,18 @@
       }
     }
 
-    // 3. Purity & Auto Loan No
+    // 👇 2. அட்மின் நிர்ணயிக்கும் தங்கத் தரம் & கிராம் விலையை மட்டும் டேட்டாபேஸிலிருந்து ஏற்றும் செயல்பாடு
     async function fetchAndSetupPurityDropdown() {
       try {
-        const res = await fetch('/api/admin/gold-rate/today');
+        const res = await fetch('/api/admin/gold-purity-rates?t=' + Date.now());
         const data = await res.json();
-        if (data && data.data) {
-          todayGoldRates["24K"] = parseFloat(data.data.rate_24k_per_gram) || 7800;
-          todayGoldRates["22K"] = parseFloat(data.data.rate_22k_per_gram) || 7150;
-          todayGoldRates["916"] = parseFloat(data.data.rate_22k_per_gram) || 7150;
-          todayGoldRates["18K"] = parseFloat(data.data.rate_18k_per_gram) || 5850;
+        if (res.ok && Array.isArray(data.data)) {
+          goldPurityRatesCache = data.data;
+          applyGoldPurityDropdowns();
         }
-        const pSelect = document.getElementById('item_purity');
-        if (pSelect) {
-          pSelect.innerHTML = `
-            <option value="916">916 KDM (₹${todayGoldRates["916"]}/g)</option>
-            <option value="22CT">22CT தங்கம் (₹${todayGoldRates["22K"]}/g)</option>
-            <option value="18CT">18CT தங்கம் (₹${todayGoldRates["18K"]}/g)</option>
-            <option value="24K">24K தூய தங்கம் (₹${todayGoldRates["24K"]}/g)</option>
-          `;
-        }
-      } catch (err) { console.error("தங்க விலை பிழை:", err); }
+      } catch (err) {
+        console.error("தங்கத் தரம் & விலை ஏற்றும் பிழை:", err);
+      }
     }
 
     async function fetchAutoLoanNumber() {
@@ -3155,7 +3273,6 @@
         if (res.ok) document.getElementById('loan_no').value = data.next_loan_no;
       } catch (e) { console.error("கடன் எண் பிழை:", e); }
     }
-
     // 4. Ornaments & LTV Calculation
     function addOrnamentToTable() {
       if (isDraftLocked) {
@@ -4909,16 +5026,6 @@
       const data = await res.json();
       if (res.ok) { alert("✅ " + data.message); fetchAndSetupPurityDropdown(); }
       else alert("❌ பிழை: " + data.detail);
-    }
-
-    async function loadTodayGoldRate() {
-      const res = await fetch('/api/admin/gold-rate/today');
-      const data = await res.json();
-      if (data.data) {
-        document.getElementById('gr_24k').value = data.data.rate_24k_per_gram;
-        document.getElementById('gr_22k').value = data.data.rate_22k_per_gram;
-        document.getElementById('gr_18k').value = data.data.rate_18k_per_gram;
-      }
     }
 
     // 💸 பட்டுவாடா பாப்-அப் சாளரத்தைத் திறந்து விபரங்களை நிரப்புதல்

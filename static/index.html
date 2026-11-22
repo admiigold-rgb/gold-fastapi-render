@@ -3191,8 +3191,10 @@
           tbody.innerHTML = `<tr><td colspan="8" style="padding:40px; text-align:center; color:#94a3b8; font-weight:bold; font-size:14px; background:#ffffff;">இன்றைய நடவடிக்கைகள் எதுவும் பதிவு செய்யப்படவில்லை</td></tr>`;
           return;
         }
-
-        tbody.innerHTML = data.entries.map((e, idx) => {
+        const validEntries = (data.entries || []).filter(e =>
+          (e.gross_in || 0) > 0 || (e.gross_out || 0) > 0 || (e.cash_change || 0) !== 0 || (e.bank_change || 0) !== 0
+        );
+        tbody.innerHTML = validEntries.map((e, idx) => {
           let cashCell = '<span style="color:#cbd5e1;">-</span>';
           if (e.cash_change > 0) {
             cashCell = `<span style="color:#047857; font-weight:900; font-family:monospace; white-space:nowrap;">(+) ₹${e.cash_change.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>`;
@@ -3443,7 +3445,38 @@
       }
       container.classList.remove('hidden');
     }
+    // 🔒 தேவையின்றி காலியான வருகை உருவாவதைத் தடுக்க: பரிவர்த்தனை நடக்கும்போது மட்டும் ஒரே ஒரு வருகை உருவாக்குதல்
+    async function ensureActiveVisitId() {
+      if (activeVisitId) return activeVisitId;
+      if (!activeCustomer || !activeCustomer.id) return null;
 
+      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+      const transInput = document.getElementById('txn_date') || document.querySelector('input[type="date"]');
+      const transDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
+
+      try {
+        const vRes = await fetch('/api/customer/visit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customer_id: activeCustomer.id,
+            branch_id: branchId,
+            purpose: "REGULAR_TRANSACTION",
+            transaction_date: transDate
+          })
+        });
+        const vData = await vRes.json();
+        if (vRes.ok && vData.data?.id) {
+          activeVisitId = vData.data.id;
+          saveActiveSessionToStorage();
+          return activeVisitId;
+        }
+      } catch (err) {
+        console.error("வருகைப் பதிவு பிழை:", err);
+      }
+      return null;
+    }
+    
     async function selectCustomer(cust) {
       activeCustomer = cust;
       document.getElementById('cardName').innerText = cust.name;
@@ -3491,11 +3524,7 @@
           alert("⚠️ " + (vData.detail || "வருகைப் பதிவு தோல்வியடைந்தது."));
           return;
         }
-
-        activeVisitId = vData.data?.id;
-      } catch (err) {
-        console.error("வருகைப் பதிவு பிழை:", err);
-      }
+        activeVisitId = null; // பரிவர்த்தனை நடக்கும்போது மட்டும் வருகை உருவாகும்
 
       fetchAutoLoanNumber();
       onSchemeSelected();
@@ -3961,7 +3990,7 @@
       // 1. கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
       const transDateInput = document.querySelector('input[type="date"]');
       const transDate = transDateInput && transDateInput.value ? transDateInput.value : new Date().toISOString().split('T')[0];
-
+      await ensureActiveVisitId();
       const payload = {
         customer_id: activeCustomer.id, 
         branch_id: branchId, 
@@ -4648,7 +4677,7 @@
         btn.innerText = "சரிபார்க்கப்படுகிறது...";
         btn.disabled = true;
       }
-    
+      await ensureActiveVisitId();
       const settlePayload = {
         customer_id: activeCustomer.id,
         branch_id: branchId,

@@ -10132,72 +10132,89 @@
 </div>
 <script>
   async function populateBusinessSourceDropdowns(forceFetchStaff = false) {
-      if (forceFetchStaff || !Array.isArray(staffCache) || staffCache.length === 0) {
-        const bId = parseInt(document.getElementById('active_branch_id')?.value) || 0;
-        try {
-          let loaded = false;
-          if (bId > 0) {
-            const res = await fetch(`/api/admin/staff?branch_id=${bId}&t=${Date.now()}`);
-            if (res.ok) {
-              const data = await res.json();
-              const list = Array.isArray(data) ? data : (data.data || data.staff || []);
-              if (list.length > 0) {
-                staffCache = list;
-                loaded = true;
-              }
+    if (forceFetchStaff || !Array.isArray(staffCache) || staffCache.length === 0) {
+      const bId = parseInt(document.getElementById('active_branch_id')?.value) || 0;
+      try {
+        let loaded = false;
+        if (bId > 0) {
+          const res = await fetch(`/api/admin/staff?branch_id=${bId}&t=${Date.now()}`);
+          if (res.ok) {
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : (data.data || data.staff || []);
+            if (list.length > 0) {
+              staffCache = list;
+              loaded = true;
             }
           }
-          if (!loaded) {
-            const resAll = await fetch(`/api/admin/staff?t=${Date.now()}`);
-            if (resAll.ok) {
-              const dataAll = await resAll.json();
-              const listAll = Array.isArray(dataAll) ? dataAll : (dataAll.data || dataAll.staff || []);
-              if (listAll.length > 0) {
-                staffCache = listAll;
-              }
+        }
+        if (!loaded) {
+          const resAll = await fetch(`/api/admin/staff?t=${Date.now()}`);
+          if (resAll.ok) {
+            const dataAll = await resAll.json();
+            const listAll = Array.isArray(dataAll) ? dataAll : (dataAll.data || dataAll.staff || []);
+            if (listAll.length > 0) {
+              staffCache = listAll;
             }
           }
-        } catch (err) {
-          console.error("பணியாளர் பட்டியல் எடுக்கும் பிழை:", err);
+        }
+      } catch (err) {
+        console.error("பணியாளர் பட்டியல் எடுக்கும் பிழை:", err);
+      }
+    }
+
+    const activeStaff = (staffCache || []).filter(s => s && s.is_active !== false);
+    const staffOptionsHtml = activeStaff.map(s => {
+      const sName = s.full_name || s.name || s.username || `Staff #${s.id}`;
+      const label = `${sName}${s.role_key ? ' (' + s.role_key + ')' : ''}`;
+      return `<option value="${s.id}">${label}</option>`;
+    }).join('');
+
+    const staffOnlyWithDefault = `<option value="">-- பணியாளரைத் தேர்ந்தெடுக்கவும் --</option>` + staffOptionsHtml;
+    const walkInPlusStaff = `<option value="WALK_IN">🚶 Walk-in (நேரடி வாடிக்கையாளர்)</option>` + activeStaff.map(s => {
+      const sName = s.full_name || s.name || s.username || `Staff #${s.id}`;
+      const label = `${sName}${s.role_key ? ' (' + s.role_key + ')' : ''}`;
+      return `<option value="STAFF:${s.id}">${label}</option>`;
+    }).join('');
+
+    // 1. குறிப்பாக src_staff_pawn மற்றும் .business-source-staff-select பெட்டிகளில் பணியாளர் பெயர்களை நிரப்புதல்
+    document.querySelectorAll('#src_staff_pawn, .business-source-staff-select').forEach(sel => {
+      if (sel && sel.tagName === 'SELECT') {
+        const prevVal = sel.value;
+        sel.innerHTML = staffOnlyWithDefault;
+        if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+          sel.value = prevVal;
         }
       }
+    });
 
-      const activeStaff = (staffCache || []).filter(s => s && s.is_active !== false);
-      const staffOptionsHtml = activeStaff.map(s => {
-        const sName = s.full_name || s.name || s.username || `Staff #${s.id}`;
-        const label = `${sName}${s.role_key ? ' (' + s.role_key + ')' : ''}`;
-        return `<option value="STAFF:${s.id}">${label}</option>`;
-      }).join('');
+    // 2. மற்ற வணிக ஆதார Dropdown பெட்டிகளிலும் நிரப்புதல்
+    const otherIds = [
+      'business_source',
+      'loan_business_source',
+      'pawn_business_source',
+      'gold_loan_source',
+      'loan_source',
+      'pawn_source',
+      'gp_business_source',
+      'gs_business_source',
+      'gs_source',
+      'sale_business_source',
+      'gss_business_source',
+      'rd_business_source',
+      'si_business_source'
+    ];
 
-      const finalHtml = `<option value="WALK_IN">🚶 Walk-in (நேரடி வாடிக்கையாளர்)</option>` + staffOptionsHtml;
-
-      // 1. அறியப்பட்ட எல்லா வணிக ஆதார Dropdown ID-களிலும் நிரப்புதல்
-      const knownIds = [
-        'business_source',
-        'loan_business_source',
-        'pawn_business_source',
-        'gold_loan_source',
-        'loan_source',
-        'pawn_source',
-        'gp_business_source',
-        'gs_business_source',
-        'gs_source',
-        'sale_business_source',
-        'gss_business_source',
-        'rd_business_source',
-        'si_business_source'
-      ];
-
-      knownIds.forEach(id => {
-        const sel = document.getElementById(id);
-        if (sel && sel.tagName === 'SELECT') {
-          const prevVal = sel.value;
-          sel.innerHTML = finalHtml;
-          if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
-            sel.value = prevVal;
-          }
+    otherIds.forEach(id => {
+      const sel = document.getElementById(id);
+      if (sel && sel.tagName === 'SELECT' && id !== 'src_staff_pawn') {
+        const prevVal = sel.value;
+        sel.innerHTML = walkInPlusStaff;
+        if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+          sel.value = prevVal;
         }
-      });
+      }
+    });
+  }
 
       // 2. கவுண்ட்டரில் உள்ள எந்தப் பகுதியிலும் 'வணிக ஆதாரம்' / 'source' / 'staff' தொடர்பான <select> இருந்தால் அதிலும் நிரப்புதல்
       const counterRoot = document.getElementById('counterTab') || document.body;

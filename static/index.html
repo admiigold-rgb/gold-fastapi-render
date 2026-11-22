@@ -11370,6 +11370,76 @@
     }
   });
 </script>
+  <!-- ⏳ முழுத் திரை லோடிங் அனிமேஷன் (Global Loading Overlay) -->
+<style>
+  @keyframes goldSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .gold-loader-spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #f3e8ff;
+    border-top: 5px solid #723a91;
+    border-right: 5px solid #d4af37;
+    border-radius: 50%;
+    animation: goldSpin 0.8s linear infinite;
+  }
+</style>
+
+<div id="globalLoadingOverlay" style="display:none; position:fixed; inset:0; background:rgba(30, 10, 45, 0.55); backdrop-filter:blur(2px); z-index:9999999; align-items:center; justify-content:center;">
+  <div style="background:#ffffff; padding:24px 32px; border-radius:20px; border:2px solid #d4af37; box-shadow:0 20px 40px rgba(0,0,0,0.3); display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center;">
+    <div class="gold-loader-spinner"></div>
+    <div id="globalLoaderText" style="color:#4a1566; font-weight:800; font-size:14px;">செயல்பாடு நடைபெறுகிறது...</div>
+    <div style="color:#64748b; font-size:11px; font-weight:600;">தயவுசெய்து காத்திருக்கவும், வேறு பட்டன்களை அழுத்த வேண்டாம்</div>
+  </div>
+</div>
+
+<script>
+  (function setupGlobalLoadingAnimation() {
+    if (window._globalLoaderReady) return;
+    window._globalLoaderReady = true;
+
+    let activeFetches = 0;
+    const overlay = document.getElementById('globalLoadingOverlay');
+    const textEl = document.getElementById('globalLoaderText');
+
+    // பின்னணியில் தானாக ஓடும் சரிபார்ப்புகளுக்கு அனிமேஷன் காட்டாமல் தவிர்த்தல்
+    const silentUrls = [
+      '/api/bank/transfer-status/',
+      '/api/rebate/status/',
+      '/api/otp/exemption-status'
+    ];
+
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const url = (typeof args[0] === 'string' ? args[0] : (args[0]?.url || '')).toLowerCase();
+      const isSilent = silentUrls.some(s => url.includes(s));
+
+      if (isSilent) {
+        return originalFetch.apply(this, args);
+      }
+
+      let msg = 'செயல்பாடு நடைபெறுகிறது...';
+      if (url.includes('settle-with-otp')) msg = 'பரிவர்த்தனை நிறைவு செய்யப்படுகிறது...';
+      else if (url.includes('branch-status') || url.includes('approvals')) msg = 'தரவுகள் புதுப்பிக்கப்படுகின்றன...';
+      else if (url.includes('otp/send')) msg = 'SMS OTP அனுப்பப்படுகிறது...';
+
+      activeFetches++;
+      if (textEl) textEl.innerText = msg;
+      if (overlay) overlay.style.display = 'flex';
+
+      try {
+        return await originalFetch.apply(this, args);
+      } finally {
+        activeFetches = Math.max(0, activeFetches - 1);
+        if (activeFetches === 0 && overlay) {
+          overlay.style.display = 'none';
+        }
+      }
+    };
+  })();
+</script>
 </body>
 </html>
   

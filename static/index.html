@@ -11513,18 +11513,18 @@
 </script>
 
 <script>
-  // ✅ வங்கி வரவு / வங்கி செலுத்தல் முடிந்த பின் மற்றவற்றை ரீசெட் செய்து நேரடியாக OTP / OTP விலக்கு பகுதிக்குச் செல்லும் அமைப்பு
-  function resetNonOtpFieldsAfterBankTxn() {
+  // ✅ Auto-Hold முடிந்த பின் மற்றவற்றை ரீசெட் செய்து நேரடியாக OTP / OTP விலக்கு பகுதிக்குச் செல்லும் அமைப்பு
+  function resetOtherFieldsAndOpenOtpAfterAutoHold() {
     const counterArea = document.getElementById("counterTab") || document.body;
 
-    // 1. கூடை & நகை/திட்ட உள்ளீட்டுப் பெட்டிகளை (OTP / OTP விலக்கு பெட்டிகள் தவிர) சுத்தம் செய்தல்
+    // 1. மற்ற படிவ உள்ளீடுகளைச் சுத்தம் செய்தல் (OTP / OTP விலக்கு / Branch / Date தவிர)
     counterArea.querySelectorAll("input, select, textarea").forEach(el => {
       const idL = (el.id || "").toLowerCase();
       const nameL = (el.name || "").toLowerCase();
       const phL = (el.placeholder || "").toLowerCase();
       const lblL = (el.closest("div")?.innerText || "").toLowerCase();
 
-      const isOtpRelated =
+      const keepField =
         idL.includes("otp") ||
         idL.includes("exempt") ||
         nameL.includes("otp") ||
@@ -11535,7 +11535,7 @@
         idL.includes("branch") ||
         idL.includes("txn_date");
 
-      if (isOtpRelated) return;
+      if (keepField) return;
 
       if (el.tagName === "INPUT") {
         if (el.type === "checkbox" || el.type === "radio") {
@@ -11550,7 +11550,7 @@
       }
     });
 
-    // 2. கூடை (Cart) பட்டியலை காலி செய்தல் (உலகளாவிய cartItems இருந்தால்)
+    // 2. கூடையைக் காலி செய்தல் (இருந்தால்)
     try {
       if (Array.isArray(window.cartItems)) {
         window.cartItems.length = 0;
@@ -11560,110 +11560,99 @@
       }
     } catch (e) {}
 
-    // 3. நேரடியாக OTP / OTP விலக்கு பகுதியைத் திறந்து / காட்டி அங்கே நகர்த்துதல்
-    jumpDirectlyToOtpOrExemptionSection();
+    // 3. OTP / OTP விலக்கு Modal அல்லது பகுதியைத் திறந்து அங்கே செல்லுதல்
+    openAndFocusOtpOrExemptBox();
   }
 
-  function jumpDirectlyToOtpOrExemptionSection() {
-    const allEls = Array.from(document.querySelectorAll("section, div, form, button, input"));
-    let otpTarget = null;
+  function openAndFocusOtpOrExemptBox() {
+    const candidates = Array.from(document.querySelectorAll("div, section, form, modal, dialog"));
+    let matchedBox = null;
 
-    // முதலில் OTP விலக்கு / OTP தொடர்பான பகுதி அல்லது உள்ளீட்டுப் பெட்டியைத் தேடுதல்
-    for (const el of allEls) {
+    for (const el of candidates) {
       const idL = (el.id || "").toLowerCase();
-      const txt = (el.innerText || "").toLowerCase();
-      const ph = (el.placeholder || "").toLowerCase();
+      const clsL = (el.className || "").toString().toLowerCase();
+      const txtL = (el.innerText || "").toLowerCase();
 
-      if (
+      const isOtpBox =
         idL.includes("otp") ||
         idL.includes("exempt") ||
-        ph.includes("otp") ||
-        txt.includes("otp விலக்கு") ||
-        txt.includes("ஒடிபி விலக்கு") ||
-        txt.includes("otp சரிபார்ப்பு") ||
-        txt.includes("ஒடிபி சரிபார்ப்பு")
-      ) {
-        // மிகப் பெரிய முழுப் பக்கத்தையும் எடுக்காமல் குறிப்பிட்ட OTP/விலக்குப் பகுதியை எடுத்தல்
-        if (el.offsetHeight > 0 && el.offsetHeight < 900) {
-          otpTarget = el;
+        clsL.includes("otp") ||
+        clsL.includes("exempt") ||
+        txtL.includes("otp விலக்கு") ||
+        txtL.includes("ஒடிபி விலக்கு") ||
+        txtL.includes("otp சரிபார்ப்பு") ||
+        txtL.includes("ஒடிபி சரிபார்ப்பு");
+
+      if (isOtpBox) {
+        // மிகப்பெரிய முழு டேஷ்போர்டை எடுக்காமல் குறிப்பிட்ட Modal / Card / Section-ஐ எடுத்தல்
+        const h = el.getBoundingClientRect().height;
+        if (h > 40 && h < 850) {
+          matchedBox = el;
           break;
         }
       }
     }
 
-    if (otpTarget) {
-      otpTarget.classList.remove("hidden");
-      if (otpTarget.style && otpTarget.style.display === "none") {
-        otpTarget.style.display = "block";
+    if (matchedBox) {
+      matchedBox.classList.remove("hidden");
+      if (matchedBox.style) {
+        if (matchedBox.style.display === "none") {
+          matchedBox.style.display = matchedBox.classList.contains("flex") ? "flex" : "block";
+        }
       }
-      otpTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+      matchedBox.scrollIntoView({ behavior: "smooth", block: "center" });
 
-      // உள்ளே OTP input இருந்தால் அதில் கர்சரை வைத்தல்
-      const otpInput = otpTarget.querySelector("input");
-      if (otpInput && !otpInput.disabled) {
-        setTimeout(() => otpInput.focus(), 250);
+      const firstInput = matchedBox.querySelector("input:not([type='hidden']), button");
+      if (firstInput && !firstInput.disabled) {
+        setTimeout(() => firstInput.focus(), 250);
       }
     }
   }
 
-  // வங்கி வரவு சரிபார்ப்பு அல்லது வங்கி மூலம் பணம் செலுத்தல் உறுதியாகும்/முடியும் பொத்தான்களைக் கண்காணித்தல்
-  document.addEventListener("click", function(e) {
-    const btn = e.target.closest("button");
-    if (!btn) return;
-
-    const txt = (btn.innerText || "").trim().toLowerCase();
-    const onClickStr = (btn.getAttribute("onclick") || "").toLowerCase();
-
-    const isBankConfirmOrDoneBtn =
-      (txt.includes("வங்கி") && (
-        txt.includes("உறுதி") ||
-        txt.includes("சரிபார்ப்பு") ||
-        txt.includes("முடி") ||
-        txt.includes("வரவு") ||
-        txt.includes("பணம் அளி") ||
-        txt.includes("ஒப்புதல்") ||
-        txt.includes("அனுப்பு")
-      )) ||
-      onClickStr.includes("verifybank") ||
-      onClickStr.includes("confirmbank") ||
-      onClickStr.includes("bankreceipt") ||
-      onClickStr.includes("bankpayout") ||
-      onClickStr.includes("completebank");
-
-    if (isBankConfirmOrDoneBtn) {
-      setTimeout(() => {
-        resetNonOtpFieldsAfterBankTxn();
-      }, 450);
-    }
-  }, true);
-
-  // வங்கி வரவு / வங்கி செலுத்தல் API வெற்றிகரமாக முடிந்தால் தானாகவே OTP / OTP விலக்கு பகுதிக்குச் செல்லுதல்
-  (function hookBankCompletionFetch() {
-    if (window._bankOtpJumpHooked) return;
-    window._bankOtpJumpHooked = true;
+  // Auto-Hold தொடர்பான API அழைப்பு முடிந்தவுடன் தானாக இயக்குதல்
+  (function hookAutoHoldFetch() {
+    if (window._autoHoldOtpHooked) return;
+    window._autoHoldOtpHooked = true;
     const origFetch = window.fetch;
     window.fetch = async function(...args) {
       const response = await origFetch.apply(this, args);
       try {
         const urlStr = (typeof args[0] === "string" ? args[0] : (args[0]?.url || "")).toLowerCase();
-        const isBankTxnDone =
-          urlStr.includes("bank") && (
-            urlStr.includes("verify") ||
-            urlStr.includes("confirm") ||
-            urlStr.includes("approve") ||
-            urlStr.includes("receipt") ||
-            urlStr.includes("payout") ||
-            urlStr.includes("complete")
-          );
-        if (response.ok && isBankTxnDone) {
+        const isAutoHoldCall =
+          urlStr.includes("auto-hold") ||
+          urlStr.includes("autohold") ||
+          urlStr.includes("auto_hold") ||
+          (urlStr.includes("bank") && urlStr.includes("hold"));
+
+        if (response.ok && isAutoHoldCall) {
           setTimeout(() => {
-            resetNonOtpFieldsAfterBankTxn();
+            resetOtherFieldsAndOpenOtpAfterAutoHold();
           }, 400);
         }
       } catch (err) {}
       return response;
     };
   })();
+
+  // Auto-Hold / வங்கி உறுதி பொத்தான்கள் அழுத்தப்படும்போது இயக்குதல்
+  document.addEventListener("click", function(e) {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const txt = (btn.innerText || "").trim().toLowerCase();
+    const clickAttr = (btn.getAttribute("onclick") || "").toLowerCase();
+
+    if (
+      txt.includes("auto hold") ||
+      txt.includes("ஆட்டோ ஹோல்ட்") ||
+      txt.includes("ஹோல்ட்") ||
+      clickAttr.includes("autohold") ||
+      clickAttr.includes("auto_hold")
+    ) {
+      setTimeout(() => {
+        resetOtherFieldsAndOpenOtpAfterAutoHold();
+      }, 600);
+    }
+  }, true);
 </script>
 </body>
 </html>

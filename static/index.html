@@ -11806,7 +11806,14 @@
 
       const loanInput = document.getElementById('loan_amount');
       if (loanInput) {
-        loanInput.value = parseFloat(dev.approved_loan_amount || 0);
+        const appAmt = parseFloat(dev.approved_loan_amount || 0);
+        const reqAmt = parseFloat(dev.requested_loan_amount || 0);
+        const fallbackCartAmt = parseFloat(target?.cart?.[0]?.debit || 0);
+        const finalAmt = appAmt > 0 ? appAmt : (reqAmt > 0 ? reqAmt : (fallbackCartAmt > 0 ? fallbackCartAmt : maxEligibleLoanAmount));
+
+        if (finalAmt > 0) {
+          loanInput.value = finalAmt;
+        }
         if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
       }
       refreshDeviationUiState();

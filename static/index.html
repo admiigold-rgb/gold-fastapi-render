@@ -11592,16 +11592,23 @@
 
   // தேதி மாறும்போது மற்றும் பக்கம் திறக்கும்போது தானாகவே புதுப்பித்தல்
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(loadCounterHqApprovalStatus, 1000);
+    setTimeout(loadCounterHqApprovalStatus, 1200);
+    setTimeout(loadCounterHqApprovalStatus, 3000);
     const dateEl = document.getElementById('txn_date');
     if (dateEl) dateEl.addEventListener('change', loadCounterHqApprovalStatus);
   });
 
-  // ஒவ்வொரு 15 விநாடிகளுக்கும் பின்னணியில் புதுப்பித்தல் (ஒப்புதல் கிடைத்தவுடன் தானாக மறையும்)
-  setInterval(() => {
-    if (document.getElementById('counterTab') && !document.getElementById('counterTab').classList.contains('hidden')) {
-      loadCounterHqApprovalStatus();
+  // எந்தப் பட்டனை அழுத்தினாலும் (Hold / கவுண்டர் திரும்புதல் உட்பட) உடனே புதுப்பித்தல்
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button')) {
+      setTimeout(loadCounterHqApprovalStatus, 1200);
     }
+  });
+
+  // பின்னணியில் ஒவ்வொரு 15 வினாடிக்கும் தானாகச் சரிபார்த்தல் (ஸ்பின்னர் வராது)
+  setInterval(() => {
+    const cView = document.getElementById('counterHqStatusContainer');
+    if (cView) loadCounterHqApprovalStatus();
   }, 15000);
 </script>
 </body>

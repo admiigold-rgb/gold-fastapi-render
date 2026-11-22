@@ -3430,15 +3430,35 @@
       calculateEligibleLoanAmount();
     }
 
-    document.getElementById('loan_amount').addEventListener('change', function() {
-      let entered = parseFloat(this.value) || 0;
-      if (maxEligibleLoanAmount > 0 && entered > maxEligibleLoanAmount) {
-        alert(`அனுமதிக்கப்பட்ட கடன் தொகைக்கு மேல் வழங்க முடியாது! \nஅன்றைய தங்க மதிப்பில் அதிகபட்சமாக ₹${maxEligibleLoanAmount.toLocaleString('en-IN')} மட்டுமே வழங்க முடியும்.`);
-        this.value = maxEligibleLoanAmount;
+    // ✅ கடன் தொகை மாற்றப்படும்போது திட்ட வரம்பு / HQ ஒப்புதல் வரம்பு / கூடுதல் கடன் நிலையைச் சரிபார்த்தல்
+    function handleLoanAmountFieldChange() {
+      const loanInput = document.getElementById('loan_amount');
+      if (!loanInput) return;
+
+      let entered = parseFloat(loanInput.value) || 0;
+
+      // 1. தலைமையகம் ஏற்கனவே ஒப்புதல் அளித்திருந்தால், HQ அனுமதித்த தொகைக்கு மேல் போகாமல் தடுத்தல்
+      if (typeof activeApprovedDeviationData !== 'undefined' && activeApprovedDeviationData && activeApprovedDeviationData.status === 'APPROVED') {
+        const capAmt = parseFloat(activeApprovedDeviationData.approved_loan_amount || 0);
+        if (entered > capAmt) {
+          alert(`⚠️ தலைமையகம் அனுமதித்த அதிகபட்ச கடன் தொகை ₹${capAmt.toLocaleString('en-IN')} மட்டுமே! அதற்கு மேல் வழங்க முடியாது.`);
+          loanInput.value = capAmt;
+        }
+        if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+        if (typeof refreshDeviationUiState === 'function') refreshDeviationUiState();
+        return;
       }
-      // கடன் தொகை திருத்தப்பட்ட பிறகும் கட்டணத்தை உடனே புதுப்பித்தல்
-      recalculatePledgeCharge();
-    });
+
+      // 2. திட்டத்தின்படி அனுமதிக்கப்பட்ட தொகைக்குக் குறைவாகவோ அல்லது சமமாகவோ இருந்தால்: இயல்பான "கூடையில் சேர்"
+      if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+      if (typeof refreshDeviationUiState === 'function') refreshDeviationUiState();
+    }
+
+    const _loanAmtEl = document.getElementById('loan_amount');
+    if (_loanAmtEl) {
+      _loanAmtEl.addEventListener('input', handleLoanAmountFieldChange);
+      _loanAmtEl.addEventListener('change', handleLoanAmountFieldChange);
+    }
 
     document.getElementById('scheme_name').addEventListener('change', onSchemeSelected);
     

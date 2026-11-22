@@ -11478,11 +11478,36 @@
     const overlay = document.getElementById('globalLoadingOverlay');
     const textEl = document.getElementById('globalLoaderText');
 
+    // 🎯 பயனர் ஏதேனும் பட்டனை அழுத்தும்போது அல்லது படிவத்தைச் சமர்ப்பிக்கும்போது மட்டும் அனுமதித்தல்
+    window._userActionLoading = false;
+    let loadingTimer = null;
+
+    function allowLoadingFor(ms) {
+      window._userActionLoading = true;
+      if (loadingTimer) clearTimeout(loadingTimer);
+      loadingTimer = setTimeout(() => {
+        window._userActionLoading = false;
+        if (overlay) overlay.style.display = 'none';
+      }, ms);
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button, a, [role="button"]');
+      if (btn && !btn.disabled) {
+        allowLoadingFor(4000);
+      }
+    }, true);
+
+    document.addEventListener('submit', () => {
+      allowLoadingFor(5000);
+    }, true);
+
     // பின்னணியில் தானாக ஓடும் சரிபார்ப்புகளுக்கு அனிமேஷன் காட்டாமல் தவிர்த்தல்
     const silentUrls = [
       '/api/bank/transfer-status/',
       '/api/rebate/status/',
-      '/api/otp/exemption-status'
+      '/api/otp/exemption-status',
+      '/api/counter/hq-approval-status'
     ];
 
     const originalFetch = window.fetch;
@@ -11490,7 +11515,8 @@
       const url = (typeof args[0] === 'string' ? args[0] : (args[0]?.url || '')).toLowerCase();
       const isSilent = silentUrls.some(s => url.includes(s));
 
-      if (isSilent) {
+      // பட்டன் அழுத்தாமல் தானாக நடக்கும் அழைப்புகளுக்கு லோடிங் திரை காட்டாது
+      if (isSilent || !window._userActionLoading) {
         return originalFetch.apply(this, args);
       }
 
@@ -11578,6 +11604,12 @@
     }
   }, 15000);
 </script>
+  setInterval(() => {
+    const ov = document.getElementById('globalLoadingOverlay') || document.getElementById('loadingOverlay');
+    if (ov && !window._userActionLoading) {
+      ov.classList.add('hidden');
+    }
+  }, 2000);
 </body>
 </html>
   

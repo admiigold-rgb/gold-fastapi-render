@@ -11511,5 +11511,159 @@
     } catch (e) {}
   });
 </script>
+
+<script>
+  // ✅ வங்கி வரவு / வங்கி செலுத்தல் முடிந்த பின் மற்றவற்றை ரீசெட் செய்து நேரடியாக OTP / OTP விலக்கு பகுதிக்குச் செல்லும் அமைப்பு
+  function resetNonOtpFieldsAfterBankTxn() {
+    const counterArea = document.getElementById("counterTab") || document.body;
+
+    // 1. கூடை & நகை/திட்ட உள்ளீட்டுப் பெட்டிகளை (OTP / OTP விலக்கு பெட்டிகள் தவிர) சுத்தம் செய்தல்
+    counterArea.querySelectorAll("input, select, textarea").forEach(el => {
+      const idL = (el.id || "").toLowerCase();
+      const nameL = (el.name || "").toLowerCase();
+      const phL = (el.placeholder || "").toLowerCase();
+      const lblL = (el.closest("div")?.innerText || "").toLowerCase();
+
+      const isOtpRelated =
+        idL.includes("otp") ||
+        idL.includes("exempt") ||
+        nameL.includes("otp") ||
+        phL.includes("otp") ||
+        lblL.includes("otp") ||
+        lblL.includes("ஒடிபி") ||
+        lblL.includes("விலக்கு") ||
+        idL.includes("branch") ||
+        idL.includes("txn_date");
+
+      if (isOtpRelated) return;
+
+      if (el.tagName === "INPUT") {
+        if (el.type === "checkbox" || el.type === "radio") {
+          el.checked = false;
+        } else if (el.type !== "hidden" && !el.readOnly) {
+          el.value = "";
+        }
+      } else if (el.tagName === "TEXTAREA") {
+        el.value = "";
+      } else if (el.tagName === "SELECT") {
+        if (el.options.length > 0) el.selectedIndex = 0;
+      }
+    });
+
+    // 2. கூடை (Cart) பட்டியலை காலி செய்தல் (உலகளாவிய cartItems இருந்தால்)
+    try {
+      if (Array.isArray(window.cartItems)) {
+        window.cartItems.length = 0;
+      }
+      if (typeof window.renderCart === "function") {
+        window.renderCart();
+      }
+    } catch (e) {}
+
+    // 3. நேரடியாக OTP / OTP விலக்கு பகுதியைத் திறந்து / காட்டி அங்கே நகர்த்துதல்
+    jumpDirectlyToOtpOrExemptionSection();
+  }
+
+  function jumpDirectlyToOtpOrExemptionSection() {
+    const allEls = Array.from(document.querySelectorAll("section, div, form, button, input"));
+    let otpTarget = null;
+
+    // முதலில் OTP விலக்கு / OTP தொடர்பான பகுதி அல்லது உள்ளீட்டுப் பெட்டியைத் தேடுதல்
+    for (const el of allEls) {
+      const idL = (el.id || "").toLowerCase();
+      const txt = (el.innerText || "").toLowerCase();
+      const ph = (el.placeholder || "").toLowerCase();
+
+      if (
+        idL.includes("otp") ||
+        idL.includes("exempt") ||
+        ph.includes("otp") ||
+        txt.includes("otp விலக்கு") ||
+        txt.includes("ஒடிபி விலக்கு") ||
+        txt.includes("otp சரிபார்ப்பு") ||
+        txt.includes("ஒடிபி சரிபார்ப்பு")
+      ) {
+        // மிகப் பெரிய முழுப் பக்கத்தையும் எடுக்காமல் குறிப்பிட்ட OTP/விலக்குப் பகுதியை எடுத்தல்
+        if (el.offsetHeight > 0 && el.offsetHeight < 900) {
+          otpTarget = el;
+          break;
+        }
+      }
+    }
+
+    if (otpTarget) {
+      otpTarget.classList.remove("hidden");
+      if (otpTarget.style && otpTarget.style.display === "none") {
+        otpTarget.style.display = "block";
+      }
+      otpTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // உள்ளே OTP input இருந்தால் அதில் கர்சரை வைத்தல்
+      const otpInput = otpTarget.querySelector("input");
+      if (otpInput && !otpInput.disabled) {
+        setTimeout(() => otpInput.focus(), 250);
+      }
+    }
+  }
+
+  // வங்கி வரவு சரிபார்ப்பு அல்லது வங்கி மூலம் பணம் செலுத்தல் உறுதியாகும்/முடியும் பொத்தான்களைக் கண்காணித்தல்
+  document.addEventListener("click", function(e) {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const txt = (btn.innerText || "").trim().toLowerCase();
+    const onClickStr = (btn.getAttribute("onclick") || "").toLowerCase();
+
+    const isBankConfirmOrDoneBtn =
+      (txt.includes("வங்கி") && (
+        txt.includes("உறுதி") ||
+        txt.includes("சரிபார்ப்பு") ||
+        txt.includes("முடி") ||
+        txt.includes("வரவு") ||
+        txt.includes("பணம் அளி") ||
+        txt.includes("ஒப்புதல்") ||
+        txt.includes("அனுப்பு")
+      )) ||
+      onClickStr.includes("verifybank") ||
+      onClickStr.includes("confirmbank") ||
+      onClickStr.includes("bankreceipt") ||
+      onClickStr.includes("bankpayout") ||
+      onClickStr.includes("completebank");
+
+    if (isBankConfirmOrDoneBtn) {
+      setTimeout(() => {
+        resetNonOtpFieldsAfterBankTxn();
+      }, 450);
+    }
+  }, true);
+
+  // வங்கி வரவு / வங்கி செலுத்தல் API வெற்றிகரமாக முடிந்தால் தானாகவே OTP / OTP விலக்கு பகுதிக்குச் செல்லுதல்
+  (function hookBankCompletionFetch() {
+    if (window._bankOtpJumpHooked) return;
+    window._bankOtpJumpHooked = true;
+    const origFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const response = await origFetch.apply(this, args);
+      try {
+        const urlStr = (typeof args[0] === "string" ? args[0] : (args[0]?.url || "")).toLowerCase();
+        const isBankTxnDone =
+          urlStr.includes("bank") && (
+            urlStr.includes("verify") ||
+            urlStr.includes("confirm") ||
+            urlStr.includes("approve") ||
+            urlStr.includes("receipt") ||
+            urlStr.includes("payout") ||
+            urlStr.includes("complete")
+          );
+        if (response.ok && isBankTxnDone) {
+          setTimeout(() => {
+            resetNonOtpFieldsAfterBankTxn();
+          }, 400);
+        }
+      } catch (err) {}
+      return response;
+    };
+  })();
+</script>
 </body>
 </html>

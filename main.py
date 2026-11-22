@@ -3845,6 +3845,28 @@ def process_visit_approval(data: ApprovalActionPayload):
                 .execute()
                 .data or []
             )
+
+            # visit_id இணைப்பு விடுபட்டிருந்தால், actions_summary-ல் உள்ள கடன் எண் (loan_no) மூலம் எடுத்தல்
+            existing_lno_set = {str(x.get("loan_no") or "").strip().upper() for x in approved_loans}
+            gl_refs = [
+                str(it.get("ref_no") or "").strip()
+                for it in action_items
+                if it.get("activity_type") == "GL_NEW" and it.get("ref_no") and it.get("ref_no") != "-"
+            ]
+            for ref_lno in gl_refs:
+                if ref_lno.upper() not in existing_lno_set:
+                    l_fallback = (
+                        supabase.table("test_gold_loans")
+                        .select("id, loan_no, customer_id, branch_id, status")
+                        .eq("loan_no", ref_lno)
+                        .eq("status", "ACTIVE")
+                        .execute()
+                        .data or []
+                    )
+                    if l_fallback:
+                        approved_loans.extend(l_fallback)
+                        existing_lno_set.add(ref_lno.upper())
+
             for ln in approved_loans:
                 l_no = str(ln.get("loan_no") or "").strip()
                 if not l_no:

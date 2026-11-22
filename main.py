@@ -719,6 +719,27 @@ def get_next_loan_no(branch_id: int = Query(...)):
 @app.get("/api/customer/{customer_id}/active-loans")
 def get_customer_active_loans(customer_id: int):
     try:
+        # 🔒 நிராகரிக்கப்பட்ட (REJECTED) வருகைகளில் உருவான கடன்கள் 'ACTIVE' ஆக காட்டப்படுவதைத் தடுத்தல்
+        try:
+            rej_visits = (
+                supabase.table("test_customer_visits")
+                .select("id")
+                .eq("customer_id", customer_id)
+                .eq("status", "REJECTED")
+                .execute()
+                .data or []
+            )
+            rej_visit_ids = [v["id"] for v in rej_visits if v.get("id")]
+            if rej_visit_ids:
+                supabase.table("test_gold_loans").update({"status": "CANCELLED"}).eq("customer_id", customer_id).eq("status", "ACTIVE").in_("visit_id", rej_visit_ids).execute()
+                supabase.table("test_gold_packets").update({"packet_status": "CANCELLED"}).eq("customer_id", customer_id).in_("visit_id", rej_visit_ids).execute()
+                supabase.table("test_gold_purchases").update({"status": "CANCELLED"}).eq("customer_id", customer_id).in_("visit_id", rej_visit_ids).execute()
+                supabase.table("test_customer_savings_accounts").update({"status": "CANCELLED"}).eq("customer_id", customer_id).eq("status", "ACTIVE").in_("visit_id", rej_visit_ids).execute()
+                supabase.table("test_customer_rd_accounts").update({"status": "CANCELLED"}).eq("customer_id", customer_id).eq("status", "ACTIVE").in_("visit_id", rej_visit_ids).execute()
+                supabase.table("test_si_accounts").update({"status": "CANCELLED"}).eq("customer_id", customer_id).eq("status", "ACTIVE").in_("visit_id", rej_visit_ids).execute()
+        except Exception as sync_err:
+            print("Rejected visit cleanup note:", sync_err)
+
         res = supabase.table("test_gold_loans") \
             .select("*, test_gold_loan_items(*)") \
             .eq("customer_id", customer_id) \

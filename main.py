@@ -2715,6 +2715,16 @@ def create_bank_transfer(data: BankTransferPayload):
     res = supabase.table("test_bank_transfers").insert(record).execute()
     return {"status": "success", "message": "வங்கி பரிவர்த்தனை வேண்டுகோள் தலைமையகத்திற்கு அனுப்பப்பட்டது.", "data": res.data}
 
+@app.get("/api/bank/transfer-status/{transfer_id}")
+def get_single_bank_transfer_status(transfer_id: int):
+    try:
+        res = supabase.table("test_bank_transfers").select("status, receipt_ref_no, company_bank_name").eq("id", transfer_id).execute()
+        if res.data:
+            return {"status": "success", "transfer_status": res.data[0].get("status", "PENDING"), "data": res.data[0]}
+        return {"status": "success", "transfer_status": "PENDING"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/bank/branch-status")
 def get_branch_bank_status(branch_id: int = Query(...)):
     cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
@@ -2791,33 +2801,54 @@ def process_hq_bank_transfer(data: dict):
 
 @app.get("/api/hq/all-pending-approvals")
 def get_all_pending_approvals():
+    cust_map = {}
+    branch_map = {}
     try:
         cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
         cust_map = {c["id"]: c for c in (cust_res.data or [])}
-
         branch_res = supabase.table("test_branches").select("id, branch_name, branch_code").execute()
         branch_map = {b["id"]: b for b in (branch_res.data or [])}
+    except Exception:
+        pass
 
+    payouts_data, receipts_data, visits_data, kyc_data, updates_data = [], [], [], [], []
+
+    try:
         payouts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "PAYOUT").eq("status", "PENDING").order("id", desc=True).execute()
         payouts_data = payouts_res.data or []
         for p in payouts_data:
             c = cust_map.get(p.get("customer_id"), {})
             p["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{p.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+    except Exception:
+        pass
 
+    try:
         receipts_res = supabase.table("test_bank_transfers").select("*").eq("direction", "RECEIPT").eq("status", "PENDING").order("id", desc=True).execute()
         receipts_data = receipts_res.data or []
         for r in receipts_data:
             c = cust_map.get(r.get("customer_id"), {})
             r["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+    except Exception:
+        pass
 
-        visits_res = supabase.table("test_customer_visits").select("*").eq("status", "PENDING_HQ").order("id", desc=True).limit(20).execute()
+    try:
+        visits_res = supabase.table("test_customer_visits").select("*").eq("status", "PENDING_HQ").order("id", desc=True).limit(30).execute()
         visits_data = visits_res.data or []
         for v in visits_data:
-         c = cust_map.get(v.get("customer_id"), {})
-         b = branch_map.get(v.get("branch_id"), {})
-         v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
-         v["test_branches"] = {"branch_name": b.get("branch_name", f"கிளை #{v.get('branch_id')}"), "branch_code": b.get("branch_code", "BR")}
+            c = cust_map.get(v.get("customer_id"), {})
+            b = branch_map.get(v.get("branch_id"), {})
+            v["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+            v["test_branches"] = {"branch_name": b.get("branch_name", f"கிளை #{v.get('branch_id')}"), "branch_code": b.get("branch_code", "BR")}
+    except Exception:
+        pass
 
+    try:
+        kyc_res = supabase.table("test_customers").select("*").eq("kyc_status", "PENDING").order("id", desc=True).execute()
+        kyc_data = kyc_res.data or []
+    except Exception:
+        pass
+
+    try:
         updates_res = supabase.table("test_customer_update_requests").select("*").eq("status", "PENDING").order("id", desc=True).execute()
         updates_data = updates_res.data or []
         for u in updates_data:
@@ -2825,17 +2856,17 @@ def get_all_pending_approvals():
             b = branch_map.get(u.get("branch_id"), {})
             u["test_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{u.get('customer_id')}"), "mobile": c.get("mobile", "-")}
             u["test_branches"] = {"branch_name": b.get("branch_name", f"கிளை #{u.get('branch_id')}"), "branch_code": b.get("branch_code", "BR")}
+    except Exception:
+        pass
 
-        return {
-            "status": "success",
-            "pending_kyc": kyc_res.data or [],
-            "pending_updates": updates_data,
-            "pending_visits": visits_data,
-            "pending_payouts": payouts_data,
-            "pending_receipts": receipts_data
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"தலைமையக நிலுவைகள் பிழை: {str(e)}")
+    return {
+        "status": "success",
+        "pending_kyc": kyc_data,
+        "pending_updates": updates_data,
+        "pending_visits": visits_data,
+        "pending_payouts": payouts_data,
+        "pending_receipts": receipts_data
+    }
 
 @app.post("/api/hq/approve-kyc")
 def process_kyc_approval(data: ApprovalActionPayload):

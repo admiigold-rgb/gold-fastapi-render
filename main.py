@@ -2620,17 +2620,89 @@ def delete_company_bank(bank_id: int):
     supabase.table("test_company_banks").delete().eq("id", bank_id).execute()
     return {"status": "success", "message": "வங்கி கணக்கு நீக்கப்பட்டது."}
 
+# ==============================================================================
+# 💰 தங்கத் தரம் & விலை நிர்ணயம் (Admin Gold Purity & Rate Management APIs)
+# ==============================================================================
+class GoldPurityRatePayload(BaseModel):
+    purity_code: str
+    purity_label: str
+    rate_per_gram: float
+    sort_order: int = 1
+    is_active: bool = True
+
+@app.get("/api/admin/gold-purity-rates")
+def get_all_gold_purity_rates(include_inactive: bool = False):
+    try:
+        q = supabase.table("test_gold_purity_rates").select("*")
+        if not include_inactive:
+            q = q.eq("is_active", True)
+        res = q.order("sort_order", desc=False).order("id", desc=False).execute()
+        return {"status": "success", "data": res.data or []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"தங்கத் தரம் பட்டியல் பிழை: {str(e)}")
+
+@app.post("/api/admin/gold-purity-rate/save")
+def save_gold_purity_rate(data: GoldPurityRatePayload):
+    try:
+        code = data.purity_code.strip().upper()
+        label = data.purity_label.strip()
+        rate = float(data.rate_per_gram or 0)
+        if not code or not label or rate <= 0:
+            raise HTTPException(status_code=400, detail="தரக் குறியீடு, பெயர் மற்றும் சரியான கிராம் விலையை உள்ளிடவும்.")
+
+        existing = supabase.table("test_gold_purity_rates").select("id").eq("purity_code", code).execute()
+        now_t = datetime.now(IST).isoformat()
+        payload = {
+            "purity_code": code,
+            "purity_label": label,
+            "rate_per_gram": rate,
+            "sort_order": int(data.sort_order or 1),
+            "is_active": bool(data.is_active),
+            "updated_at": now_t
+        }
+
+        if existing.data:
+            res = supabase.table("test_gold_purity_rates").update(payload).eq("id", existing.data[0]["id"]).execute()
+            msg = f"'{label} ({code})' தரத்தின் விலை ₹{rate:,.2f}/g எனப் புதுப்பிக்கப்பட்டது!"
+        else:
+            res = supabase.table("test_gold_purity_rates").insert(payload).execute()
+            msg = f"புதிய தங்கத் தரம் '{label} ({code})' (₹{rate:,.2f}/g) சேர்க்கப்பட்டது!"
+
+        return {"status": "success", "message": msg, "data": res.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"தங்க விலை சேமிப்பு பிழை: {str(e)}")
+
+@app.delete("/api/admin/gold-purity-rate/{rate_id}")
+def delete_gold_purity_rate(rate_id: int):
+    try:
+        supabase.table("test_gold_purity_rates").delete().eq("id", rate_id).execute()
+        return {"status": "success", "message": "தங்கத் தரம் நீக்கப்பட்டது."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)}
+
+# பழைய /api/admin/gold-rate/today அழைப்புகளைப் புதிய அட்டவணையுடன் இணைத்தல்
 @app.get("/api/admin/gold-rate/today")
 def get_today_gold_rate():
-    res = supabase.table("test_daily_gold_rates").select("*").order("rate_date", desc=True).limit(1).execute()
-    return {"status": "success", "data": res.data[0] if res.data else None}
-
-@app.post("/api/admin/gold-rate/update")
-def update_today_gold_rate(data: DailyGoldRatePayload):
-    record = data.model_dump()
-    record["rate_date"] = "now()"
-    res = supabase.table("test_daily_gold_rates").upsert(record, on_conflict="rate_date").execute()
-    return {"status": "success", "message": "அன்றைய தங்க விலை நிர்ணயிக்கப்பட்டது.", "data": res.data}
+    try:
+        res = supabase.table("test_gold_purity_rates").select("*").eq("is_active", True).order("sort_order", desc=False).execute()
+        rates_list = res.data or []
+        rate_map = {r["purity_code"].upper(): float(r["rate_per_gram"]) for r in rates_list}
+        r_24k = rate_map.get("24K", 0.0)
+        r_22k = rate_map.get("916", rate_map.get("22CT", 0.0))
+        r_18k = rate_map.get("18CT", 0.0)
+        return {
+            "status": "success",
+            "data": {
+                "rate_24k_per_gram": r_24k,
+                "rate_22k_per_gram": r_22k,
+                "rate_18k_per_gram": r_18k,
+                "purity_rates": rates_list
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/branches")
 def get_branches():

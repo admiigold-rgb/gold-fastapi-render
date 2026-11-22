@@ -460,18 +460,37 @@ def api_save_incentive_settings(data: dict):
 @app.get("/api/incentive/report")
 def api_get_incentive_report(from_date: str = "", to_date: str = "", branch_id: int = 0):
     try:
-        q = supabase.table("test_staff_incentive_ledger").select("*, test_staff_users(full_name, username, role_key, is_active, is_branch_manager), test_branches(branch_name)").order("id", desc=True)
+        q = supabase.table("test_staff_incentive_ledger").select("*").order("id", desc=True)
         if from_date:
             q = q.gte("txn_date", from_date)
         if to_date:
             q = q.lte("txn_date", to_date)
-        if branch_id and branch_id > 0:
-            q = q.eq("branch_id", branch_id)
+        if branch_id and int(branch_id) > 0:
+            q = q.eq("branch_id", int(branch_id))
         res = q.limit(2000).execute()
-        return {"status": "success", "data": res.data or []}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        rows = res.data or []
 
+        staff_res = supabase.table("test_staff_users").select("id, full_name, username, role_key, is_active, is_branch_manager").execute().data or []
+        s_map = {s["id"]: s for s in staff_res}
+
+        br_res = supabase.table("test_branches").select("id, branch_name").execute().data or []
+        b_map = {b["id"]: b.get("branch_name", "-") for b in br_res}
+
+        for r in rows:
+            st_info = s_map.get(r.get("staff_id")) or {
+                "full_name": f"Staff #{r.get('staff_id')}",
+                "username": "-",
+                "role_key": "BRANCH_STAFF",
+                "is_active": True,
+                "is_branch_manager": False
+            }
+            r["test_staff_users"] = st_info
+            r["branch_name"] = b_map.get(r.get("branch_id"), "-")
+
+        return {"status": "success", "data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"இன்சென்டிவ் அறிக்கை பிழை: {str(e)}")
+        
 # ==========================================
 # 🧾 கிளை தினசரி செலவு மேலாண்மை (Branch Expenses)
 # ==========================================

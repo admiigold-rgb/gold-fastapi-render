@@ -3484,7 +3484,7 @@
       document.getElementById('cardRelation').innerText = (cust.relation_type || 'உறவினர்') + ": " + (cust.guardian_name || '-');
       document.getElementById('cardProofNo').innerText = cust.id_proof_no || '-';
       document.getElementById('cardAddress').innerText = cust.address || 'முகவரி இல்லை';
-  
+
       const imgElem = document.getElementById('cardCustomerImg');
       const placeholder = document.getElementById('cardCustomerPlaceholder');
       if (cust.customer_photo) {
@@ -3495,36 +3495,14 @@
 
       const badge = document.getElementById('cardKycBadge');
       badge.innerText = cust.kyc_status;
-      badge.className = (cust.kyc_status === 'VERIFIED') ? "text-[10px] px-2 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 border border-emerald-300" : "text-[10px] px-2 py-0.5 rounded font-black bg-amber-100 text-amber-900 border border-yellow-300";
+      badge.className = (cust.kyc_status === 'VERIFIED')
+        ? "text-[10px] px-2 py-0.5 rounded font-black bg-emerald-100 text-emerald-800 border border-emerald-300"
+        : "text-[10px] px-2 py-0.5 rounded font-black bg-amber-100 text-amber-900 border border-yellow-300";
 
       document.getElementById('searchSection').classList.add('hidden');
       document.getElementById('activeCustomerSection').classList.remove('hidden');
 
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      
-      // 1. கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
-      const transInput = document.querySelector('input[type="date"]');
-      const transDate = transInput && transInput.value ? transInput.value : new Date().toISOString().split('T')[0];
-
-      try {
-        // 2. பரிவர்த்தனை தேதியுடன் வருகைப் பதிவை சர்வரிற்கு அனுப்புதல்
-        const vRes = await fetch('/api/customer/visit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            customer_id: cust.id, 
-            branch_id: branchId, 
-            purpose: "REGULAR_TRANSACTION",
-            transaction_date: transDate // <-- கவுண்ட்டரின் பரிவர்த்தனை தேதி
-          })
-        });
-        const vData = await vRes.json();
-        
-        if (!vRes.ok) {
-          alert("⚠️ " + (vData.detail || "வருகைப் பதிவு தோல்வியடைந்தது."));
-          return;
-        }
-        activeVisitId = null; // பரிவர்த்தனை நடக்கும்போது மட்டும் வருகை உருவாகும்
+      activeVisitId = null; // பரிவர்த்தனை நடக்கும்போது மட்டும் வருகை உருவாகும்
 
       fetchAutoLoanNumber();
       onSchemeSelected();

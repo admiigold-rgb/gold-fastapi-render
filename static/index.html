@@ -11788,6 +11788,21 @@
         renderOrnamentsTable();
         calculateEligibleLoanAmount();
       }
+      // திட்டத்தைக் கண்டறிந்து (பெயர் அல்லது குறியீடு மூலம்) Processing கட்டணத்தை உடனே புதுப்பித்தல்
+      const schemeSel = document.getElementById('scheme_name');
+      if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0) {
+        const matchedSch =
+          schemesCache.find(s => s.scheme_name === dev.scheme_name || s.scheme_code === dev.scheme_name) ||
+          schemesCache.find(s => s.scheme_name === schemeSel.value) ||
+          schemesCache.find(s => s.is_active !== false);
+        if (matchedSch) {
+          currentSelectedScheme = matchedSch;
+          if ([...schemeSel.options].some(o => o.value === matchedSch.scheme_name)) {
+            schemeSel.value = matchedSch.scheme_name;
+          }
+        }
+      }
+
       const loanInput = document.getElementById('loan_amount');
       if (loanInput) {
         loanInput.value = parseFloat(dev.approved_loan_amount || 0);

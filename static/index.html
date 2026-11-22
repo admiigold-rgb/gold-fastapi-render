@@ -4780,11 +4780,12 @@
     }
     // 8. Admin APIs
     async function checkBranchBankStatus() {
-      const bId = parseInt(document.getElementById('active_branch_id').value) || 1;
+      const bId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
       try {
         const res = await fetch(`/api/bank/branch-status?branch_id=${bId}`);
         const data = await res.json();
         const elem = document.getElementById('branchBankLiveStatus');
+        if (!elem) return;
         if (data.data && data.data.length > 0) {
           const last = data.data[0];
           const badge = last.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : (last.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800');
@@ -11820,26 +11821,48 @@
     let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
     let changed = false;
 
-    for (let d of drafts) {
-      if (d.exemption_status === 'WAITING_HQ' && d.loan_deviation_id) {
-        try {
-          const r = await fetch(`/api/loan/deviation-status/${d.loan_deviation_id}`);
-          if (r.ok) {
-            const out = await r.json();
-            const st = out.data?.status;
-            if (st === 'APPROVED') {
-              d.exemption_status = 'APPROVED';
-              d.approved_deviation = out.data;
-              changed = true;
-            } else if (st === 'REJECTED') {
-              d.exemption_status = 'NONE';
-              d.loan_deviation_id = null;
-              changed = true;
-            }
+    const hasWaitingDev = drafts.some(d => d.exemption_status === 'WAITING_HQ');
+    if (!hasWaitingDev) return;
+
+    try {
+      const pendingRes = await fetch('/api/hq/pending-loan-deviations?t=' + Date.now());
+      const pendingOut = await pendingRes.json();
+      const stillPendingList = pendingOut.data || [];
+      const stillPendingIds = new Set(stillPendingList.map(x => Number(x.id)));
+
+      for (let d of drafts) {
+        if (d.exemption_status === 'WAITING_HQ') {
+          if (d.loan_deviation_id) {
+            try {
+              const r = await fetch(`/api/loan/deviation-status/${d.loan_deviation_id}?t=` + Date.now());
+              if (r.ok) {
+                const out = await r.json();
+                const devRow = out.data || {};
+                const st = devRow.status;
+                if (st === 'APPROVED') {
+                  d.exemption_status = 'APPROVED';
+                  d.approved_deviation = devRow;
+                  changed = true;
+                } else if (st === 'REJECTED') {
+                  d.exemption_status = 'NONE';
+                  d.loan_deviation_id = null;
+                  changed = true;
+                }
+              }
+            } catch (e) {}
+          } else if (!stillPendingIds.has(Number(d.loan_deviation_id || -1))) {
+            // பழைய டிராஃப்ட் எனில், இப்போது HQ பென்டிங் பட்டியலில் இல்லை என்றால் APPROVED எனக் கருதித் திறக்க அனுமதித்தல்
+            d.exemption_status = 'APPROVED';
+            d.approved_deviation = {
+              status: 'APPROVED',
+              approved_loan_amount: parseFloat(d.cart?.[0]?.debit || 0) || null,
+              ornaments_json: d.ornaments || []
+            };
+            changed = true;
           }
-        } catch (e) {}
+        }
       }
-    }
+    } catch (e) {}
 
     if (changed) {
       localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));

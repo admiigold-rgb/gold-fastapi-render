@@ -10255,7 +10255,7 @@
       return `<option value="${s.id}">${label}</option>`;
     }).join('');
 
-    const staffOnlyWithDefault = `<option value="">-- பணியாளரைத் தேர்ந்தெடுக்கவும் --</option>` + staffOptionsHtml;
+    const staffOnlyWithDefault = `<option value="0">🚶 Walk-in (நேரடி வாடிக்கையாளர்)</option>` + staffOptionsHtml;
     const walkInPlusStaff = `<option value="WALK_IN">🚶 Walk-in (நேரடி வாடிக்கையாளர்)</option>` + activeStaff.map(s => {
       const sName = s.full_name || s.name || s.username || `Staff #${s.id}`;
       const label = `${sName}${s.role_key ? ' (' + s.role_key + ')' : ''}`;
@@ -11368,7 +11368,7 @@
         if (staffList.length === 0) return;
 
       const optionsHtml =
-        `<option value="">-- பணியாளரைத் தேர்ந்தெடுக்கவும் --</option>` +
+        `<option value="0">🚶 Walk-in (நேரடி வாடிக்கையாளர்)</option>` +
         staffList.map(s => {
           const name = s.full_name || s.name || s.username || ('Staff #' + s.id);
           const rolePart = s.role_key ? ' (' + s.role_key + ')' : '';

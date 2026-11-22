@@ -175,7 +175,21 @@
         </div>
         <button type="button" onclick="checkBranchBankStatus()" class="text-amber-900 font-extrabold hover:underline bg-yellow-200 px-2.5 py-1 rounded-lg">புதுப்பி 🔄</button>
       </div>
+      <!-- 🔔 தலைமையக ஒப்புதல் நிலுவை & நிராகரிக்கப்பட்டவை பட்டை -->
+      <div id="counterHqStatusContainer" class="hidden space-y-2">
+        <div id="counterHqPendingBox" class="hidden bg-amber-50 border-2 border-amber-400 p-3 rounded-2xl text-xs space-y-1.5 shadow-sm">
+          <div class="flex justify-between items-center">
+            <span class="font-black text-amber-950">⏳ தலைமையக ஒப்புதல் நிலுவை (Pending HQ Approval — மாலை கணக்கு முடிக்க இவை ஒப்புதல் பெற வேண்டும்):</span>
+            <button type="button" onclick="loadCounterHqApprovalStatus()" class="px-2.5 py-0.5 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded-lg font-bold cursor-pointer">புதுப்பி 🔄</button>
+          </div>
+          <div id="counterHqPendingList" class="flex flex-wrap gap-2"></div>
+        </div>
 
+        <div id="counterHqRejectedBox" class="hidden bg-rose-50 border-2 border-rose-400 p-3 rounded-2xl text-xs space-y-1.5 shadow-sm">
+          <span class="font-black text-rose-900 block">❌ தலைமையகத்தால் நிராகரிக்கப்பட்டவை (Rejected — இவை அன்றைய நடவடிக்கையில் சேராது):</span>
+          <div id="counterHqRejectedList" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
       <!-- ⏸️ 1. நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளர்கள் பட்டை (Held Queue Bar) -->
       <div id="heldDraftsContainer" class="hidden bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-yellow-400 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
         <div class="flex items-center gap-2 flex-wrap">
@@ -11508,6 +11522,70 @@
       }
     };
   })();
+</script>
+<script>
+  async function loadCounterHqApprovalStatus() {
+    const container = document.getElementById('counterHqStatusContainer');
+    const pBox = document.getElementById('counterHqPendingBox');
+    const rBox = document.getElementById('counterHqRejectedBox');
+    const pList = document.getElementById('counterHqPendingList');
+    const rList = document.getElementById('counterHqRejectedList');
+    if (!container) return;
+
+    const branchId = parseInt(document.getElementById('active_branch_id')?.value) || 1;
+    const selDate = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
+
+    try {
+      const res = await fetch(`/api/counter/hq-approval-status?branch_id=${branchId}&date_str=${selDate}`);
+      if (!res.ok) return;
+      const out = await res.json();
+      const pending = out.pending || [];
+      const rejected = out.rejected || [];
+
+      if (pending.length === 0 && rejected.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+
+      if (pending.length > 0) {
+        pBox.classList.remove('hidden');
+        pList.innerHTML = pending.map(x => `
+          <span class="px-2.5 py-1 bg-white border border-amber-400 rounded-xl font-bold text-amber-950 shadow-xs">
+            ⏳ <b>${x.title}</b> — ${x.detail}
+          </span>
+        `).join('');
+      } else {
+        pBox.classList.add('hidden');
+      }
+
+      if (rejected.length > 0) {
+        rBox.classList.remove('hidden');
+        rList.innerHTML = rejected.map(x => `
+          <span class="px-2.5 py-1 bg-white border border-rose-400 rounded-xl font-bold text-rose-800 shadow-xs">
+            ❌ <b>${x.title}</b> — ${x.detail}
+          </span>
+        `).join('');
+      } else {
+        rBox.classList.add('hidden');
+      }
+    } catch (e) {}
+  }
+
+  // தேதி மாறும்போது மற்றும் பக்கம் திறக்கும்போது தானாகவே புதுப்பித்தல்
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(loadCounterHqApprovalStatus, 1000);
+    const dateEl = document.getElementById('txn_date');
+    if (dateEl) dateEl.addEventListener('change', loadCounterHqApprovalStatus);
+  });
+
+  // ஒவ்வொரு 15 விநாடிகளுக்கும் பின்னணியில் புதுப்பித்தல் (ஒப்புதல் கிடைத்தவுடன் தானாக மறையும்)
+  setInterval(() => {
+    if (document.getElementById('counterTab') && !document.getElementById('counterTab').classList.contains('hidden')) {
+      loadCounterHqApprovalStatus();
+    }
+  }, 15000);
 </script>
 </body>
 </html>

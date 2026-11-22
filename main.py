@@ -1550,33 +1550,11 @@ def settle_with_otp(data: SettleWithOtpPayload):
         for item in (data.cart_items or []):
             item_src_staff = item.get("business_source_staff_id") or default_src_staff
 
-            # 🔐 0. புதிய அடகுக் கடனுக்கு OTP சரிபார்க்கப்பட்டவுடன் பாக்கெட் உருவாக்குதல் + இன்சென்டிவ் புள்ளிகள் (+)
+            # 🏆 0. புதிய அடகுக் கடனுக்கு இன்சென்டிவ் புள்ளிகள் (+) (பாக்கெட் தலைமையக ஒப்புதலுக்குப் பின் உருவாகும்)
             if not item.get("is_repayment") and not item.get("is_gold_purchase") and not item.get("is_gold_sale") and not item.get("is_gss_account") and not item.get("is_rd_account") and not item.get("is_si_account") and item.get("loan_no"):
                 try:
                     l_no = str(item.get("loan_no")).strip()
                     l_id = item.get("loan_id")
-                    exist_pkt = supabase.table("test_gold_packets").select("id").eq("loan_no", l_no).execute()
-                    if not exist_pkt.data:
-                        pkt_ins = supabase.table("test_gold_packets").insert({
-                            "loan_id": l_id,
-                            "loan_no": l_no,
-                            "customer_id": data.customer_id,
-                            "branch_id": data.branch_id,
-                            "packet_status": "AT_BRANCH_NEW",
-                            "current_location": "BRANCH",
-                            "is_loan_closed": False,
-                            "is_handed_over": False,
-                            "audit_notes": "புதிய அடகு OTP சரிபார்க்கப்பட்டு கிளையில் பாக்கெட் உருவாக்கப்பட்டது"
-                        }).execute()
-                        if pkt_ins.data:
-                            supabase.table("test_gold_packet_movements").insert({
-                                "packet_id": pkt_ins.data[0]["id"],
-                                "loan_no": l_no,
-                                "action_type": "PACKET_CREATED_AT_BRANCH",
-                                "from_location": "CUSTOMER",
-                                "to_location": "BRANCH",
-                                "remarks": "புதிய நகைக்கடன் அடகு மூலம் பாக்கெட் உருவாக்கப்பட்டது"
-                            }).execute()
 
                     # 🏆 புதிய நகைக்கடன் இன்சென்டிவ் புள்ளிகள் (+)
                     loan_amt_val = float(item.get("loan_amount") or 0)
@@ -1594,8 +1572,8 @@ def settle_with_otp(data: SettleWithOtpPayload):
                             txn_date=txn_date,
                             remarks=f"புதிய நகைக்கடன் ({l_no}) - ₹{loan_amt_val:,.0f}"
                         )
-                except Exception as pkt_err:
-                    print("Packet/Incentive creation note:", pkt_err)
+                except Exception as inc_err:
+                    print("Incentive creation note:", inc_err)
 
             if item.get("is_repayment") is True:
                 loan_id = item.get("loan_id")
@@ -3855,6 +3833,47 @@ def process_visit_approval(data: ApprovalActionPayload):
             "status": "VERIFIED",
             "audit_status": new_audit_st
         }).eq("id", data.request_id).execute()
+
+        # ✅ தலைமையகம் ஒப்புதல் அளித்த பிறகே புதிய நகைக்கடன் பாக்கெட்டை உருவாக்குதல்
+        try:
+            approved_loans = (
+                supabase.table("test_gold_loans")
+                .select("id, loan_no, customer_id, branch_id, status")
+                .eq("visit_id", visit["id"])
+                .eq("status", "ACTIVE")
+                .execute()
+                .data or []
+            )
+            for ln in approved_loans:
+                l_no = str(ln.get("loan_no") or "").strip()
+                if not l_no:
+                    continue
+                exist_pkt = supabase.table("test_gold_packets").select("id").eq("loan_no", l_no).execute().data or []
+                if not exist_pkt:
+                    pkt_ins = supabase.table("test_gold_packets").insert({
+                        "loan_id": ln["id"],
+                        "loan_no": l_no,
+                        "customer_id": ln.get("customer_id") or visit.get("customer_id"),
+                        "branch_id": ln.get("branch_id") or visit.get("branch_id") or 1,
+                        "packet_status": "AT_BRANCH_NEW",
+                        "current_location": "BRANCH",
+                        "is_loan_closed": False,
+                        "is_handed_over": False,
+                        "audit_notes": "தலைமையக வருகை ஒப்புதலுக்குப் பிறகு பாக்கெட் உருவாக்கப்பட்டது"
+                    }).execute()
+                    if pkt_ins.data:
+                        supabase.table("test_gold_packet_movements").insert({
+                            "packet_id": pkt_ins.data[0]["id"],
+                            "loan_no": l_no,
+                            "action_type": "PACKET_CREATED_AFTER_HQ_APPROVAL",
+                            "from_location": "CUSTOMER",
+                            "to_location": "BRANCH",
+                            "verified_by_hq": True,
+                            "performed_by": data.admin_id,
+                            "remarks": "தலைமையகம் வருகைக்கு ஒப்புதல் அளித்த பின் பாக்கெட் உருவாக்கப்பட்டது"
+                        }).execute()
+        except Exception as pkt_app_err:
+            print("Post-approval packet creation note:", pkt_app_err)
 
         return {"status": "success", "message": msg}
     except HTTPException:

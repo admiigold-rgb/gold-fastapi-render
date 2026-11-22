@@ -689,6 +689,30 @@
             </table>
           </div>
         </div>
+        <!-- 🔐 பாக்கெட் ஒப்படைப்பு OTP விலக்குக் கோரிக்கைகள் -->
+         <div id="hqPacketOtpExemptSection" class="space-y-2 bg-gradient-to-r from-purple-50 to-amber-50 p-4 rounded-2xl border-2 border-purple-400 shadow-sm">
+           <div class="flex justify-between items-center border-b border-purple-200 pb-2">
+             <h3 class="text-xs font-black text-purple-950 uppercase flex items-center gap-2">
+               <span>🔐</span> பாக்கெட் ஒப்படைப்பு OTP விலக்குக் கோரிக்கைகள் (Packet Handover OTP Exemption):
+             </h3>
+             <span class="text-[10px] bg-purple-200 text-purple-950 px-2 py-0.5 rounded font-black">பாக்கெட் பாதுகாப்பு</span>
+           </div>
+           <div class="overflow-x-auto border-2 border-purple-200 rounded-xl bg-white">
+             <table class="w-full text-xs text-left">
+               <thead class="bg-purple-100 text-purple-950 border-b border-purple-200">
+                 <tr>
+                   <th class="p-2.5 font-bold">கிளை & கடன் எண்</th>
+                   <th class="p-2.5 font-bold">வாடிக்கையாளர்</th>
+                   <th class="p-2.5 font-bold">விலக்கு காரணம்</th>
+                   <th class="p-2.5 text-center font-bold">அனுமதி</th>
+                 </tr>
+               </thead>
+               <tbody id="hqPacketOtpExemptTbody" class="divide-y divide-purple-100 text-slate-700">
+                 <tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">பாக்கெட் OTP விலக்குக் கோரிக்கைகள் இல்லை</td></tr>
+               </tbody>
+             </table>
+           </div>
+         </div>
     
           <!-- 1. வங்கி மூலம் நாம் பணம் அளிக்க வேண்டிய வேண்டுகோள்கள் -->
           <div class="space-y-2">
@@ -5524,6 +5548,7 @@
     async function loadAllHqApprovals() {
       loadPendingRebatesHQ();
       loadHqOtpExemptions();
+      loadPendingPacketOtpExemptionsHQ();
       loadPendingExpensesHQ();
       loadPendingTreasuryTransfersHQ();
       loadHqGpStockList();
@@ -9492,7 +9517,15 @@
                 actionBtns += `<button type="button" onclick="sendPacketSpecialReq('${p.loan_no}', 'DIRECT_RELEASE')" style="background-color:#d97706;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] shadow cursor-pointer">🛡️ நேரடி விடுவிப்பு HQ ஒப்புதல் கேள்</button>`;
               }
             } else if (st === 'AT_BRANCH_FOR_RELEASE') {
+              const exSt = p.handover_otp_exempt_status || 'NONE';
               actionBtns += `<button type="button" onclick="handoverPacketWithOtp('${p.loan_no}')" style="background-color:#059669;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] shadow mb-1 block mx-auto cursor-pointer">📲 SMS OTP மூலம் ஒப்படை</button>`;
+              if (exSt === 'APPROVED') {
+                actionBtns += `<button type="button" onclick="handoverPacketWithExempt('${p.loan_no}')" style="background-color:#15803d;color:#fff;" class="px-2.5 py-1 rounded-lg font-black text-[10px] border-2 border-yellow-300 shadow mb-1 block mx-auto cursor-pointer">✅ OTP விலக்குடன் ஒப்படை</button>`;
+              } else if (exSt === 'REQUESTED') {
+                actionBtns += `<span class="px-2 py-0.5 bg-amber-100 text-amber-950 border border-amber-300 rounded font-bold text-[10px] mb-1 block mx-auto">⏳ OTP விலக்கு HQ ஆய்வில்...</span>`;
+              } else {
+                actionBtns += `<button type="button" onclick="requestPacketHandoverOtpExempt('${p.loan_no}')" class="px-2.5 py-0.5 bg-yellow-300 hover:bg-yellow-400 text-amber-950 border border-yellow-500 rounded font-black text-[10px] mb-1 block mx-auto cursor-pointer">⚡ OTP விலக்கு கேள்</button>`;
+              }
               actionBtns += `<button type="button" onclick="sendPacketSpecialReq('${p.loan_no}', 'RETURN_UNCLAIMED')" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[10px] cursor-pointer">↩ வராப் பாக்கெட் HQ திருப்ப அனுமதி</button>`;
             }
           } else {
@@ -10902,6 +10935,81 @@
     } catch (err) {
       box.innerHTML = `<p class="p-6 text-center text-rose-600 font-bold">❌ பிழை: ${err.message}</p>`;
     }
+  }
+</script>
+<script>
+  async function requestPacketHandoverOtpExempt(loanNo) {
+    const reason = prompt(`கடன் எண் (${loanNo}) பாக்கெட் ஒப்படைப்பிற்கு OTP விலக்கு கோருவதற்கான காரணத்தை உள்ளிடவும்:\n(எ.கா: வாடிக்கையாளர் மொபைல் எண் மாற்றம் / சிக்னல் இல்லை)`);
+    if (!reason || !reason.trim()) return;
+
+    const res = await fetch('/api/packets/request-handover-otp-exempt', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loan_no: loanNo, reason: reason.trim() })
+    });
+    const out = await res.json();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      loadGoldPacketsList();
+    } else alert("❌ " + (out.detail || "பிழை"));
+  }
+
+  async function handoverPacketWithExempt(loanNo) {
+    if (!confirm(`தலைமையக சிறப்பு அனுமதியுடன் கடன் எண் (${loanNo}) பாக்கெட்டை வாடிக்கையாளரிடம் ஒப்படைக்க உறுதி செய்கிறீர்களா?`)) return;
+
+    const res = await fetch('/api/packets/verify-handover-otp', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loan_no: loanNo, is_exempted: true, staff_id: currentUser?.id || 1 })
+    });
+    const out = await res.json();
+    if (res.ok) {
+      alert(out.message);
+      loadGoldPacketsList();
+    } else alert("❌ " + (out.detail || "பிழை"));
+  }
+
+  async function loadPendingPacketOtpExemptionsHQ() {
+    const section = document.getElementById('hqPacketOtpExemptSection');
+    const tbody = document.getElementById('hqPacketOtpExemptTbody');
+    const isAuth = currentUser?.permissions?.can_approve_otp_exempt === true || currentUser?.permissions?.can_approve_hq_packets === true || currentUser?.role_key === 'HQ_ADMIN';
+
+    if (!isAuth) {
+      if (section) section.classList.add('hidden');
+      return;
+    }
+    if (section) section.classList.remove('hidden');
+    if (!tbody) return;
+
+    try {
+      const res = await fetch('/api/hq/pending-packet-otp-exemptions?t=' + Date.now());
+      const out = await res.json();
+      const list = out.data || [];
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400 font-semibold">பாக்கெட் OTP விலக்குக் கோரிக்கைகள் இல்லை</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(p => `
+        <tr>
+          <td class="p-2.5 font-bold text-brand-violet">${p.branch_name}<br><span class="font-mono text-xs text-slate-800">${p.loan_no}</span></td>
+          <td class="p-2.5 font-bold">${p.customer_name}<br><span class="font-mono text-[11px]">${p.customer_mobile}</span></td>
+          <td class="p-2.5 text-rose-700 font-bold">${p.handover_otp_exempt_reason || '-'}</td>
+          <td class="p-2.5 text-center space-x-2">
+            <button type="button" onclick="actionPacketOtpExemptHQ('${p.loan_no}', 'APPROVE')" style="background-color:#059669;color:#fff;" class="px-3 py-1 rounded-lg text-xs font-black shadow cursor-pointer">✓ அனுமதி</button>
+            <button type="button" onclick="actionPacketOtpExemptHQ('${p.loan_no}', 'REJECT')" style="background-color:#dc2626;color:#fff;" class="px-3 py-1 rounded-lg text-xs font-black shadow cursor-pointer">✕ நிராகரி</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (e) {}
+  }
+
+  async function actionPacketOtpExemptHQ(loanNo, action) {
+    if (!confirm(`பாக்கெட் (${loanNo}) OTP விலக்கினை ${action === 'APPROVE' ? 'அங்கீகரிக்கவா?' : 'நிராகரிக்கவா?'}`)) return;
+    const res = await fetch('/api/hq/approve-packet-otp-exemption', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loan_no: loanNo, action: action })
+    });
+    const out = await res.json();
+    alert(out.message);
+    loadPendingPacketOtpExemptionsHQ();
   }
 </script>
 </body>

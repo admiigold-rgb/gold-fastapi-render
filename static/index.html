@@ -11326,5 +11326,190 @@
     }
   });
 </script>
+<script>
+  // 🔒 வங்கி வரவு சரிபார்ப்பு & வங்கிப் பணம் அளிப்புக்குப் பிறகு கூடை பூட்டு (Bank Cart Lock)
+  window.isBankTxnCartLocked = window.isBankTxnCartLocked || false;
+
+  function setBankTxnCartLocked(locked, reasonMsg) {
+    window.isBankTxnCartLocked = Boolean(locked);
+    if (reasonMsg) {
+      window.bankTxnLockReason = reasonMsg;
+    } else if (!locked) {
+      window.bankTxnLockReason = "";
+    }
+
+    try {
+      sessionStorage.setItem("bank_txn_cart_locked", window.isBankTxnCartLocked ? "1" : "0");
+      sessionStorage.setItem("bank_txn_lock_reason", window.bankTxnLockReason || "");
+    } catch (e) {}
+
+    applyBankLockToCartButtons();
+  }
+
+  function applyBankLockToCartButtons() {
+    const locked = Boolean(window.isBankTxnCartLocked);
+    const counterArea = document.getElementById("counterTab") || document.body;
+
+    // கூடை / கடன் முடிப்பு / புதிய நடவடிக்கை சேர்க்கும் பொத்தான்களைக் கண்டறிதல்
+    const candidates = counterArea.querySelectorAll("button");
+    candidates.forEach(btn => {
+      const txt = (btn.innerText || "").trim();
+      const onclickAttr = btn.getAttribute("onclick") || "";
+      const isAddActionBtn =
+        txt.includes("கூடையில் சேர்") ||
+        txt.includes("Add to Cart") ||
+        txt.includes("நகையைச் சேர்") ||
+        txt.includes("கடன் முடி") ||
+        onclickAttr.includes("AddToCart") ||
+        onclickAttr.includes("addToCart") ||
+        onclickAttr.includes("submitPawn") ||
+        onclickAttr.includes("openCheckout");
+
+      if (isAddActionBtn) {
+        if (locked) {
+          if (!btn.dataset.origDisabled) {
+            btn.dataset.origDisabled = btn.disabled ? "1" : "0";
+            btn.dataset.origOpacity = btn.style.opacity || "";
+            btn.dataset.origCursor = btn.style.cursor || "";
+          }
+          btn.disabled = true;
+          btn.style.opacity = "0.45";
+          btn.style.cursor = "not-allowed";
+          btn.title = window.bankTxnLockReason || "வங்கிப் பரிவர்த்தனை தொடங்கியதால் கூடை பூட்டப்பட்டுள்ளது.";
+        } else if (btn.dataset.origDisabled !== undefined) {
+          btn.disabled = btn.dataset.origDisabled === "1";
+          btn.style.opacity = btn.dataset.origOpacity || "";
+          btn.style.cursor = btn.dataset.origCursor || "";
+          delete btn.dataset.origDisabled;
+          delete btn.dataset.origOpacity;
+          delete btn.dataset.origCursor;
+        }
+      }
+    });
+  }
+
+  function blockIfBankCartLocked(event) {
+    if (!window.isBankTxnCartLocked) return false;
+    const msg = window.bankTxnLockReason ||
+      "⚠️ வாடிக்கையாளர் வங்கி வரவு சரிபார்ப்பு / வங்கி மூலம் பணம் அளிக்கும் வேண்டுகோள் முடிந்த பின், இந்தக் கூடையில் மீண்டும் நடவடிக்கைகளைச் சேர்க்க முடியாது!";
+    alert(msg);
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+    }
+    return true;
+  }
+
+  // 1. வங்கி வரவு சரிபார்ப்பு அல்லது வங்கிப் பணம் அளிப்பு தொடர்பான பட்டன்கள்/செயல்கள் நடக்கும்போது தானாக Lock செய்தல்
+  document.addEventListener("click", function(e) {
+    const btn = e.target.closest("button");
+    if (!btn) {
+      setTimeout(applyBankLockToCartButtons, 150);
+      return;
+    }
+
+    const bText = (btn.innerText || "").trim();
+    const bClick = btn.getAttribute("onclick") || "";
+
+    const isBankActionTrigger =
+      bText.includes("வங்கி") && (
+        bText.includes("வரவு") ||
+        bText.includes("சரிபார்ப்பு") ||
+        bText.includes("பணம் அளிக்க") ||
+        bText.includes("வேண்டுகோள்") ||
+        bText.includes("ஒப்புதல்") ||
+        bText.includes("அனுப்பு")
+      ) ||
+      bClick.toLowerCase().includes("bank") ||
+      bClick.toLowerCase().includes("payout") ||
+      bClick.toLowerCase().includes("receipt");
+
+    if (isBankActionTrigger) {
+      setTimeout(() => {
+        setBankTxnCartLocked(
+          true,
+          "⚠️ வங்கி மூலம் பணம் செலுத்தும்/பெறும் சரிபார்ப்பு தொடங்கியதால், இந்தக் கூடையில் மீண்டும் புதிய நடவடிக்கைகளைச் சேர்க்க முடியாது!"
+        );
+      }, 300);
+    }
+
+    // பூட்டப்பட்ட நிலையில் கூடைக்குள் சேர்க்கும் பொத்தானை அழுத்தினால் தடுத்தல்
+    const txt = (btn.innerText || "").trim();
+    const isAddCart =
+      txt.includes("கூடையில் சேர்") ||
+      txt.includes("Add to Cart") ||
+      txt.includes("நகையைச் சேர்") ||
+      bClick.includes("AddToCart") ||
+      bClick.includes("addToCart");
+
+    if (isAddCart && blockIfBankCartLocked(e)) {
+      return;
+    }
+
+    setTimeout(applyBankLockToCartButtons, 200);
+  }, true);
+
+  // 2. Fetch API மூலம் வங்கி வரவு / வங்கிப் பணம் அளிப்பு கோரிக்கைகள் வெற்றிகரமாகச் சமர்ப்பிக்கப்பட்டால் Lock செய்தல்
+  (function hookBankFetchRequests() {
+    if (window._bankCartLockFetchHooked) return;
+    window._bankCartLockFetchHooked = true;
+    const origFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const response = await origFetch.apply(this, args);
+      try {
+        const urlStr = typeof args[0] === "string" ? args[0] : (args[0]?.url || "");
+        const lowerUrl = urlStr.toLowerCase();
+        const isBankEndpoint =
+          (lowerUrl.includes("bank") && (
+            lowerUrl.includes("request") ||
+            lowerUrl.includes("verify") ||
+            lowerUrl.includes("receipt") ||
+            lowerUrl.includes("payout") ||
+            lowerUrl.includes("hold") ||
+            lowerUrl.includes("submit")
+          ));
+        if (response.ok && isBankEndpoint) {
+          setBankTxnCartLocked(
+            true,
+            "⚠️ வங்கி வரவு சரிபார்ப்பு / வங்கி மூலம் பணம் அளிக்கும் வேண்டுகோள் பதிவானதால், மீண்டும் நடவடிக்கைகளைச் சேர்க்க முடியாது!"
+          );
+        }
+      } catch (err) {}
+      return response;
+    };
+  })();
+
+  // 3. புதிய வாடிக்கையாளர் / புதிய தேடல் / Logout ஆகும்போது Lock-ஐ நீக்குதல்
+  document.addEventListener("click", function(e) {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const txt = (btn.innerText || "").trim();
+    const bClick = btn.getAttribute("onclick") || "";
+    if (
+      txt.includes("புதிய தேடல்") ||
+      txt.includes("வாடிக்கையாளரை மாற்று") ||
+      txt.includes("வெளியேறு") ||
+      bClick.includes("resetCustomer") ||
+      bClick.includes("clearCustomer") ||
+      bClick.includes("handleLogout")
+    ) {
+      setBankTxnCartLocked(false);
+    }
+  }, true);
+
+  // பக்கம் ஏறும்போது முந்தைய Lock நிலையைச் சரிபார்த்தல்
+  document.addEventListener("DOMContentLoaded", function() {
+    try {
+      if (sessionStorage.getItem("bank_txn_cart_locked") === "1") {
+        window.isBankTxnCartLocked = true;
+        window.bankTxnLockReason = sessionStorage.getItem("bank_txn_lock_reason") || "";
+        applyBankLockToCartButtons();
+      }
+    } catch (e) {}
+  });
+</script>
 </body>
 </html>

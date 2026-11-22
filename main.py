@@ -467,8 +467,58 @@ def api_get_incentive_report(from_date: str = "", to_date: str = "", branch_id: 
             q = q.lte("txn_date", to_date)
         if branch_id and int(branch_id) > 0:
             q = q.eq("branch_id", int(branch_id))
-        res = q.limit(2000).execute()
+        res = q.limit(3000).execute()
         rows = res.data or []
+
+        # ✅ ஆடிட் முடிந்த (audit_status == 'AUDITED') வருகைகளை மட்டுமே கண்டறிதல்
+        visits_q = supabase.table("test_customer_visits").select("id, customer_id, transaction_date, actions_summary, audit_status").eq("audit_status", "AUDITED")
+        if from_date:
+            visits_q = visits_q.gte("transaction_date", from_date)
+        if to_date:
+            visits_q = visits_q.lte("transaction_date", to_date)
+        if branch_id and int(branch_id) > 0:
+            visits_q = visits_q.eq("branch_id", int(branch_id))
+        audited_visits = visits_q.limit(5000).execute().data or []
+
+        # ஆடிட் முடிந்த Ref No / Loan No / Visit / Customer+Date பட்டியலை உருவாக்குதல்
+        audited_refs = set()
+        audited_cust_dates = set()
+        for v in audited_visits:
+            if v.get("customer_id") and v.get("transaction_date"):
+                audited_cust_dates.add((int(v["customer_id"]), str(v["transaction_date"])))
+            for act_item in extract_visit_action_items(v.get("actions_summary") or ""):
+                ref_val = str(act_item.get("ref_no") or "").strip().upper()
+                if ref_val and ref_val != "-":
+                    audited_refs.add(ref_val)
+
+        # கடன் / GP / GS / GSS / RD / SI அட்டவணைகளில் ஆடிட் செய்யப்பட்ட visit_id கொண்ட எண்களைச் சேர்த்தல்
+        audited_visit_ids = {v["id"] for v in audited_visits if v.get("id")}
+        if audited_visit_ids:
+            v_id_list = list(audited_visit_ids)
+            for tbl, col in [
+                ("test_gold_loans", "loan_no"),
+                ("test_gold_purchases", "gp_no"),
+                ("test_gold_sales", "gs_no"),
+                ("test_customer_savings_accounts", "gss_no"),
+                ("test_customer_rd_accounts", "rd_no"),
+                ("test_si_accounts", "si_no"),
+            ]:
+                try:
+                    t_rows = supabase.table(tbl).select(col).in_("visit_id", v_id_list).execute().data or []
+                    for tr in t_rows:
+                        val = str(tr.get(col) or "").strip().upper()
+                        if val:
+                            audited_refs.add(val)
+                except Exception:
+                    continue
+
+        filtered_rows = []
+        for r in rows:
+            ref_no = str(r.get("ref_no") or "").strip().upper()
+            matched_by_ref = bool(ref_no and ref_no in audited_refs)
+            matched_by_remarks = any(ref_token and ref_token in str(r.get("remarks") or "").upper() for ref_token in audited_refs)
+            if matched_by_ref or matched_by_remarks:
+                filtered_rows.append(r)
 
         staff_res = supabase.table("test_staff_users").select("id, full_name, username, role_key, is_active, is_branch_manager").execute().data or []
         s_map = {s["id"]: s for s in staff_res}
@@ -476,7 +526,7 @@ def api_get_incentive_report(from_date: str = "", to_date: str = "", branch_id: 
         br_res = supabase.table("test_branches").select("id, branch_name").execute().data or []
         b_map = {b["id"]: b.get("branch_name", "-") for b in br_res}
 
-        for r in rows:
+        for r in filtered_rows:
             st_info = s_map.get(r.get("staff_id")) or {
                 "full_name": f"Staff #{r.get('staff_id')}",
                 "username": "-",
@@ -487,7 +537,7 @@ def api_get_incentive_report(from_date: str = "", to_date: str = "", branch_id: 
             r["test_staff_users"] = st_info
             r["branch_name"] = b_map.get(r.get("branch_id"), "-")
 
-        return {"status": "success", "data": rows}
+        return {"status": "success", "data": filtered_rows}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"இன்சென்டிவ் அறிக்கை பிழை: {str(e)}")
         

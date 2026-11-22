@@ -3596,13 +3596,15 @@
       badgesContainer.innerHTML = '';
 
       drafts.forEach(d => {
+        const isWaitingHq = (d.exemption_status === 'WAITING_BANK_HQ' || d.exemption_status === 'WAITING_HQ');
+
         let statusBadgeHtml = '';
         if (d.exemption_status === 'WAITING_BANK_HQ') {
-          statusBadgeHtml = `<span class="text-[10px] bg-indigo-100 text-indigo-900 border border-indigo-400 px-2 py-0.5 rounded font-black animate-pulse">🏦 வங்கி ஒப்புதல் நிலுவை</span>`;
+          statusBadgeHtml = `<span class="text-[10px] bg-indigo-100 text-indigo-900 border border-indigo-400 px-2 py-0.5 rounded font-black animate-pulse">🔒 வங்கி ஒப்புதல் நிலுவை</span>`;
         } else if (d.exemption_status === 'BANK_APPROVED') {
           statusBadgeHtml = `<span class="text-[10px] bg-emerald-100 text-emerald-900 border border-emerald-400 px-2 py-0.5 rounded font-black">✅ வங்கி அனுமதி (OTP அனுப்பலாம்)</span>`;
         } else if (d.exemption_status === 'WAITING_HQ') {
-          statusBadgeHtml = `<span class="text-[10px] bg-amber-200 text-amber-900 border border-yellow-400 px-2 py-0.5 rounded font-black animate-pulse">⏳ WAITING_HQ</span>`;
+          statusBadgeHtml = `<span class="text-[10px] bg-amber-200 text-amber-900 border border-yellow-400 px-2 py-0.5 rounded font-black animate-pulse">🔒 HQ ஒப்புதல் நிலுவை</span>`;
         } else if (d.exemption_status === 'APPROVED') {
           statusBadgeHtml = `<span class="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-400 px-2 py-0.5 rounded font-black">✅ APPROVED</span>`;
         } else {
@@ -3611,9 +3613,18 @@
 
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = "flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-yellow-100 border-2 border-yellow-500 rounded-xl text-xs font-black text-amber-950 shadow transition";
+
+        if (isWaitingHq) {
+          // 🔒 தலைமையக ஒப்புதல் / மறுப்பு வரும் வரை பட்டனை முடக்கி வைத்தல்
+          btn.disabled = true;
+          btn.title = "தலைமையகம் அனுமதி அல்லது மறுப்பு தெரிவித்த பின்னரே இதைத் திறக்க முடியும்.";
+          btn.className = "flex items-center gap-2 px-3 py-1.5 bg-slate-100 border-2 border-slate-300 rounded-xl text-xs font-black text-slate-500 opacity-70 cursor-not-allowed";
+        } else {
+          btn.className = "flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-yellow-100 border-2 border-yellow-500 rounded-xl text-xs font-black text-amber-950 shadow transition cursor-pointer";
+          btn.onclick = () => restoreCustomerDraft(d.customer.id);
+        }
+
         btn.innerHTML = `<span>👤 ${d.customer.name}</span> ${statusBadgeHtml}`;
-        btn.onclick = () => restoreCustomerDraft(d.customer.id);
         badgesContainer.appendChild(btn);
       });
     }

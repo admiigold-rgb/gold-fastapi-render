@@ -924,7 +924,7 @@ def get_cash_day_report(branch_id: int, date_str: str):
 
         all_visits = []
         try:
-            v_res = supabase.table("test_customer_visits").select("*").eq("branch_id", branch_id).execute()
+            v_res = supabase.table("test_customer_visits").select("*").eq("branch_id", branch_id).eq("status", "VERIFIED").execute()
             for row in (v_res.data or []):
                 r_date = str(row.get("transaction_date") or "")
                 c_date = str(row.get("created_at") or "")[:10]
@@ -1135,6 +1135,16 @@ def close_cash_day(data: dict):
         calc_sys_cash = float(data.get("calculated_system_cash") or 0.0)
         staff_id = data.get("staff_id") or 1
         denoms = data.get("denominations") or {}
+        # 🔒 தலைமையக ஒப்புதல் நிலுவை (Pending) இருந்தால் மாலை கணக்கு முடிக்கத் தடை
+        pend_v = supabase.table("test_customer_visits").select("id").eq("branch_id", branch_id).eq("transaction_date", business_date).eq("status", "PENDING_HQ").execute().data or []
+        pend_e = supabase.table("test_branch_expenses").select("id").eq("branch_id", branch_id).eq("transaction_date", business_date).eq("status", "PENDING").execute().data or []
+        pend_t = supabase.table("test_treasury_transfers").select("id").eq("branch_id", branch_id).eq("transaction_date", business_date).eq("status", "PENDING").execute().data or []
+
+        if pend_v or pend_e or pend_t:
+            raise HTTPException(
+                status_code=400,
+                detail=f"⚠️ {business_date} தேதியில் தலைமையக ஒப்புதல் நிலுவையில் உள்ளது! (வருகை: {len(pend_v)}, செலவு: {len(pend_e)}, பணப் பரிமாற்றம்: {len(pend_t)}). முதலில் பென்டிங்கைச் சரிசெய்த பின் மாலை கணக்கு முடிக்கவும்."
+            )
 
         diff = round(closing_balance - calc_sys_cash, 2)
         if diff != 0.0:
@@ -3743,7 +3753,19 @@ def process_visit_approval(data: ApprovalActionPayload):
                 "status": "REJECTED",
                 "audit_status": "REJECTED"
             }).eq("id", data.request_id).execute()
-            return {"status": "success", "message": "வருகை நிராகரிக்கப்பட்டது."}
+
+            # ❌ நிராகரிக்கப்பட்ட வருகையின் கடன், பாக்கெட், GP ஆகியவற்றை CANCELLED ஆக்குதல்
+            try:
+                rej_loans = supabase.table("test_gold_loans").select("id").eq("visit_id", data.request_id).execute().data or []
+                if rej_loans:
+                    loan_ids = [l["id"] for l in rej_loans]
+                    supabase.table("test_gold_loans").update({"status": "CANCELLED"}).in_("id", loan_ids).execute()
+                    supabase.table("test_gold_packets").update({"packet_status": "CANCELLED"}).in_("loan_id", loan_ids).execute()
+                supabase.table("test_gold_purchases").update({"status": "CANCELLED"}).eq("visit_id", data.request_id).execute()
+            except Exception as cancel_err:
+                print("Auto-cancel note:", cancel_err)
+
+            return {"status": "success", "message": "வருகை நிராகரிக்கப்பட்டு, அதன் நடவடிக்கை எண்கள் ரத்து (CANCELLED) செய்யப்பட்டன."}
 
         v_res = supabase.table("test_customer_visits").select("*").eq("id", data.request_id).execute()
         if not v_res.data:
@@ -4237,5 +4259,60 @@ def approve_packet_handover_otp_exemption(data: dict):
 
         msg = f"✅ பாக்கெட் ({lno}) ஒப்படைப்பு OTP விலக்கு அனுமதிக்கப்பட்டது!" if new_st == "APPROVED" else "❌ OTP விலக்கு நிராகரிக்கப்பட்டது."
         return {"status": "success", "message": msg}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# 🔔 கவுண்டர் முகப்பு: தலைமையக ஒப்புதல் நிலுவை & நிராகரிக்கப்பட்டவை (Counter Status Bar)
+# ==============================================================================
+@app.get("/api/counter/hq-approval-status")
+def get_counter_hq_approval_status(branch_id: int = Query(...), date_str: str = Query(...)):
+    try:
+        cust_res = supabase.table("test_customers").select("id, name").execute().data or []
+        c_map = {c["id"]: c.get("name", "வாடிக்கையாளர்") for c in cust_res}
+
+        pending_list = []
+        rejected_list = []
+
+        # 1. வருகைகள் (Visits)
+        v_res = supabase.table("test_customer_visits").select("id, customer_id, status, net_amount, actions_summary, transaction_date").eq("branch_id", branch_id).eq("transaction_date", date_str).in_("status", ["PENDING_HQ", "REJECTED"]).order("id", desc=True).execute().data or []
+        for v in v_res:
+            item = {
+                "type": "வருகை",
+                "title": f"#VIS-{v['id']} | {c_map.get(v.get('customer_id'), '-')}",
+                "detail": f"{v.get('actions_summary') or '-'} (₹{float(v.get('net_amount') or 0):,.0f})"
+            }
+            if v["status"] == "PENDING_HQ":
+                pending_list.append(item)
+            else:
+                rejected_list.append(item)
+
+        # 2. கிளை செலவுகள் (Expenses)
+        e_res = supabase.table("test_branch_expenses").select("id, category, amount, reason, status, transaction_date").eq("branch_id", branch_id).eq("transaction_date", date_str).in_("status", ["PENDING", "REJECTED"]).order("id", desc=True).execute().data or []
+        for e in e_res:
+            item = {
+                "type": "செலவு",
+                "title": f"செலவு: {e.get('category', '-')}",
+                "detail": f"{e.get('reason') or '-'} (₹{float(e.get('amount') or 0):,.0f})"
+            }
+            if e["status"] == "PENDING":
+                pending_list.append(item)
+            else:
+                rejected_list.append(item)
+
+        # 3. உள்-பணப் பரிமாற்றம் (Treasury)
+        t_res = supabase.table("test_treasury_transfers").select("id, transfer_type, amount, carrier_person, status, transaction_date").eq("branch_id", branch_id).eq("transaction_date", date_str).in_("status", ["PENDING", "REJECTED"]).order("id", desc=True).execute().data or []
+        for t in t_res:
+            item = {
+                "type": "பணப் பரிமாற்றம்",
+                "title": f"{t.get('transfer_type', '-')}",
+                "detail": f"{t.get('carrier_person') or '-'} (₹{float(t.get('amount') or 0):,.0f})"
+            }
+            if t["status"] == "PENDING":
+                pending_list.append(item)
+            else:
+                rejected_list.append(item)
+
+        return {"status": "success", "pending": pending_list, "rejected": rejected_list}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

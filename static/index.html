@@ -4195,12 +4195,14 @@
       }
 
       // 5. ஒப்புதல் கிடைத்திருந்தால் உடனடியாக நிறைவு செய்யும் பட்டனைக் காட்டுதல்
+      // 5. ஒப்புதல் (OTP விலக்கு / தள்ளுபடி) கிடைத்திருந்தால் நிறைவு செய்யும் பட்டனைக் காட்டி ஃப்ரீஸ் செய்தல்
       if (isAlreadyApproved) {
         if (btnExempt) btnExempt.classList.add('hidden');
         if (btnOtp) {
           btnOtp.innerText = "✓ ஒப்புதலுடன் நிறைவு செய் (Complete)";
-          btnOtp.style.backgroundColor = "#059669"; btnOtp.style.color = "#ffffff";
-          btnOtp.className = "px-5 py-2 rounded-xl text-xs font-black shadow bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
+          btnOtp.style.backgroundColor = "#059669";
+          btnOtp.style.color = "#ffffff";
+          btnOtp.className = "px-5 py-2.5 rounded-xl text-xs font-black shadow-md cursor-pointer";
           btnOtp.onclick = () => {
             if (!validatePaymentAndDenomMatch()) return;
             closeCheckoutModal();
@@ -4208,8 +4210,18 @@
           };
         }
       }
-    }
 
+      // 🔒 ரத்து செய்துவிட்டு மீண்டும் திறந்தாலும், ஒப்புதல் பெற்ற (APPROVED / BANK_APPROVED) கணக்குகளுக்கு ஃப்ரீஸ் தொடருதல்
+      if (
+        isAlreadyApproved ||
+        window.currentActiveExemptionStatus === 'BANK_APPROVED' ||
+        window.currentActiveBankStatus === 'APPROVED'
+      ) {
+        if (typeof setCheckoutFinalStepFreeze === 'function') {
+          setCheckoutFinalStepFreeze(true);
+        }
+      }
+    }
     function setPaymentMode(mode) {
       selectedMode = mode;
       const bCash = document.getElementById('btn_cash');

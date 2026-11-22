@@ -2388,32 +2388,46 @@ def verify_packet_handover_otp(data: dict):
     try:
         lno = str(data.get("loan_no") or "").strip()
         otp_code = str(data.get("otp_code") or "").strip()
+        is_exempted = bool(data.get("is_exempted", False))
         staff_id = data.get("staff_id") or 1
 
         pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
-        if not pkt_res.data or str(pkt_res.data[0].get("handover_otp")) != otp_code:
-            raise HTTPException(status_code=400, detail="தவறான OTP எண்! மீண்டும் சரிபார்க்கவும்.")
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் விபரம் கிடைக்கவில்லை.")
         pkt = pkt_res.data[0]
-        now_t = datetime.now(IST).isoformat()
 
+        if pkt.get("is_handed_over"):
+            raise HTTPException(status_code=400, detail="இந்தப் பாக்கெட் ஏற்கனவே வாடிக்கையாளரிடம் ஒப்படைக்கப்பட்டுவிட்டது!")
+
+        if is_exempted:
+            if pkt.get("handover_otp_exempt_status") != "APPROVED":
+                raise HTTPException(status_code=403, detail="❌ தலைமையகத்தின் OTP விலக்கு அனுமதி இன்னும் கிடைக்கவில்லை!")
+            remark_txt = f"தலைமையக சிறப்பு அனுமதியுடன் OTP விலக்கு பெற்று ஒப்படைக்கப்பட்டது ({pkt.get('handover_otp_exempt_reason') or ''})"
+        else:
+            if str(pkt.get("handover_otp")) != otp_code:
+                raise HTTPException(status_code=400, detail="தவறான OTP எண்! மீண்டும் சரிபார்க்கவும்.")
+            remark_txt = "SMS OTP சரிபார்க்கப்பட்டு வாடிக்கையாளரிடம் பாக்கெட் ஒப்படைக்கப்பட்டது"
+
+        now_t = datetime.now(IST).isoformat()
         supabase.table("test_gold_packets").update({
             "packet_status": "HANDED_OVER_TO_CUSTOMER",
             "current_location": "CUSTOMER",
             "is_handed_over": True,
             "handed_over_at": now_t,
+            "audit_notes": remark_txt,
             "updated_at": now_t
         }).eq("id", pkt["id"]).execute()
 
         supabase.table("test_gold_packet_movements").insert({
             "packet_id": pkt["id"],
             "loan_no": lno,
-            "action_type": "HANDED_OVER_OTP_VERIFIED",
+            "action_type": "HANDED_OVER_OTP_EXEMPTED" if is_exempted else "HANDED_OVER_OTP_VERIFIED",
             "from_location": "BRANCH",
             "to_location": "CUSTOMER",
             "performed_by": staff_id,
-            "remarks": "SMS OTP சரிபார்க்கப்பட்டு வாடிக்கையாளரிடம் பாக்கெட் ஒப்படைக்கப்பட்டது"
+            "remarks": remark_txt
         }).execute()
-        return {"status": "success", "message": "🎉 SMS OTP சரிபார்க்கப்பட்டு நகை பாக்கெட் வாடிக்கையாளரிடம் ஒப்படைக்கப்பட்டது!"}
+        return {"status": "success", "message": "🎉 நகை பாக்கெட் வாடிக்கையாளரிடம் வெற்றிகரமாக ஒப்படைக்கப்பட்டது!"}
     except HTTPException:
         raise
     except Exception as e:
@@ -4017,3 +4031,70 @@ def hq_master_audit_search(query: str = Query(..., min_length=1)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"360° தேடல் பிழை: {str(e)}")
+
+# ==============================================================================
+# ⚡ பாக்கெட் ஒப்படைப்பு OTP விலக்கு (Packet Handover OTP Exemption APIs)
+# ==============================================================================
+@app.post("/api/packets/request-handover-otp-exempt")
+def request_packet_handover_otp_exempt(data: dict):
+    try:
+        lno = str(data.get("loan_no") or "").strip()
+        reason = str(data.get("reason") or "").strip()
+        if not lno or not reason:
+            raise HTTPException(status_code=400, detail="கடன் எண் மற்றும் காரணத்தை உள்ளிடவும்.")
+
+        pkt_res = supabase.table("test_gold_packets").select("*").eq("loan_no", lno).execute()
+        if not pkt_res.data:
+            raise HTTPException(status_code=404, detail="பாக்கெட் கிடைக்கவில்லை.")
+        pkt = pkt_res.data[0]
+
+        if not pkt.get("is_loan_closed"):
+            raise HTTPException(status_code=400, detail="❌ முதலில் கவுண்ட்டரில் நகைக்கடனை முழுமையாக முடிக்கவும்!")
+
+        supabase.table("test_gold_packets").update({
+            "handover_otp_exempt_status": "REQUESTED",
+            "handover_otp_exempt_reason": reason,
+            "updated_at": datetime.now(IST).isoformat()
+        }).eq("id", pkt["id"]).execute()
+
+        return {"status": "success", "message": "பாக்கெட் ஒப்படைப்பு OTP விலக்குக் கோரிக்கை தலைமையகத்திற்கு அனுப்பப்பட்டது!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/hq/pending-packet-otp-exemptions")
+def get_pending_packet_otp_exemptions():
+    try:
+        cust_res = supabase.table("test_customers").select("id, name, mobile").execute()
+        c_map = {c["id"]: c for c in (cust_res.data or [])}
+        br_res = supabase.table("test_branches").select("id, branch_name").execute()
+        b_map = {b["id"]: b.get("branch_name") for b in (br_res.data or [])}
+
+        res = supabase.table("test_gold_packets").select("*").eq("handover_otp_exempt_status", "REQUESTED").order("updated_at", desc=True).execute()
+        list_data = res.data or []
+        for p in list_data:
+            c = c_map.get(p.get("customer_id"), {})
+            p["customer_name"] = c.get("name", "-")
+            p["customer_mobile"] = c.get("mobile", "-")
+            p["branch_name"] = b_map.get(p.get("branch_id"), f"கிளை #{p.get('branch_id')}")
+        return {"status": "success", "data": list_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hq/approve-packet-otp-exemption")
+def approve_packet_handover_otp_exemption(data: dict):
+    try:
+        lno = str(data.get("loan_no") or "").strip()
+        action = str(data.get("action") or "APPROVE")
+        new_st = "APPROVED" if action == "APPROVE" else "REJECTED"
+
+        supabase.table("test_gold_packets").update({
+            "handover_otp_exempt_status": new_st,
+            "updated_at": datetime.now(IST).isoformat()
+        }).eq("loan_no", lno).execute()
+
+        msg = f"✅ பாக்கெட் ({lno}) ஒப்படைப்பு OTP விலக்கு அனுமதிக்கப்பட்டது!" if new_st == "APPROVED" else "❌ OTP விலக்கு நிராகரிக்கப்பட்டது."
+        return {"status": "success", "message": msg}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

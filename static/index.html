@@ -11267,5 +11267,64 @@
     loadPendingPacketOtpExemptionsHQ();
   }
 </script>
+<script>
+  async function fillAllBusinessSourceStaffDropdowns(forceReload = false) {
+    try {
+      if (forceReload || !Array.isArray(window._allStaffCache) || window._allStaffCache.length === 0) {
+        const res = await fetch('/api/admin/staff?t=' + Date.now());
+        if (res.ok) {
+          const raw = await res.json();
+          const list = Array.isArray(raw) ? raw : (raw.data || raw.staff || raw.users || []);
+          if (Array.isArray(list) && list.length > 0) {
+            window._allStaffCache = list;
+          }
+        }
+      }
+
+      const staffList = (window._allStaffCache || []).filter(s => s && s.is_active !== false);
+      if (staffList.length === 0) return;
+
+      const optionsHtml =
+        `<option value="">-- பணியாளரைத் தேர்ந்தெடுக்கவும் --</option>` +
+        staffList.map(s => {
+          const name = s.full_name || s.name || s.username || ('Staff #' + s.id);
+          const rolePart = s.role_key ? ' (' + s.role_key + ')' : '';
+          return `<option value="${s.id}">${name}${rolePart}</option>`;
+        }).join('');
+
+      document.querySelectorAll('select.business-source-staff-select, #src_staff_pawn, #src_staff_rd').forEach(sel => {
+        const currentVal = sel.value;
+        sel.innerHTML = optionsHtml;
+        if (currentVal && Array.from(sel.options).some(opt => opt.value === currentVal)) {
+          sel.value = currentVal;
+        }
+      });
+    } catch (e) {
+      console.error('Staff dropdown fill error:', e);
+    }
+  }
+
+  window.populateBusinessSourceDropdowns = function(force = false) {
+    return fillAllBusinessSourceStaffDropdowns(force);
+  };
+
+  document.addEventListener('DOMContentLoaded', function() {
+    fillAllBusinessSourceStaffDropdowns(true);
+    setTimeout(() => fillAllBusinessSourceStaffDropdowns(true), 1200);
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    const target = e.target;
+    if (target && target.tagName === 'SELECT' && (
+      target.classList.contains('business-source-staff-select') ||
+      target.id === 'src_staff_pawn' ||
+      target.id === 'src_staff_rd'
+    )) {
+      if (target.options.length <= 1) {
+        fillAllBusinessSourceStaffDropdowns(true);
+      }
+    }
+  });
+</script>
 </body>
 </html>

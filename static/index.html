@@ -11817,6 +11817,21 @@
         if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
       }
       refreshDeviationUiState();
+
+      // ✅ HQ ஒப்புதல் கிடைத்த கணக்கை கூடையில் சேர்க்க 'கூடையில் சேர்' பட்டனைத் திறந்து விடுதல்
+      const addCartBtn = document.getElementById('btnAddToCart');
+      if (addCartBtn) {
+        addCartBtn.disabled = false;
+        addCartBtn.style.opacity = "1";
+        addCartBtn.style.pointerEvents = "auto";
+        addCartBtn.style.cursor = "pointer";
+      }
+      const srcStaffPawn = document.getElementById('src_staff_pawn');
+      if (srcStaffPawn) {
+        srcStaffPawn.disabled = false;
+        srcStaffPawn.style.pointerEvents = "auto";
+      }
+
       alert(`✅ தலைமையகம் அனுமதித்த கடன் தொகை ₹${parseFloat(dev.approved_loan_amount || 0).toLocaleString('en-IN')} அமைக்கப்பட்டுள்ளது!\nஇப்போது 'கூடையில் சேர்' அழுத்தித் தொடரலாம்.`);
     } else {
       activeApprovedDeviationData = null;

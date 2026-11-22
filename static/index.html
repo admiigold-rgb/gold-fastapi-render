@@ -3679,7 +3679,7 @@
       if (target.selected_mode) {
         selectedMode = target.selected_mode;
       }
-
+      
       // 4. தலைமையகம் அனுமதி அளித்திருந்தால், செக்அவுட் சாளரத்தைத் திறந்து சரியான நிலையில் காட்டுதல்
       if (target.exemption_status === 'APPROVED') {
         openCheckoutModal(selectedMode);
@@ -3702,37 +3702,60 @@
           btnOtp.innerText = "✓ OTP விலக்குடன் நிறைவு செய் (Complete)";
           btnOtp.className = "px-5 py-2 rounded-xl text-xs font-black shadow bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer";
           btnOtp.onclick = () => {
-            // 🔒 தாள்களும் பணமும் பொருந்தினால் மட்டுமே முடிக்க அனுமதிக்கும்
             if (!validatePaymentAndDenomMatch()) return;
             closeCheckoutModal();
             confirmSettleWithOtp(true);
           };
+        }
+      } else if (target.exemption_status === 'BANK_APPROVED') {
+        // ✅ வங்கி ஒப்புதல் முடிந்தவுடன் நேரடியாக OTP / OTP விலக்கு (Checkout) சாளரத்தைத் திறத்தல்
+        openCheckoutModal(selectedMode);
+
+        if (target.pay_cash !== undefined) {
+          const pCash = document.getElementById('pay_cash');
+          const pBank = document.getElementById('pay_bank');
+          if (pCash) { pCash.value = target.pay_cash; pCash.readOnly = true; }
+          if (pBank) { pBank.value = target.pay_bank; pBank.readOnly = true; }
+          toggleBankSections();
+          calcDenom();
         }
       }
     }
     // 4. படிவம் & "முடி / மாற்று" பட்டனை லாக் செய்யும் செயல்பாடு
     function toggleDraftLockMode(lock) {
       isDraftLocked = lock;
-      const pawnSection = document.getElementById('pawnFormSection');
       const undoBtn = document.getElementById('btnUndoCart');
       const statusBadge = document.getElementById('pawnStatusBadge');
       const resetBtn = document.getElementById('btnResetCustomer');
 
-      // 1. அடகு படிவத்தை லாக் செய்தல்
-      if (pawnSection) {
-        pawnSection.querySelectorAll("input, select, button").forEach(el => {
-          el.disabled = lock;
-        });
-        pawnSection.style.opacity = lock ? "0.6" : "1";
-        pawnSection.style.pointerEvents = lock ? "none" : "auto";
-      }
+      // 1. கவுண்ட்டரில் உள்ள அனைத்துப் படிவங்களையும் (அடகு, GP, GS, GSS, RD, SI, நடப்புக் கடன்கள்) லாக் செய்தல்
+      const allFormIds = [
+        'pawnFormSection',
+        'goldPurchaseFormSection',
+        'goldSalesFormSection',
+        'gssFormSection',
+        'rdFormSection',
+        'siFormSection',
+        'customerActiveLoansSection'
+      ];
+
+      allFormIds.forEach(secId => {
+        const sec = document.getElementById(secId);
+        if (sec) {
+          sec.querySelectorAll("input, select, button, textarea").forEach(el => {
+            el.disabled = lock;
+          });
+          sec.style.opacity = lock ? "0.55" : "1";
+          sec.style.pointerEvents = lock ? "none" : "auto";
+        }
+      });
 
       // 2. கார்ட்டில் உள்ள "கடைசியை நீக்கு" பட்டனை மறைத்தல்
       if (undoBtn && lock) {
         undoBtn.classList.add('hidden');
       }
 
-      // 3. 🔒 "முடி / மாற்று" (Reset Customer) பட்டனை முற்றிலும் முடக்குதல்
+      // 3. "முடி / மாற்று" (Reset Customer) பட்டனை முடக்குதல்
       if (resetBtn) {
         resetBtn.disabled = lock;
         resetBtn.style.opacity = lock ? "0.4" : "1";
@@ -3745,7 +3768,6 @@
         statusBadge.className = lock ? "text-xs bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-lg font-black border border-amber-400" : "text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold";
       }
     }
-
     // 5. ⚡ OTP விலக்குக் கோரியவுடன் ஆட்டோ-ஹோல்டு செய்யும் மேம்படுத்தப்பட்ட செயல்பாடு
     async function triggerOtpExemptDirectly(e) {
       if (!activeCustomer || activeCustomer.kyc_status !== 'VERIFIED') {
@@ -10215,49 +10237,7 @@
       }
     });
   }
-
-      // 2. கவுண்ட்டரில் உள்ள எந்தப் பகுதியிலும் 'வணிக ஆதாரம்' / 'source' / 'staff' தொடர்பான <select> இருந்தால் அதிலும் நிரப்புதல்
-      const counterRoot = document.getElementById('counterTab') || document.body;
-      counterRoot.querySelectorAll('select').forEach(sel => {
-        const idL = (sel.id || '').toLowerCase();
-        const nameL = (sel.name || '').toLowerCase();
-        const lblText = (sel.closest('div')?.innerText || '').toLowerCase();
-        const isSourceSelect =
-          knownIds.includes(sel.id) ||
-          idL.includes('source') ||
-          idL.includes('lead') ||
-          nameL.includes('source') ||
-          lblText.includes('வணிக ஆதாரம்') ||
-          lblText.includes('business source');
-
-        if (isSourceSelect) {
-          const prevVal = sel.value;
-          sel.innerHTML = finalHtml;
-          if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
-            sel.value = prevVal;
-          }
-        }
-      });
-    }
-    // நகை விற்பனை (Gold Sale) பகுதியில் வேறு ஏதேனும் வணிக ஆதார select இருந்தால் அதிலும் நிரப்புதல்
-    const gsSection = document.getElementById('goldSaleSection') || document.getElementById('gsSection');
-    if (gsSection) {
-      gsSection.querySelectorAll('select').forEach(sel => {
-        const idLower = (sel.id || '').toLowerCase();
-        const nameLower = (sel.name || '').toLowerCase();
-        if (idLower.includes('source') || idLower.includes('staff') || idLower.includes('ref') || nameLower.includes('source')) {
-          if (!targetIds.includes(sel.id)) {
-            const prevVal = sel.value;
-            sel.innerHTML = finalHtml;
-            if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
-              sel.value = prevVal;
-            }
-          }
-        }
-      });
-    }
-  }
-
+  
   function openIncentiveDashboardModal() {
     const today = new Date();
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
@@ -11326,7 +11306,7 @@
     }
   });
 </script>
-<script>
+  
   // 🔒 வங்கி வரவு சரிபார்ப்பு & வங்கிப் பணம் அளிப்புக்குப் பிறகு கூடை பூட்டு (Bank Cart Lock)
   window.isBankTxnCartLocked = window.isBankTxnCartLocked || false;
 
@@ -11653,6 +11633,5 @@
       }, 600);
     }
   }, true);
-</script>
 </body>
 </html>

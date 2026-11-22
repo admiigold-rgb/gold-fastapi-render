@@ -4324,11 +4324,11 @@ def approve_packet_handover_otp_exemption(data: dict):
 @app.get("/api/counter/hq-approval-status")
 def get_counter_hq_approval_status(branch_id: int = 1, date_str: Optional[str] = None):
     try:
-        target_date = date_str or datetime.now(IST).strftime("%Y-%m-%d")
+        target_date = (date_str or datetime.now(IST).strftime("%Y-%m-%d")).strip()[:10]
         pending = []
         rejected = []
 
-        # வாடிக்கையாளர் பெயர்களைத் தனியாகப் பாதுகாப்பாக எடுத்தல்
+        # வாடிக்கையாளர் பெயர்களை எடுத்தல்
         c_map = {}
         try:
             c_res = supabase.table("test_customers").select("id, name").execute().data or []
@@ -4336,26 +4336,30 @@ def get_counter_hq_approval_status(branch_id: int = 1, date_str: Optional[str] =
         except Exception:
             pass
 
+        def row_matches_date(row):
+            for k in ["transaction_date", "transfer_date", "expense_date", "visit_date", "created_at"]:
+                val = str(row.get(k) or "").strip()
+                if val.startswith(target_date):
+                    return True
+            return False
+
         # 1. பென்டிங் & நிராகரிக்கப்பட்ட வருகைகள் (Visits)
         try:
-            v_res = (
-                supabase.table("test_customer_visits")
-                .select("id, customer_id, status, actions_summary, net_payable_amount")
-                .eq("branch_id", branch_id)
-                .eq("transaction_date", target_date)
-                .in_("status", ["PENDING_HQ", "PENDING", "REJECTED"])
-                .execute()
-                .data or []
-            )
+            v_res = supabase.table("test_customer_visits").select("*").eq("branch_id", branch_id).execute().data or []
             for v in v_res:
+                st = str(v.get("status") or "").strip().upper()
+                if st not in ["PENDING_HQ", "PENDING", "PENDING_APPROVAL", "REJECTED"]:
+                    continue
+                if not row_matches_date(v):
+                    continue
                 c_name = c_map.get(v.get("customer_id"), f"வாடிக்கையாளர் #{v.get('customer_id')}")
                 summary = (v.get("actions_summary") or "வாடிக்கையாளர் வருகை").strip()
                 item_obj = {
                     "type": "VISIT",
-                    "title": f"வருகை #{v['id']} ({c_name})",
+                    "title": f"வருகை #{v.get('id')} ({c_name})",
                     "detail": summary
                 }
-                if v.get("status") == "REJECTED":
+                if st == "REJECTED":
                     rejected.append(item_obj)
                 else:
                     pending.append(item_obj)
@@ -4364,23 +4368,21 @@ def get_counter_hq_approval_status(branch_id: int = 1, date_str: Optional[str] =
 
         # 2. பென்டிங் & நிராகரிக்கப்பட்ட செலவுகள் (Expenses)
         try:
-            e_res = (
-                supabase.table("test_branch_expenses")
-                .select("id, expense_category, amount, status")
-                .eq("branch_id", branch_id)
-                .eq("transaction_date", target_date)
-                .in_("status", ["PENDING", "REJECTED"])
-                .execute()
-                .data or []
-            )
+            e_res = supabase.table("test_branch_expenses").select("*").eq("branch_id", branch_id).execute().data or []
             for ex in e_res:
+                st = str(ex.get("status") or "").strip().upper()
+                if st not in ["PENDING", "PENDING_HQ", "PENDING_APPROVAL", "REJECTED"]:
+                    continue
+                if not row_matches_date(ex):
+                    continue
                 amt = float(ex.get("amount") or 0)
+                cat = ex.get("expense_category") or ex.get("category") or ex.get("description") or "இதர செலவு"
                 item_obj = {
                     "type": "EXPENSE",
-                    "title": f"செலவு — {ex.get('expense_category') or 'இதர செலவு'}",
+                    "title": f"செலவு — {cat}",
                     "detail": f"₹{amt:,.0f}"
                 }
-                if ex.get("status") == "REJECTED":
+                if st == "REJECTED":
                     rejected.append(item_obj)
                 else:
                     pending.append(item_obj)
@@ -4389,23 +4391,22 @@ def get_counter_hq_approval_status(branch_id: int = 1, date_str: Optional[str] =
 
         # 3. பென்டிங் & நிராகரிக்கப்பட்ட உள்-பணப் பரிமாற்றம் (Treasury Transfers)
         try:
-            t_res = (
-                supabase.table("test_treasury_transfers")
-                .select("id, transfer_type, staff_name, amount, status")
-                .eq("branch_id", branch_id)
-                .eq("transaction_date", target_date)
-                .in_("status", ["PENDING", "REJECTED"])
-                .execute()
-                .data or []
-            )
+            t_res = supabase.table("test_treasury_transfers").select("*").eq("branch_id", branch_id).execute().data or []
             for tr in t_res:
+                st = str(tr.get("status") or "").strip().upper()
+                if st not in ["PENDING", "PENDING_HQ", "PENDING_APPROVAL", "REJECTED"]:
+                    continue
+                if not row_matches_date(tr):
+                    continue
                 amt = float(tr.get("amount") or 0)
+                t_type = tr.get("transfer_type") or "பணப் பரிமாற்றம்"
+                staff = tr.get("staff_name") or tr.get("handed_to") or tr.get("remarks") or "-"
                 item_obj = {
                     "type": "TREASURY",
-                    "title": tr.get("transfer_type") or "பணப் பரிமாற்றம்",
-                    "detail": f"{tr.get('staff_name') or '-'} (₹{amt:,.0f})"
+                    "title": t_type,
+                    "detail": f"{staff} (₹{amt:,.0f})"
                 }
-                if tr.get("status") == "REJECTED":
+                if st == "REJECTED":
                     rejected.append(item_obj)
                 else:
                     pending.append(item_obj)

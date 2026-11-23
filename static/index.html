@@ -11980,6 +11980,41 @@
   setInterval(pollLoanDeviationApprovalsOnce, 4000);
   document.addEventListener('DOMContentLoaded', () => setTimeout(pollLoanDeviationApprovalsOnce, 1500));
 
+  // ✅ பக்கம் ரீபிரஸ் ஆனாலோ அல்லது Hold-லிருந்து திறந்தாலோ 'கூடையில் சேர்' பட்டன் பூட்டாமல் இருக்கச் செய்யும் பாதுகாப்பு
+  function forceUnlockPawnFormControls() {
+    if (typeof isDraftLocked !== 'undefined') {
+      isDraftLocked = false;
+    }
+    const idsToUnlock = ['btnAddToCart', 'loan_amount', 'src_staff_pawn', 'scheme_name'];
+    idsToUnlock.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.disabled = false;
+        el.removeAttribute('disabled');
+        if (id === 'loan_amount') el.readOnly = false;
+        el.style.pointerEvents = 'auto';
+        el.style.cursor = 'pointer';
+        if (id === 'btnAddToCart') {
+          el.style.opacity = '1';
+        }
+      }
+    });
+  }
+
+  const _origRenderHeldDraftsBar = typeof renderHeldDraftsBar === 'function' ? renderHeldDraftsBar : null;
+  if (_origRenderHeldDraftsBar) {
+    renderHeldDraftsBar = function() {
+      _origRenderHeldDraftsBar();
+      forceUnlockPawnFormControls();
+    };
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    forceUnlockPawnFormControls();
+    setTimeout(forceUnlockPawnFormControls, 1000);
+    setTimeout(forceUnlockPawnFormControls, 2500);
+  });
+
   async function loadPendingLoanDeviationsHQ() {
     const tbody = document.getElementById('hqLoanDeviationTableBody');
     if (!tbody) return;

@@ -11775,20 +11775,105 @@
     if (typeof renderHeldDraftsBar === 'function') renderHeldDraftsBar();
   }
 
-  const _origRestoreDraftForDev = restoreCustomerDraft;
+ const _origRestoreDraftForDev = restoreCustomerDraft;
   restoreCustomerDraft = function(customerId) {
     let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
-    const target = drafts.find(d => d.customer.id === customerId);
+    const target = drafts.find(d => String(d.customer?.id) === String(customerId));
+
+    // முதலில் பழைய lock நிலையை முழுமையாக நீக்குதல்
+    if (typeof isDraftLocked !== 'undefined') {
+      isDraftLocked = false;
+    }
+    if (typeof toggleDraftLockMode === 'function') {
+      try { toggleDraftLockMode(false); } catch (e) {}
+    }
+
     _origRestoreDraftForDev(customerId);
 
-    if (target && target.approved_deviation) {
-      const dev = target.approved_deviation;
-      activeApprovedDeviationData = dev;
-      if (Array.isArray(dev.ornaments_json) && dev.ornaments_json.length > 0) {
-        ornamentList = dev.ornaments_json;
-        renderOrnamentsTable();
-        calculateEligibleLoanAmount();
+    if (target && (target.exemption_status === 'APPROVED' || target.approved_deviation)) {
+      const dev = target.approved_deviation || {};
+      activeApprovedDeviationData = {
+        ...dev,
+        status: 'APPROVED',
+        approved_loan_amount: parseFloat(dev.approved_loan_amount || dev.requested_loan_amount || target?.cart?.[0]?.debit || 0)
+      };
+
+      // 1. நகை விவரங்களை மீட்டெடுத்தல்
+      const restoredOrns = (Array.isArray(dev.ornaments_json) && dev.ornaments_json.length > 0)
+        ? dev.ornaments_json
+        : (Array.isArray(target.ornaments) ? target.ornaments : []);
+      if (restoredOrns.length > 0 && typeof ornamentList !== 'undefined') {
+        ornamentList = restoredOrns;
+        if (typeof renderOrnamentsTable === 'function') renderOrnamentsTable();
+        if (typeof calculateEligibleLoanAmount === 'function') calculateEligibleLoanAmount();
       }
+
+      // 2. நகைப் படம் இருந்தால் Preview காட்டுதல்
+      const photoSrc = dev.ornament_photo || target.ornament_photo || '';
+      if (photoSrc) {
+        const photoPreview = document.getElementById('ornament_photo_preview') || document.getElementById('ornamentPhotoPreview');
+        if (photoPreview) {
+          photoPreview.src = photoSrc;
+          photoPreview.classList.remove('hidden');
+          photoPreview.style.display = 'block';
+        }
+      }
+
+      // 3. திட்டம் & கடன் தொகை & Processing கட்டணம் அமைத்தல்
+      const schemeSel = document.getElementById('scheme_name');
+      if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0) {
+        const matchedSch =
+          schemesCache.find(s => s.scheme_name === dev.scheme_name || s.scheme_code === dev.scheme_name || s.scheme_name === target.scheme_name) ||
+          schemesCache.find(s => s.scheme_name === schemeSel.value) ||
+          schemesCache.find(s => s.is_active !== false);
+        if (matchedSch) {
+          currentSelectedScheme = matchedSch;
+          if ([...schemeSel.options].some(o => o.value === matchedSch.scheme_name)) {
+            schemeSel.value = matchedSch.scheme_name;
+          }
+        }
+      }
+
+      const appAmt = parseFloat(dev.approved_loan_amount || 0);
+      const reqAmt = parseFloat(dev.requested_loan_amount || 0);
+      const fallbackCartAmt = parseFloat(target?.cart?.[0]?.debit || 0);
+      const finalAmt = appAmt > 0 ? appAmt : (reqAmt > 0 ? reqAmt : (fallbackCartAmt > 0 ? fallbackCartAmt : (typeof maxEligibleLoanAmount !== 'undefined' ? maxEligibleLoanAmount : 0)));
+
+      const loanInput = document.getElementById('loan_amount');
+      if (loanInput && finalAmt > 0) {
+        loanInput.value = finalAmt;
+        loanInput.disabled = false;
+        loanInput.readOnly = false;
+      }
+      if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+
+      // 4. 'கூடையில் சேர்' பட்டனை முழுமையாகத் திறந்து செயல்பட வைத்தல்
+      const addCartBtn = document.getElementById('btnAddToCart');
+      if (addCartBtn) {
+        addCartBtn.disabled = false;
+        addCartBtn.removeAttribute('disabled');
+        addCartBtn.style.opacity = "1";
+        addCartBtn.style.pointerEvents = "auto";
+        addCartBtn.style.cursor = "pointer";
+        addCartBtn.innerText = `கூடையில் சேர் (HQ அனுமதி: ₹${finalAmt.toLocaleString('en-IN')}) 🛒`;
+        addCartBtn.onclick = function(ev) {
+          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+          if (typeof submitPawnToDatabase === 'function') submitPawnToDatabase();
+        };
+      }
+
+      const srcStaffPawn = document.getElementById('src_staff_pawn');
+      if (srcStaffPawn) {
+        srcStaffPawn.disabled = false;
+        srcStaffPawn.style.pointerEvents = "auto";
+      }
+
+      refreshDeviationUiState();
+    } else {
+      activeApprovedDeviationData = null;
+      refreshDeviationUiState();
+    }
+  };
       // திட்டத்தைக் கண்டறிந்து (பெயர் அல்லது குறியீடு மூலம்) Processing கட்டணத்தை உடனே புதுப்பித்தல்
       const schemeSel = document.getElementById('scheme_name');
       if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0) {

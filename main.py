@@ -4471,6 +4471,7 @@ class LoanDeviationDecisionPayload(BaseModel):
 
 @app.post("/api/loan/request-deviation")
 def request_loan_deviation(payload: LoanDeviationRequestPayload):
+    import time
     try:
         req_amt = float(payload.requested_loan_amount or 0)
         elig_amt = float(payload.eligible_loan_amount or 0)
@@ -4507,8 +4508,27 @@ def request_loan_deviation(payload: LoanDeviationRequestPayload):
             "created_at": now_ist,
         }
 
-        res = supabase.table("test_loan_deviation_approvals").insert(rec).execute()
-        dev_row = res.data[0] if res.data else {}
+        last_err = None
+        dev_row = {}
+        for attempt in range(3):
+            try:
+                res = supabase.table("test_loan_deviation_approvals").insert(rec).execute()
+                dev_row = res.data[0] if res.data else {}
+                last_err = None
+                break
+            except Exception as db_err:
+                last_err = db_err
+                if "11" in str(db_err) or "temporarily unavailable" in str(db_err).lower():
+                    time.sleep(0.4 * (attempt + 1))
+                    continue
+                raise
+
+        if last_err is not None:
+            raise HTTPException(
+                status_code=503,
+                detail="சர்வர் தற்காலிகமாக பிஸியாக உள்ளது; சில வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்."
+            )
+
         return {
             "status": "success",
             "message": "கூடுதல் கடன் ஒப்புதல் கோரிக்கை தலைமையகத்திற்கு அனுப்பப்பட்டது!",

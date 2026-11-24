@@ -11643,27 +11643,101 @@
 <script>
   let activeApprovedDeviationData = null;
 
-  function getDeviationExtraInfo() {
-    if (!currentSelectedScheme || totalGoldMarketValue <= 0) {
-      return { isOver: false, extraAmt: 0, extraPerGram: 0, newLtvPct: 0 };
+  function getCartLoanCeiling() {
+    const hasHq = !!(
+      activeApprovedDeviationData &&
+      activeApprovedDeviationData.status === 'APPROVED' &&
+      parseFloat(activeApprovedDeviationData.approved_loan_amount || 0) > 0
+    );
+    if (hasHq) {
+      return {
+        isApprovedDeviation: true,
+        ceiling: parseFloat(activeApprovedDeviationData.approved_loan_amount || 0)
+      };
     }
-    const loanAmt = parseFloat(document.getElementById('loan_amount')?.value) || 0;
-    const totNet = ornamentList.reduce((sum, x) => sum + (parseFloat(x.net_weight) || 0), 0);
-    const diff = loanAmt - maxEligibleLoanAmount;
-    const extraPerGram = (diff > 0 && totNet > 0) ? (diff / totNet) : 0;
-    const newLtvPct = totalGoldMarketValue > 0 ? ((loanAmt / totalGoldMarketValue) * 100) : 0;
-
+    const eligible = (typeof maxEligibleLoanAmount !== 'undefined') ? (parseFloat(maxEligibleLoanAmount) || 0) : 0;
     return {
-      isOver: diff > 0.01,
-      extraAmt: Math.max(0, diff),
-      extraPerGram: extraPerGram,
-      newLtvPct: newLtvPct
+      isApprovedDeviation: false,
+      ceiling: eligible
     };
   }
+
+  function updateCartButtonByCeiling() {
+    const loanInput = document.getElementById('loan_amount');
+    const addCartBtn = document.getElementById('btnAddToCart');
+    if (!loanInput || !addCartBtn) return;
+
+    const amt = parseFloat(loanInput.value) || 0;
+    const { isApprovedDeviation, ceiling } = getCartLoanCeiling();
+
+    addCartBtn.disabled = false;
+    addCartBtn.removeAttribute('disabled');
+    addCartBtn.style.opacity = '1';
+    addCartBtn.style.pointerEvents = 'auto';
+    addCartBtn.style.cursor = 'pointer';
+
+    if (isApprovedDeviation) {
+      addCartBtn.innerText = `கூடையில் சேர் (HQ அனுமதி: ₹${ceiling.toLocaleString('en-IN')}) 🛒`;
+      return;
+    }
+
+    if (ceiling > 0 && amt > ceiling + 0.01) {
+      addCartBtn.innerText = "🛡️ கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold";
+    } else {
+      addCartBtn.innerText = "கூடையில் சேர் (Add to Cart) 🛒";
+    }
+  }
+
+  const _baseSubmitPawnFn = typeof submitPawnToDatabase === 'function' ? submitPawnToDatabase : null;
+  if (_baseSubmitPawnFn) {
+    submitPawnToDatabase = async function() {
+      const loanInput = document.getElementById('loan_amount');
+      const amt = parseFloat(loanInput?.value) || 0;
+      const { isApprovedDeviation, ceiling } = getCartLoanCeiling();
+
+      if (ceiling > 0 && amt > ceiling + 0.01) {
+        if (isApprovedDeviation) {
+          alert(`⚠️ தலைமையகம் அனுமதித்த அதிகபட்ச கடன் தொகை ₹${ceiling.toLocaleString('en-IN')} மட்டுமே! அதற்கு மேல் கூடையில் சேர்க்க முடியாது.`);
+          if (loanInput) {
+            loanInput.value = ceiling;
+            if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+          }
+          updateCartButtonByCeiling();
+          return;
+        }
+
+        const goDeviation = confirm(
+          `⚠️ திட்டத்தின்படி அனுமதிக்கப்பட்ட அதிகபட்ச கடன் (LTV) தொகை ₹${ceiling.toLocaleString('en-IN', { minimumFractionDigits: 2 })} மட்டுமே!\n` +
+          `நீங்கள் உள்ளிட்ட தொகை: ₹${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
+          `கூடுதல் கடன் தொகைக்குத் தலைமையக ஒப்புதல் கோரி Hold செய்யவா?`
+        );
+        updateCartButtonByCeiling();
+        if (goDeviation && typeof requestLoanDeviationAndHold === 'function') {
+          return requestLoanDeviationAndHold();
+        }
+        return;
+      }
+
+      return _baseSubmitPawnFn.apply(this, arguments);
+    };
+  }
+
+  const _baseCalcEligibleFn = typeof calculateEligibleLoanAmount === 'function' ? calculateEligibleLoanAmount : null;
+  if (_baseCalcEligibleFn) {
+    calculateEligibleLoanAmount = function() {
+      _baseCalcEligibleFn.apply(this, arguments);
+      updateCartButtonByCeiling();
+    };
+  }
+
+  document.getElementById('loan_amount')?.addEventListener('input', () => {
+    if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+    updateCartButtonByCeiling();
+  });
+
   async function requestLoanDeviationAndHold() {
-    if (isDraftLocked) return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் புதிய கோரிக்கை அனுப்ப முடியாது!");
     if (!activeCustomer || !activeCustomer.id) return alert("⚠️ வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்.");
-    if (ornamentList.length === 0) return alert("⚠️ குறைந்தது ஒரு நகையாவது சேர்க்கவும்.");
+    if (!Array.isArray(ornamentList) || ornamentList.length === 0) return alert("⚠️ குறைந்தது ஒரு நகையாவது சேர்க்கவும்.");
 
     const ornamentInput = document.getElementById('ornament_photo_input');
     if (!ornamentInput || !ornamentInput.files || !ornamentInput.files[0]) {
@@ -11671,19 +11745,24 @@
     }
 
     const reqAmt = parseFloat(document.getElementById('loan_amount')?.value) || 0;
-    const info = getDeviationExtraInfo();
-    if (!info.isOver || reqAmt <= 0) return alert("⚠️ கூடுதல் கடன் தொகையைச் சரியாக உள்ளிடவும்.");
+    const { ceiling } = getCartLoanCeiling();
+    if (reqAmt <= 0 || (ceiling > 0 && reqAmt <= ceiling + 0.01)) {
+      return alert("⚠️ திட்ட வரம்பை விடக் கூடுதல் கடன் தொகையை உள்ளிடவும்.");
+    }
+
+    const extraAmt = reqAmt - ceiling;
+    const totNet = ornamentList.reduce((s, x) => s + (parseFloat(x.net_weight) || 0), 0);
+    const totGross = ornamentList.reduce((s, x) => s + (parseFloat(x.gross_weight) || 0), 0);
+    const extraPerGram = totNet > 0 ? (extraAmt / totNet) : 0;
 
     const reason = prompt(
       `கூடுதல் கடன் கோருவதற்கான காரணத்தை உள்ளிடவும்:\n` +
-      `(திட்ட வரம்பு: ₹${maxEligibleLoanAmount.toLocaleString('en-IN')} | கேட்டது: ₹${reqAmt.toLocaleString('en-IN')} | +₹${info.extraPerGram.toFixed(2)}/g)`
+      `(தகுதி LTV வரம்பு: ₹${ceiling.toLocaleString('en-IN')} | கேட்டது: ₹${reqAmt.toLocaleString('en-IN')} | +₹${extraPerGram.toFixed(2)}/g)`
     );
     if (!reason || !reason.trim()) return;
 
-    await ensureActiveVisitId();
+    if (typeof ensureActiveVisitId === 'function') await ensureActiveVisitId();
     const photoBase64 = await readFileAsBase64(ornamentInput);
-    const totGross = ornamentList.reduce((s, x) => s + (parseFloat(x.gross_weight) || 0), 0);
-    const totNet = ornamentList.reduce((s, x) => s + (parseFloat(x.net_weight) || 0), 0);
     const custId = activeCustomer.id;
 
     const payload = {
@@ -11694,10 +11773,10 @@
       scheme_name: document.getElementById('scheme_name')?.value || '',
       total_gross_weight: totGross,
       total_net_weight: totNet,
-      gold_market_value: totalGoldMarketValue,
-      eligible_loan_amount: maxEligibleLoanAmount,
+      gold_market_value: totalGoldMarketValue || 0,
+      eligible_loan_amount: ceiling,
       requested_loan_amount: reqAmt,
-      extra_per_gram: Number(info.extraPerGram.toFixed(2)),
+      extra_per_gram: Number(extraPerGram.toFixed(2)),
       ornaments: ornamentList,
       ornament_photo: photoBase64,
       reason: reason.trim(),
@@ -11713,7 +11792,7 @@
     if (!res.ok) return alert("❌ பிழை: " + (out.detail || "கோரிக்கை அனுப்ப முடியவில்லை"));
 
     const devId = out.data?.id || null;
-    alert("✅ கூடுதல் கடன் ஒப்புதல் கோரிக்கை தலைமையகத்திற்கு அனுப்பப்பட்டது!\nவாடிக்கையாளர் கணக்கு தானாகவே நிறுத்தி வைக்கப்படுகிறது (Auto-Hold).");
+    alert("✅ கூடுதல் கடன் ஒப்புதல் கோரிக்கை தலைமையகத்திற்கு அனுப்பப்பட்டது!\nவாடிக்கையாளர் கணக்கு Hold செய்யப்படுகிறது.");
 
     holdCurrentCustomerDraft("WAITING_HQ");
     let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
@@ -11722,305 +11801,95 @@
     if (typeof renderHeldDraftsBar === 'function') renderHeldDraftsBar();
   }
 
- const _origRestoreDraftForDev = restoreCustomerDraft;
-  restoreCustomerDraft = function(customerId) {
-    let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
-    const target = drafts.find(d => String(d.customer?.id) === String(customerId));
+  const _origRestoreForCeiling = typeof restoreCustomerDraft === 'function' ? restoreCustomerDraft : null;
+  if (_origRestoreForCeiling) {
+    restoreCustomerDraft = function(customerId) {
+      let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
+      const target = drafts.find(d => String(d.customer?.id) === String(customerId));
 
-    // முதலில் பழைய lock நிலையை முழுமையாக நீக்குதல்
-    if (typeof isDraftLocked !== 'undefined') {
-      isDraftLocked = false;
-    }
-    if (typeof toggleDraftLockMode === 'function') {
-      try { toggleDraftLockMode(false); } catch (e) {}
-    }
+      _origRestoreForCeiling.apply(this, arguments);
 
-    _origRestoreDraftForDev(customerId);
+      if (target && (target.exemption_status === 'APPROVED' || target.approved_deviation)) {
+        const dev = target.approved_deviation || {};
+        const approvedAmt = parseFloat(dev.approved_loan_amount || dev.requested_loan_amount || target?.cart?.[0]?.debit || 0);
 
-    if (target && (target.exemption_status === 'APPROVED' || target.approved_deviation)) {
-      const dev = target.approved_deviation || {};
-      activeApprovedDeviationData = {
-        ...dev,
-        status: 'APPROVED',
-        approved_loan_amount: parseFloat(dev.approved_loan_amount || dev.requested_loan_amount || target?.cart?.[0]?.debit || 0)
-      };
-
-      // 1. நகை விவரங்களை மீட்டெடுத்தல்
-      const restoredOrns = (Array.isArray(dev.ornaments_json) && dev.ornaments_json.length > 0)
-        ? dev.ornaments_json
-        : (Array.isArray(target.ornaments) ? target.ornaments : []);
-      if (restoredOrns.length > 0 && typeof ornamentList !== 'undefined') {
-        ornamentList = restoredOrns;
-        if (typeof renderOrnamentsTable === 'function') renderOrnamentsTable();
-        if (typeof calculateEligibleLoanAmount === 'function') calculateEligibleLoanAmount();
-      }
-
-      // 2. நகைப் படம் இருந்தால் Preview காட்டுதல்
-      const photoSrc = dev.ornament_photo || target.ornament_photo || '';
-      if (photoSrc) {
-        const photoPreview = document.getElementById('ornament_photo_preview') || document.getElementById('ornamentPhotoPreview');
-        if (photoPreview) {
-          photoPreview.src = photoSrc;
-          photoPreview.classList.remove('hidden');
-          photoPreview.style.display = 'block';
-        }
-      }
-
-      // 3. திட்டம் & கடன் தொகை & Processing கட்டணம் அமைத்தல்
-      const schemeSel = document.getElementById('scheme_name');
-      if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0) {
-        const matchedSch =
-          schemesCache.find(s => s.scheme_name === dev.scheme_name || s.scheme_code === dev.scheme_name || s.scheme_name === target.scheme_name) ||
-          schemesCache.find(s => s.scheme_name === schemeSel.value) ||
-          schemesCache.find(s => s.is_active !== false);
-        if (matchedSch) {
-          currentSelectedScheme = matchedSch;
-          if ([...schemeSel.options].some(o => o.value === matchedSch.scheme_name)) {
-            schemeSel.value = matchedSch.scheme_name;
-          }
-        }
-      }
-
-      const appAmt = parseFloat(dev.approved_loan_amount || 0);
-      const reqAmt = parseFloat(dev.requested_loan_amount || 0);
-      const fallbackCartAmt = parseFloat(target?.cart?.[0]?.debit || 0);
-      const finalAmt = appAmt > 0 ? appAmt : (reqAmt > 0 ? reqAmt : (fallbackCartAmt > 0 ? fallbackCartAmt : (typeof maxEligibleLoanAmount !== 'undefined' ? maxEligibleLoanAmount : 0)));
-
-      const loanInput = document.getElementById('loan_amount');
-      if (loanInput && finalAmt > 0) {
-        loanInput.value = finalAmt;
-        loanInput.disabled = false;
-        loanInput.readOnly = false;
-      }
-      if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
-
-      // 4. 'கூடையில் சேர்' பட்டனை முழுமையாகத் திறந்து செயல்பட வைத்தல்
-      const addCartBtn = document.getElementById('btnAddToCart');
-      if (addCartBtn) {
-        addCartBtn.disabled = false;
-        addCartBtn.removeAttribute('disabled');
-        addCartBtn.style.opacity = "1";
-        addCartBtn.style.pointerEvents = "auto";
-        addCartBtn.style.cursor = "pointer";
-        addCartBtn.innerText = `கூடையில் சேர் (HQ அனுமதி: ₹${finalAmt.toLocaleString('en-IN')}) 🛒`;
-        addCartBtn.onclick = function(ev) {
-          if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-          if (typeof submitPawnToDatabase === 'function') submitPawnToDatabase();
+        activeApprovedDeviationData = {
+          ...dev,
+          status: 'APPROVED',
+          approved_loan_amount: approvedAmt
         };
-      }
 
-      const srcStaffPawn = document.getElementById('src_staff_pawn');
-      if (srcStaffPawn) {
-        srcStaffPawn.disabled = false;
-        srcStaffPawn.style.pointerEvents = "auto";
-      }
+        if (typeof isDraftLocked !== 'undefined') isDraftLocked = false;
+        const pawnSec = document.getElementById('pawnFormSection');
+        if (pawnSec) {
+          pawnSec.style.opacity = '1';
+          pawnSec.style.pointerEvents = 'auto';
+          pawnSec.querySelectorAll('input, select, button, textarea').forEach(el => {
+            if (el.id !== 'loan_no' && el.id !== 'charges_amount') {
+              el.disabled = false;
+              el.removeAttribute('disabled');
+            }
+          });
+        }
 
-      refreshDeviationUiState();
-    } else {
-      activeApprovedDeviationData = null;
-      refreshDeviationUiState();
-    }
-  };
-      // திட்டத்தைக் கண்டறிந்து (பெயர் அல்லது குறியீடு மூலம்) Processing கட்டணத்தை உடனே புதுப்பித்தல்
-      const schemeSel = document.getElementById('scheme_name');
-      if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0) {
-        const matchedSch =
-          schemesCache.find(s => s.scheme_name === dev.scheme_name || s.scheme_code === dev.scheme_name) ||
-          schemesCache.find(s => s.scheme_name === schemeSel.value) ||
-          schemesCache.find(s => s.is_active !== false);
-        if (matchedSch) {
-          currentSelectedScheme = matchedSch;
-          if ([...schemeSel.options].some(o => o.value === matchedSch.scheme_name)) {
-            schemeSel.value = matchedSch.scheme_name;
+        if (Array.isArray(dev.ornaments_json) && dev.ornaments_json.length > 0 && typeof ornamentList !== 'undefined') {
+          ornamentList = dev.ornaments_json;
+          if (typeof renderOrnamentsTable === 'function') renderOrnamentsTable();
+          if (typeof calculateEligibleLoanAmount === 'function') calculateEligibleLoanAmount();
+        }
+
+        const schemeSel = document.getElementById('scheme_name');
+        if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0) {
+          const matchedSch =
+            schemesCache.find(s => s.scheme_name === dev.scheme_name || s.scheme_code === dev.scheme_name) ||
+            schemesCache.find(s => s.scheme_name === schemeSel.value) ||
+            schemesCache.find(s => s.is_active !== false);
+          if (matchedSch) {
+            currentSelectedScheme = matchedSch;
+            if ([...schemeSel.options].some(o => o.value === matchedSch.scheme_name)) {
+              schemeSel.value = matchedSch.scheme_name;
+            }
           }
         }
-      }
 
-      const loanInput = document.getElementById('loan_amount');
-      if (loanInput) {
-        const appAmt = parseFloat(dev.approved_loan_amount || 0);
-        const reqAmt = parseFloat(dev.requested_loan_amount || 0);
-        const fallbackCartAmt = parseFloat(target?.cart?.[0]?.debit || 0);
-        const finalAmt = appAmt > 0 ? appAmt : (reqAmt > 0 ? reqAmt : (fallbackCartAmt > 0 ? fallbackCartAmt : maxEligibleLoanAmount));
-
-        if (finalAmt > 0) {
-          loanInput.value = finalAmt;
+        const loanInput = document.getElementById('loan_amount');
+        if (loanInput && approvedAmt > 0) {
+          loanInput.value = approvedAmt;
+          loanInput.readOnly = false;
         }
         if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+        updateCartButtonByCeiling();
+      } else {
+        activeApprovedDeviationData = null;
+        updateCartButtonByCeiling();
       }
-      refreshDeviationUiState();
-
-      // ✅ HQ ஒப்புதல் கிடைத்த கணக்கை கூடையில் சேர்க்க 'கூடையில் சேர்' பட்டனைத் திறந்து விடுதல்
-      const addCartBtn = document.getElementById('btnAddToCart');
-      if (addCartBtn) {
-        addCartBtn.disabled = false;
-        addCartBtn.style.opacity = "1";
-        addCartBtn.style.pointerEvents = "auto";
-        addCartBtn.style.cursor = "pointer";
-      }
-      const srcStaffPawn = document.getElementById('src_staff_pawn');
-      if (srcStaffPawn) {
-        srcStaffPawn.disabled = false;
-        srcStaffPawn.style.pointerEvents = "auto";
-      }
-
-      alert(`✅ தலைமையகம் அனுமதித்த கடன் தொகை ₹${parseFloat(dev.approved_loan_amount || 0).toLocaleString('en-IN')} அமைக்கப்பட்டுள்ளது!\nஇப்போது 'கூடையில் சேர்' அழுத்தித் தொடரலாம்.`);
-    } else {
-      activeApprovedDeviationData = null;
-      refreshDeviationUiState();
-    }
-  };
-
-  // ✅ கடன் தொகை & HQ ஒப்புதல் விதிகளைப் பாதுகாப்பாகக் கட்டுப்படுத்தும் ஒரே செயல்பாடு
-  function enforceLoanLimitAndDeviationState() {
-    const loanInput = document.getElementById('loan_amount');
-    const addCartBtn = document.getElementById('btnAddToCart');
-    if (!loanInput || !addCartBtn) return;
-
-    // பட்டனை எப்போதும் கிளிக் செய்யக்கூடியதாக வைத்திருத்தல் (செயல்பாட்டை மட்டும் கீழே முடிவு செய்கிறோம்)
-    addCartBtn.disabled = false;
-    addCartBtn.removeAttribute('disabled');
-    addCartBtn.style.opacity = '1';
-    addCartBtn.style.pointerEvents = 'auto';
-    addCartBtn.style.cursor = 'pointer';
-    loanInput.disabled = false;
-    loanInput.readOnly = false;
-
-    const enteredAmt = parseFloat(loanInput.value) || 0;
-    const hasHqApproval = !!(
-      typeof activeApprovedDeviationData !== 'undefined' &&
-      activeApprovedDeviationData &&
-      activeApprovedDeviationData.status === 'APPROVED' &&
-      parseFloat(activeApprovedDeviationData.approved_loan_amount || 0) > 0
-    );
-
-    let badgeEl = document.getElementById('deviationInfoBanner');
-    if (!badgeEl && loanInput.parentElement && loanInput.parentElement.parentElement) {
-      badgeEl = document.createElement('div');
-      badgeEl.id = 'deviationInfoBanner';
-      badgeEl.className = 'hidden p-3 rounded-2xl border-2 border-amber-400 bg-amber-50 text-xs space-y-1 mt-2';
-      loanInput.parentElement.parentElement.insertAdjacentElement('afterend', badgeEl);
-    }
-
-    // 1. HQ ஒப்புதல் கிடைத்திருந்தால்: HQ அனுமதித்த தொகைக்கு மேல் போகாமல் தடுத்து கூடையில் சேர்க்க அனுமதித்தல்
-    if (hasHqApproval) {
-      const capAmt = parseFloat(activeApprovedDeviationData.approved_loan_amount || 0);
-      if (enteredAmt > capAmt) {
-        alert(`⚠️ தலைமையகம் அனுமதித்த அதிகபட்ச கடன் தொகை ₹${capAmt.toLocaleString('en-IN')} மட்டுமே! அதற்கு மேல் வழங்க முடியாது.`);
-        loanInput.value = capAmt;
-        if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
-      }
-      if (badgeEl) {
-        badgeEl.classList.remove('hidden');
-        badgeEl.innerHTML = `<div class="font-black text-emerald-800">✅ தலைமையக ஒப்புதல் பெற்ற தொகை வரம்பு: அதிகபட்சம் ₹${capAmt.toLocaleString('en-IN')}</div>`;
-      }
-      addCartBtn.innerText = `கூடையில் சேர் (HQ அனுமதி: ₹${capAmt.toLocaleString('en-IN')}) 🛒`;
-      addCartBtn.onclick = function(ev) {
-        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-        if (typeof submitPawnToDatabase === 'function') submitPawnToDatabase();
-      };
-      return;
-    }
-
-    // 2. HQ ஒப்புதல் இல்லாதபோது: தகுதி LTV தொகையை (maxEligibleLoanAmount) சரிபார்த்தல்
-    const eligibleLimit = (typeof maxEligibleLoanAmount !== 'undefined') ? (parseFloat(maxEligibleLoanAmount) || 0) : 0;
-    const totNet = (typeof ornamentList !== 'undefined' && Array.isArray(ornamentList))
-      ? ornamentList.reduce((sum, x) => sum + (parseFloat(x.net_weight) || 0), 0)
-      : 0;
-    const mktVal = (typeof totalGoldMarketValue !== 'undefined') ? (parseFloat(totalGoldMarketValue) || 0) : 0;
-
-    const isOverEligible = eligibleLimit > 0 && enteredAmt > eligibleLimit + 0.01;
-    const extraAmt = Math.max(0, enteredAmt - eligibleLimit);
-    const extraPerGram = (isOverEligible && totNet > 0) ? (extraAmt / totNet) : 0;
-    const newLtvPct = mktVal > 0 ? ((enteredAmt / mktVal) * 100) : 0;
-
-    if (isOverEligible) {
-      if (badgeEl) {
-        badgeEl.classList.remove('hidden');
-        badgeEl.innerHTML = `
-          <div class="font-black text-amber-950">⚠️ திட்ட வரம்பை (₹${eligibleLimit.toLocaleString('en-IN')}) விடக் கூடுதல் கடன் தொகை கோரப்படுகிறது!</div>
-          <div class="text-slate-800 font-bold">
-            கூடுதல் தொகை: <span class="text-rose-600 font-mono">+₹${extraAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> |
-            கிராமிற்கு கூடுதல்: <span class="text-brand-violet font-mono">+₹${extraPerGram.toFixed(2)}/g</span> |
-            புதிய LTV: <span class="text-indigo-900 font-mono">${newLtvPct.toFixed(1)}%</span>
-          </div>
-        `;
-      }
-      addCartBtn.innerText = "🛡️ கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold";
-      addCartBtn.onclick = function(ev) {
-        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-        if (typeof requestLoanDeviationAndHold === 'function') requestLoanDeviationAndHold();
-      };
-    } else {
-      if (badgeEl) badgeEl.classList.add('hidden');
-      addCartBtn.innerText = "கூடையில் சேர் (Add to Cart) 🛒";
-      addCartBtn.onclick = function(ev) {
-        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-        if (typeof submitPawnToDatabase === 'function') submitPawnToDatabase();
-      };
-    }
+    };
   }
 
-  // பழைய refreshDeviationUiState மற்றும் forceUnlockPawnFormControls ஆகியவற்றை இதனுடன் இணைத்தல்
-  refreshDeviationUiState = enforceLoanLimitAndDeviationState;
-  forceUnlockPawnFormControls = enforceLoanLimitAndDeviationState;
-
-  const _loanAmtField = document.getElementById('loan_amount');
-  if (_loanAmtField) {
-    _loanAmtField.addEventListener('input', () => {
-      if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
-      enforceLoanLimitAndDeviationState();
-    });
-    _loanAmtField.addEventListener('change', () => {
-      if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
-      enforceLoanLimitAndDeviationState();
-    });
-  }
   async function pollLoanDeviationApprovalsOnce() {
     let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
     let changed = false;
 
-    const hasWaitingDev = drafts.some(d => d.exemption_status === 'WAITING_HQ');
-    if (!hasWaitingDev) return;
-
-    try {
-      const pendingRes = await fetch('/api/hq/pending-loan-deviations?t=' + Date.now());
-      const pendingOut = await pendingRes.json();
-      const stillPendingList = pendingOut.data || [];
-      const stillPendingIds = new Set(stillPendingList.map(x => Number(x.id)));
-
-      for (let d of drafts) {
-        if (d.exemption_status === 'WAITING_HQ') {
-          if (d.loan_deviation_id) {
-            try {
-              const r = await fetch(`/api/loan/deviation-status/${d.loan_deviation_id}?t=` + Date.now());
-              if (r.ok) {
-                const out = await r.json();
-                const devRow = out.data || {};
-                const st = devRow.status;
-                if (st === 'APPROVED') {
-                  d.exemption_status = 'APPROVED';
-                  d.approved_deviation = devRow;
-                  changed = true;
-                } else if (st === 'REJECTED') {
-                  d.exemption_status = 'NONE';
-                  d.loan_deviation_id = null;
-                  changed = true;
-                }
-              }
-            } catch (e) {}
-          } else if (!stillPendingIds.has(Number(d.loan_deviation_id || -1))) {
-            d.exemption_status = 'APPROVED';
-            d.approved_deviation = {
-              status: 'APPROVED',
-              approved_loan_amount: parseFloat(d.cart?.[0]?.debit || 0) || null,
-              ornaments_json: d.ornaments || []
-            };
-            changed = true;
+    for (let d of drafts) {
+      if (d.exemption_status === 'WAITING_HQ' && d.loan_deviation_id) {
+        try {
+          const r = await fetch(`/api/loan/deviation-status/${d.loan_deviation_id}?t=` + Date.now());
+          if (r.ok) {
+            const out = await r.json();
+            const st = out.data?.status;
+            if (st === 'APPROVED') {
+              d.exemption_status = 'APPROVED';
+              d.approved_deviation = out.data;
+              changed = true;
+            } else if (st === 'REJECTED') {
+              d.exemption_status = 'NONE';
+              d.loan_deviation_id = null;
+              changed = true;
+            }
           }
-        }
+        } catch (e) {}
       }
-    } catch (e) {}
+    }
 
     if (changed) {
       localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
@@ -12028,7 +11897,7 @@
     }
   }
 
-  setInterval(pollLoanDeviationApprovalsOnce, 4000);
+  setInterval(pollLoanDeviationApprovalsOnce, 6000);
   document.addEventListener('DOMContentLoaded', () => setTimeout(pollLoanDeviationApprovalsOnce, 1500));
 
   async function loadPendingLoanDeviationsHQ() {
@@ -12125,118 +11994,5 @@
       setTimeout(loadPendingLoanDeviationsHQ, 400);
     }
   });
-
-  // ✅ அன்றைய நகை மதிப்பு & திட்ட LTV அடிப்படையில் சரியான அதிகபட்ச தகுதித் தொகையைக் கணக்கிடுதல்
-  function getEffectiveMaxEligibleAmount() {
-    let baseEligible = (typeof maxEligibleLoanAmount !== 'undefined') ? (parseFloat(maxEligibleLoanAmount) || 0) : 0;
-    const mktVal = (typeof totalGoldMarketValue !== 'undefined') ? (parseFloat(totalGoldMarketValue) || 0) : 0;
-    const sch = (typeof currentSelectedScheme !== 'undefined' && currentSelectedScheme) ? currentSelectedScheme : null;
-
-    if (baseEligible <= 0 && mktVal > 0 && sch) {
-      const ltvPct = parseFloat(sch.ltv_percentage ?? sch.ltv ?? sch.max_ltv ?? 0);
-      if (ltvPct > 0) {
-        baseEligible = (mktVal * ltvPct) / 100;
-      }
-    }
-    return baseEligible;
-  }
-
-  // ✅ submitPawnToDatabase அழைக்கப்படும்போது LTV வரம்பை இறுதியாகச் சரிபார்க்கும் காவலன் (Guard)
-  const _origSubmitPawnToDatabase = typeof submitPawnToDatabase === 'function' ? submitPawnToDatabase : null;
-  if (_origSubmitPawnToDatabase) {
-    submitPawnToDatabase = function() {
-      const loanInput = document.getElementById('loan_amount');
-      const enteredAmt = parseFloat(loanInput?.value) || 0;
-
-      const hasHqApproval = !!(
-        typeof activeApprovedDeviationData !== 'undefined' &&
-        activeApprovedDeviationData &&
-        activeApprovedDeviationData.status === 'APPROVED' &&
-        parseFloat(activeApprovedDeviationData.approved_loan_amount || 0) > 0
-      );
-
-      if (hasHqApproval) {
-        const capAmt = parseFloat(activeApprovedDeviationData.approved_loan_amount || 0);
-        if (enteredAmt > capAmt + 0.01) {
-          alert(`⚠️ தலைமையகம் அனுமதித்த அதிகபட்ச கடன் தொகை ₹${capAmt.toLocaleString('en-IN')} மட்டுமே! அதற்கு மேல் கூடையில் சேர்க்க முடியாது.`);
-          if (loanInput) loanInput.value = capAmt;
-          if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
-          if (typeof enforceLoanLimitAndDeviationState === 'function') enforceLoanLimitAndDeviationState();
-          return;
-        }
-        return _origSubmitPawnToDatabase.apply(this, arguments);
-      }
-
-      const effectiveMax = getEffectiveMaxEligibleAmount();
-      if (effectiveMax > 0 && enteredAmt > effectiveMax + 0.01) {
-        alert(
-          `⚠️ திட்டத்தின்படி அனுமதிக்கப்பட்ட அதிகபட்ச கடன் (LTV) தொகை ₹${effectiveMax.toLocaleString('en-IN', { minimumFractionDigits: 2 })} மட்டுமே!\n` +
-          `அதற்கு மேல் உள்ள தொகைக்கு (₹${enteredAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}) தலைமையக ஒப்புதல் இன்றி கூடையில் சேர்க்க முடியாது.\n` +
-          `தயவுசெய்து '🛡️ கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold' மூலம் ஒப்புதல் கோரவும்.`
-        );
-        if (typeof enforceLoanLimitAndDeviationState === 'function') enforceLoanLimitAndDeviationState();
-        return;
-      }
-
-      return _origSubmitPawnToDatabase.apply(this, arguments);
-    };
-  }
-
-  // ✅ enforceLoanLimitAndDeviationState உள்ளேயும் getEffectiveMaxEligibleAmount பயன்படுத்துதல்
-  const _prevEnforceLoanState = typeof enforceLoanLimitAndDeviationState === 'function' ? enforceLoanLimitAndDeviationState : null;
-  enforceLoanLimitAndDeviationState = function() {
-    if (_prevEnforceLoanState) _prevEnforceLoanState();
-
-    const loanInput = document.getElementById('loan_amount');
-    const addCartBtn = document.getElementById('btnAddToCart');
-    if (!loanInput || !addCartBtn) return;
-
-    const enteredAmt = parseFloat(loanInput.value) || 0;
-    const hasHqApproval = !!(
-      typeof activeApprovedDeviationData !== 'undefined' &&
-      activeApprovedDeviationData &&
-      activeApprovedDeviationData.status === 'APPROVED' &&
-      parseFloat(activeApprovedDeviationData.approved_loan_amount || 0) > 0
-    );
-    if (hasHqApproval) return;
-
-    const effectiveMax = getEffectiveMaxEligibleAmount();
-    const totNet = (typeof ornamentList !== 'undefined' && Array.isArray(ornamentList))
-      ? ornamentList.reduce((sum, x) => sum + (parseFloat(x.net_weight) || 0), 0)
-      : 0;
-    const mktVal = (typeof totalGoldMarketValue !== 'undefined') ? (parseFloat(totalGoldMarketValue) || 0) : 0;
-
-    if (effectiveMax > 0 && enteredAmt > effectiveMax + 0.01) {
-      const extraAmt = enteredAmt - effectiveMax;
-      const extraPerGram = totNet > 0 ? (extraAmt / totNet) : 0;
-      const newLtvPct = mktVal > 0 ? ((enteredAmt / mktVal) * 100) : 0;
-
-      let badgeEl = document.getElementById('deviationInfoBanner');
-      if (!badgeEl && loanInput.parentElement && loanInput.parentElement.parentElement) {
-        badgeEl = document.createElement('div');
-        badgeEl.id = 'deviationInfoBanner';
-        badgeEl.className = 'p-3 rounded-2xl border-2 border-amber-400 bg-amber-50 text-xs space-y-1 mt-2';
-        loanInput.parentElement.parentElement.insertAdjacentElement('afterend', badgeEl);
-      }
-      if (badgeEl) {
-        badgeEl.classList.remove('hidden');
-        badgeEl.innerHTML = `
-          <div class="font-black text-amber-950">⚠️ திட்ட வரம்பை (₹${effectiveMax.toLocaleString('en-IN')}) விடக் கூடுதல் கடன் தொகை கோரப்படுகிறது!</div>
-          <div class="text-slate-800 font-bold">
-            கூடுதல் தொகை: <span class="text-rose-600 font-mono">+₹${extraAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> |
-            கிராமிற்கு கூடுதல்: <span class="text-brand-violet font-mono">+₹${extraPerGram.toFixed(2)}/g</span> |
-            புதிய LTV: <span class="text-indigo-900 font-mono">${newLtvPct.toFixed(1)}%</span>
-          </div>
-        `;
-      }
-      addCartBtn.innerText = "🛡️ கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold";
-      addCartBtn.onclick = function(ev) {
-        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-        if (typeof requestLoanDeviationAndHold === 'function') requestLoanDeviationAndHold();
-      };
-    }
-  };
-  refreshDeviationUiState = enforceLoanLimitAndDeviationState;
-</script>
 </body>
 </html>

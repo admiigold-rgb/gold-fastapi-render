@@ -11698,7 +11698,26 @@
     }
   }
 
-  // ✅ btnAddToCart கிளிக் செய்யப்படும்போது முதலில் தடுத்து LTV வரம்பைச் சரிபார்க்கும் Capture Guard
+  // ✅ ஒரு Waiver ஒப்புதல் ஒரு கடனுக்குப் பயன்படுத்தப்பட்ட பின் அடுத்த கடனுக்குப் போகாமல் தடுத்தல்
+  function consumeApprovedDeviationOnce() {
+    activeApprovedDeviationData = null;
+    if (typeof window.currentActiveExemptionStatus !== 'undefined') {
+      window.currentActiveExemptionStatus = 'NONE';
+    }
+    syncAddToCartButtonLabel();
+  }
+
+  // ✅ புதிய நகை சேர்க்கப்படும்போது (addOrnamentToTable) பழைய Waiver அடுத்த கடனுக்குத் தொடராமல் நீக்குதல்
+  const _origAddOrnamentFn = typeof addOrnamentToTable === 'function' ? addOrnamentToTable : null;
+  if (_origAddOrnamentFn) {
+    addOrnamentToTable = function() {
+      const res = _origAddOrnamentFn.apply(this, arguments);
+      setTimeout(syncAddToCartButtonLabel, 30);
+      return res;
+    };
+  }
+
+  // ✅ btnAddToCart கிளிக் செய்யப்படும்போது LTV வரம்பைச் சரிபார்க்கும் Capture Guard
   document.addEventListener('click', function(ev) {
     const btn = ev.target.closest('#btnAddToCart');
     if (!btn) return;
@@ -11732,6 +11751,11 @@
         requestLoanDeviationAndHold();
       }
       return false;
+    }
+
+    // ✅ அனுமதிக்கப்பட்ட தொகை கூடையில் சேர்ந்தவுடன் ஒப்புதலை (Single-Use) நீக்குதல்
+    if (isApprovedDeviation) {
+      setTimeout(consumeApprovedDeviationOnce, 600);
     }
   }, true);
 
@@ -12010,4 +12034,3 @@
 </script>
 </body>
 </html>
-

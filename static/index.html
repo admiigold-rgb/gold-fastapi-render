@@ -10,42 +10,244 @@
 
   <style>
     :root {
-      --color-violet-dark: #4a1566;
-      --color-violet: #723a91;
-      --color-violet-light: #9453b8;
-      --color-gold: #d4af37;
-      --color-gold-light: #fef7db;
-      --color-gold-dark: #aa8619;
+      --royal-violet-abyss: #240538;
+      --royal-violet-dark: #4a1566;
+      --royal-violet: #723a91;
+      --royal-violet-glow: #9333ea;
+      --metallic-gold-dark: #997412;
+      --metallic-gold: #d4af37;
+      --metallic-gold-bright: #f7dc7c;
+      --metallic-gold-light: #fffbeb;
     }
 
-    body { background-color: #f8f5fb; }
-    .bg-brand-violet { background-color: var(--color-violet); }
-    .bg-brand-violet-dark { background-color: var(--color-violet-dark); }
-    .text-brand-violet { color: var(--color-violet); }
-    .border-brand-violet { border-color: var(--color-violet); }
+    body {
+      background:
+        radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.14) 0%, transparent 38%),
+        radial-gradient(circle at 88% 15%, rgba(114, 58, 145, 0.15) 0%, transparent 42%),
+        linear-gradient(180deg, #f7f1fc 0%, #fcf8ee 55%, #f4ebfc 100%) !important;
+      color: #1c0d26;
+    }
 
-    .bg-brand-gold { background-color: var(--color-gold); }
-    .text-brand-gold { color: var(--color-gold-dark); }
-    .border-brand-gold { border-color: var(--color-gold); }
-
+    /* 👑 1. ஹைலைட் கார்ப்பரேட் ஹெடர் (Royal Violet + Metallic Gold Crown Glow) */
     .brand-gradient-header {
-      background: linear-gradient(135deg, #44125e 0%, #723a91 60%, #582173 100%);
+      background: linear-gradient(125deg, #240538 0%, #4a1566 48%, #723a91 85%, #3b0764 100%) !important;
+      color: #ffffff !important;
+      border: 2px solid var(--metallic-gold) !important;
+      border-bottom: 4px solid var(--metallic-gold-bright) !important;
+      box-shadow:
+        0 14px 32px -8px rgba(36, 5, 56, 0.45),
+        0 0 20px rgba(212, 175, 55, 0.22) !important;
+      border-radius: 22px !important;
     }
 
+    /* சிறிய ஸ்டைலிஷ் Core பேட்ஜ் */
+    .brand-gradient-header span.uppercase {
+      font-size: 9px !important;
+      line-height: 1 !important;
+      padding: 3px 7px !important;
+      border-radius: 9999px !important;
+      background: linear-gradient(135deg, #f7dc7c 0%, #d4af37 100%) !important;
+      color: #240538 !important;
+      border: 1px solid #fff3b0 !important;
+      letter-spacing: 0.06em !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      vertical-align: middle !important;
+    }
+
+    /* 🧭 2. மேல் நேவிகேஷன் மெனு (எல்லா டேப்களும் தெளிவாகத் தெரிய) */
+    #navButtonsContainer {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-items: center !important;
+      gap: 8px !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      padding: 6px 8px !important;
+      border-radius: 16px !important;
+      border: 1.5px solid rgba(247, 220, 124, 0.55) !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    #navButtonsContainer button {
+      white-space: nowrap !important;
+      padding: 7px 14px !important;
+      border-radius: 12px !important;
+      font-size: 12px !important;
+      font-weight: 800 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: all 0.2s ease !important;
+    }
+
+    #navButtonsContainer button:hover {
+      transform: translateY(-1.5px);
+      box-shadow: 0 6px 14px rgba(247, 220, 124, 0.32) !important;
+    }
+
+    /* ✨ 3. மெட்டாலிக் கோல்டு ஹைலைட் பட்டன்கள் */
     .brand-gradient-gold-btn {
-      background: linear-gradient(135deg, #e5c04b 0%, #d4af37 50%, #b38b16 100%);
-      color: #381203;
-    }
-    .brand-gradient-gold-btn:hover {
-      background: linear-gradient(135deg, #eed06d 0%, #dfbc45 50%, #c49919 100%);
+      background: linear-gradient(135deg, #fff099 0%, #f5d061 35%, #d4af37 75%, #b58916 100%) !important;
+      color: #240538 !important;
+      border: 1.5px solid #fff3b0 !important;
+      font-weight: 900 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      box-shadow: 0 6px 18px -3px rgba(212, 175, 55, 0.45) !important;
+      transition: all 0.2s ease !important;
     }
 
-    .brand-gradient-violet-btn {
-      background: linear-gradient(135deg, #723a91 0%, #582173 100%);
-      color: #ffffff;
+    .brand-gradient-gold-btn:hover {
+      background: linear-gradient(135deg, #ffffff 0%, #f7dc7c 40%, #e5be43 80%, #c49619 100%) !important;
+      transform: translateY(-1.5px);
     }
+
+    /* 💜 4. அடர் ராயல் வயலட் + கோல்டு பார்டர் பட்டன்கள் */
+    .brand-gradient-violet-btn {
+      background: linear-gradient(135deg, #7e3fa3 0%, #581c87 60%, #4a1566 100%) !important;
+      color: #ffffff !important;
+      border: 1.5px solid var(--metallic-gold) !important;
+      font-weight: 800 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      box-shadow: 0 6px 16px -3px rgba(74, 21, 102, 0.38) !important;
+      transition: all 0.2s ease !important;
+    }
+
     .brand-gradient-violet-btn:hover {
-      background: linear-gradient(135deg, #8749ab 0%, #682888 100%);
+      background: linear-gradient(135deg, #914cb8 0%, #6b21a8 60%, #4a1566 100%) !important;
+      border-color: var(--metallic-gold-bright) !important;
+      transform: translateY(-1.5px);
+    }
+
+    /* 🎛️ 5. கவுண்ட்டர் செயல்பாட்டுப் பட்டன்கள் வரிசை */
+    #counterTab button[onclick*="Modal"] {
+      background: linear-gradient(135deg, #581c87 0%, #723a91 65%, #4a1566 100%) !important;
+      color: #ffffff !important;
+      border: 1.5px solid var(--metallic-gold) !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      box-shadow: 0 4px 12px -2px rgba(74, 21, 102, 0.28) !important;
+      transition: all 0.2s ease !important;
+    }
+
+    #counterTab button[onclick*="Modal"]:hover {
+      background: linear-gradient(135deg, #723a91 0%, #8b4ab3 65%, #581c87 100%) !important;
+      border-color: var(--metallic-gold-bright) !important;
+      transform: translateY(-1.5px);
+    }
+
+    #counterTab button[onclick*="CLOSE"] {
+      background: linear-gradient(135deg, #f7dc7c 0%, #d4af37 60%, #a67c14 100%) !important;
+      color: #240538 !important;
+      border: 1.5px solid #fff3b0 !important;
+      font-weight: 900 !important;
+    }
+
+    button[onclick="handleLogout()"] {
+      background: linear-gradient(135deg, #4a1566 0%, #240538 100%) !important;
+      color: #f7dc7c !important;
+      border: 1.5px solid var(--metallic-gold) !important;
+      white-space: nowrap !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    /* 🃏 6. கார்ப்பரேட் ஹைலைட் அட்டைகள் */
+    #counterTab > div.bg-white,
+    #activeCustomerSection > div.bg-white,
+    #hqApprovalTab > div.bg-white,
+    #adminPanelTab > div.bg-white,
+    #internalAuditTab > div.bg-white {
+      background: #ffffff !important;
+      color: #1c0d26 !important;
+      border: 1.5px solid rgba(212, 175, 55, 0.55) !important;
+      border-top: 4px solid var(--royal-violet) !important;
+      box-shadow: 0 10px 24px -6px rgba(36, 5, 56, 0.1) !important;
+      border-radius: 20px !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    /* 📌 7. HQ நிலுவை & நிராகரிக்கப்பட்ட பட்டை / பாக்கெட் டேப்கள் தெளிவு */
+    #counterHqStatusContainer,
+    #counterHqPendingBox,
+    #counterHqRejectedBox,
+    #pktStatusTabsContainer,
+    #pktStatusTabsContainer button {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    #pktStatusTabsContainer {
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 8px !important;
+    }
+
+    #pktStatusTabsContainer button {
+      padding: 6px 12px !important;
+      border-radius: 12px !important;
+      font-size: 12px !important;
+      font-weight: 800 !important;
+    }
+
+    /* 📊 8. அட்டவணை தலைப்புகள் */
+    table thead tr {
+      background: linear-gradient(90deg, #2e0944 0%, #4a1566 55%, #723a91 100%) !important;
+    }
+    table thead th {
+      color: #f7dc7c !important;
+      font-weight: 900 !important;
+      border-bottom: 2px solid var(--metallic-gold) !important;
+    }
+    table tbody tr:hover {
+      background-color: #f8f1fd !important;
+    }
+
+    /* ✍️ 9. உள்ளீட்டுப் பெட்டிகள் */
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select,
+    textarea {
+      border-radius: 12px !important;
+      transition: all 0.2s ease !important;
+    }
+
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--metallic-gold) !important;
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.28) !important;
+      outline: none !important;
+    }
+
+    /* ⚡ 10. விரைவுச் செயல் பட்டன்கள் */
+    #qbtn_active_loans, #qbtn_new_pawn, #qbtn_gp, #qbtn_gs, #qbtn_gss, #qbtn_rd, #qbtn_si {
+      border-radius: 16px !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transition: all 0.2s ease !important;
+    }
+
+    #qbtn_active_loans:hover, #qbtn_new_pawn:hover, #qbtn_gp:hover, #qbtn_gs:hover, #qbtn_gss:hover, #qbtn_rd:hover, #qbtn_si:hover {
+      transform: translateY(-2px);
+      border-color: var(--metallic-gold) !important;
+      box-shadow: 0 8px 18px -4px rgba(114, 58, 145, 0.22) !important;
+    }
+
+    /* ❌ 11. Modal மூடும் (✕) பட்டன் தெளிவாகத் தெரிய */
+    #ornamentPhotoModal button,
+    [id$="Modal"] button[onclick*="close"] {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+
+    /* 📜 12. Scrollbar */
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: #f3e8fa; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #723a91 0%, #d4af37 100%);
+      border-radius: 8px;
     }
 
     .hidden { display: none !important; }

@@ -3958,7 +3958,7 @@
       }
     }, 5000);
     
-    // 6. Cart & Loan Submission
+   // 6. Cart & Loan Submission
     async function submitPawnToDatabase() {
       if (isDraftLocked) {
         return alert("⚠️ இந்த வருகை நிறுத்தி வைக்கப்பட்டு மீண்டும் திறக்கப்பட்டுள்ளது! இதில் புதிய நகைகளையோ கடன்களையோ சேர்க்க முடியாது. தீர்வு (Checkout) மட்டுமே செய்ய இயலும்.");
@@ -4003,16 +4003,16 @@
       const transDate = transDateInput && transDateInput.value ? transDateInput.value : new Date().toISOString().split('T')[0];
       await ensureActiveVisitId();
       const payload = {
-        customer_id: activeCustomer.id, 
-        branch_id: branchId, 
+        customer_id: activeCustomer.id,
+        branch_id: branchId,
         visit_id: activeVisitId,
-        loan_no: loanNo, 
+        loan_no: loanNo,
         scheme_name: scheme,
-        loan_amount: loanAmt, 
-        charges_amount: chgAmt, 
-        photo_url: ornamentPhotoBase64, 
+        loan_amount: loanAmt,
+        charges_amount: chgAmt,
+        photo_url: ornamentPhotoBase64,
         ornament_photo: ornamentPhotoBase64,
-        transaction_date: transDate, 
+        transaction_date: transDate,
         items: ornamentList
       };
 
@@ -4038,7 +4038,7 @@
           ornamentList = [];
           renderOrnamentsTable();
           fetchAutoLoanNumber();
-          
+
           // நகைப் படப் பகுதியை அடுத்த கடனுக்காகத் தூய்மை செய்தல்
           if (ornamentPhotoInput) ornamentPhotoInput.value = '';
           const photoElem = document.getElementById('ornament_photo_preview');
@@ -4047,6 +4047,62 @@
         } else alert("❌ பிழை: " + data.detail);
       } catch (err) { alert("பிழை: " + err.message); }
     }
+
+    // ✅ [Errno 11] தற்காலிக சர்வர் பிழை வந்தால் தானாக மீண்டும் முயற்சித்து, பிழை வந்தால் Loader-ஐ உடனே மறைக்கும் பாதுகாப்பு
+    (function patchPawnSubmitWithRetry() {
+      const origSubmit = window.submitPawnToDatabase;
+      if (typeof origSubmit !== 'function') return;
+
+      function hideGlobalLoaderNow() {
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) overlay.style.display = 'none';
+        window._userActionLoading = false;
+      }
+
+      window.submitPawnToDatabase = async function(...args) {
+        const origFetch = window.fetch;
+        let attempts = 0;
+
+        window.fetch = async function(url, options = {}) {
+          const uStr = typeof url === 'string' ? url : (url?.url || '');
+          if (!uStr.includes('/api/loan/new-pawn')) {
+            return origFetch.apply(this, arguments);
+          }
+
+          while (true) {
+            attempts++;
+            try {
+              const resp = await origFetch.apply(this, arguments);
+              if ((resp.status === 503 || resp.status === 502) && attempts < 3) {
+                await new Promise(r => setTimeout(r, 500 * attempts));
+                continue;
+              }
+              return resp;
+            } catch (fetchErr) {
+              const msg = String(fetchErr?.message || '').toLowerCase();
+              if ((msg.includes('11') || msg.includes('temporarily') || msg.includes('failed to fetch') || msg.includes('network')) && attempts < 3) {
+                await new Promise(r => setTimeout(r, 500 * attempts));
+                continue;
+              }
+              throw fetchErr;
+            }
+          }
+        };
+
+        try {
+          return await origSubmit.apply(this, args);
+        } catch (err) {
+          hideGlobalLoaderNow();
+          alert("❌ பிழை: " + (err?.message || "கடன் சேர்க்க முடியவில்லை"));
+        } finally {
+          window.fetch = origFetch;
+          hideGlobalLoaderNow();
+          if (typeof syncLoanCartActionButton === 'function') {
+            syncLoanCartActionButton();
+          }
+        }
+      };
+    })();
     async function removeLastCartItem() {
       if (isDraftLocked) {
         return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் கார்ட்டை மாற்ற முடியாது!");

@@ -12010,7 +12010,6 @@
               }
             } catch (e) {}
           } else if (!stillPendingIds.has(Number(d.loan_deviation_id || -1))) {
-            // பழைய டிராஃப்ட் எனில், இப்போது HQ பென்டிங் பட்டியலில் இல்லை என்றால் APPROVED எனக் கருதித் திறக்க அனுமதித்தல்
             d.exemption_status = 'APPROVED';
             d.approved_deviation = {
               status: 'APPROVED',
@@ -12031,7 +12030,7 @@
 
   setInterval(pollLoanDeviationApprovalsOnce, 4000);
   document.addEventListener('DOMContentLoaded', () => setTimeout(pollLoanDeviationApprovalsOnce, 1500));
-  
+
   async function loadPendingLoanDeviationsHQ() {
     const tbody = document.getElementById('hqLoanDeviationTableBody');
     if (!tbody) return;
@@ -12126,7 +12125,118 @@
       setTimeout(loadPendingLoanDeviationsHQ, 400);
     }
   });
+
+  // ✅ அன்றைய நகை மதிப்பு & திட்ட LTV அடிப்படையில் சரியான அதிகபட்ச தகுதித் தொகையைக் கணக்கிடுதல்
+  function getEffectiveMaxEligibleAmount() {
+    let baseEligible = (typeof maxEligibleLoanAmount !== 'undefined') ? (parseFloat(maxEligibleLoanAmount) || 0) : 0;
+    const mktVal = (typeof totalGoldMarketValue !== 'undefined') ? (parseFloat(totalGoldMarketValue) || 0) : 0;
+    const sch = (typeof currentSelectedScheme !== 'undefined' && currentSelectedScheme) ? currentSelectedScheme : null;
+
+    if (baseEligible <= 0 && mktVal > 0 && sch) {
+      const ltvPct = parseFloat(sch.ltv_percentage ?? sch.ltv ?? sch.max_ltv ?? 0);
+      if (ltvPct > 0) {
+        baseEligible = (mktVal * ltvPct) / 100;
+      }
+    }
+    return baseEligible;
+  }
+
+  // ✅ submitPawnToDatabase அழைக்கப்படும்போது LTV வரம்பை இறுதியாகச் சரிபார்க்கும் காவலன் (Guard)
+  const _origSubmitPawnToDatabase = typeof submitPawnToDatabase === 'function' ? submitPawnToDatabase : null;
+  if (_origSubmitPawnToDatabase) {
+    submitPawnToDatabase = function() {
+      const loanInput = document.getElementById('loan_amount');
+      const enteredAmt = parseFloat(loanInput?.value) || 0;
+
+      const hasHqApproval = !!(
+        typeof activeApprovedDeviationData !== 'undefined' &&
+        activeApprovedDeviationData &&
+        activeApprovedDeviationData.status === 'APPROVED' &&
+        parseFloat(activeApprovedDeviationData.approved_loan_amount || 0) > 0
+      );
+
+      if (hasHqApproval) {
+        const capAmt = parseFloat(activeApprovedDeviationData.approved_loan_amount || 0);
+        if (enteredAmt > capAmt + 0.01) {
+          alert(`⚠️ தலைமையகம் அனுமதித்த அதிகபட்ச கடன் தொகை ₹${capAmt.toLocaleString('en-IN')} மட்டுமே! அதற்கு மேல் கூடையில் சேர்க்க முடியாது.`);
+          if (loanInput) loanInput.value = capAmt;
+          if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+          if (typeof enforceLoanLimitAndDeviationState === 'function') enforceLoanLimitAndDeviationState();
+          return;
+        }
+        return _origSubmitPawnToDatabase.apply(this, arguments);
+      }
+
+      const effectiveMax = getEffectiveMaxEligibleAmount();
+      if (effectiveMax > 0 && enteredAmt > effectiveMax + 0.01) {
+        alert(
+          `⚠️ திட்டத்தின்படி அனுமதிக்கப்பட்ட அதிகபட்ச கடன் (LTV) தொகை ₹${effectiveMax.toLocaleString('en-IN', { minimumFractionDigits: 2 })} மட்டுமே!\n` +
+          `அதற்கு மேல் உள்ள தொகைக்கு (₹${enteredAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}) தலைமையக ஒப்புதல் இன்றி கூடையில் சேர்க்க முடியாது.\n` +
+          `தயவுசெய்து '🛡️ கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold' மூலம் ஒப்புதல் கோரவும்.`
+        );
+        if (typeof enforceLoanLimitAndDeviationState === 'function') enforceLoanLimitAndDeviationState();
+        return;
+      }
+
+      return _origSubmitPawnToDatabase.apply(this, arguments);
+    };
+  }
+
+  // ✅ enforceLoanLimitAndDeviationState உள்ளேயும் getEffectiveMaxEligibleAmount பயன்படுத்துதல்
+  const _prevEnforceLoanState = typeof enforceLoanLimitAndDeviationState === 'function' ? enforceLoanLimitAndDeviationState : null;
+  enforceLoanLimitAndDeviationState = function() {
+    if (_prevEnforceLoanState) _prevEnforceLoanState();
+
+    const loanInput = document.getElementById('loan_amount');
+    const addCartBtn = document.getElementById('btnAddToCart');
+    if (!loanInput || !addCartBtn) return;
+
+    const enteredAmt = parseFloat(loanInput.value) || 0;
+    const hasHqApproval = !!(
+      typeof activeApprovedDeviationData !== 'undefined' &&
+      activeApprovedDeviationData &&
+      activeApprovedDeviationData.status === 'APPROVED' &&
+      parseFloat(activeApprovedDeviationData.approved_loan_amount || 0) > 0
+    );
+    if (hasHqApproval) return;
+
+    const effectiveMax = getEffectiveMaxEligibleAmount();
+    const totNet = (typeof ornamentList !== 'undefined' && Array.isArray(ornamentList))
+      ? ornamentList.reduce((sum, x) => sum + (parseFloat(x.net_weight) || 0), 0)
+      : 0;
+    const mktVal = (typeof totalGoldMarketValue !== 'undefined') ? (parseFloat(totalGoldMarketValue) || 0) : 0;
+
+    if (effectiveMax > 0 && enteredAmt > effectiveMax + 0.01) {
+      const extraAmt = enteredAmt - effectiveMax;
+      const extraPerGram = totNet > 0 ? (extraAmt / totNet) : 0;
+      const newLtvPct = mktVal > 0 ? ((enteredAmt / mktVal) * 100) : 0;
+
+      let badgeEl = document.getElementById('deviationInfoBanner');
+      if (!badgeEl && loanInput.parentElement && loanInput.parentElement.parentElement) {
+        badgeEl = document.createElement('div');
+        badgeEl.id = 'deviationInfoBanner';
+        badgeEl.className = 'p-3 rounded-2xl border-2 border-amber-400 bg-amber-50 text-xs space-y-1 mt-2';
+        loanInput.parentElement.parentElement.insertAdjacentElement('afterend', badgeEl);
+      }
+      if (badgeEl) {
+        badgeEl.classList.remove('hidden');
+        badgeEl.innerHTML = `
+          <div class="font-black text-amber-950">⚠️ திட்ட வரம்பை (₹${effectiveMax.toLocaleString('en-IN')}) விடக் கூடுதல் கடன் தொகை கோரப்படுகிறது!</div>
+          <div class="text-slate-800 font-bold">
+            கூடுதல் தொகை: <span class="text-rose-600 font-mono">+₹${extraAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span> |
+            கிராமிற்கு கூடுதல்: <span class="text-brand-violet font-mono">+₹${extraPerGram.toFixed(2)}/g</span> |
+            புதிய LTV: <span class="text-indigo-900 font-mono">${newLtvPct.toFixed(1)}%</span>
+          </div>
+        `;
+      }
+      addCartBtn.innerText = "🛡️ கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold";
+      addCartBtn.onclick = function(ev) {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+        if (typeof requestLoanDeviationAndHold === 'function') requestLoanDeviationAndHold();
+      };
+    }
+  };
+  refreshDeviationUiState = enforceLoanLimitAndDeviationState;
 </script>
 </body>
 </html>
-  

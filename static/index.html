@@ -9,63 +9,46 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 
   <style>
-    /* ✨ 1. தலைமையக ஒப்புதல் நிலுவை & நிராகரிக்கப்பட்டவை பட்டை (High Contrast) */
-    #counterHqStatusContainer,
-    #counterHqPendingBox,
-    #counterHqRejectedBox,
-    #counterHqPendingBox span,
-    #counterHqRejectedBox span {
-      color: #1e1035 !important;
-      opacity: 1 !important;
-    }
-    #counterHqPendingBox {
-      background: #fffbeb !important;
-      border: 1.5px solid #d4af37 !important;
-    }
-    #counterHqRejectedBox {
-      background: #fff1f2 !important;
-      border: 1.5px solid #fb7185 !important;
-    }
-    #counterHqRejectedBox span.font-black {
-      color: #9f1239 !important;
+    :root {
+      --color-violet-dark: #4a1566;
+      --color-violet: #723a91;
+      --color-violet-light: #9453b8;
+      --color-gold: #d4af37;
+      --color-gold-light: #fef7db;
+      --color-gold-dark: #aa8619;
     }
 
-    /* 🗂️ 2. நகை பாக்கெட் நிலை டேப்கள் (எல்லா டேப்களும் தெளிவாகத் தெரிய) */
-    #pktStatusTabsContainer button {
-      opacity: 1 !important;
-      visibility: visible !important;
-      color: #2e0944 !important;
-      background: #f5eefb !important;
-      border: 1.5px solid #c084fc !important;
-      font-weight: 800 !important;
-    }
-    #pktStatusTabsContainer button.text-white {
-      color: #ffffff !important;
-      background: linear-gradient(135deg, #4a1566 0%, #723a91 100%) !important;
-      border-color: #d4af37 !important;
+    body { background-color: #f8f5fb; }
+    .bg-brand-violet { background-color: var(--color-violet); }
+    .bg-brand-violet-dark { background-color: var(--color-violet-dark); }
+    .text-brand-violet { color: var(--color-violet); }
+    .border-brand-violet { border-color: var(--color-violet); }
+
+    .bg-brand-gold { background-color: var(--color-gold); }
+    .text-brand-gold { color: var(--color-gold-dark); }
+    .border-brand-gold { border-color: var(--color-gold); }
+
+    .brand-gradient-header {
+      background: linear-gradient(135deg, #44125e 0%, #723a91 60%, #582173 100%);
     }
 
-    /* ❌ 3. நகைப் படம் & பாப்-அப் சாளரங்களின் மூடும் (✕) பட்டன் தெளிவாகத் தெரிய */
-    #ornamentPhotoModal button,
-    [id$="Modal"] button[onclick*="close"] {
-      opacity: 1 !important;
-      visibility: visible !important;
-      color: #ffffff !important;
-      background: #4a1566 !important;
-      border: 1.5px solid #d4af37 !important;
-      border-radius: 9999px !important;
-      width: 30px;
-      height: 30px;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
+    .brand-gradient-gold-btn {
+      background: linear-gradient(135deg, #e5c04b 0%, #d4af37 50%, #b38b16 100%);
+      color: #381203;
     }
-    #ornamentPhotoModal .px-4.py-3.bg-white button {
-      width: auto !important;
-      height: auto !important;
-      border-radius: 12px !important;
-      padding: 6px 16px !important;
+    .brand-gradient-gold-btn:hover {
+      background: linear-gradient(135deg, #eed06d 0%, #dfbc45 50%, #c49919 100%);
     }
+
+    .brand-gradient-violet-btn {
+      background: linear-gradient(135deg, #723a91 0%, #582173 100%);
+      color: #ffffff;
+    }
+    .brand-gradient-violet-btn:hover {
+      background: linear-gradient(135deg, #8749ab 0%, #682888 100%);
+    }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body class="min-h-screen text-slate-800 font-sans">
@@ -103,7 +86,7 @@
 <span class="p-2 bg-white bg-opacity-10 rounded-2xl border border-yellow-300 shadow-inner inline-flex items-center justify-center"><img src="/static/logo.png" alt="Logo" class="w-14 h-14 object-contain rounded-lg"></span>        <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg md:text-xl font-extrabold text-yellow-300 tracking-wide">முத்துசைஸ் கோல்டு கம்பெனி</h1>
-            <span class="text-[9px] bg-yellow-400 text-purple-950 font-black px-1.5 py-0.5 rounded-full border border-yellow-200 tracking-wider uppercase shadow-sm">Core</span>
+            <span class="text-[10px] bg-yellow-400 text-purple-950 font-black px-2 py-0.5 rounded-full border border-yellow-200 tracking-wide uppercase">Core</span>
           </div>
           <p class="text-xs text-purple-100 mt-0.5">
             பணியாளர்: <span id="loggedStaffName" class="font-bold text-white">-</span> | 

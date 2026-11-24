@@ -12554,5 +12554,211 @@
     };
   }
 </script>
+<script>
+  (function enableFullEnglishUI() {
+    if (window._fullEnglishUiEnabled) return;
+    window._fullEnglishUiEnabled = true;
+
+    document.documentElement.lang = 'en';
+    document.title = 'Muthusise Gold - Branch & HQ System';
+
+    const PHRASE_MAP = [
+      // Brand & Header
+      ['முத்துசைஸ் கோல்டு கம்பெனி', 'Muthusise Gold Company'],
+      ['முத்துசைஸ் கோல்டு - கிளை & தலைமையக அமைப்பு', 'Muthusise Gold - Branch & HQ System'],
+      ['கிளை & தலைமையக பணியாளர் உள்நுழைவு', 'Branch & HQ Staff Sign In'],
+      ['பயனர் பெயர் (Username)', 'Username'],
+      ['கடவுச்சொல் (Password)', 'Password'],
+      ['உள்நுழைக (Sign In)', 'Sign In'],
+      ['பணியாளர்:', 'Staff:'],
+      ['பங்கு:', 'Role:'],
+      ['கிளை:', 'Branch:'],
+      ['வெளியேறு', 'Logout'],
+
+      // Top Navigation
+      ['கவுண்ட்டர்', 'Counter'],
+      ['தலைமையக ஒப்புதல்கள்', 'HQ Approvals'],
+      ['அகத்தணிக்கை (Audit)', 'Internal Audit'],
+      ['நிர்வாகம்', 'Admin'],
+
+      // Date & Counter Toolbar
+      ['பரிவர்த்தனை தேதி:', 'Transaction Date:'],
+      ['நிலை அறியப்படுகிறது...', 'Checking status...'],
+      ['திறக்கப்பட்டுள்ளது (பரிவர்த்தனைக்குத் தயார்)', 'Open (Ready for Transactions)'],
+      ['மூடப்பட்டுள்ளது', 'Closed'],
+      ['இறுதி இருப்பு:', 'Closing Balance:'],
+      ['அன்றைய நடவடிக்கைகள்', 'Day Summary'],
+      ['செலவுப் பதிவு (Expense)', 'Expenses'],
+      ['உள்-பணப் பரிமாற்றம்', 'Treasury Transfer'],
+      ['GP நகை இருப்பு (Send to HQ)', 'GP Stock (Send to HQ)'],
+      ['நகை பாக்கெட் & லாக்கர்', 'Packet & Vault'],
+      ['ஆவண இணைப்பு & தணிக்கை', 'Audit Docs'],
+      ['மாலை கணக்கு முடிவு (Day Close)', 'Day Close'],
+
+      // Pending / Rejected HQ Banner & Held Drafts
+      ['தலைமையக ஒப்புதல் நிலுவை (Pending HQ Approval — மாலை கணக்கு முடிக்க இவை ஒப்புதல் பெற வேண்டும்):', 'Pending HQ Approval (Required before Day Close):'],
+      ['தலைமையகத்தால் நிராகரிக்கப்பட்டவை (Rejected — இவை அன்றைய நடவடிக்கையில் சேராது):', 'Rejected by HQ (Excluded from Day Book):'],
+      ['நிறுத்தி வைக்கப்பட்ட வாடிக்கையாளர்கள்:', 'Held Customers:'],
+      ['கிளிக் செய்து பரிவர்த்தனையை முடிக்கலாம்', 'Click to resume transaction'],
+      ['புதுப்பி', 'Refresh'],
+
+      // Customer Search & Active Customer Card
+      ['வாடிக்கையாளர் மொபைல் எண் அல்லது பெயர் உள்ளிடவும்...', 'Enter customer mobile number or name...'],
+      ['தேடு', 'Search'],
+      ['+ புதிய முழு KYC', '+ New Full KYC'],
+      ['நடப்பு வாடிக்கையாளர்', 'Active Customer'],
+      ['மொபைல்:', 'Mobile:'],
+      ['உறவு:', 'Relation:'],
+      ['சான்று:', 'ID Proof:'],
+      ['முகவரி:', 'Address:'],
+      ['முகவரி இல்லை', 'No address'],
+      ['நிறுத்தி வை (Hold)', 'Hold'],
+      ['சுயவிவர மாற்றம்', 'Update Profile'],
+      ['முடி / மாற்று', 'Reset / Switch'],
+
+      // Quick Action Panels
+      ['தேவையான நடவடிக்கையைத் தேர்ந்தெடுக்கவும் (Select Action):', 'Select Action:'],
+      ['தேர்வு செய்த படிவம் மட்டும் கீழே திறக்கும்', 'Selected panel opens below'],
+      ['நடப்புக் கடன்கள்', 'Active Loans'],
+      ['புதிய அடகு (Pawn)', 'New Pawn'],
+      ['நகை வாங்குதல் (GP)', 'Gold Purchase (GP)'],
+      ['நகை விற்பனை (GS)', 'Gold Sales (GS)'],
+      ['நகை சேமிப்பு (GSS)', 'Gold Savings (GSS)'],
+      ['தொடர்வைப்பு (RD)', 'Recurring Deposit (RD)'],
+      ['முதலீடு (SI/FD)', 'Investment (SI/FD)'],
+
+      // Active Loans & New Pawn Form
+      ['நடப்பில் உள்ள அடமானக் கடன்கள் (Active Loans)', 'Active Gold Loans'],
+      ['நடப்புக் கடன்கள் ஏற்றப்படுகின்றன...', 'Loading active loans...'],
+      ['நிலுவை அசல்:', 'Principal Balance:'],
+      ['தேதி:', 'Date:'],
+      ['நகை விபரங்கள்:', 'Ornaments:'],
+      ['எண்ணிக்கை', 'Pcs'],
+      ['மொத்த எடை:', 'Gross Wt:'],
+      ['நிகர எடை:', 'Net Wt:'],
+      ['+ வட்டி', '+ Interest'],
+      ['+ பகுதி அசல்', '+ Part Principal'],
+      ['+ கடன் முடிவு', '+ Close Loan'],
+      ['புதிய நகைக்கடன் அடகு (New Loan Entry)', 'New Gold Loan (Pawn Entry)'],
+      ['படிவம்', 'Form'],
+      ['தொடர் நகைக்கடன் எண் (Auto)', 'Loan No (Auto)'],
+      ['நகைக்கடன் திட்டம் (Schemes)', 'Loan Scheme'],
+      ['நகையின் விவரங்கள்:', 'Ornament Details:'],
+      ['வகை (Ring, Chain)', 'Type (Ring, Chain)'],
+      ['மொத்த எடை', 'Gross Wt'],
+      ['நிகர எடை', 'Net Wt'],
+      ['நகையின் புகைப்படம் (Ornament Photo)', 'Ornament Photo'],
+      ['+ நகையைச் சேர்', '+ Add Ornament'],
+      ['வகை', 'Type'],
+      ['தரம்', 'Purity'],
+      ['நீக்கு', 'Remove'],
+      ['நகைகள் சேர்க்கப்படவில்லை', 'No ornaments added'],
+      ['மொத்த நிகர எடை:', 'Total Net Weight:'],
+      ['அன்றைய நகைகளின் சந்தை மதிப்பு:', 'Market Gold Value:'],
+      ['திட்டத்தின்படி அனுமதிக்கப்பட்ட கடன் (LTV):', 'Eligible Loan (LTV):'],
+      ['கடன் தொகை (₹)', 'Loan Amount (₹)'],
+      ['Processing கட்டணம் (₹)', 'Processing Fee (₹)'],
+      ['(பூட்டப்பட்டது)', '(Locked)'],
+      ['புதிய அடகு வணிக ஆதாரம்:', 'New Pawn Business Source:'],
+      ['கூடையில் சேர் (Add to Cart)', 'Add to Cart'],
+      ['கூடையில் சேர் (Waiver அனுமதி:', 'Add to Cart (Waiver Limit:'],
+      ['கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold', 'Request HQ Waiver & Hold'],
+
+      // Cart & Checkout
+      ['பரிவர்த்தனை கூடை', 'Transaction Cart'],
+      ['கடன்கள்', 'Items'],
+      ['கடைசியை நீக்கு', 'Undo Last'],
+      ['கூடை காலியாக உள்ளது', 'Cart is empty'],
+      ['நாம் தர வேண்டியது (-):', 'Payable to Customer (-):'],
+      ['நாம் பெறுவது (+):', 'Receivable from Customer (+):'],
+      ['நிகர தீர்வு:', 'Net Settlement:'],
+      ['(நிறுவனம் வாடிக்கையாளருக்கு வழங்க வேண்டிய தொகை)', '(Company pays customer)'],
+      ['(வாடிக்கையாளர் நிறுவனத்திற்குச் செலுத்த வேண்டிய தொகை)', '(Customer pays company)'],
+      ['பணம் செலுத்துதல் / நிறைவு (Checkout)', 'Checkout & Settle'],
+
+      // Common Modals & Alerts
+      ['மூடு (Close)', 'Close'],
+      ['மூடு', 'Close'],
+      ['ரத்து', 'Cancel'],
+      ['ரத்து செய்', 'Cancel'],
+      ['சேமி', 'Save'],
+      ['புதுப்பி (Refresh)', 'Refresh'],
+      ['அனுமதி', 'Approve'],
+      ['நிராகரி', 'Reject'],
+      ['சரிபார்க்கப்படுகிறது...', 'Processing...'],
+      ['செயல்பாடு நடைபெறுகிறது...', 'Processing request...'],
+      ['தயவுசெய்து காத்திருக்கவும், வேறு பட்டன்களை அழுத்த வேண்டாம்', 'Please wait, do not press other buttons']
+    ];
+
+    // Sort longest first to avoid partial replacements
+    PHRASE_MAP.sort((a, b) => b[0].length - a[0].length);
+
+    function translateText(str) {
+      if (typeof str !== 'string' || !str) return str;
+      let out = str;
+      for (const [ta, en] of PHRASE_MAP) {
+        if (out.includes(ta)) {
+          out = out.split(ta).join(en);
+        }
+      }
+      return out;
+    }
+
+    function translateDomTree(root) {
+      if (!root) return;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+      let node;
+      while ((node = walker.nextNode())) {
+        if (node.nodeValue && node.nodeValue.trim()) {
+          const nextVal = translateText(node.nodeValue);
+          if (nextVal !== node.nodeValue) node.nodeValue = nextVal;
+        }
+      }
+      root.querySelectorAll?.('[placeholder], [title]').forEach(el => {
+        if (el.placeholder) el.placeholder = translateText(el.placeholder);
+        if (el.title) el.title = translateText(el.title);
+      });
+    }
+
+    // Wrap native dialogs so alerts/confirms/prompts are in English too
+    const origAlert = window.alert.bind(window);
+    window.alert = function(msg) {
+      return origAlert(translateText(String(msg ?? '')));
+    };
+
+    const origConfirm = window.confirm.bind(window);
+    window.confirm = function(msg) {
+      return origConfirm(translateText(String(msg ?? '')));
+    };
+
+    const origPrompt = window.prompt.bind(window);
+    window.prompt = function(msg, defVal) {
+      return origPrompt(translateText(String(msg ?? '')), translateText(String(defVal ?? '')));
+    };
+
+    translateDomTree(document.body);
+    setTimeout(() => translateDomTree(document.body), 500);
+    setTimeout(() => translateDomTree(document.body), 1500);
+
+    const observer = new MutationObserver(mutations => {
+      for (const m of mutations) {
+        if (m.type === 'characterData' && m.target?.nodeValue) {
+          const t = translateText(m.target.nodeValue);
+          if (t !== m.target.nodeValue) m.target.nodeValue = t;
+        } else if (m.addedNodes) {
+          m.addedNodes.forEach(n => {
+            if (n.nodeType === 3) {
+              const t = translateText(n.nodeValue);
+              if (t !== n.nodeValue) n.nodeValue = t;
+            } else if (n.nodeType === 1) {
+              translateDomTree(n);
+            }
+          });
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  })();
+</script>
 </body>
 </html>

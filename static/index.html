@@ -12127,5 +12127,84 @@
     }
   });
 </script>
+<script>
+  // ✅ முழுப் பக்கம் ரீபிரஸ் ஆனாலும் எந்தப் படிவமும் பூட்டப்படாமல் (Unlock) வைத்திருக்கும் பாதுகாப்பு
+  function forceUnlockAllCounterFormsAfterRefresh() {
+    if (typeof isDraftLocked !== 'undefined') {
+      isDraftLocked = false;
+    }
+
+    try {
+      const rawSess = localStorage.getItem('active_counter_session');
+      if (rawSess) {
+        const parsedSess = JSON.parse(rawSess);
+        if (parsedSess && parsedSess.is_locked) {
+          parsedSess.is_locked = false;
+          localStorage.setItem('active_counter_session', JSON.stringify(parsedSess));
+        }
+      }
+    } catch (e) {}
+
+    const formIds = [
+      'pawnFormSection',
+      'goldPurchaseFormSection',
+      'goldSalesFormSection',
+      'gssFormSection',
+      'rdFormSection',
+      'siFormSection',
+      'customerActiveLoansSection'
+    ];
+
+    formIds.forEach(secId => {
+      const sec = document.getElementById(secId);
+      if (!sec) return;
+      sec.style.opacity = '1';
+      sec.style.pointerEvents = 'auto';
+      sec.querySelectorAll('input, select, button, textarea').forEach(el => {
+        if (el.id !== 'loan_no' && el.id !== 'charges_amount' && el.id !== 'gp_no' && el.id !== 'gs_no') {
+          el.disabled = false;
+          el.removeAttribute('disabled');
+        }
+      });
+    });
+
+    const resetBtn = document.getElementById('btnResetCustomer');
+    if (resetBtn) {
+      resetBtn.disabled = false;
+      resetBtn.removeAttribute('disabled');
+      resetBtn.style.opacity = '1';
+      resetBtn.style.cursor = 'pointer';
+    }
+
+    const statusBadge = document.getElementById('pawnStatusBadge');
+    if (statusBadge && statusBadge.innerText.includes('லாக்')) {
+      statusBadge.innerText = 'படிவம்';
+      statusBadge.className = 'text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold';
+    }
+
+    if (typeof syncLoanCartActionButton === 'function') {
+      syncLoanCartActionButton();
+    }
+  }
+
+  const _origToggleDraftLockFn = typeof toggleDraftLockMode === 'function' ? toggleDraftLockMode : null;
+  if (_origToggleDraftLockFn) {
+    toggleDraftLockMode = function(lock) {
+      // பக்கம் புதிதாக ரீபிரஸ் ஆகும்போது தவறுதலாக true எனப் பூட்டுவதைத் தடுத்தல்
+      if (lock === true && window._justRefreshedPage) {
+        return _origToggleDraftLockFn.call(this, false);
+      }
+      return _origToggleDraftLockFn.apply(this, arguments);
+    };
+  }
+
+  window._justRefreshedPage = true;
+  document.addEventListener('DOMContentLoaded', () => {
+    forceUnlockAllCounterFormsAfterRefresh();
+    setTimeout(forceUnlockAllCounterFormsAfterRefresh, 600);
+    setTimeout(forceUnlockAllCounterFormsAfterRefresh, 1800);
+    setTimeout(() => { window._justRefreshedPage = false; }, 2500);
+  });
+</script>
 </body>
 </html>

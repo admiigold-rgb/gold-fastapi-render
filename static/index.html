@@ -11641,9 +11641,69 @@
   }, 15000);
 </script>
 <script>
-  let activeApprovedDeviationData = null;
+  let activeLoanWaiverState = null;
 
-  function getEffectiveLtvEligibleLimit() {
+  function buildWaiverFingerprint() {
+    const custId = String(activeCustomer?.id || '');
+    const schemeVal = String(document.getElementById('scheme_name')?.value || currentSelectedScheme?.scheme_name || '').trim();
+    const loanNoVal = String(document.getElementById('loan_no')?.value || '').trim();
+    const itemsSig = (Array.isArray(ornamentList) ? ornamentList : [])
+      .map(it => [
+        String(it.item_type || '').trim().toLowerCase(),
+        String(parseInt(it.item_count || 1, 10)),
+        Number(parseFloat(it.gross_weight || 0) || 0).toFixed(3),
+        Number(parseFloat(it.net_weight || 0) || 0).toFixed(3),
+        String(it.purity || '').trim().toUpperCase()
+      ].join('|'))
+      .join('~');
+
+    return `${custId}::${schemeVal}::${loanNoVal}::${itemsSig}`;
+  }
+
+  function revokeLoanWaiverWithAlert(reasonMsg) {
+    if (!activeLoanWaiverState) return;
+    activeLoanWaiverState = null;
+    if (typeof window.currentActiveExemptionStatus !== 'undefined') {
+      window.currentActiveExemptionStatus = 'NONE';
+    }
+    syncLoanCartActionButton();
+    if (reasonMsg) {
+      alert(`⚠️ ${reasonMsg} — முந்தைய LTV Waiver தானாகவே ரத்து செய்யப்பட்டது!`);
+    }
+  }
+
+  function clearLoanWaiverSilent() {
+    activeLoanWaiverState = null;
+    if (typeof window.currentActiveExemptionStatus !== 'undefined') {
+      window.currentActiveExemptionStatus = 'NONE';
+    }
+    syncLoanCartActionButton();
+  }
+
+  function validateWaiverStillMatches() {
+    if (!activeLoanWaiverState || activeLoanWaiverState.used === true) return false;
+    const capAmt = parseFloat(activeLoanWaiverState.approved_loan_amount || 0);
+    if (capAmt <= 0) {
+      clearLoanWaiverSilent();
+      return false;
+    }
+
+    const currCustId = String(activeCustomer?.id || '');
+    if (activeLoanWaiverState.customer_id && currCustId !== String(activeLoanWaiverState.customer_id)) {
+      clearLoanWaiverSilent();
+      return false;
+    }
+
+    const nowFingerprint = buildWaiverFingerprint();
+    if (activeLoanWaiverState.fingerprint && nowFingerprint !== activeLoanWaiverState.fingerprint) {
+      revokeLoanWaiverWithAlert("வாடிக்கையாளர் / திட்டம் / நகை விவரம் / நகைக்கடன் எண் மாற்றப்பட்டுள்ளது");
+      return false;
+    }
+
+    return true;
+  }
+
+  function getEffectiveLtvLimit() {
     let baseLim = (typeof maxEligibleLoanAmount !== 'undefined') ? (parseFloat(maxEligibleLoanAmount) || 0) : 0;
     const mktVal = (typeof totalGoldMarketValue !== 'undefined') ? (parseFloat(totalGoldMarketValue) || 0) : 0;
     const sch = (typeof currentSelectedScheme !== 'undefined' && currentSelectedScheme) ? currentSelectedScheme : null;
@@ -11657,31 +11717,23 @@
     return baseLim;
   }
 
-  function getActiveLoanCeilingInfo() {
-    const hasHq = !!(
-      activeApprovedDeviationData &&
-      activeApprovedDeviationData.status === 'APPROVED' &&
-      parseFloat(activeApprovedDeviationData.approved_loan_amount || 0) > 0
-    );
-    if (hasHq) {
+  function getActiveLoanCeiling() {
+    if (validateWaiverStillMatches()) {
       return {
-        isApprovedDeviation: true,
-        ceiling: parseFloat(activeApprovedDeviationData.approved_loan_amount || 0)
+        hasWaiver: true,
+        ceiling: parseFloat(activeLoanWaiverState.approved_loan_amount || 0)
       };
     }
     return {
-      isApprovedDeviation: false,
-      ceiling: getEffectiveLtvEligibleLimit()
+      hasWaiver: false,
+      ceiling: getEffectiveLtvLimit()
     };
   }
 
-  function syncAddToCartButtonLabel() {
+  function syncLoanCartActionButton() {
     const loanInput = document.getElementById('loan_amount');
     const addCartBtn = document.getElementById('btnAddToCart');
     if (!loanInput || !addCartBtn) return;
-
-    const amt = parseFloat(loanInput.value) || 0;
-    const { isApprovedDeviation, ceiling } = getActiveLoanCeilingInfo();
 
     addCartBtn.disabled = false;
     addCartBtn.removeAttribute('disabled');
@@ -11689,8 +11741,11 @@
     addCartBtn.style.pointerEvents = 'auto';
     addCartBtn.style.cursor = 'pointer';
 
-    if (isApprovedDeviation) {
-      addCartBtn.innerText = `கூடையில் சேர் (HQ அனுமதி: ₹${ceiling.toLocaleString('en-IN')}) 🛒`;
+    const amt = parseFloat(loanInput.value) || 0;
+    const { hasWaiver, ceiling } = getActiveLoanCeiling();
+
+    if (hasWaiver) {
+      addCartBtn.innerText = `கூடையில் சேர் (Waiver அனுமதி: ₹${ceiling.toLocaleString('en-IN')}) 🛒`;
     } else if (ceiling > 0 && amt > ceiling + 0.01) {
       addCartBtn.innerText = "🛡️ கூடுதல் கடன் HQ ஒப்புதல் கேள் & Hold";
     } else {
@@ -11698,45 +11753,91 @@
     }
   }
 
-  // ✅ ஒரு Waiver ஒப்புதல் ஒரு கடனுக்குப் பயன்படுத்தப்பட்ட பின் அடுத்த கடனுக்குப் போகாமல் தடுத்தல்
-  function consumeApprovedDeviationOnce() {
-    activeApprovedDeviationData = null;
-    if (typeof window.currentActiveExemptionStatus !== 'undefined') {
-      window.currentActiveExemptionStatus = 'NONE';
-    }
-    syncAddToCartButtonLabel();
+  const _origSelectCustForWaiver = typeof selectCustomer === 'function' ? selectCustomer : null;
+  if (_origSelectCustForWaiver) {
+    selectCustomer = async function(cust) {
+      clearLoanWaiverSilent();
+      return _origSelectCustForWaiver.apply(this, arguments);
+    };
   }
 
-  // ✅ புதிய நகை சேர்க்கப்படும்போது (addOrnamentToTable) பழைய Waiver அடுத்த கடனுக்குத் தொடராமல் நீக்குதல்
-  const _origAddOrnamentFn = typeof addOrnamentToTable === 'function' ? addOrnamentToTable : null;
-  if (_origAddOrnamentFn) {
+  const _origResetCustForWaiver = typeof resetCustomer === 'function' ? resetCustomer : null;
+  if (_origResetCustForWaiver) {
+    resetCustomer = function() {
+      clearLoanWaiverSilent();
+      return _origResetCustForWaiver.apply(this, arguments);
+    };
+  }
+
+  const _origHoldDraftForWaiver = typeof holdCurrentCustomerDraft === 'function' ? holdCurrentCustomerDraft : null;
+  if (_origHoldDraftForWaiver) {
+    holdCurrentCustomerDraft = function() {
+      clearLoanWaiverSilent();
+      return _origHoldDraftForWaiver.apply(this, arguments);
+    };
+  }
+
+  const _origAddOrnForWaiver = typeof addOrnamentToTable === 'function' ? addOrnamentToTable : null;
+  if (_origAddOrnForWaiver) {
     addOrnamentToTable = function() {
-      const res = _origAddOrnamentFn.apply(this, arguments);
-      setTimeout(syncAddToCartButtonLabel, 30);
+      const res = _origAddOrnForWaiver.apply(this, arguments);
+      validateWaiverStillMatches();
+      syncLoanCartActionButton();
       return res;
     };
   }
 
-  // ✅ btnAddToCart கிளிக் செய்யப்படும்போது LTV வரம்பைச் சரிபார்க்கும் Capture Guard
+  const _origRemOrnForWaiver = typeof removeOrnament === 'function' ? removeOrnament : null;
+  if (_origRemOrnForWaiver) {
+    removeOrnament = function() {
+      const res = _origRemOrnForWaiver.apply(this, arguments);
+      validateWaiverStillMatches();
+      syncLoanCartActionButton();
+      return res;
+    };
+  }
+
+  document.getElementById('scheme_name')?.addEventListener('change', function() {
+    if (activeLoanWaiverState) {
+      validateWaiverStillMatches();
+    }
+    setTimeout(syncLoanCartActionButton, 50);
+  });
+
+  ['item_type', 'item_count', 'item_gross', 'item_net', 'item_purity', 'loan_no'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => {
+        if (activeLoanWaiverState) validateWaiverStillMatches();
+        syncLoanCartActionButton();
+      });
+    }
+  });
+
+  document.getElementById('loan_amount')?.addEventListener('input', function() {
+    if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+    syncLoanCartActionButton();
+  });
+
   document.addEventListener('click', function(ev) {
     const btn = ev.target.closest('#btnAddToCart');
     if (!btn) return;
 
     const loanInput = document.getElementById('loan_amount');
     const amt = parseFloat(loanInput?.value) || 0;
-    const { isApprovedDeviation, ceiling } = getActiveLoanCeilingInfo();
+    const { hasWaiver, ceiling } = getActiveLoanCeiling();
 
     if (ceiling > 0 && amt > ceiling + 0.01) {
       ev.preventDefault();
       ev.stopImmediatePropagation();
 
-      if (isApprovedDeviation) {
-        alert(`⚠️ தலைமையகம் அனுமதித்த அதிகபட்ச கடன் தொகை ₹${ceiling.toLocaleString('en-IN')} மட்டுமே! அதற்கு மேல் கூடையில் சேர்க்க முடியாது.`);
+      if (hasWaiver) {
+        alert(`⚠️ இந்தத் திட்டத்திற்கான Waiver உச்ச வரம்பு ₹${ceiling.toLocaleString('en-IN')} மட்டுமே! அதற்கு மேல் கூடையில் சேர்க்க முடியாது.`);
         if (loanInput) {
           loanInput.value = ceiling;
           if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
         }
-        syncAddToCartButtonLabel();
+        syncLoanCartActionButton();
         return false;
       }
 
@@ -11745,7 +11846,7 @@
         `நீங்கள் உள்ளிட்ட தொகை: ₹${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n\n` +
         `கூடுதல் கடன் தொகைக்குத் தலைமையக ஒப்புதல் கோரி Hold செய்யவா?`
       );
-      syncAddToCartButtonLabel();
+      syncLoanCartActionButton();
 
       if (goHold && typeof requestLoanDeviationAndHold === 'function') {
         requestLoanDeviationAndHold();
@@ -11753,24 +11854,10 @@
       return false;
     }
 
-    // ✅ அனுமதிக்கப்பட்ட தொகை கூடையில் சேர்ந்தவுடன் ஒப்புதலை (Single-Use) நீக்குதல்
-    if (isApprovedDeviation) {
-      setTimeout(consumeApprovedDeviationOnce, 600);
+    if (hasWaiver) {
+      setTimeout(clearLoanWaiverSilent, 500);
     }
   }, true);
-
-  document.addEventListener('input', function(ev) {
-    if (ev.target && ev.target.id === 'loan_amount') {
-      if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
-      syncAddToCartButtonLabel();
-    }
-  });
-
-  document.addEventListener('change', function(ev) {
-    if (ev.target && (ev.target.id === 'loan_amount' || ev.target.id === 'scheme_name')) {
-      setTimeout(syncAddToCartButtonLabel, 50);
-    }
-  });
 
   async function requestLoanDeviationAndHold() {
     if (!activeCustomer || !activeCustomer.id) return alert("⚠️ வாடிக்கையாளரைத் தேர்ந்தெடுக்கவும்.");
@@ -11782,7 +11869,7 @@
     }
 
     const reqAmt = parseFloat(document.getElementById('loan_amount')?.value) || 0;
-    const { ceiling } = getActiveLoanCeilingInfo();
+    const { ceiling } = getActiveLoanCeiling();
     if (reqAmt <= 0 || (ceiling > 0 && reqAmt <= ceiling + 0.01)) {
       return alert("⚠️ திட்ட வரம்பை விடக் கூடுதல் கடன் தொகையை உள்ளிடவும்.");
     }
@@ -11791,10 +11878,12 @@
     const totNet = ornamentList.reduce((s, x) => s + (parseFloat(x.net_weight) || 0), 0);
     const totGross = ornamentList.reduce((s, x) => s + (parseFloat(x.gross_weight) || 0), 0);
     const extraPerGram = totNet > 0 ? (extraAmt / totNet) : 0;
+    const schemeVal = String(document.getElementById('scheme_name')?.value || currentSelectedScheme?.scheme_name || '').trim();
+    const loanNoVal = String(document.getElementById('loan_no')?.value || '').trim();
 
     const reason = prompt(
       `கூடுதல் கடன் கோருவதற்கான காரணத்தை உள்ளிடவும்:\n` +
-      `(தகுதி LTV வரம்பு: ₹${ceiling.toLocaleString('en-IN')} | கேட்டது: ₹${reqAmt.toLocaleString('en-IN')} | +₹${extraPerGram.toFixed(2)}/g)`
+      `(திட்டம்: ${schemeVal || '-'} | கடன் எண்: ${loanNoVal || '-'} | LTV வரம்பு: ₹${ceiling.toLocaleString('en-IN')} | கேட்டது: ₹${reqAmt.toLocaleString('en-IN')})`
     );
     if (!reason || !reason.trim()) return;
 
@@ -11806,8 +11895,8 @@
       customer_id: custId,
       branch_id: parseInt(document.getElementById('active_branch_id')?.value) || 1,
       visit_id: activeVisitId,
-      loan_no: document.getElementById('loan_no')?.value.trim() || '',
-      scheme_name: document.getElementById('scheme_name')?.value || '',
+      loan_no: loanNoVal,
+      scheme_name: schemeVal,
       total_gross_weight: totGross,
       total_net_weight: totNet,
       gold_market_value: totalGoldMarketValue || 0,
@@ -11833,27 +11922,60 @@
 
     holdCurrentCustomerDraft("WAITING_HQ");
     let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
-    drafts = drafts.map(d => d.customer.id === custId ? { ...d, loan_deviation_id: devId } : d);
+    drafts = drafts.map(d => d.customer.id === custId ? { ...d, loan_deviation_id: devId, waiver_scheme_name: schemeVal } : d);
     localStorage.setItem('counter_held_drafts', JSON.stringify(drafts));
     if (typeof renderHeldDraftsBar === 'function') renderHeldDraftsBar();
   }
 
-  const _origRestoreForCeiling = typeof restoreCustomerDraft === 'function' ? restoreCustomerDraft : null;
-  if (_origRestoreForCeiling) {
+  const _origRestoreForWaiver = typeof restoreCustomerDraft === 'function' ? restoreCustomerDraft : null;
+  if (_origRestoreForWaiver) {
     restoreCustomerDraft = function(customerId) {
       let drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || "[]");
       const target = drafts.find(d => String(d.customer?.id) === String(customerId));
 
-      _origRestoreForCeiling.apply(this, arguments);
+      _origRestoreForWaiver.apply(this, arguments);
 
       if (target && (target.exemption_status === 'APPROVED' || target.approved_deviation)) {
         const dev = target.approved_deviation || {};
         const approvedAmt = parseFloat(dev.approved_loan_amount || dev.requested_loan_amount || target?.cart?.[0]?.debit || 0);
+        const waiverScheme = String(dev.scheme_name || target.waiver_scheme_name || '').trim();
 
-        activeApprovedDeviationData = {
-          ...dev,
+        if (Array.isArray(dev.ornaments_json) && dev.ornaments_json.length > 0 && typeof ornamentList !== 'undefined') {
+          ornamentList = dev.ornaments_json;
+          if (typeof renderOrnamentsTable === 'function') renderOrnamentsTable();
+          if (typeof calculateEligibleLoanAmount === 'function') calculateEligibleLoanAmount();
+        }
+
+        const schemeSel = document.getElementById('scheme_name');
+        if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0 && waiverScheme) {
+          const matchedSch = schemesCache.find(s => s.scheme_name === waiverScheme || s.scheme_code === waiverScheme);
+          if (matchedSch) {
+            currentSelectedScheme = matchedSch;
+            if ([...schemeSel.options].some(o => o.value === matchedSch.scheme_name)) {
+              schemeSel.value = matchedSch.scheme_name;
+            }
+          }
+        }
+
+        if (dev.loan_no) {
+          const loanNoEl = document.getElementById('loan_no');
+          if (loanNoEl && !loanNoEl.value) loanNoEl.value = dev.loan_no;
+        }
+
+        const loanInput = document.getElementById('loan_amount');
+        if (loanInput && approvedAmt > 0) {
+          loanInput.value = approvedAmt;
+          loanInput.readOnly = false;
+        }
+        if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
+
+        activeLoanWaiverState = {
           status: 'APPROVED',
-          approved_loan_amount: approvedAmt
+          customer_id: String(activeCustomer?.id || target.customer?.id || ''),
+          approved_loan_amount: approvedAmt,
+          scheme_name: waiverScheme,
+          fingerprint: buildWaiverFingerprint(),
+          used: false
         };
 
         if (typeof isDraftLocked !== 'undefined') isDraftLocked = false;
@@ -11869,36 +11991,9 @@
           });
         }
 
-        if (Array.isArray(dev.ornaments_json) && dev.ornaments_json.length > 0 && typeof ornamentList !== 'undefined') {
-          ornamentList = dev.ornaments_json;
-          if (typeof renderOrnamentsTable === 'function') renderOrnamentsTable();
-          if (typeof calculateEligibleLoanAmount === 'function') calculateEligibleLoanAmount();
-        }
-
-        const schemeSel = document.getElementById('scheme_name');
-        if (schemeSel && Array.isArray(schemesCache) && schemesCache.length > 0) {
-          const matchedSch =
-            schemesCache.find(s => s.scheme_name === dev.scheme_name || s.scheme_code === dev.scheme_name) ||
-            schemesCache.find(s => s.scheme_name === schemeSel.value) ||
-            schemesCache.find(s => s.is_active !== false);
-          if (matchedSch) {
-            currentSelectedScheme = matchedSch;
-            if ([...schemeSel.options].some(o => o.value === matchedSch.scheme_name)) {
-              schemeSel.value = matchedSch.scheme_name;
-            }
-          }
-        }
-
-        const loanInput = document.getElementById('loan_amount');
-        if (loanInput && approvedAmt > 0) {
-          loanInput.value = approvedAmt;
-          loanInput.readOnly = false;
-        }
-        if (typeof recalculatePledgeCharge === 'function') recalculatePledgeCharge();
-        syncAddToCartButtonLabel();
+        syncLoanCartActionButton();
       } else {
-        activeApprovedDeviationData = null;
-        syncAddToCartButtonLabel();
+        clearLoanWaiverSilent();
       }
     };
   }

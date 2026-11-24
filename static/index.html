@@ -12261,6 +12261,96 @@
     setTimeout(forceUnlockAllCounterFormsAfterRefresh, 1800);
     setTimeout(() => { window._justRefreshedPage = false; }, 2500);
   });
+  // ✅ Waiver ஒப்புதல் வாங்கி வருகையைத் திறந்த பிறகு, நகை அட்டவணை டிலீட் (✕) மற்றும் அனைத்து நடவடிக்கைப் படிவங்களையும் (GP, GS, GSS, RD, SI, Loans) முழுமையாகத் திறந்து வைத்தல்
+  function unlockAllCounterActionsAndOrnaments() {
+    if (typeof isDraftLocked !== 'undefined') {
+      isDraftLocked = false;
+    }
+
+    const allSecIds = [
+      'pawnFormSection',
+      'goldPurchaseFormSection',
+      'goldSalesFormSection',
+      'gssFormSection',
+      'rdFormSection',
+      'siFormSection',
+      'customerActiveLoansSection'
+    ];
+
+    allSecIds.forEach(secId => {
+      const sec = document.getElementById(secId);
+      if (!sec) return;
+      sec.style.opacity = '1';
+      sec.style.pointerEvents = 'auto';
+      sec.querySelectorAll('input, select, button, textarea').forEach(el => {
+        if (el.id !== 'loan_no' && el.id !== 'charges_amount' && el.id !== 'gp_no' && el.id !== 'gs_no') {
+          el.disabled = false;
+          el.removeAttribute('disabled');
+        }
+      });
+    });
+
+    const resetBtn = document.getElementById('btnResetCustomer');
+    if (resetBtn) {
+      resetBtn.disabled = false;
+      resetBtn.removeAttribute('disabled');
+      resetBtn.style.opacity = '1';
+      resetBtn.style.cursor = 'pointer';
+    }
+
+    const undoBtn = document.getElementById('btnUndoCart');
+    if (undoBtn && Array.isArray(cartItems) && cartItems.length > 0) {
+      undoBtn.classList.remove('hidden');
+    }
+
+    const statusBadge = document.getElementById('pawnStatusBadge');
+    if (statusBadge) {
+      statusBadge.innerText = 'படிவம்';
+      statusBadge.className = 'text-xs bg-purple-100 text-brand-violet px-2.5 py-0.5 rounded-lg font-bold';
+    }
+
+    // 🔒 பூட்டு ஐகானுக்குப் பதிலாக ✕ டிலீட் பட்டன் தெரிய நகை அட்டவணையை மீண்டும் வரைதல்
+    if (typeof renderOrnamentsTable === 'function') {
+      renderOrnamentsTable();
+    }
+    if (typeof syncLoanCartActionButton === 'function') {
+      syncLoanCartActionButton();
+    }
+  }
+
+  // restoreCustomerDraft முடிந்தவுடன் எல்லாப் படிவங்களையும் நகை டிலீட் பட்டனையும் திறந்து விடுதல்
+  const _origRestoreAfterWaiverUnlock = typeof restoreCustomerDraft === 'function' ? restoreCustomerDraft : null;
+  if (_origRestoreAfterWaiverUnlock) {
+    restoreCustomerDraft = function(customerId) {
+      const res = _origRestoreAfterWaiverUnlock.apply(this, arguments);
+      // OTP விலக்கு / வங்கி ஒப்புதல் இல்லாத சாதாரண Hold அல்லது LTV Waiver ஒப்புதல் வருகைகளை முழுமையாகத் திறத்தல்
+      const isOtpOrBankApproved = (
+        window.currentActiveExemptionStatus === 'APPROVED' ||
+        window.currentActiveExemptionStatus === 'BANK_APPROVED' ||
+        window.currentActiveBankStatus === 'APPROVED'
+      ) && !activeLoanWaiverState;
+
+      if (!isOtpOrBankApproved) {
+        unlockAllCounterActionsAndOrnaments();
+      }
+      return res;
+    };
+  }
+
+  // நகை அட்டவணையில் ✕ அழுத்தி நகையை நீக்கியவுடன் பழைய Waiver உடனடியாக ரத்தாகும்படி இணைத்தல்
+  const _origRemoveOrnamentCheckWaiver = typeof removeOrnament === 'function' ? removeOrnament : null;
+  if (_origRemoveOrnamentCheckWaiver) {
+    removeOrnament = function(idx) {
+      const res = _origRemoveOrnamentCheckWaiver.apply(this, arguments);
+      if (typeof validateWaiverStillMatches === 'function') {
+        validateWaiverStillMatches();
+      }
+      if (typeof syncLoanCartActionButton === 'function') {
+        syncLoanCartActionButton();
+      }
+      return res;
+    };
+  }
 </script>
 </body>
 </html>

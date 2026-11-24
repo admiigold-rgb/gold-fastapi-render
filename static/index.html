@@ -49,6 +49,115 @@
     }
 
     .hidden { display: none !important; }
+    /* =========================================================
+       👑 MUTHUSISE GOLD - CORPORATE VIOLET, GOLD & ORANGE THEME
+       ========================================================= */
+    :root {
+      --brand-violet-deep: #3b0f54;
+      --brand-violet: #723a91;
+      --brand-violet-soft: #f5eef9;
+      --brand-gold: #d4af37;
+      --brand-gold-bright: #f3ce5e;
+      --brand-orange: #ea580c;
+      --brand-orange-light: #fb923c;
+    }
+
+    body {
+      background: linear-gradient(180deg, #f8f4fb 0%, #fdfaf3 100%) !important;
+      color: #1e1b2e;
+    }
+
+    /* 1. மேல் கார்ப்பரேட் ஹெடர் */
+    .brand-gradient-header {
+      background: linear-gradient(120deg, #3b0f54 0%, #723a91 55%, #5b237a 100%) !important;
+      border-bottom: 3px solid var(--brand-gold) !important;
+      box-shadow: 0 10px 25px -5px rgba(114, 58, 145, 0.35) !important;
+    }
+
+    /* 2. மேல் நேவிகேஷன் மெனு பட்டன்கள் (ஒரே வரிசையில் சீராக) */
+    #navButtonsContainer {
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 8px !important;
+    }
+
+    #navButtonsContainer button {
+      white-space: nowrap !important;
+      padding: 8px 14px !important;
+      border-radius: 12px !important;
+      font-size: 12px !important;
+      letter-spacing: 0.2px !important;
+      transition: all 0.2s ease !important;
+    }
+
+    /* 3. கோல்டன் & ஆரஞ்சு பிரதான பட்டன்கள் */
+    .brand-gradient-gold-btn {
+      background: linear-gradient(135deg, #f3ce5e 0%, #d4af37 55%, #ea580c 125%) !important;
+      color: #2d0c02 !important;
+      border: 1.5px solid #f59e0b !important;
+      font-weight: 800 !important;
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35) !important;
+    }
+    .brand-gradient-gold-btn:hover {
+      background: linear-gradient(135deg, #fde047 0%, #eab308 50%, #ea580c 115%) !important;
+      transform: translateY(-1px);
+    }
+
+    /* 4. வயலட் பட்டன்கள் */
+    .brand-gradient-violet-btn {
+      background: linear-gradient(135deg, #723a91 0%, #4a1566 100%) !important;
+      color: #ffffff !important;
+      border: 1.5px solid var(--brand-gold) !important;
+      box-shadow: 0 4px 12px rgba(114, 58, 145, 0.28) !important;
+    }
+    .brand-gradient-violet-btn:hover {
+      background: linear-gradient(135deg, #8646aa 0%, #5c1c7e 100%) !important;
+      transform: translateY(-1px);
+    }
+
+    /* 5. கவுண்ட்டர் மேல் செயல்பாட்டுப் பட்டன்கள் வரிசை (Violet, Gold & Orange Harmony) */
+    button[onclick="openDaySummaryReportModal()"],
+    button[onclick="openPacketManagementModal('BRANCH')"] {
+      background: linear-gradient(135deg, #723a91 0%, #4c1d95 100%) !important;
+      border: 1px solid #d4af37 !important;
+    }
+
+    button[onclick="openExpenseModal()"],
+    button[onclick="openCashDayModal('CLOSE')"] {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+      border: 1px solid #fed7aa !important;
+    }
+
+    button[onclick="openTreasuryModal()"],
+    button[onclick="openBranchGpStockModal()"],
+    button[onclick="openBranchAuditDocsModal()"] {
+      background: linear-gradient(135deg, #581c87 0%, #723a91 100%) !important;
+      border: 1px solid #f3ce5e !important;
+    }
+
+    /* 6. வெளியேறு (Logout) பட்டன் */
+    button[onclick="handleLogout()"] {
+      background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+      border: 1px solid #fdba74 !important;
+      white-space: nowrap !important;
+    }
+
+    /* 7. வெள்ளை அட்டைகள் (Cards) கார்ப்பரேட் கோல்டன்-வயலட் பார்டர் */
+    #counterTab > div.bg-white,
+    #hqApprovalTab > div.bg-white,
+    #adminPanelTab > div.bg-white,
+    #internalAuditTab > div.bg-white {
+      border: 1.5px solid #e5d4f0 !important;
+      box-shadow: 0 6px 20px -4px rgba(74, 21, 102, 0.08) !important;
+    }
+
+    /* 8. உள்ளீட்டுப் பெட்டிகள் (Inputs & Selects) Focus நிலை */
+    input:focus, select:focus, textarea:focus {
+      border-color: #ea580c !important;
+      box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15) !important;
+      outline: none !important;
+    }
   </style>
 </head>
 <body class="min-h-screen text-slate-800 font-sans">

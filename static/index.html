@@ -832,6 +832,11 @@
                   class="px-4 py-2 rounded-xl text-xs font-black shadow-lg border-2 border-yellow-400 hover:opacity-90 transition cursor-pointer">
             🔎 360° முழு பரிவர்த்தனை வரலாறு தேடல்
           </button>
+          <button type="button" onclick="openCompanyBankPassbookModal()" 
+                  style="background-color: #065f46 !important; color: #fde047 !important;" 
+                  class="px-4 py-2 rounded-xl text-xs font-black shadow-lg border-2 border-yellow-400 hover:opacity-90 transition cursor-pointer">
+            🏦 Company Bank Passbook & Ledger
+          </button>
           <button type="button" onclick="loadAllHqApprovals()" class="px-3.5 py-1.5 text-xs bg-purple-50 text-brand-violet hover:bg-purple-100 rounded-xl font-bold border border-purple-200 transition cursor-pointer">புதுப்பி 🔄</button>
         </div>
 
@@ -12759,6 +12764,260 @@
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
   })();
+</script>
+  <!-- 🏦 நிறுவன வங்கிப் பாஸ்புக் & இருப்பு மேலாண்மை சாளரம் (Company Bank Passbook & Ledger Modal) -->
+<div id="companyBankPassbookModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-3 z-50 overflow-y-auto">
+  <div class="bg-white rounded-3xl p-5 max-w-6xl w-full shadow-2xl space-y-4 border-2 border-brand-gold my-auto max-h-[94vh] overflow-y-auto">
+    
+    <!-- தலைப்பு -->
+    <div class="flex flex-wrap justify-between items-center gap-2 border-b border-purple-100 pb-3">
+      <div>
+        <h3 class="text-base font-extrabold text-brand-violet">🏦 Company Bank Passbook & Unified Ledger</h3>
+        <p class="text-[11px] text-slate-500">Live balances, customer NEFT/UPI payouts & receipts, branch deposits, locker transactions & 1-click bank reconciliation</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="button" onclick="loadCompanyBankPassbookData()" class="px-3.5 py-1.5 bg-purple-100 hover:bg-purple-200 text-brand-violet rounded-xl text-xs font-black cursor-pointer">🔄 Refresh</button>
+        <button type="button" onclick="closeCompanyBankPassbookModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2 cursor-pointer">✕</button>
+      </div>
+    </div>
+
+    <!-- 1. வங்கி வாரியான நேரடி இருப்பு அட்டைகள் (Live Bank Balance Cards) -->
+    <div id="cbPassbookCardsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+      <p class="text-slate-400 col-span-4 text-center py-3">Loading bank accounts...</p>
+    </div>
+
+    <!-- 2. நேரடி வங்கி வரவு / செலவு / ஆரம்ப இருப்புப் பதிவு (Manual / Opening Entry Form) -->
+    <div class="bg-amber-50/80 p-3.5 rounded-2xl border-2 border-amber-300 space-y-2.5 text-xs">
+      <div class="font-black text-amber-950">➕ Direct Bank Entry / Opening Balance Adjustment:</div>
+      <div class="grid grid-cols-1 sm:grid-cols-6 gap-2">
+        <select id="cbp_entry_bank" class="border-2 border-amber-300 p-2 rounded-xl bg-white font-bold text-brand-violet"></select>
+        <select id="cbp_entry_type" class="border-2 border-amber-300 p-2 rounded-xl bg-white font-bold">
+          <option value="CREDIT">📥 Credit (+ வரவு)</option>
+          <option value="DEBIT">📤 Debit (- பற்று)</option>
+          <option value="OPENING">🏁 Opening Balance (+)</option>
+        </select>
+        <input type="number" step="0.01" id="cbp_entry_amt" placeholder="Amount (₹) *" class="border-2 border-amber-300 p-2 rounded-xl font-black text-emerald-800 bg-white">
+        <input type="text" id="cbp_entry_ref" placeholder="UTR / Ref No" class="border border-amber-300 p-2 rounded-xl font-mono bg-white">
+        <input type="text" id="cbp_entry_desc" placeholder="Description (e.g. Bank Interest / Charges)" class="border border-amber-300 p-2 rounded-xl bg-white">
+        <button type="button" onclick="submitManualBankLedgerEntry()" style="background-color:#059669;color:#fff;" class="py-2 px-3 rounded-xl font-black shadow cursor-pointer">
+          💾 Save Entry
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. வடிகட்டிகள் & மொத்தச் சுருக்கம் (Filters & Summary Strip) -->
+    <div class="bg-purple-50/70 p-3 rounded-2xl border border-purple-200 flex flex-wrap items-end justify-between gap-2 text-xs">
+      <div class="flex flex-wrap items-end gap-2">
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">Bank Account:</label>
+          <select id="cbp_filter_bank" onchange="loadCompanyBankPassbookData()" class="border-2 border-purple-200 p-2 rounded-xl bg-white font-bold text-brand-violet">
+            <option value="0">All Company Banks</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">From Date:</label>
+          <input type="date" id="cbp_from_date" onchange="loadCompanyBankPassbookData()" class="border border-purple-200 p-2 rounded-xl bg-white font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">To Date:</label>
+          <input type="date" id="cbp_to_date" onchange="loadCompanyBankPassbookData()" class="border border-purple-200 p-2 rounded-xl bg-white font-bold">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">Search UTR / Party:</label>
+          <input type="text" id="cbp_search" onkeyup="if(event.key==='Enter') loadCompanyBankPassbookData()" placeholder="UTR, Customer, Loan No..." class="border border-purple-200 p-2 rounded-xl bg-white font-bold">
+        </div>
+        <button type="button" onclick="loadCompanyBankPassbookData()" style="background-color:#4c1d95;color:#fff;" class="px-4 py-2 rounded-xl font-black cursor-pointer">🔍 Filter</button>
+      </div>
+
+      <div class="flex gap-3 bg-white px-3.5 py-2 rounded-xl border border-purple-200 font-mono">
+        <div>Total Credit: <b id="cbp_tot_credit" class="text-emerald-700">₹ 0.00</b></div>
+        <div>Total Debit: <b id="cbp_tot_debit" class="text-rose-600">₹ 0.00</b></div>
+      </div>
+    </div>
+
+    <!-- 4. பாஸ்புக் அட்டவணை (Passbook Ledger Table) -->
+    <div class="overflow-x-auto border-2 border-purple-100 rounded-2xl">
+      <table class="w-full text-xs text-left">
+        <thead class="bg-purple-900 text-yellow-300 border-b border-brand-gold">
+          <tr>
+            <th class="p-2.5 font-extrabold">Date</th>
+            <th class="p-2.5 font-extrabold">Bank Account</th>
+            <th class="p-2.5 font-extrabold">Branch & Category</th>
+            <th class="p-2.5 font-extrabold">Party & Description</th>
+            <th class="p-2.5 font-extrabold">UTR / Ref No</th>
+            <th class="p-2.5 text-right font-extrabold">Credit (+)</th>
+            <th class="p-2.5 text-right font-extrabold">Debit (-)</th>
+            <th class="p-2.5 text-right font-extrabold">Balance</th>
+            <th class="p-2.5 text-center font-extrabold">Bank Verify</th>
+          </tr>
+        </thead>
+        <tbody id="cbpLedgerTbody" class="divide-y divide-purple-100 text-slate-700"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function openCompanyBankPassbookModal() {
+    const m = document.getElementById('companyBankPassbookModal');
+    if (!m) return;
+    m.classList.remove('hidden');
+    m.style.display = 'flex';
+    loadCompanyBankPassbookData();
+  }
+
+  function closeCompanyBankPassbookModal() {
+    const m = document.getElementById('companyBankPassbookModal');
+    if (m) { m.classList.add('hidden'); m.style.display = 'none'; }
+  }
+
+  async function loadCompanyBankPassbookData() {
+    const bankId = document.getElementById('cbp_filter_bank')?.value || 0;
+    const fDate = document.getElementById('cbp_from_date')?.value || '';
+    const tDate = document.getElementById('cbp_to_date')?.value || '';
+    const search = document.getElementById('cbp_search')?.value.trim() || '';
+
+    const tbody = document.getElementById('cbpLedgerTbody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-brand-violet font-bold">Loading bank passbook...</td></tr>`;
+
+    try {
+      const res = await fetch(`/api/hq/bank-ledger?company_bank_id=${bankId}&from_date=${fDate}&to_date=${tDate}&search=${encodeURIComponent(search)}&t=${Date.now()}`);
+      const out = await res.json();
+      if (!res.ok) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-rose-600 font-bold">❌ ${out.detail || 'Error loading ledger'}</td></tr>`;
+        return;
+      }
+
+      const banks = out.banks || [];
+      const entries = out.entries || [];
+
+      // 1. வங்கி அட்டைகள் (Live Balance Cards)
+      const cardsGrid = document.getElementById('cbPassbookCardsGrid');
+      if (cardsGrid) {
+        if (banks.length === 0) {
+          cardsGrid.innerHTML = `<p class="col-span-4 text-center text-slate-400 font-bold">No company bank accounts found. Add them in Admin tab.</p>`;
+        } else {
+          cardsGrid.innerHTML = banks.map(b => {
+            const bal = parseFloat(b.current_balance || 0);
+            return `
+              <div onclick="document.getElementById('cbp_filter_bank').value='${b.id}'; loadCompanyBankPassbookData();" class="p-3.5 rounded-2xl bg-gradient-to-br from-purple-50 to-amber-50 border-2 border-brand-gold shadow-sm cursor-pointer hover:shadow-md transition">
+                <div class="flex justify-between items-center">
+                  <span class="font-black text-brand-violet text-sm">${b.bank_name}</span>
+                  <span class="px-2 py-0.5 bg-purple-900 text-yellow-300 rounded text-[10px] font-bold">${b.account_type || 'CURRENT'}</span>
+                </div>
+                <div class="font-mono text-[11px] text-slate-600 mt-0.5">A/C: <b>${b.account_no}</b> (${b.branch_name || '-'})</div>
+                <div class="mt-2 pt-1.5 border-t border-amber-200 flex justify-between items-baseline">
+                  <span class="text-[10px] font-bold text-slate-500">Live Balance:</span>
+                  <span class="text-base font-black font-mono ${bal < 0 ? 'text-rose-600' : 'text-emerald-700'}">₹ ${bal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+
+      // 2. Dropdown-களை நிரப்புதல்
+      const fSel = document.getElementById('cbp_filter_bank');
+      if (fSel && fSel.options.length <= 1 && banks.length > 0) {
+        fSel.innerHTML = `<option value="0">All Company Banks</option>` +
+          banks.map(b => `<option value="${b.id}">${b.bank_name} (${b.account_no})</option>`).join('');
+        fSel.value = String(bankId);
+      }
+      const eSel = document.getElementById('cbp_entry_bank');
+      if (eSel && banks.length > 0) {
+        const prev = eSel.value;
+        eSel.innerHTML = banks.map(b => `<option value="${b.id}">${b.bank_name} (${b.account_no})</option>`).join('');
+        if (prev && banks.some(b => String(b.id) === prev)) eSel.value = prev;
+      }
+
+      document.getElementById('cbp_tot_credit').innerText = `₹ ${parseFloat(out.total_credit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+      document.getElementById('cbp_tot_debit').innerText = `₹ ${parseFloat(out.total_debit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+      // 3. பாஸ்புக் வரிகள்
+      if (entries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-bold">No bank transactions found for selected filter</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = entries.map(e => {
+        const cr = parseFloat(e.credit_amount || 0);
+        const dr = parseFloat(e.debit_amount || 0);
+        const bal = parseFloat(e.balance_after || 0);
+        const isRec = Boolean(e.is_reconciled);
+
+        return `
+          <tr class="${isRec ? 'bg-emerald-50/30' : 'hover:bg-purple-50/40'}">
+            <td class="p-2.5 font-mono whitespace-nowrap font-bold">${e.txn_date || '-'}</td>
+            <td class="p-2.5 font-bold text-brand-violet">${e.bank_label}</td>
+            <td class="p-2.5">
+              <span class="font-bold text-slate-800 block">${e.branch_name || 'Head Office'}</span>
+              <span class="px-1.5 py-0.5 bg-purple-100 text-purple-900 rounded text-[10px] font-bold">${e.category}</span>
+            </td>
+            <td class="p-2.5">
+              <b>${e.party_name || '-'}</b>
+              <span class="block text-[11px] text-slate-500">${e.description || ''}</span>
+            </td>
+            <td class="p-2.5 font-mono font-bold text-indigo-900">${e.reference_no || '-'}</td>
+            <td class="p-2.5 text-right font-mono font-black text-emerald-700">${cr > 0 ? '+ ₹' + cr.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'}</td>
+            <td class="p-2.5 text-right font-mono font-black text-rose-600">${dr > 0 ? '- ₹' + dr.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'}</td>
+            <td class="p-2.5 text-right font-mono font-black text-slate-900 bg-amber-50/50">₹ ${bal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            <td class="p-2.5 text-center">
+              <button type="button" onclick="toggleBankLedgerReconcile(${e.id})" class="px-2.5 py-1 rounded-lg text-[11px] font-black cursor-pointer ${isRec ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-950 border border-amber-400'}">
+                ${isRec ? '✓ Verified' : '⏳ Verify'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-rose-600 font-bold">❌ ${err.message}</td></tr>`;
+    }
+  }
+
+  async function submitManualBankLedgerEntry() {
+    const bankId = document.getElementById('cbp_entry_bank')?.value;
+    const rawType = document.getElementById('cbp_entry_type')?.value;
+    const amt = parseFloat(document.getElementById('cbp_entry_amt')?.value) || 0;
+    const ref = document.getElementById('cbp_entry_ref')?.value.trim() || '-';
+    const desc = document.getElementById('cbp_entry_desc')?.value.trim() || '';
+
+    if (!bankId || amt <= 0) return alert("Please select a bank account and enter a valid amount.");
+
+    const isOpening = (rawType === 'OPENING');
+    const entryType = isOpening ? 'CREDIT' : rawType;
+
+    const res = await fetch('/api/hq/bank-ledger/manual-entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company_bank_id: parseInt(bankId),
+        entry_type: entryType,
+        is_opening: isOpening,
+        amount: amt,
+        reference_no: ref,
+        description: desc || (isOpening ? 'Opening Bank Balance' : 'Direct Bank Entry'),
+        admin_id: currentUser?.id || 1
+      })
+    });
+    const out = await res.json();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      document.getElementById('cbp_entry_amt').value = '';
+      document.getElementById('cbp_entry_ref').value = '';
+      document.getElementById('cbp_entry_desc').value = '';
+      loadCompanyBankPassbookData();
+    } else {
+      alert("❌ " + (out.detail || "Failed to save entry"));
+    }
+  }
+
+  async function toggleBankLedgerReconcile(entryId) {
+    const res = await fetch(`/api/hq/bank-ledger/${entryId}/toggle-reconcile`, { method: 'POST' });
+    if (res.ok) {
+      loadCompanyBankPassbookData();
+    }
+  }
 </script>
 </body>
 </html>

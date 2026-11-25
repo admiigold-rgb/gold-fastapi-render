@@ -2562,9 +2562,22 @@ def get_next_rd_no(branch_id: int):
     try:
         br_res = supabase.table("mg_branches").select("branch_code").eq("id", branch_id).execute()
         b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
-        cnt_res = supabase.table("mg_customer_rd_accounts").select("id", count="exact").eq("branch_id", branch_id).execute()
-        seq = (cnt_res.count or len(cnt_res.data or [])) + 1
-        return {"status": "success", "next_rd_no": f"{b_code}/RD/{seq:03d}"}
+
+        max_num = 0
+        for tbl in ["mg_customer_rd_accounts", "mg_rd_accounts"]:
+            try:
+                res = supabase.table(tbl).select("rd_no").eq("branch_id", branch_id).execute()
+                for row in (res.data or []):
+                    rno = str(row.get("rd_no") or "").strip().upper()
+                    if "/" in rno:
+                        tail = rno.split("/")[-1]
+                        if tail.isdigit():
+                            max_num = max(max_num, int(tail))
+            except Exception:
+                continue
+
+        seq = max_num + 1
+        return {"status": "success", "next_rd_no": f"{b_code}/RD/{seq:04d}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

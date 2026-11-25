@@ -3026,24 +3026,26 @@ def process_hq_bank_transfer(data: dict):
         }).eq("id", transfer_id).execute()
 
         if company_bank_id:
-            try:
-                tr_chk = supabase.table("mg_bank_transfers").select("amount, direction").eq("id", transfer_id).execute()
-                if tr_chk.data:
-                    amount = float(tr_chk.data[0].get("amount") or 0.0)
-                    direction = tr_chk.data[0].get("direction")
-                    cb_res = supabase.table("mg_company_banks").select("*").eq("id", company_bank_id).execute()
-                    if cb_res.data:
-                        cb_row = cb_res.data[0]
-                        for bal_col in ["current_balance", "balance", "opening_balance"]:
-                            if bal_col in cb_row:
-                                old_bal = float(cb_row.get(bal_col) or 0.0)
-                                new_bal = (old_bal - amount) if direction == "PAYOUT" else (old_bal + amount)
-                                supabase.table("mg_company_banks").update({bal_col: new_bal}).eq("id", company_bank_id).execute()
-                                break
-            except Exception as b_err:
-                print("Company bank balance note (ignored):", b_err)
+            tr_chk = supabase.table("mg_bank_transfers").select("*").eq("id", transfer_id).execute()
+            if tr_chk.data:
+                tr = tr_chk.data[0]
+                amount = float(tr.get("amount") or 0.0)
+                direction = tr.get("direction")
+                c_name = tr.get("beneficiary_name") or f"Customer #{tr.get('customer_id')}"
+                record_company_bank_ledger(
+                    company_bank_id=int(company_bank_id),
+                    category="CUSTOMER_PAYOUT" if direction == "PAYOUT" else "CUSTOMER_RECEIPT",
+                    credit_amount=0.0 if direction == "PAYOUT" else amount,
+                    debit_amount=amount if direction == "PAYOUT" else 0.0,
+                    reference_no=utr_ref_no or "-",
+                    party_name=c_name,
+                    description=f"வாடிக்கையாளர் வங்கி {'பட்டுவாடா' if direction == 'PAYOUT' else 'வரவு'} ({tr.get('pay_mode', 'BANK')})",
+                    branch_id=tr.get("branch_id"),
+                    created_by=admin_id,
+                    update_bank_balance=True
+                )
 
-        return {"status": "success", "message": "வங்கிப் பட்டுவாடா வெற்றிகரமாக உறுதி செய்யப்பட்டு ஒப்புதல் அளிக்கப்பட்டது!"}
+        return {"status": "success", "message": "வங்கிப் பட்டுவாடா வெற்றிகரமாக உறுதி செய்யப்பட்டு வங்கிப் பேரேட்டில் பதியப்பட்டது!"}
     except HTTPException:
         raise
     except Exception as e:
@@ -3282,17 +3284,21 @@ def approve_treasury_transfer(data: TreasuryApprovalPayload):
 
         if status == "APPROVED" and transfer.get("company_bank_id"):
             amt = float(transfer.get("amount") or 0.0)
-            bk_res = supabase.table("mg_company_banks").select("*").eq("id", transfer["company_bank_id"]).execute()
-            if bk_res.data:
-                comp_bank = bk_res.data[0]
-                cur_bal = float(comp_bank.get("current_balance") or comp_bank.get("opening_balance") or 0.0)
-                if transfer.get("transfer_type") == "CASH_TO_BANK":
-                    new_bal = cur_bal + amt
-                elif transfer.get("transfer_type") == "BANK_TO_CASH":
-                    new_bal = cur_bal - amt
-                else:
-                    new_bal = cur_bal
-                supabase.table("mg_company_banks").update({"current_balance": new_bal}).eq("id", transfer["company_bank_id"]).execute()
+            ttype = transfer.get("transfer_type")
+            if ttype in ["CASH_TO_BANK", "BANK_TO_CASH"]:
+                record_company_bank_ledger(
+                    company_bank_id=int(transfer["company_bank_id"]),
+                    category="BRANCH_DEPOSIT" if ttype == "CASH_TO_BANK" else "BRANCH_WITHDRAWAL",
+                    credit_amount=amt if ttype == "CASH_TO_BANK" else 0.0,
+                    debit_amount=amt if ttype == "BANK_TO_CASH" else 0.0,
+                    reference_no=transfer.get("reference_no") or f"TRS-{data.transfer_id}",
+                    party_name=transfer.get("carrier_person") or "கிளைப் பரிமாற்றம்",
+                    description="கிளை ரொக்கம் வங்கியில் டெபாசிட்" if ttype == "CASH_TO_BANK" else "வங்கியிலிருந்து கிளைக்குப் பணம் எடுத்தல்",
+                    branch_id=transfer.get("branch_id"),
+                    txn_date=transfer.get("transaction_date"),
+                    created_by=data.admin_id,
+                    update_bank_balance=True
+                )
 
         supabase.table("mg_treasury_transfers").update({
             "status": status,
@@ -4707,3 +4713,150 @@ def approve_loan_deviation(payload: LoanDeviationDecisionPayload):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"கூடுதல் கடன் ஒப்புதல் பிழை: {str(e)}")
+
+# ==============================================================================
+# 🏦 ஒருங்கிணைந்த வங்கிப் பேரேடு & பாஸ்புக் மேலாண்மை (Unified Company Bank Ledger)
+# ==============================================================================
+def record_company_bank_ledger(
+    company_bank_id: int,
+    category: str,
+    credit_amount: float = 0.0,
+    debit_amount: float = 0.0,
+    reference_no: str = "-",
+    party_name: str = "-",
+    description: str = "",
+    branch_id: Optional[int] = None,
+    txn_date: Optional[str] = None,
+    created_by: Optional[int] = 1,
+    update_bank_balance: bool = True
+):
+    try:
+        if not company_bank_id:
+            return
+        bk_res = supabase.table("mg_company_banks").select("*").eq("id", int(company_bank_id)).execute()
+        if not bk_res.data:
+            return
+        bk_row = bk_res.data[0]
+        old_bal = float(bk_row.get("current_balance") or 0.0)
+        c_amt = round(float(credit_amount or 0.0), 2)
+        d_amt = round(float(debit_amount or 0.0), 2)
+        new_bal = round(old_bal + c_amt - d_amt, 2)
+
+        if update_bank_balance:
+            supabase.table("mg_company_banks").update({"current_balance": new_bal}).eq("id", int(company_bank_id)).execute()
+
+        eff_date = (txn_date or datetime.now(IST).strftime("%Y-%m-%d"))[:10]
+        supabase.table("mg_company_bank_ledger").insert({
+            "company_bank_id": int(company_bank_id),
+            "branch_id": branch_id,
+            "txn_date": eff_date,
+            "category": category,
+            "reference_no": str(reference_no or "-").strip(),
+            "party_name": str(party_name or "-").strip(),
+            "description": str(description or "").strip(),
+            "credit_amount": c_amt,
+            "debit_amount": d_amt,
+            "balance_after": new_bal,
+            "is_reconciled": False,
+            "created_by": created_by,
+            "created_at": datetime.now(IST).isoformat()
+        }).execute()
+    except Exception as e:
+        print("Company bank ledger log note:", e)
+
+
+@app.get("/api/hq/bank-ledger")
+def get_company_bank_ledger(
+    company_bank_id: int = 0,
+    from_date: str = "",
+    to_date: str = "",
+    search: str = ""
+):
+    try:
+        banks = supabase.table("mg_company_banks").select("*").eq("is_active", True).order("id").execute().data or []
+        b_map = {b["id"]: f"{b['bank_name']} ({b['account_no']})" for b in banks}
+
+        br_res = supabase.table("mg_branches").select("id, branch_name").execute().data or []
+        br_map = {br["id"]: br["branch_name"] for br in br_res}
+
+        q = supabase.table("mg_company_bank_ledger").select("*").order("txn_date", desc=True).order("id", desc=True)
+        if company_bank_id and int(company_bank_id) > 0:
+            q = q.eq("company_bank_id", int(company_bank_id))
+        if from_date:
+            q = q.gte("txn_date", from_date)
+        if to_date:
+            q = q.lte("txn_date", to_date)
+
+        rows = q.limit(1000).execute().data or []
+        clean_q = search.strip().lower()
+        filtered = []
+        for r in rows:
+            r["bank_label"] = b_map.get(r.get("company_bank_id"), "-")
+            r["branch_name"] = br_map.get(r.get("branch_id"), "Head Office")
+            if clean_q:
+                hay = f"{r.get('reference_no','')} {r.get('party_name','')} {r.get('description','')} {r.get('category','')}".lower()
+                if clean_q not in hay:
+                    continue
+            filtered.append(r)
+
+        tot_credit = round(sum(float(x.get("credit_amount") or 0) for x in filtered), 2)
+        tot_debit = round(sum(float(x.get("debit_amount") or 0) for x in filtered), 2)
+
+        return {
+            "status": "success",
+            "banks": banks,
+            "entries": filtered,
+            "total_credit": tot_credit,
+            "total_debit": tot_debit
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"வங்கிப் பேரேடு அறிக்கை பிழை: {str(e)}")
+
+
+@app.post("/api/hq/bank-ledger/manual-entry")
+def add_manual_bank_ledger_entry(data: dict):
+    try:
+        bank_id = int(data.get("company_bank_id") or 0)
+        entry_type = str(data.get("entry_type") or "CREDIT").upper()
+        amt = float(data.get("amount") or 0)
+        if not bank_id or amt <= 0:
+            raise HTTPException(status_code=400, detail="வங்கி மற்றும் சரியான தொகையை உள்ளிடவும்.")
+
+        c_amt = amt if entry_type == "CREDIT" else 0.0
+        d_amt = amt if entry_type == "DEBIT" else 0.0
+        cat = "OPENING_BALANCE" if data.get("is_opening") else ("DIRECT_CREDIT" if entry_type == "CREDIT" else "DIRECT_DEBIT")
+
+        record_company_bank_ledger(
+            company_bank_id=bank_id,
+            category=cat,
+            credit_amount=c_amt,
+            debit_amount=d_amt,
+            reference_no=data.get("reference_no") or "-",
+            party_name=data.get("party_name") or "Head Office",
+            description=data.get("description") or "நேரடி வங்கிப் பதிவு",
+            branch_id=data.get("branch_id") or 1,
+            txn_date=data.get("txn_date"),
+            created_by=data.get("admin_id") or 1,
+            update_bank_balance=True
+        )
+        return {"status": "success", "message": "வங்கிப் பேரேட்டில் பதிவு சேர்க்கப்பட்டது!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/hq/bank-ledger/{entry_id}/toggle-reconcile")
+def toggle_bank_ledger_reconcile(entry_id: int):
+    try:
+        chk = supabase.table("mg_company_bank_ledger").select("is_reconciled").eq("id", entry_id).execute()
+        if not chk.data:
+            raise HTTPException(status_code=404, detail="பதிவு கிடைக்கவில்லை.")
+        new_val = not bool(chk.data[0].get("is_reconciled"))
+        supabase.table("mg_company_bank_ledger").update({
+            "is_reconciled": new_val,
+            "reconciled_at": datetime.now(IST).isoformat() if new_val else None
+        }).eq("id", entry_id).execute()
+        return {"status": "success", "is_reconciled": new_val}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

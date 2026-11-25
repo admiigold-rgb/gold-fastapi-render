@@ -3675,10 +3675,19 @@ def delete_si_scheme(scheme_id: int):
 def get_next_si_no(branch_id: int = 1):
     try:
         br = supabase.table("mg_branches").select("branch_code").eq("id", branch_id).execute()
-        b_code = br.data[0]["branch_code"] if br.data else "BR"
-        res = supabase.table("mg_si_accounts").select("id").order("id", desc=True).limit(1).execute()
-        next_num = (res.data[0]["id"] + 1) if res.data else 1
-        return {"status": "success", "next_si_no": f"{b_code}/SI/{str(next_num).zfill(4)}"}
+        b_code = br.data[0]["branch_code"].strip().upper() if br.data else "BR"
+
+        max_num = 0
+        res = supabase.table("mg_si_accounts").select("si_no").eq("branch_id", branch_id).execute()
+        for row in (res.data or []):
+            sno = str(row.get("si_no") or "").strip().upper()
+            if "/" in sno:
+                tail = sno.split("/")[-1]
+                if tail.isdigit():
+                    max_num = max(max_num, int(tail))
+
+        next_num = max_num + 1
+        return {"status": "success", "next_si_no": f"{b_code}/SI/{next_num:04d}"}
     except Exception:
         return {"status": "success", "next_si_no": "BR/SI/0001"}
 

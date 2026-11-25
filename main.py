@@ -2626,11 +2626,21 @@ def create_rd_scheme(data: dict):
             "per_1k_points": float(data.get("per_1k_points") if data.get("per_1k_points") is not None else 1.0),
             "is_active": True
         }
+
+        existing = supabase.table("mg_rd_schemes").select("id, is_active").eq("scheme_code", code).execute()
+        if existing.data:
+            if existing.data[0].get("is_active") is not False:
+                raise HTTPException(status_code=400, detail=f"'{code}' என்ற திட்டக் குறியீடு ஏற்கனவே பயன்பாட்டில் உள்ளது.")
+            res = supabase.table("mg_rd_schemes").update(rec).eq("id", existing.data[0]["id"]).execute()
+            return {"status": "success", "message": f"'{code}' தொடர்வைப்பு (RD) திட்டம் புதிய விவரங்களுடன் புதுப்பிக்கப்பட்டது!", "data": res.data}
+
         res = supabase.table("mg_rd_schemes").insert(rec).execute()
         return {"status": "success", "message": "புதிய தொடர்வைப்பு (RD) திட்டம் வெற்றிகரமாக உருவாக்கப்பட்டது!", "data": res.data}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
+        
 @app.post("/api/rd/request-maturity-benefit")
 def request_rd_maturity_benefit(data: dict):
     try:

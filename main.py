@@ -901,6 +901,26 @@ def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Op
                 "data": row
             }
 
+        # 🔒 கடைசியாக CLOSED செய்யப்பட்ட தேதிக்கு முந்தைய பழைய தேதிகளையும் தானாகவே பூட்டுதல்
+        latest_closed = (
+            supabase.table("mg_branch_cash_days")
+            .select("business_date, closing_balance")
+            .eq("branch_id", branch_id)
+            .eq("status", "CLOSED")
+            .order("business_date", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if latest_closed.data and target_date <= str(latest_closed.data[0]["business_date"]):
+            c_bal = float(latest_closed.data[0].get("closing_balance") or 0.0)
+            return {
+                "status": "success",
+                "business_date": target_date,
+                "opening_balance": c_bal,
+                "is_closed": True,
+                "data": {"business_date": target_date, "status": "CLOSED", "closing_balance": c_bal}
+            }
+
         prev_day = (
             supabase.table("mg_branch_cash_days")
             .select("*")

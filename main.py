@@ -2579,10 +2579,10 @@ def get_rd_schemes():
 @app.delete("/api/admin/rd-scheme/{scheme_id}")
 def delete_rd_scheme(scheme_id: int):
     try:
-        supabase.table("mg_rd_schemes").delete().eq("id", scheme_id).execute()
-        return {"status": "success", "message": "RD திட்டம் நீக்கப்பட்டது."}
+        supabase.table("mg_rd_schemes").update({"is_active": False}).eq("id", scheme_id).execute()
+        return {"status": "success", "message": "RD திட்டம் வெற்றிகரமாக நீக்கப்பட்டது."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"RD திட்டம் நீக்குவதில் பிழை: {str(e)}")
 
 @app.get("/api/customer/{customer_id}/rd-accounts")
 def get_customer_rd_accounts(customer_id: int):

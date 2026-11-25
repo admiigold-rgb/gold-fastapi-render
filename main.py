@@ -695,8 +695,8 @@ def search_customer(query: str = Query(..., min_length=1), branch_id: int = Quer
         return {"status": "success", "count": len(res.data or []), "data": res.data or []}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தேடல் பிழை: {str(e)}")
-
-# 3. Next Loan Number
+        
+# 3. Next Loan Number (நடப்புக் கடன்கள் + கூடை + நிறுத்திவைக்கப்பட்ட கடன்களில் பெரிய எண்ணுடன் +1 கூட்டுதல்)
 @app.get("/api/loan/next-loan-no")
 def get_next_loan_no(branch_id: int = Query(...)):
     try:
@@ -704,8 +704,34 @@ def get_next_loan_no(branch_id: int = Query(...)):
         if not branch_res.data:
             raise HTTPException(status_code=404, detail="கிளை விபரம் கிடைக்கவில்லை.")
         branch_code = branch_res.data[0]["branch_code"].strip().upper()
-        count_res = supabase.table("mg_gold_loans").select("id", count="exact").eq("branch_id", branch_id).execute()
-        next_count = (count_res.count or len(count_res.data or [])) + 1
+
+        max_num = 0
+
+        # 1. mg_gold_loans (ஏற்கனவே உள்ள கடன்கள் + கூடையில் உள்ள கடன்கள்)
+        loans_res = supabase.table("mg_gold_loans").select("loan_no").eq("branch_id", branch_id).execute()
+        for row in (loans_res.data or []):
+            lno = str(row.get("loan_no") or "").strip().upper()
+            if "/" in lno:
+                tail = lno.split("/")[-1]
+                if tail.isdigit():
+                    max_num = max(max_num, int(tail))
+
+        # 2. mg_loan_deviation_approvals (நிறுத்திவைக்கப்பட்டுள்ள கடன்கள்)
+        dev_res = (
+            supabase.table("mg_loan_deviation_approvals")
+            .select("loan_no, status")
+            .eq("branch_id", branch_id)
+            .in_("status", ["PENDING", "APPROVED"])
+            .execute()
+        )
+        for row in (dev_res.data or []):
+            lno = str(row.get("loan_no") or "").strip().upper()
+            if "/" in lno:
+                tail = lno.split("/")[-1]
+                if tail.isdigit():
+                    max_num = max(max_num, int(tail))
+
+        next_count = max_num + 1
         formatted_loan_no = f"{branch_code}/{next_count:04d}"
         return {
             "status": "success",

@@ -5035,25 +5035,46 @@ def delete_admin_bank_locker(locker_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 import re
-
 @app.get("/api/audit/missing-loans-check")
 def audit_missing_loans_across_branches(branch_id: int | None = None):
     """
     அனைத்து கிளைகளிலும் (அல்லது குறிப்பிட்ட ஒரு கிளையில்) வருகைகளில் குறிப்பிட்ட
-    நகைக்கடன் எண்கள் mg_gold_loans அட்டவணையில் விடுபட்டுள்ளதா எனச் சரிபார்க்கும் API.
+    புதிய நகைக்கடன் எண்கள் mg_gold_loans அட்டவணையில் விடுபட்டுள்ளதா எனச் சரிபார்க்கும் API.
     """
     try:
-        q = supabase.table("mg_customer_visits").select(
-            "id, customer_id, branch_id, transaction_date, visit_status, status, net_amount, actions_summary"
-        )
-        if branch_id is not None:
-            q = q.eq("branch_id", branch_id)
-        visits = q.order("id", desc=True).limit(2000).execute().data or []
+        # 1. mg_customer_visits அனைத்தையும் Pagination மூலம் எடுத்தல்
+        visits = []
+        v_offset = 0
+        v_page_size = 1000
+        while True:
+            vq = supabase.table("mg_customer_visits").select(
+                "id, customer_id, branch_id, transaction_date, visit_status, status, net_amount, actions_summary"
+            )
+            if branch_id is not None:
+                vq = vq.eq("branch_id", branch_id)
+            v_batch = vq.order("id", desc=False).range(v_offset, v_offset + v_page_size - 1).execute().data or []
+            if not v_batch:
+                break
+            visits.extend(v_batch)
+            if len(v_batch) < v_page_size:
+                break
+            v_offset += v_page_size
 
-        loans_q = supabase.table("mg_gold_loans").select("loan_no, branch_id")
-        if branch_id is not None:
-            loans_q = loans_q.eq("branch_id", branch_id)
-        loans = loans_q.execute().data or []
+        # 2. mg_gold_loans அனைத்தையும் Pagination மூலம் எடுத்தல்
+        loans = []
+        l_offset = 0
+        l_page_size = 1000
+        while True:
+            lq = supabase.table("mg_gold_loans").select("id, loan_no, branch_id, loan_amount, status")
+            if branch_id is not None:
+                lq = lq.eq("branch_id", branch_id)
+            l_batch = lq.order("id", desc=False).range(l_offset, l_offset + l_page_size - 1).execute().data or []
+            if not l_batch:
+                break
+            loans.extend(l_batch)
+            if len(l_batch) < l_page_size:
+                break
+            l_offset += l_page_size
 
         existing_loan_nos = {
             str(row.get("loan_no") or "").strip().upper()
@@ -5068,19 +5089,23 @@ def audit_missing_loans_across_branches(branch_id: int | None = None):
         }
 
         missing_items = []
-        checked_count = 0
+        checked_refs = []
 
         for v in visits:
             summary = str(v.get("actions_summary") or "")
             if not summary:
                 continue
-            # 'நகைக்கடன் (KMK/1405)' போன்ற வடிவங்களில் உள்ள எண்களை எடுத்தல்
-            found_nos = re.findall(r"நகைக்கடன்\s*\(([^)]+)\)", summary)
+            # 'நகைக்கடன் முடிப்பு' என்பதைத் தவிர்த்து 'நகைக்கடன் (KMK/1405)' போன்ற புதிய கடன்களை மட்டும் எடுத்தல்
+            found_nos = re.findall(r"(?<!முடிப்பு\s)நகைக்கடன்\s*\(([^)]+)\)", summary)
             for raw_no in found_nos:
                 clean_no = raw_no.strip().upper()
                 if not clean_no:
                     continue
-                checked_count += 1
+                checked_refs.append({
+                    "visit_id": v.get("id"),
+                    "loan_no": clean_no,
+                    "exists_in_loans": clean_no in existing_loan_nos
+                })
                 if clean_no not in existing_loan_nos:
                     missing_items.append({
                         "visit_id": v.get("id"),
@@ -5098,7 +5123,9 @@ def audit_missing_loans_across_branches(branch_id: int | None = None):
         return {
             "status": "success",
             "total_visits_scanned": len(visits),
-            "total_loan_refs_checked": checked_count,
+            "total_gold_loans_in_db": len(loans),
+            "total_loan_refs_checked": len(checked_refs),
+            "checked_refs": checked_refs,
             "missing_count": len(missing_items),
             "missing_loans": missing_items
         }

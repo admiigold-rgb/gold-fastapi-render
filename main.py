@@ -5035,99 +5035,177 @@ def delete_admin_bank_locker(locker_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 import re
-@app.get("/api/audit/missing-loans-check")
-def audit_missing_loans_across_branches(branch_id: int | None = None):
+
+@app.post("/api/audit/master-check-and-sync")
+def master_audit_check_and_sync(payload: dict | None = None):
     """
-    அனைத்து கிளைகளிலும் (அல்லது குறிப்பிட்ட ஒரு கிளையில்) வருகைகளில் குறிப்பிட்ட
-    புதிய நகைக்கடன் எண்கள் mg_gold_loans அட்டவணையில் விடுபட்டுள்ளதா எனச் சரிபார்க்கும் API.
+    mg_customer_visits மற்றும் அனைத்து முக்கிய அட்டவணைகளையும் ஒப்பிட்டு
+    விடுபட்டவற்றைக் காட்டும் (auto_sync=False) மற்றும் பாதுகாப்பானவற்றை
+    (குறிப்பாக mg_gold_packets) சரிசெய்யும் (auto_sync=True) Admin API.
     """
+    data = payload or {}
+    auto_sync = bool(data.get("auto_sync", False))
+    branch_id = data.get("branch_id")
+
     try:
-        # 1. mg_customer_visits அனைத்தையும் Pagination மூலம் எடுத்தல்
-        visits = []
-        v_offset = 0
-        v_page_size = 1000
-        while True:
-            vq = supabase.table("mg_customer_visits").select(
-                "id, customer_id, branch_id, transaction_date, visit_status, status, net_amount, actions_summary"
-            )
-            if branch_id is not None:
-                vq = vq.eq("branch_id", branch_id)
-            v_batch = vq.order("id", desc=False).range(v_offset, v_offset + v_page_size - 1).execute().data or []
-            if not v_batch:
-                break
-            visits.extend(v_batch)
-            if len(v_batch) < v_page_size:
-                break
-            v_offset += v_page_size
+        # 1. Visits எடுத்தல்
+        vq = supabase.table("mg_customer_visits").select(
+            "id, customer_id, branch_id, transaction_date, visit_status, status, net_amount, actions_summary"
+        )
+        if branch_id is not None:
+            vq = vq.eq("branch_id", branch_id)
+        visits = vq.order("id", desc=False).limit(2000).execute().data or []
 
-        # 2. mg_gold_loans அனைத்தையும் Pagination மூலம் எடுத்தல்
-        loans = []
-        l_offset = 0
-        l_page_size = 1000
-        while True:
-            lq = supabase.table("mg_gold_loans").select("id, loan_no, branch_id, loan_amount, status")
-            if branch_id is not None:
-                lq = lq.eq("branch_id", branch_id)
-            l_batch = lq.order("id", desc=False).range(l_offset, l_offset + l_page_size - 1).execute().data or []
-            if not l_batch:
-                break
-            loans.extend(l_batch)
-            if len(l_batch) < l_page_size:
-                break
-            l_offset += l_page_size
+        # 2. தொடர்புடைய அட்டவணைகளை எடுத்தல்
+        loans = supabase.table("mg_gold_loans").select("id, loan_no, customer_id, branch_id, visit_id, status").execute().data or []
+        packets = supabase.table("mg_gold_packets").select("id, loan_id, loan_no, branch_id, is_loan_closed").execute().data or []
+        purchases = supabase.table("mg_gold_purchases").select("id, gp_no, visit_id, branch_id, customer_id, status").execute().data or []
+        sales = supabase.table("mg_gold_sales").select("id, gs_no, visit_id, branch_id, customer_id").execute().data or []
+        rds = supabase.table("mg_rd_accounts").select("id, rd_no, customer_id, branch_id, status").execute().data or []
+        sis = supabase.table("mg_si_accounts").select("id, si_no, customer_id, branch_id, status").execute().data or []
+        sav_txns = supabase.table("mg_savings_transactions").select("id, account_id, visit_id, receipt_no").execute().data or []
 
-        existing_loan_nos = {
-            str(row.get("loan_no") or "").strip().upper()
-            for row in loans
-            if row.get("loan_no")
-        }
+        loan_nos = {str(r.get("loan_no") or "").strip().upper() for r in loans if r.get("loan_no")}
+        loan_visit_ids = {r.get("visit_id") for r in loans if r.get("visit_id") is not None}
 
-        branches_res = supabase.table("mg_branches").select("id, branch_name, branch_code").execute().data or []
-        branch_map = {
-            b["id"]: f"{b.get('branch_name', '')} ({b.get('branch_code', '')})".strip()
-            for b in branches_res
-        }
+        pkt_loan_ids = {r.get("loan_id") for r in packets if r.get("loan_id") is not None}
+        pkt_loan_nos = {str(r.get("loan_no") or "").strip().upper() for r in packets if r.get("loan_no")}
 
-        missing_items = []
-        checked_refs = []
+        gp_nos = {str(r.get("gp_no") or "").strip().upper() for r in purchases if r.get("gp_no")}
+        gp_visit_ids = {r.get("visit_id") for r in purchases if r.get("visit_id") is not None}
 
+        gs_nos = {str(r.get("gs_no") or "").strip().upper() for r in sales if r.get("gs_no")}
+        gs_visit_ids = {r.get("visit_id") for r in sales if r.get("visit_id") is not None}
+
+        rd_nos = {str(r.get("rd_no") or "").strip().upper() for r in rds if r.get("rd_no")}
+        si_nos = {str(r.get("si_no") or "").strip().upper() for r in sis if r.get("si_no")}
+        sav_visit_ids = {r.get("visit_id") for r in sav_txns if r.get("visit_id") is not None}
+
+        discrepancies = []
+
+        # 3. Visits அடிப்படையில் ஒப்பீடு
         for v in visits:
+            vid = v.get("id")
             summary = str(v.get("actions_summary") or "")
             if not summary:
                 continue
-            # 'நகைக்கடன் முடிப்பு' என்பதைத் தவிர்த்து 'நகைக்கடன் (KMK/1405)' போன்ற புதிய கடன்களை மட்டும் எடுத்தல்
-            found_nos = re.findall(r"(?<!முடிப்பு\s)நகைக்கடன்\s*\(([^)]+)\)", summary)
-            for raw_no in found_nos:
-                clean_no = raw_no.strip().upper()
-                if not clean_no:
-                    continue
-                checked_refs.append({
-                    "visit_id": v.get("id"),
-                    "loan_no": clean_no,
-                    "exists_in_loans": clean_no in existing_loan_nos
-                })
-                if clean_no not in existing_loan_nos:
-                    missing_items.append({
-                        "visit_id": v.get("id"),
+
+            # புதிய நகைக்கடன்: 'நகைக்கடன் (KMK/1405)'
+            for ref in re.findall(r"(?<!முடிப்பு\s)நகைக்கடன்\s*\(([^)]+)\)", summary):
+                c_ref = ref.strip().upper()
+                if c_ref and c_ref not in loan_nos:
+                    discrepancies.append({
+                        "category": "GOLD_LOAN",
+                        "visit_id": vid,
                         "branch_id": v.get("branch_id"),
-                        "branch_name": branch_map.get(v.get("branch_id"), f"Branch #{v.get('branch_id')}"),
-                        "customer_id": v.get("customer_id"),
-                        "transaction_date": v.get("transaction_date"),
-                        "loan_no": clean_no,
-                        "visit_status": v.get("visit_status"),
-                        "approval_status": v.get("status"),
-                        "net_amount": v.get("net_amount"),
-                        "actions_summary": summary
+                        "ref_no": c_ref,
+                        "status": v.get("status"),
+                        "message": f"Visit #{vid} - புதிய நகைக்கடன் {c_ref} mg_gold_loans அட்டவணையில் இல்லை"
                     })
+
+            # நகை வாங்குதல் (GP)
+            for ref in re.findall(r"(?:GP|நகை\s*வாங்குதல்)\s*\(([^)]+)\)", summary, flags=re.IGNORECASE):
+                c_ref = ref.strip().upper()
+                if c_ref and (c_ref not in gp_nos) and (vid not in gp_visit_ids):
+                    discrepancies.append({
+                        "category": "GOLD_PURCHASE",
+                        "visit_id": vid,
+                        "branch_id": v.get("branch_id"),
+                        "ref_no": c_ref,
+                        "status": v.get("status"),
+                        "message": f"Visit #{vid} - நகை வாங்குதல் {c_ref} mg_gold_purchases அட்டவணையில் இல்லை"
+                    })
+
+            # நகை விற்பனை (GS)
+            for ref in re.findall(r"(?:GS|நகை\s*விற்பனை)\s*\(([^)]+)\)", summary, flags=re.IGNORECASE):
+                c_ref = ref.strip().upper()
+                if c_ref and (c_ref not in gs_nos) and (vid not in gs_visit_ids):
+                    discrepancies.append({
+                        "category": "GOLD_SALE",
+                        "visit_id": vid,
+                        "branch_id": v.get("branch_id"),
+                        "ref_no": c_ref,
+                        "status": v.get("status"),
+                        "message": f"Visit #{vid} - நகை விற்பனை {c_ref} mg_gold_sales அட்டவணையில் இல்லை"
+                    })
+
+            # RD கணக்கு
+            for ref in re.findall(r"\bRD\s*\(([^)]+)\)", summary, flags=re.IGNORECASE):
+                c_ref = ref.strip().upper()
+                if c_ref and c_ref not in rd_nos:
+                    discrepancies.append({
+                        "category": "RD_ACCOUNT",
+                        "visit_id": vid,
+                        "branch_id": v.get("branch_id"),
+                        "ref_no": c_ref,
+                        "status": v.get("status"),
+                        "message": f"Visit #{vid} - RD கணக்கு {c_ref} mg_rd_accounts அட்டவணையில் இல்லை"
+                    })
+
+            # SI / FD கணக்கு
+            for ref in re.findall(r"\b(?:SI|FD)\s*\(([^)]+)\)", summary, flags=re.IGNORECASE):
+                c_ref = ref.strip().upper()
+                if c_ref and c_ref not in si_nos:
+                    discrepancies.append({
+                        "category": "SI_ACCOUNT",
+                        "visit_id": vid,
+                        "branch_id": v.get("branch_id"),
+                        "ref_no": c_ref,
+                        "status": v.get("status"),
+                        "message": f"Visit #{vid} - SI/FD கணக்கு {c_ref} mg_si_accounts அட்டவணையில் இல்லை"
+                    })
+
+            # GSS / சேமிப்பு வரவு
+            if ("GSS" in summary.upper() or "சேமிப்பு" in summary) and (vid not in sav_visit_ids):
+                discrepancies.append({
+                    "category": "SAVINGS_TXN",
+                    "visit_id": vid,
+                    "branch_id": v.get("branch_id"),
+                    "ref_no": f"VISIT-{vid}",
+                    "status": v.get("status"),
+                    "message": f"Visit #{vid} - சேமிப்பு/GSS பரிவர்த்தனை mg_savings_transactions அட்டவணையில் இல்லை"
+                })
+
+        # 4. mg_gold_loans vs mg_gold_packets ஒப்பீடு & பாதுகாப்பான Auto-Sync
+        missing_packets_synced = []
+        for loan in loans:
+            lid = loan.get("id")
+            lno = str(loan.get("loan_no") or "").strip().upper()
+            if not lno:
+                continue
+            if (lid not in pkt_loan_ids) and (lno not in pkt_loan_nos):
+                discrepancies.append({
+                    "category": "GOLD_PACKET",
+                    "visit_id": loan.get("visit_id"),
+                    "branch_id": loan.get("branch_id"),
+                    "ref_no": lno,
+                    "status": loan.get("status"),
+                    "message": f"Loan {lno} - mg_gold_packets அட்டவணையில் பாக்கெட் விடுபட்டுள்ளது"
+                })
+                if auto_sync:
+                    is_closed = str(loan.get("status") or "").upper() in ["CLOSED", "SETTLED", "AUCTIONED"]
+                    ins = supabase.table("mg_gold_packets").insert({
+                        "loan_id": lid,
+                        "loan_no": lno,
+                        "customer_id": loan.get("customer_id"),
+                        "branch_id": loan.get("branch_id") or 1,
+                        "packet_status": "CLOSED" if is_closed else "AT_BRANCH_NEW",
+                        "current_location": "BRANCH",
+                        "is_loan_closed": is_closed
+                    }).execute()
+                    if ins.data:
+                        missing_packets_synced.append(lno)
+                        pkt_loan_ids.add(lid)
+                        pkt_loan_nos.add(lno)
 
         return {
             "status": "success",
-            "total_visits_scanned": len(visits),
-            "total_gold_loans_in_db": len(loans),
-            "total_loan_refs_checked": len(checked_refs),
-            "checked_refs": checked_refs,
-            "missing_count": len(missing_items),
-            "missing_loans": missing_items
+            "auto_sync_enabled": auto_sync,
+            "total_visits_checked": len(visits),
+            "discrepancy_count": len(discrepancies),
+            "synced_packets_count": len(missing_packets_synced),
+            "synced_packets": missing_packets_synced,
+            "discrepancies": discrepancies
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"விடுபட்ட கடன் சோதனை பிழை: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Master Audit பிழை: {str(e)}")

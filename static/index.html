@@ -1392,16 +1392,20 @@
       <!-- 🔐 வங்கி வாரியான லாக்கர்கள் உருவாக்கம் (Bank Lockers Master) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-amber-300 space-y-4">
           <div class="flex justify-between items-center border-b border-amber-100 pb-2">
-            <h3 class="text-sm font-extrabold text-amber-950">🔐 வங்கி வாரியான லாக்கர்கள் உருவாக்கம் (Bank Lockers Master)</h3>
+            <h3 id="admLockerFormTitle" class="text-sm font-extrabold text-amber-950">🔐 வங்கி வாரியான லாக்கர்கள் உருவாக்கம் (Bank Lockers Master)</h3>
             <button type="button" onclick="loadAdminBankLockers()" class="px-3 py-1 bg-amber-100 text-amber-950 rounded-xl text-xs font-bold cursor-pointer">🔄 புதுப்பி</button>
           </div>
+          <input type="hidden" id="edit_locker_id" value="">
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
             <select id="adm_locker_bank_id" class="border-2 border-amber-200 p-2 rounded-xl bg-white font-bold text-brand-violet"></select>
             <input type="text" id="adm_locker_name" placeholder="லாக்கர் பெயர் (Locker Name) * எ.கா: SBI Locker A1" class="border-2 border-amber-200 p-2 rounded-xl font-bold">
             <input type="text" id="adm_locker_no" placeholder="லாக்கர் எண் (விரும்பினால்)" class="border-2 border-amber-200 p-2 rounded-xl font-mono">
-            <button type="button" onclick="createAdminBankLocker()" class="brand-gradient-gold-btn text-xs font-black px-4 py-2 rounded-xl shadow border border-yellow-500 cursor-pointer">
-              + லாக்கரைச் சேர்
-            </button>
+            <div class="flex gap-1.5">
+              <button type="button" id="btnCancelLockerEdit" onclick="resetAdminBankLockerForm()" class="hidden px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold cursor-pointer">ரத்து</button>
+              <button type="button" id="btnSubmitLocker" onclick="submitAdminBankLocker()" class="flex-1 brand-gradient-gold-btn text-xs font-black px-4 py-2 rounded-xl shadow border border-yellow-500 cursor-pointer">
+                + லாக்கரைச் சேர்
+              </button>
+            </div>
           </div>
           <div class="overflow-x-auto border-2 border-amber-100 rounded-xl">
             <table class="w-full text-xs text-left">
@@ -1410,6 +1414,7 @@
                   <th class="p-2.5 font-bold">நிறுவன வங்கி</th>
                   <th class="p-2.5 font-bold">லாக்கர் பெயர் (Locker Name)</th>
                   <th class="p-2.5 font-bold">லாக்கர் எண்</th>
+                  <th class="p-2.5 font-bold">நிலை (Status)</th>
                   <th class="p-2.5 text-center font-bold">செயல்</th>
                 </tr>
               </thead>
@@ -13053,10 +13058,10 @@
     }
   }
 </script>
-  <script>
+<script>
   let adminBankLockersCache = [];
 
- async function loadAdminBankLockers() {
+  async function loadAdminBankLockers() {
     try {
       if (!Array.isArray(companyBanksCache) || companyBanksCache.length === 0) {
         const bkRes = await fetch('/api/admin/company-banks?t=' + Date.now());
@@ -13072,61 +13077,112 @@
         if (prevVal && companyBanksCache.some(b => String(b.id) === prevVal)) bankSel.value = prevVal;
       }
 
-      const res = await fetch('/api/admin/bank-lockers?t=' + Date.now());
+      const res = await fetch('/api/admin/bank-lockers?include_inactive=true&t=' + Date.now());
       const out = await res.json();
       adminBankLockersCache = out.data || [];
 
       const tbody = document.getElementById('adminBankLockersTbody');
       if (tbody) {
         tbody.innerHTML = adminBankLockersCache.length === 0
-          ? `<tr><td colspan="4" class="p-4 text-center text-slate-400">லாக்கர்கள் எதுவும் சேர்க்கப்படவில்லை</td></tr>`
-          : adminBankLockersCache.map(l => `
-              <tr>
-                <td class="p-2.5 font-bold text-brand-violet">${l.bank_label}</td>
-                <td class="p-2.5 font-black text-amber-950">${l.locker_name}</td>
-                <td class="p-2.5 font-mono">${l.locker_no || '-'}</td>
-                <td class="p-2.5 text-center"><button type="button" onclick="deleteAdminBankLocker(${l.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px] cursor-pointer">டிலீட்</button></td>
-              </tr>
-            `).join('');
+          ? `<tr><td colspan="5" class="p-4 text-center text-slate-400">லாக்கர்கள் எதுவும் சேர்க்கப்படவில்லை</td></tr>`
+          : adminBankLockersCache.map(l => {
+              const isAct = l.is_active !== false;
+              return `
+                <tr class="${isAct ? '' : 'bg-slate-50 opacity-75'}">
+                  <td class="p-2.5 font-bold text-brand-violet">${l.bank_label}</td>
+                  <td class="p-2.5 font-black text-amber-950">${l.locker_name}</td>
+                  <td class="p-2.5 font-mono">${l.locker_no || '-'}</td>
+                  <td class="p-2.5">
+                    <span class="px-2 py-0.5 rounded font-black text-[10px] ${isAct ? 'bg-emerald-100 text-emerald-900' : 'bg-rose-100 text-rose-800'}">
+                      ${isAct ? '● Active' : '○ Deactive'}
+                    </span>
+                  </td>
+                  <td class="p-2.5 text-center space-x-1 whitespace-nowrap">
+                    <button type="button" onclick="toggleAdminBankLockerStatus(${l.id})" class="px-2 py-0.5 ${isAct ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-800 border-slate-400'} border rounded font-bold text-[11px] cursor-pointer">
+                      ${isAct ? '✅ Active' : '⛔ Deactive'}
+                    </button>
+                    <button type="button" onclick="editAdminBankLocker(${l.id})" class="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded font-bold text-[11px] cursor-pointer">✏️ எடிட்</button>
+                    <button type="button" onclick="deleteAdminBankLocker(${l.id})" class="px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-bold text-[11px] cursor-pointer">டிலீட்</button>
+                  </td>
+                </tr>
+              `;
+            }).join('');
       }
     } catch (e) {}
   }
 
-  async function createAdminBankLocker() {
+  function editAdminBankLocker(id) {
+    const item = adminBankLockersCache.find(x => x.id === id);
+    if (!item) return;
+    document.getElementById('edit_locker_id').value = item.id;
+    document.getElementById('adm_locker_bank_id').value = item.company_bank_id;
+    document.getElementById('adm_locker_name').value = item.locker_name || '';
+    document.getElementById('adm_locker_no').value = item.locker_no || '';
+    document.getElementById('admLockerFormTitle').innerText = `✏️ லாக்கர் திருத்தம்: ${item.locker_name}`;
+    document.getElementById('btnSubmitLocker').innerText = "💾 மாற்றங்களைச் சேமி";
+    document.getElementById('btnCancelLockerEdit').classList.remove('hidden');
+    document.getElementById('adm_locker_name').focus();
+  }
+
+  function resetAdminBankLockerForm() {
+    document.getElementById('edit_locker_id').value = '';
+    document.getElementById('adm_locker_name').value = '';
+    document.getElementById('adm_locker_no').value = '';
+    document.getElementById('admLockerFormTitle').innerText = "🔐 வங்கி வாரியான லாக்கர்கள் உருவாக்கம் (Bank Lockers Master)";
+    document.getElementById('btnSubmitLocker').innerText = "+ லாக்கரைச் சேர்";
+    document.getElementById('btnCancelLockerEdit').classList.add('hidden');
+  }
+
+  async function submitAdminBankLocker() {
+    const editId = document.getElementById('edit_locker_id')?.value;
     const bankId = document.getElementById('adm_locker_bank_id')?.value;
     const lockerName = document.getElementById('adm_locker_name')?.value.trim();
     const lockerNo = document.getElementById('adm_locker_no')?.value.trim();
     if (!bankId || !lockerName) return alert("நிறுவன வங்கி மற்றும் லாக்கர் பெயரை உள்ளிடவும்.");
 
-    const res = await fetch('/api/admin/bank-locker/create', {
-      method: 'POST',
+    const url = editId ? `/api/admin/bank-locker/${editId}` : '/api/admin/bank-locker/create';
+    const method = editId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method: method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ company_bank_id: parseInt(bankId), locker_name: lockerName, locker_no: lockerNo })
     });
     const out = await res.json();
     if (res.ok) {
       alert("✅ " + out.message);
-      document.getElementById('adm_locker_name').value = '';
-      document.getElementById('adm_locker_no').value = '';
+      resetAdminBankLockerForm();
       loadAdminBankLockers();
     } else alert("❌ " + (out.detail || "பிழை"));
   }
 
-  async function deleteAdminBankLocker(id) {
-    if (!confirm("இந்த லாக்கரை நீக்கவா?")) return;
-    await fetch(`/api/admin/bank-locker/${id}`, { method: 'DELETE' });
-    loadAdminBankLockers();
+  async function toggleAdminBankLockerStatus(id) {
+    const res = await fetch(`/api/admin/bank-locker/${id}/toggle-active`, { method: 'PATCH' });
+    const out = await res.json();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      loadAdminBankLockers();
+    } else alert("❌ " + (out.detail || "மாற்ற முடியவில்லை"));
   }
 
-  // வங்கி மாறும்போது அந்த வங்கிக்குரிய லாக்கர் பெயர்களை மட்டும் டிராப்மெனுவில் நிரப்புதல்
+  async function deleteAdminBankLocker(id) {
+    if (!confirm("இந்த லாக்கரை நிரந்தரமாக நீக்கவா?")) return;
+    const res = await fetch(`/api/admin/bank-locker/${id}`, { method: 'DELETE' });
+    const out = await res.json();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      loadAdminBankLockers();
+    } else alert("❌ " + (out.detail || "நீக்க முடியவில்லை"));
+  }
+
   function filterLockersForSelectedBank() {
     const bankId = document.getElementById('bp_company_bank_id')?.value;
     const lockerSel = document.getElementById('bp_locker_name');
     if (!lockerSel) return;
 
-    const matched = adminBankLockersCache.filter(l => String(l.company_bank_id) === String(bankId));
+    const matched = adminBankLockersCache.filter(l => String(l.company_bank_id) === String(bankId) && l.is_active !== false);
     if (matched.length === 0) {
-      lockerSel.innerHTML = `<option value="">-- இந்த வங்கிக்கு லாக்கர் இல்லை (நிர்வாகத்தில் சேர்க்கவும்) --</option>`;
+      lockerSel.innerHTML = `<option value="">-- இந்த வங்கிக்கு Active லாக்கர் இல்லை --</option>`;
     } else {
       lockerSel.innerHTML = `<option value="">-- லாக்கர் பெயரைத் தேர்வு செய்க --</option>` +
         matched.map(l => `<option value="${l.locker_name}">${l.locker_name}${l.locker_no ? ' (' + l.locker_no + ')' : ''}</option>`).join('');
@@ -13135,14 +13191,12 @@
 
   document.getElementById('bp_company_bank_id')?.addEventListener('change', filterLockersForSelectedBank);
 
-  // Admin டேப் திறக்கும்போது லாக்கர் பட்டியலையும் ஏற்றுதல்
   const _origLoadCompanyBanksList = loadCompanyBanksList;
   loadCompanyBanksList = async function() {
     await _origLoadCompanyBanksList();
     await loadAdminBankLockers();
   };
 
-  // Bank Pledge சாளரம் திறக்கும்போது லாக்கர்களை ஏற்றி முதல் வங்கிக்குரிய லாக்கர்களைக் காட்டுதல்
   const _origOpenHqBankPledgeModal = openHqBankPledgeModal;
   openHqBankPledgeModal = async function() {
     await _origOpenHqBankPledgeModal();
@@ -13150,7 +13204,6 @@
     filterLockersForSelectedBank();
   };
 
-  // Bank Pledge சமர்ப்பிக்கும்போது Locker Name கட்டாயம் தேர்வு செய்யப்பட்டுள்ளதா எனச் சரிபார்த்தல்
   submitHqBankPledgeForm = async function() {
     const lnos = getSelectedPacketLoanNos();
     const compBankId = document.getElementById('bp_company_bank_id').value;

@@ -13569,14 +13569,48 @@
   })();
 </script>
 <script>
-  (function fixAllCustomerNamesDirect() {
-    if (window._fixAllCustomerNamesDirectDone) return;
-    window._fixAllCustomerNamesDirectDone = true;
+  (function fixEveryCustomerNameEverywhereFinal() {
+    if (window._fixEveryCustomerNameEverywhereFinalDone) return;
+    window._fixEveryCustomerNameEverywhereFinalDone = true;
 
-    const nameById = {};
-    const nameByLoan = {};
-    const nameByVisit = {};
-    let isFetchingNames = false;
+    const custMapById = {};
+    const custMapByLoan = {};
+    const custMapByVisit = {};
+    let busyFetching = false;
+
+    function extractNameFromObj(obj) {
+      if (!obj || typeof obj !== 'object') return '';
+      const cand =
+        obj.customer_name ||
+        obj.cust_name ||
+        obj.full_name ||
+        obj.name ||
+        obj.beneficiary_name ||
+        obj.mg_customers?.name ||
+        obj.mg_customers?.full_name ||
+        obj.mg_customers?.customer_name ||
+        obj.customer?.name ||
+        obj.customer?.full_name ||
+        '';
+      const clean = String(cand).trim();
+      if (!clean || clean === '-' || clean.startsWith('வாடிக்கையாளர் #')) return '';
+      return clean;
+    }
+
+    function indexRecords(rows, urlStr = '') {
+      if (!Array.isArray(rows)) return;
+      rows.forEach(r => {
+        const nm = extractNameFromObj(r);
+        if (!nm) return;
+
+        if (r.customer_id) custMapById[String(r.customer_id)] = nm;
+        if (urlStr.includes('customer') && r.id) custMapById[String(r.id)] = nm;
+        if (r.loan_no) custMapByLoan[String(r.loan_no).trim().toUpperCase()] = nm;
+        if (r.id && (urlStr.includes('visit') || urlStr.includes('exemption') || urlStr.includes('approval'))) {
+          custMapByVisit[String(r.id)] = nm;
+        }
+      });
+    }
 
     const origFetch = window.fetch;
     window.fetch = async function() {
@@ -13585,122 +13619,111 @@
         const clone = response.clone();
         const urlStr = typeof arguments[0] === 'string' ? arguments[0] : (arguments[0]?.url || '');
         const json = await clone.json().catch(() => null);
-        const rows = Array.isArray(json) ? json : (json?.data || []);
-
-        if (Array.isArray(rows)) {
-          rows.forEach(r => {
-            const nm =
-              r.customer_name ||
-              r.cust_name ||
-              r.full_name ||
-              r.name ||
-              r.mg_customers?.name ||
-              r.mg_customers?.full_name;
-
-            if (r.customer_id && nm && nm !== '-') nameById[String(r.customer_id)] = nm;
-            if (urlStr.includes('customer') && r.id && nm && nm !== '-') nameById[String(r.id)] = nm;
-            if (r.loan_no && nm && nm !== '-') nameByLoan[String(r.loan_no).trim().toUpperCase()] = nm;
-            if (r.id && (urlStr.includes('visit') || urlStr.includes('exemption') || urlStr.includes('approval')) && nm && nm !== '-') {
-              nameByVisit[String(r.id)] = nm;
-            }
+        if (json) {
+          if (Array.isArray(json)) indexRecords(json, urlStr);
+          if (Array.isArray(json.data)) indexRecords(json.data, urlStr);
+          ['pending_kyc', 'pending_updates', 'pending_visits', 'pending_payouts', 'pending_receipts'].forEach(k => {
+            if (Array.isArray(json[k])) indexRecords(json[k], urlStr);
           });
-        }
-
-        if (json?.visit && json?.customer) {
-          const vId = String(json.visit.id || '');
-          const cNm = json.customer.name || json.customer.full_name;
-          if (vId && cNm) nameByVisit[vId] = cNm;
-          if (json.visit.customer_id && cNm) nameById[String(json.visit.customer_id)] = cNm;
+          if (json.visit && json.customer) {
+            const cNm = extractNameFromObj(json.customer);
+            if (cNm) {
+              if (json.visit.id) custMapByVisit[String(json.visit.id)] = cNm;
+              if (json.visit.customer_id) custMapById[String(json.visit.customer_id)] = cNm;
+            }
+          }
         }
       } catch (e) {}
       return response;
     };
 
-    async function resolveMissingNamesFromServer(loanNos, visitIds) {
-      if (isFetchingNames) return;
-      isFetchingNames = true;
+    async function fetchMissingFromEndpoints(loansArr, visitsArr) {
+      if (busyFetching) return;
+      busyFetching = true;
       try {
-        for (const lno of loanNos) {
-          if (!nameByLoan[lno]) {
-            const r = await origFetch(`/api/hq/master-audit-search?query=${encodeURIComponent(lno)}`).catch(() => null);
-            if (r && r.ok) {
-              const d = await r.json().catch(() => null);
-              const cNm = d?.customer?.name || d?.customer?.full_name;
-              if (cNm) nameByLoan[lno] = cNm;
+        for (const lno of loansArr) {
+          if (!custMapByLoan[lno]) {
+            const resp = await origFetch(`/api/hq/master-audit-search?query=${encodeURIComponent(lno)}`).catch(() => null);
+            if (resp && resp.ok) {
+              const d = await resp.json().catch(() => null);
+              const cNm = extractNameFromObj(d?.customer) || extractNameFromObj(d);
+              if (cNm) custMapByLoan[lno] = cNm;
             }
           }
         }
-        for (const vid of visitIds) {
-          if (!nameByVisit[vid]) {
-            const r = await origFetch(`/api/hq/visit-details/${encodeURIComponent(vid)}`).catch(() => null);
-            if (r && r.ok) {
-              const d = await r.json().catch(() => null);
-              const cNm = d?.customer?.name || d?.customer?.full_name;
-              if (cNm) nameByVisit[vid] = cNm;
+        for (const vid of visitsArr) {
+          if (!custMapByVisit[vid]) {
+            const resp = await origFetch(`/api/hq/visit-details/${encodeURIComponent(vid)}`).catch(() => null);
+            if (resp && resp.ok) {
+              const d = await resp.json().catch(() => null);
+              const cNm = extractNameFromObj(d?.customer) || extractNameFromObj(d?.visit);
+              if (cNm) custMapByVisit[vid] = cNm;
             }
           }
         }
       } catch (e) {}
-      isFetchingNames = false;
+      busyFetching = false;
     }
 
-    function applyNamesToDom() {
-      const missingLoans = new Set();
-      const missingVisits = new Set();
+    function fillAllTables() {
+      const needLoans = new Set();
+      const needVisits = new Set();
 
       document.querySelectorAll('table').forEach(tbl => {
-        const headers = Array.from(tbl.querySelectorAll('th')).map(th => th.innerText.trim());
-        const custColIdx = headers.findIndex(h => h.includes('வாடிக்கையாளர்'));
-        if (custColIdx === -1) return;
+        const ths = Array.from(tbl.querySelectorAll('th')).map(th => th.innerText.trim());
+        let nameIdx = ths.findIndex(t => t.includes('வாடிக்கையாளர்') || t === 'பெயர்');
+        if (nameIdx === -1) return;
 
         tbl.querySelectorAll('tbody tr').forEach(tr => {
-          const cells = tr.querySelectorAll('td');
-          const nameCell = cells[custColIdx];
-          if (!nameCell) return;
+          const tds = tr.querySelectorAll('td');
+          const cell = tds[nameIdx];
+          if (!cell) return;
 
-          const curVal = nameCell.innerText.trim();
-          if (curVal !== '-' && curVal !== '') return;
+          const txt = cell.innerText.trim();
+          if (txt !== '-' && txt !== '' && !txt.startsWith('வாடிக்கையாளர் #')) return;
 
-          const rowText = tr.innerText || '';
-          const loanMatch = rowText.match(/[A-Z]{2,6}\/\d+/i);
+          const fullRowText = tr.innerText || '';
+
+          // 1. கடன் எண் இருந்தால் (எ.கா: KMK/1401)
+          const loanMatch = fullRowText.match(/[A-Z]{2,6}\/\d+/i);
           if (loanMatch) {
             const lno = loanMatch[0].toUpperCase();
-            if (nameByLoan[lno]) {
-              nameCell.innerText = nameByLoan[lno];
+            if (custMapByLoan[lno]) {
+              cell.innerText = custMapByLoan[lno];
               return;
-            } else {
-              missingLoans.add(lno);
             }
+            needLoans.add(lno);
           }
 
-          const visMatch = rowText.match(/#VIS-(\d+)/i);
+          // 2. வருகை எண் இருந்தால் (எ.கா: #VIS-4)
+          const visMatch = fullRowText.match(/#VIS-(\d+)/i);
           if (visMatch) {
             const vid = visMatch[1];
-            if (nameByVisit[vid]) {
-              nameCell.innerText = nameByVisit[vid];
+            if (custMapByVisit[vid]) {
+              cell.innerText = custMapByVisit[vid];
               return;
-            } else {
-              missingVisits.add(vid);
             }
+            needVisits.add(vid);
           }
 
-          const numMatch = rowText.match(/\b(\d{1,6})\b/);
-          if (numMatch && nameById[numMatch[1]]) {
-            nameCell.innerText = nameById[numMatch[1]];
+          // 3. வாடிக்கையாளர் ID எண் இருந்தால்
+          const numMatch = fullRowText.match(/\b(\d{1,6})\b/);
+          if (numMatch && custMapById[numMatch[1]]) {
+            cell.innerText = custMapById[numMatch[1]];
           }
         });
       });
 
-      if (missingLoans.size > 0 || missingVisits.size > 0) {
-        resolveMissingNamesFromServer(Array.from(missingLoans).slice(0, 15), Array.from(missingVisits).slice(0, 10));
+      if (needLoans.size > 0 || needVisits.size > 0) {
+        fetchMissingFromEndpoints(Array.from(needLoans).slice(0, 20), Array.from(needVisits).slice(0, 12));
       }
     }
 
-    const obs = new MutationObserver(() => applyNamesToDom());
+    const mo = new MutationObserver(() => fillAllTables());
     if (document.body) {
-      obs.observe(document.body, { childList: true, subtree: true });
+      mo.observe(document.body, { childList: true, subtree: true });
     }
-    setInterval(applyNamesToDom, 1500);
+    setInterval(fillAllTables, 1200);
   })();
 </script>
 </body>

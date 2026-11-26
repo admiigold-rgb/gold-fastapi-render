@@ -13729,5 +13729,189 @@
     setInterval(updateNameColumns, 1500);
   })();
 </script>
+<script>
+  (function enhanceVisitDetailModalFullView() {
+    if (window._enhanceVisitDetailModalFullViewDone) return;
+    window._enhanceVisitDetailModalFullViewDone = true;
+
+    window.viewVisitDetails = async function(visitId) {
+      const modal = document.getElementById('visitDetailModal');
+      const container = document.getElementById('vd_loans_container');
+      const denomBox = document.getElementById('vd_denom_box');
+
+      document.getElementById('vd_title').innerText = `வருகை முழு விபரம் (#VIS-${visitId})`;
+      container.innerHTML = `<p class="text-xs text-brand-violet font-bold text-center py-4">அனைத்து நடவடிக்கைகளும் திரட்டப்படுகின்றன...</p>`;
+      denomBox.innerHTML = '';
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+
+      try {
+        const res = await fetch(`/api/hq/visit-details/${visitId}?t=${Date.now()}`);
+        const data = await res.json();
+        if (!res.ok) {
+          container.innerHTML = `<p class="text-xs text-rose-600 text-center py-4">❌ பிழை: ${data.detail}</p>`;
+          return;
+        }
+
+        const v = data.visit || {};
+        const c = data.customer || {};
+        const b = data.branch || {};
+        const s = data.settlement || {};
+        const otp = data.otp_info || {};
+
+        // 1. அடிப்படை விபரம்
+        document.getElementById('vd_cust_name').innerText = c.name || '-';
+        document.getElementById('vd_cust_mobile').innerText = c.mobile || '-';
+        document.getElementById('vd_branch').innerText = `${b.branch_name || 'கிளை'} (${b.branch_code || v.branch_id})`;
+        document.getElementById('vd_purpose').innerText = v.actions_summary || v.purpose || '-';
+        document.getElementById('vd_net_amount').innerText = `₹ ${parseFloat(v.net_amount || s.net_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('vd_settle_type').innerText = s.settlement_type || 'நேரடித் தீர்வு';
+
+        // 2. ரொக்கம், வங்கி & தாள்கள் விபரம்
+        const cashAmt = parseFloat(v.cash_amount || s.cash_amount || 0);
+        const bankAmt = parseFloat(v.bank_amount || s.bank_amount || 0);
+        document.getElementById('vd_cash_amt').innerText = `₹ ${cashAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('vd_bank_amt').innerText = `₹ ${bankAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+        document.getElementById('vd_bank_ref').innerText = s.bank_ref_no ? `Ref: ${s.bank_ref_no} (${s.bank_name || ''})` : '';
+
+        const denomArr = s.mg_cash_denominations || s.test_cash_denominations || [];
+        const dObj = denomArr.length > 0 ? denomArr[0] : null;
+        if (dObj) {
+          denomBox.innerHTML = `
+            <span><b>500:</b> ${dObj.c_500 || 0}</span> |
+            <span><b>200:</b> ${dObj.c_200 || 0}</span> |
+            <span><b>100:</b> ${dObj.c_100 || 0}</span> |
+            <span><b>50:</b> ${dObj.c_50 || 0}</span> |
+            <span><b>20:</b> ${dObj.c_20 || 0}</span> |
+            <span><b>10:</b> ${dObj.c_10 || 0}</span> |
+            <span><b>சில்லறை:</b> ₹${dObj.c_coins || 0}</span>
+          `;
+        } else {
+          denomBox.innerHTML = `<span class="text-slate-400">ரொக்கத் தாள்கள் பதிவு செய்யப்படவில்லை.</span>`;
+        }
+
+        // 3. OTP நிலை
+        const otpBadge = document.getElementById('vd_otp_badge');
+        const otpText = document.getElementById('vd_otp_text');
+        if (v.otp_exempted === true || v.otp_exemption_status === 'APPROVED') {
+          otpBadge.innerText = "விலக்கு அளிக்கப்பட்டது (EXEMPTED)";
+          otpBadge.className = "px-2.5 py-1 rounded-lg font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300";
+          otpText.innerText = "தலைமையகத்தின் சிறப்பு அனுமதியுடன் OTP விலக்கு பெற்று பரிவர்த்தனை செய்யப்படுகிறது.";
+        } else if (otp.otp_code) {
+          otpBadge.innerText = otp.is_verified ? "சரிபார்க்கப்பட்டது (VERIFIED)" : "நிலுவையில் (PENDING)";
+          otpBadge.className = otp.is_verified ? "px-2.5 py-1 rounded-lg font-black text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300" : "px-2.5 py-1 rounded-lg font-black text-[11px] bg-amber-100 text-amber-900 border border-yellow-300";
+          otpText.innerText = `அனுப்பப்பட்ட OTP: [${otp.otp_code}] | மொபைல்: ${otp.mobile}`;
+        } else {
+          otpBadge.innerText = "இல்லை";
+          otpBadge.className = "px-2.5 py-1 rounded-lg font-black text-[11px] bg-slate-100 text-slate-600";
+          otpText.innerText = "இந்த வருகைக்கு OTP கோரிக்கை எதுவும் இன்னும் உருவாக்கப்படவில்லை.";
+        }
+
+        // 4. இந்த வருகையில் நடந்த அனைத்து நடவடிக்கைகளையும் வரிசையாகக் காட்டுதல்
+        let htmlBlocks = [];
+
+        if (v.actions_summary) {
+          htmlBlocks.push(`
+            <div class="p-2.5 bg-indigo-50 rounded-xl border border-indigo-200 text-xs">
+              <span class="font-black text-indigo-950 block">📋 வருகை நடவடிக்கைச் சுருக்கம்:</span>
+              <span class="text-slate-800 font-semibold">${v.actions_summary}</span>
+            </div>
+          `);
+        }
+
+        // A. புதிய நகைக்கடன்கள் + நகைப் படம் + நகைகள் பட்டியல்
+        (data.loans || []).forEach(loan => {
+          const itemsList = loan.mg_gold_loan_items || loan.test_gold_loan_items || [];
+          const itemsHtml = itemsList.map(it =>
+            `<span class="inline-block bg-white border border-purple-200 px-2 py-0.5 rounded text-[11px] mr-1 mb-1">
+              ${it.item_type} (${it.item_count} எண்) - Gross: <b>${it.gross_weight}g</b> | Net: <b class="text-emerald-700">${it.net_weight}g</b> (${it.purity})
+            </span>`
+          ).join('');
+
+          const photoSrc = loan.ornament_photo || loan.photo_url || '';
+          const photoHtml = photoSrc ? `
+            <div class="mt-2 flex items-center gap-3 bg-white p-2 rounded-xl border border-amber-300">
+              <img src="${photoSrc}" onclick="previewDocImage('${photoSrc}')" class="w-20 h-20 rounded-xl object-cover border-2 border-brand-gold cursor-pointer shrink-0" title="பெரிதாகப் பார்க்க கிளிக் செய்யவும்">
+              <div class="space-y-1">
+                <span class="text-[11px] font-black text-amber-950 block">📸 அடகு நகையின் புகைப்படம்</span>
+                <button type="button" onclick="previewDocImage('${photoSrc}')" style="background-color:#d97706;color:#fff;" class="px-3 py-1 rounded-lg text-[11px] font-bold shadow cursor-pointer">🔍 படத்தைப் பெரிதாக்கிப் பார்</button>
+              </div>
+            </div>
+          ` : `<div class="mt-1 text-[11px] text-rose-600 font-bold">⚠️ நகையின் புகைப்படம் இணைக்கப்படவில்லை</div>`;
+
+          htmlBlocks.push(`
+            <div class="p-3 bg-purple-50/70 rounded-xl border-2 border-purple-200 text-xs space-y-1.5">
+              <div class="flex justify-between items-center font-bold">
+                <span class="text-brand-violet font-mono text-sm">🪙 புதிய நகைக்கடன்: ${loan.loan_no}</span>
+                <span class="text-rose-600 font-black text-sm">கடன் தொகை: ₹${parseFloat(loan.loan_amount || 0).toLocaleString('en-IN')}</span>
+              </div>
+              <div class="text-[11px] text-slate-600">திட்டம்: <b>${loan.scheme_name}</b> | Processing கட்டணம்: ₹${loan.charges_amount || 0} | நிகர எடை: <b>${loan.total_net_weight || 0}g</b></div>
+              <div class="pt-1">${itemsHtml || '<span class="text-slate-400">நகைகள் விபரம் இல்லை</span>'}</div>
+              ${photoHtml}
+            </div>
+          `);
+        });
+
+        // B. வட்டி வரவு / பகுதி அசல் / கடன் முடிப்பு
+        (data.repayments || []).forEach(rp => {
+          const actLabels = { 'INTEREST': 'வட்டி வரவு', 'PART_PRINCIPAL': 'பகுதி அசல் + வட்டி', 'FULL_CLOSURE': 'முழு கடன் முடிப்பு' };
+          htmlBlocks.push(`
+            <div class="p-3 bg-emerald-50/70 rounded-xl border border-emerald-300 text-xs space-y-1">
+              <div class="flex justify-between font-bold">
+                <span class="text-emerald-900">💵 ${actLabels[rp.action_type] || rp.action_type} (${rp.loan_no})</span>
+                <span class="text-emerald-700 font-black">மொத்த வரவு: ₹${(parseFloat(rp.interest_paid||0) - parseFloat(rp.discount_amount||0) + parseFloat(rp.principal_paid||0) + parseFloat(rp.other_charges||0) + parseFloat(rp.auction_notice_charges||0)).toLocaleString('en-IN')}</span>
+              </div>
+              <div class="text-[11px] text-slate-700">வட்டி: <b>₹${rp.interest_paid || 0}</b> | தள்ளுபடி: <b>₹${rp.discount_amount || 0}</b> | அசல்: <b>₹${rp.principal_paid || 0}</b> | இதர கட்டணம்: <b>₹${(parseFloat(rp.other_charges||0) + parseFloat(rp.auction_notice_charges||0))}</b></div>
+            </div>
+          `);
+        });
+
+        // C. பழைய தங்கம் வாங்குதல் (GP)
+        (data.gold_purchases || []).forEach(gp => {
+          htmlBlocks.push(`
+            <div class="p-3 bg-amber-50 rounded-xl border border-amber-300 text-xs flex justify-between items-center">
+              <div>
+                <b class="text-amber-950">🛍️ நகை வாங்குதல் (${gp.gp_no})</b>
+                <span class="block text-[11px] text-slate-600">${gp.total_items} நகைகள் | நிகர எடை: ${gp.total_net_weight}g</span>
+              </div>
+              <b class="text-rose-600 font-black">₹${parseFloat(gp.total_purchase_amount || 0).toLocaleString('en-IN')}</b>
+            </div>
+          `);
+        });
+
+        // D. நகை விற்பனை (GS)
+        (data.gold_sales || []).forEach(gs => {
+          htmlBlocks.push(`
+            <div class="p-3 bg-indigo-50 rounded-xl border border-indigo-200 text-xs flex justify-between items-center">
+              <div>
+                <b class="text-indigo-950">💍 நகை விற்பனை (${gs.gs_no})</b>
+                <span class="block text-[11px] text-slate-600">Tag: ${gs.item_tag_no} | நிகர எடை: ${gs.net_weight}g</span>
+              </div>
+              <b class="text-emerald-700 font-black">₹${parseFloat(gs.total_sale_amount || 0).toLocaleString('en-IN')}</b>
+            </div>
+          `);
+        });
+
+        // E. GSS / RD / SI பரிவர்த்தனைகள்
+        (data.gss_txns || []).forEach(g => {
+          htmlBlocks.push(`<div class="p-2.5 bg-purple-50 rounded-xl border border-purple-200 text-xs flex justify-between"><b>✨ நகை சேமிப்பு (GSS - ${g.receipt_no})</b><b class="text-emerald-700">₹${parseFloat(g.amount_paid||0).toLocaleString('en-IN')} (${g.weight_credited||0}g)</b></div>`);
+        });
+        (data.rd_txns || []).forEach(r => {
+          htmlBlocks.push(`<div class="p-2.5 bg-blue-50 rounded-xl border border-blue-200 text-xs flex justify-between"><b>💰 தொடர்வைப்பு (RD - ${r.receipt_no})</b><b class="text-emerald-700">₹${parseFloat(r.amount_paid||0).toLocaleString('en-IN')}</b></div>`);
+        });
+        (data.si_payouts || []).forEach(sp => {
+          htmlBlocks.push(`<div class="p-2.5 bg-teal-50 rounded-xl border border-teal-200 text-xs flex justify-between"><b>💎 SI வட்டி பட்டுவாடா (${sp.voucher_no})</b><b class="text-rose-600">₹${parseFloat(sp.return_amount||0).toLocaleString('en-IN')}</b></div>`);
+        });
+
+        container.innerHTML = htmlBlocks.length > 0
+          ? htmlBlocks.join('')
+          : `<p class="text-xs text-slate-400 text-center py-3">இந்த வருகைக்குரிய விரிவான பதிவுகள் கிடைக்கவில்லை.</p>`;
+
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-rose-600 text-center py-4">❌ இணைப்புப் பிழை: ${err.message}</p>`;
+      }
+    };
+  })();
+</script>
 </body>
 </html>

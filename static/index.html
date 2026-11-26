@@ -13422,6 +13422,28 @@
         }
       };
     }
+    const origSubmitScheme = window.submitLoanSchemeForm;
+    if (typeof origSubmitScheme === 'function') {
+      window.submitLoanSchemeForm = async function() {
+        const origGetById = document.getElementById.bind(document);
+        const dummyProcCalc = { value: origGetById('sch_pledge_calc')?.value || 'AMOUNT' };
+        const dummyProcVal = { value: origGetById('sch_pledge_val')?.value || '0' };
+
+        document.getElementById = function(elId) {
+          const found = origGetById(elId);
+          if (found) return found;
+          if (elId === 'sch_proc_calc') return dummyProcCalc;
+          if (elId === 'sch_proc_val') return dummyProcVal;
+          return null;
+        };
+
+        try {
+          return await origSubmitScheme.apply(this, arguments);
+        } finally {
+          document.getElementById = origGetById;
+        }
+      };
+    }
   })();
 </script>
 <script>

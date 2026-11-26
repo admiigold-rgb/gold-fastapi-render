@@ -5104,7 +5104,7 @@
         if (data.data && data.data.length > 0) {
           const last = data.data[0];
           const badge = last.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : (last.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800');
-          elem.innerHTML = `கடைசி கோரிக்கை: <b>${last.test_customers?.name}</b> (₹${last.amount}) - <span class="px-1.5 py-0.5 rounded font-bold text-[10px] ${badge}">${last.status}</span>`;
+          elem.innerHTML = `கடைசி கோரிக்கை: <b>${last.mg_customers?.name}</b> (₹${last.amount}) - <span class="px-1.5 py-0.5 rounded font-bold text-[10px] ${badge}">${last.status}</span>`;
         } else {
           elem.innerText = "நிலுவைகள் இல்லை.";
         }
@@ -5450,7 +5450,7 @@
       if (!item) return alert("பரிவர்த்தனை விபரம் கிடைக்கவில்லை.");
 
       document.getElementById('payout_action_transfer_id').value = item.id;
-      document.getElementById('po_cust_name').innerText = item.test_customers?.name || '-';
+      document.getElementById('po_cust_name').innerText = item.mg_customers?.name || '-';
       document.getElementById('po_amount').innerText = `₹ ${parseFloat(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
       let benDetails = `வகை: ${item.pay_mode} | பயனாளி: ${item.beneficiary_name || '-'}`;
@@ -6039,8 +6039,8 @@
               </button>
             </td>
             <td class="p-2.5 font-bold text-slate-800">
-              ${ex.test_customers?.name || '-'} 
-              <span class="text-slate-500 font-mono text-xs block">${ex.test_customers?.mobile || '-'}</span>
+              ${ex.mg_customers?.name || '-'} 
+              <span class="text-slate-500 font-mono text-xs block">${ex.mg_customers?.mobile || '-'}</span>
             </td>
             <td class="p-2.5 text-rose-700 font-semibold text-xs">${ex.purpose || 'காரணம் குறிப்பிடப்படவில்லை'}</td>
             <td class="p-2.5 text-center space-x-2 whitespace-nowrap">
@@ -6093,7 +6093,7 @@
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td class="p-2.5">
-                  <span class="font-bold text-slate-800 block">${v.test_customers?.name || '-'}</span>
+                  <span class="font-bold text-slate-800 block">${v.mg_customers?.name || '-'}</span>
                   <!-- 👇 ஒரே கிளிக்கில் விபரம் பார்க்க வருகை எண் பட்டன் 👇 -->
                   <button type="button" onclick="viewVisitDetails(${v.id})" 
                           title="முழு விபரங்களைப் பார்க்க கிளிக் செய்யவும்" 
@@ -6101,7 +6101,7 @@
                     #VIS-${v.id} 🔍
                   </button>
                 </td>
-                <td class="p-2.5 font-mono text-xs text-slate-600">${v.test_customers?.mobile || '-'}</td>
+                <td class="p-2.5 font-mono text-xs text-slate-600">${v.mg_customers?.mobile || '-'}</td>
                 <td class="p-2.5 text-xs text-slate-700">${v.actions_summary || v.purpose || 'நகைக்கடன் பரிவர்த்தனை'}</td>
                 <td class="p-2.5 font-bold text-brand-violet">${v.test_branches?.branch_name || 'கிளை #' + v.branch_id}</td>
                 <td class="p-2.5 text-center space-x-2 whitespace-nowrap">
@@ -6144,8 +6144,8 @@
               const tr = document.createElement('tr');
               tr.innerHTML = `
                 <td class="p-2.5">
-                  <span class="font-bold text-slate-800 block">${u.test_customers?.name || '-'}</span>
-                  <span class="text-[10px] text-slate-500 font-mono">${u.test_customers?.mobile || '-'}</span>
+                  <span class="font-bold text-slate-800 block">${u.mg_customers?.name || '-'}</span>
+                  <span class="text-[10px] text-slate-500 font-mono">${u.mg_customers?.mobile || '-'}</span>
                 </td>
                 <td class="p-2.5 font-bold text-brand-violet">${u.test_branches?.branch_name || 'கிளை #' + u.branch_id}</td>
                 <td class="p-2.5 text-xs text-slate-700 leading-relaxed">${summaryParts.join('<br>') || 'விபரங்கள் இல்லை'}</td>
@@ -6214,7 +6214,7 @@
             payouts.forEach(p => {
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td class="p-2.5 font-bold">${p.test_customers?.name || '-'}</td>
+                <td class="p-2.5 font-bold">${p.mg_customers?.name || '-'}</td>
                 <td class="p-2.5 font-bold text-rose-600">₹${parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td class="p-2.5">${p.pay_mode}</td>
                 <td class="p-2.5 text-xs font-mono">${p.pay_mode === 'UPI' ? p.upi_id : (p.account_no + ' (' + p.ifsc_code + ')')}</td>
@@ -6248,7 +6248,7 @@
             receipts.forEach(r => {
               const tr = document.createElement('tr');
               tr.innerHTML = `
-                <td class="p-2.5 font-bold">${r.test_customers?.name || '-'}</td>
+                <td class="p-2.5 font-bold">${r.mg_customers?.name || '-'}</td>
                 <td class="p-2.5 font-bold text-emerald-600">₹${parseFloat(r.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                 <td class="p-2.5">${r.company_bank_name || '-'}</td>
                 <td class="p-2.5 font-mono">${r.receipt_ref_no || '-'}</td>
@@ -9928,8 +9928,8 @@
       list = list.filter(p => {
         const lno = (p.loan_no || '').toLowerCase();
         const prevLno = (p.previous_loan_no || '').toLowerCase();
-        const cName = (p.test_customers?.name || '').toLowerCase();
-        const cMob = (p.test_customers?.mobile || '').toLowerCase();
+        const cName = (p.mg_customers?.name || '').toLowerCase();
+        const cMob = (p.mg_customers?.mobile || '').toLowerCase();
         const bRef = currentPacketViewRole === 'HQ' ? (p.bank_loan_ref || '').toLowerCase() : '';
         return lno.includes(q) || prevLno.includes(q) || cName.includes(q) || cMob.includes(q) || bRef.includes(q);
       });
@@ -10171,7 +10171,7 @@
         <tr class="${isHanded ? 'bg-slate-50 opacity-75' : (st === 'REQUESTED_BY_BRANCH' && currentPacketViewRole === 'HQ' ? 'bg-indigo-50/70' : '')}">
           <td class="p-2.5 text-center">${checkboxHtml}</td>
           <td class="p-2.5 font-mono font-black text-brand-violet">${p.loan_no}${branchTag}${prevNote}</td>
-          <td class="p-2.5"><b>${p.test_customers?.name || '-'}</b><br><span class="font-mono text-[11px]">${p.test_customers?.mobile || '-'}</span></td>
+          <td class="p-2.5"><b>${p.mg_customers?.name || '-'}</b><br><span class="font-mono text-[11px]">${p.mg_customers?.mobile || '-'}</span></td>
           ${locationTd}
           <td class="p-2.5">${statusBadge}${currentPacketViewRole === 'BRANCH' ? specBadge : ''}<br><span class="text-[10px] text-slate-500">${displayAuditNotes}</span></td>
           <td class="p-2.5 text-center">${actionBtns || '-'}</td>
@@ -13589,7 +13589,7 @@
         obj.beneficiary_name ||
         obj.mg_customers?.name ||
         obj.mg_customers?.full_name ||
-        obj.test_customers?.name ||
+        obj.mg_customers?.name ||
         obj.customer?.name ||
         '';
       const val = String(raw).trim();

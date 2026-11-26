@@ -304,6 +304,10 @@ class LoanSchemePayload(BaseModel):
     processing_charge_type: str = "PLEDGE"
     processing_charge_calc: str = "AMOUNT"
     processing_charge_value: float = 0.00
+    pledge_charge_calc: Optional[str] = "AMOUNT"
+    pledge_charge_value: Optional[float] = 0.00
+    release_charge_calc: Optional[str] = "AMOUNT"
+    release_charge_value: Optional[float] = 0.00
     max_ltv_percentage: float = 75.00
     interest_slabs: List[InterestSlab]
     purity_rate_multipliers: Optional[Dict[str, float]] = {

@@ -6777,17 +6777,22 @@
       const txnDateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
       const origLoanDateStr = loan.transaction_date || (loan.created_at ? loan.created_at.split('T')[0] : txnDateStr);
       
-      // வரலாற்றில் (repayment_history) ஒரு பதிவாவது இருந்தால் மட்டுமே முன்பு வட்டி/அசல் கட்டப்பட்டுள்ளது என அர்த்தம்
-      const isFirstTimePayment = historyList.length === 0;
+      /// வரலாறு அல்லது மைக்ரேஷன் வழியாக ஏற்றப்பட்ட last_interest_paid_date உள்ளதா எனச் சரிபார்த்தல்
+      const migratedPaidDate = loan.last_interest_paid_date ? String(loan.last_interest_paid_date).split('T')[0] : null;
+      const hasMigratedInterestDate = Boolean(migratedPaidDate && migratedPaidDate > origLoanDateStr);
+      const isFirstTimePayment = (historyList.length === 0 && !hasMigratedInterestDate);
 
-      let lastPaidDate = null;
-      if (!isFirstTimePayment) {
+      let lastPaidDate = migratedPaidDate;
+      if (historyList.length > 0) {
         const lastRec = historyList[historyList.length - 1];
-        lastPaidDate = lastRec.payment_date || lastRec.transaction_date || (lastRec.created_at ? lastRec.created_at.split('T')[0] : loan.last_interest_paid_date);
+        const histDate = lastRec.payment_date || lastRec.transaction_date || (lastRec.created_at ? lastRec.created_at.split('T')[0] : null);
+        if (histDate && (!lastPaidDate || histDate > lastPaidDate)) {
+          lastPaidDate = histDate;
+        }
       }
 
       const lastDateStr = lastPaidDate || origLoanDateStr;
-
+      
       // தேதி வித்தியாசத்தைத் துல்லியமாக (UTC நாட்கள் அடிப்படையில்) கணக்கிடுதல்
       const d1 = new Date(lastDateStr + 'T00:00:00Z');
       const d2 = new Date(txnDateStr + 'T00:00:00Z');

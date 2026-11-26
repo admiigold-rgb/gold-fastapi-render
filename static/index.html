@@ -13569,27 +13569,14 @@
   })();
 </script>
 <script>
-  (function fixAllCustomerNamesEverywhere() {
-    if (window._fixAllCustomerNamesEverywhereDone) return;
-    window._fixAllCustomerNamesEverywhereDone = true;
+  (function fixAllCustomerNamesDirect() {
+    if (window._fixAllCustomerNamesDirectDone) return;
+    window._fixAllCustomerNamesDirectDone = true;
 
-    const custNameById = {};
-    const custNameByLoan = {};
-
-    async function loadCustomersLookup() {
-      try {
-        const res = await fetch('/api/customer/search?query=a&branch_id=1').catch(() => null);
-        if (!res || !res.ok) return;
-        const out = await res.json().catch(() => null);
-        const rows = Array.isArray(out) ? out : (out?.data || []);
-        rows.forEach(c => {
-          const nm = c.name || c.full_name || c.customer_name;
-          if (c.id && nm) custNameById[String(c.id)] = nm;
-        });
-      } catch (e) {}
-    }
-
-    loadCustomersLookup();
+    const nameById = {};
+    const nameByLoan = {};
+    const nameByVisit = {};
+    let isFetchingNames = false;
 
     const origFetch = window.fetch;
     window.fetch = async function() {
@@ -13597,40 +13584,71 @@
       try {
         const clone = response.clone();
         const urlStr = typeof arguments[0] === 'string' ? arguments[0] : (arguments[0]?.url || '');
-        if (
-          urlStr.includes('packet') ||
-          urlStr.includes('otp') ||
-          urlStr.includes('exemption') ||
-          urlStr.includes('approval') ||
-          urlStr.includes('deviation') ||
-          urlStr.includes('rebate') ||
-          urlStr.includes('visit') ||
-          urlStr.includes('customer')
-        ) {
-          const json = await clone.json().catch(() => null);
-          const rows = Array.isArray(json) ? json : (json?.data || []);
-          if (Array.isArray(rows)) {
-            rows.forEach(r => {
-              const nm =
-                r.customer_name ||
-                r.cust_name ||
-                r.full_name ||
-                r.name ||
-                r.mg_customers?.name ||
-                r.mg_customers?.full_name;
-              if (r.customer_id && nm) custNameById[String(r.customer_id)] = nm;
-              if (r.id && r.name && urlStr.includes('customer')) custNameById[String(r.id)] = r.name;
-              if (r.loan_no && nm) custNameByLoan[String(r.loan_no).trim().toUpperCase()] = nm;
-            });
-          }
+        const json = await clone.json().catch(() => null);
+        const rows = Array.isArray(json) ? json : (json?.data || []);
+
+        if (Array.isArray(rows)) {
+          rows.forEach(r => {
+            const nm =
+              r.customer_name ||
+              r.cust_name ||
+              r.full_name ||
+              r.name ||
+              r.mg_customers?.name ||
+              r.mg_customers?.full_name;
+
+            if (r.customer_id && nm && nm !== '-') nameById[String(r.customer_id)] = nm;
+            if (urlStr.includes('customer') && r.id && nm && nm !== '-') nameById[String(r.id)] = nm;
+            if (r.loan_no && nm && nm !== '-') nameByLoan[String(r.loan_no).trim().toUpperCase()] = nm;
+            if (r.id && (urlStr.includes('visit') || urlStr.includes('exemption') || urlStr.includes('approval')) && nm && nm !== '-') {
+              nameByVisit[String(r.id)] = nm;
+            }
+          });
+        }
+
+        if (json?.visit && json?.customer) {
+          const vId = String(json.visit.id || '');
+          const cNm = json.customer.name || json.customer.full_name;
+          if (vId && cNm) nameByVisit[vId] = cNm;
+          if (json.visit.customer_id && cNm) nameById[String(json.visit.customer_id)] = cNm;
         }
       } catch (e) {}
       return response;
     };
 
-    function patchCustomerNameCells() {
-      const tables = document.querySelectorAll('table');
-      tables.forEach(tbl => {
+    async function resolveMissingNamesFromServer(loanNos, visitIds) {
+      if (isFetchingNames) return;
+      isFetchingNames = true;
+      try {
+        for (const lno of loanNos) {
+          if (!nameByLoan[lno]) {
+            const r = await origFetch(`/api/hq/master-audit-search?query=${encodeURIComponent(lno)}`).catch(() => null);
+            if (r && r.ok) {
+              const d = await r.json().catch(() => null);
+              const cNm = d?.customer?.name || d?.customer?.full_name;
+              if (cNm) nameByLoan[lno] = cNm;
+            }
+          }
+        }
+        for (const vid of visitIds) {
+          if (!nameByVisit[vid]) {
+            const r = await origFetch(`/api/hq/visit-details/${encodeURIComponent(vid)}`).catch(() => null);
+            if (r && r.ok) {
+              const d = await r.json().catch(() => null);
+              const cNm = d?.customer?.name || d?.customer?.full_name;
+              if (cNm) nameByVisit[vid] = cNm;
+            }
+          }
+        }
+      } catch (e) {}
+      isFetchingNames = false;
+    }
+
+    function applyNamesToDom() {
+      const missingLoans = new Set();
+      const missingVisits = new Set();
+
+      document.querySelectorAll('table').forEach(tbl => {
         const headers = Array.from(tbl.querySelectorAll('th')).map(th => th.innerText.trim());
         const custColIdx = headers.findIndex(h => h.includes('வாடிக்கையாளர்'));
         if (custColIdx === -1) return;
@@ -13640,40 +13658,49 @@
           const nameCell = cells[custColIdx];
           if (!nameCell) return;
 
-          const curText = nameCell.innerText.trim();
-          if (curText === '-' || curText === '' || curText === 'வாடிக்கையாளர்') {
-            const rowText = tr.innerText || '';
-            const loanMatch = rowText.match(/[A-Z]{2,5}\/\d+/i);
-            if (loanMatch) {
-              const mappedByLoan = custNameByLoan[loanMatch[0].toUpperCase()];
-              if (mappedByLoan) {
-                nameCell.innerText = mappedByLoan;
-                return;
-              }
-            }
+          const curVal = nameCell.innerText.trim();
+          if (curVal !== '-' && curVal !== '') return;
 
-            const visMatch = rowText.match(/#VIS-(\d+)/i);
-            if (visMatch && custNameById[visMatch[1]]) {
-              nameCell.innerText = custNameById[visMatch[1]];
+          const rowText = tr.innerText || '';
+          const loanMatch = rowText.match(/[A-Z]{2,6}\/\d+/i);
+          if (loanMatch) {
+            const lno = loanMatch[0].toUpperCase();
+            if (nameByLoan[lno]) {
+              nameCell.innerText = nameByLoan[lno];
               return;
+            } else {
+              missingLoans.add(lno);
             }
+          }
 
-            const anyNumMatch = rowText.match(/\b(\d{1,6})\b/);
-            if (anyNumMatch && custNameById[anyNumMatch[1]]) {
-              nameCell.innerText = custNameById[anyNumMatch[1]];
+          const visMatch = rowText.match(/#VIS-(\d+)/i);
+          if (visMatch) {
+            const vid = visMatch[1];
+            if (nameByVisit[vid]) {
+              nameCell.innerText = nameByVisit[vid];
+              return;
+            } else {
+              missingVisits.add(vid);
             }
+          }
+
+          const numMatch = rowText.match(/\b(\d{1,6})\b/);
+          if (numMatch && nameById[numMatch[1]]) {
+            nameCell.innerText = nameById[numMatch[1]];
           }
         });
       });
+
+      if (missingLoans.size > 0 || missingVisits.size > 0) {
+        resolveMissingNamesFromServer(Array.from(missingLoans).slice(0, 15), Array.from(missingVisits).slice(0, 10));
+      }
     }
 
-    const observer = new MutationObserver(() => {
-      patchCustomerNameCells();
-    });
+    const obs = new MutationObserver(() => applyNamesToDom());
     if (document.body) {
-      observer.observe(document.body, { childList: true, subtree: true });
+      obs.observe(document.body, { childList: true, subtree: true });
     }
-    setInterval(patchCustomerNameCells, 1200);
+    setInterval(applyNamesToDom, 1500);
   })();
 </script>
 </body>

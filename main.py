@@ -1414,31 +1414,47 @@ def get_visit_details_for_hq(visit_id: int):
         branch_res = supabase.table("mg_branches").select("branch_name, branch_code").eq("id", visit.get("branch_id", 1)).execute()
         branch = branch_res.data[0] if branch_res.data else {}
 
-        v_net_amt = float(visit.get("net_amount") or 0.0)
-        loans_query = (
+        # 1. இந்த வருகையில் உருவான அனைத்து நகைக்கடன்கள் & நகைப் படங்கள்
+        loans = (
             supabase.table("mg_gold_loans")
             .select("*, mg_gold_loan_items(*)")
-            .eq("customer_id", visit["customer_id"])
+            .eq("visit_id", visit_id)
+            .order("id", desc=False)
+            .execute()
+            .data or []
         )
-        if visit.get("created_at"):
-            loans_query = loans_query.gte("created_at", visit["created_at"])
-        raw_loans = loans_query.order("id", desc=True).limit(5).execute().data or []
 
-        matched_loans = []
-        if raw_loans:
-            for l in raw_loans:
-                l_amt = float(l.get("loan_amount") or 0.0)
-                l_net = float(l.get("net_payable_amount") or 0.0)
-                if v_net_amt > 0 and (abs(l_amt - v_net_amt) < 1000 or abs(l_net - v_net_amt) < 1000):
-                    matched_loans = [l]
-                    break
-            if not matched_loans:
-                matched_loans = [raw_loans[0]]
+        # 2. இந்த வருகையில் கட்டப்பட்ட வட்டி / பகுதி அசல் / கடன் முடிப்புகள்
+        repayments = (
+            supabase.table("mg_loan_repayments")
+            .select("*")
+            .eq("visit_id", visit_id)
+            .order("id", desc=False)
+            .execute()
+            .data or []
+        )
+        if repayments:
+            loan_ids = list({r.get("loan_id") for r in repayments if r.get("loan_id")})
+            lno_map = {}
+            if loan_ids:
+                l_rows = supabase.table("mg_gold_loans").select("id, loan_no").in_("id", loan_ids).execute().data or []
+                lno_map = {x["id"]: x.get("loan_no", "-") for x in l_rows}
+            for r in repayments:
+                r["loan_no"] = lno_map.get(r.get("loan_id"), f"Loan #{r.get('loan_id')}")
 
+        # 3. பழைய தங்கம் வாங்குதல் (GP), நகை விற்பனை (GS), GSS, RD, SI விவரங்கள்
+        gold_purchases = supabase.table("mg_gold_purchases").select("*").eq("visit_id", visit_id).execute().data or []
+        gold_sales = supabase.table("mg_gold_sales").select("*").eq("visit_id", visit_id).execute().data or []
+        gss_txns = supabase.table("mg_savings_transactions").select("*").eq("visit_id", visit_id).execute().data or []
+        rd_txns = supabase.table("mg_rd_transactions").select("*").eq("visit_id", visit_id).execute().data or []
+        si_payouts = supabase.table("mg_si_return_payouts").select("*").eq("visit_id", visit_id).execute().data or []
+
+        # 4. பணப் பட்டுவாடா & ரொக்கத் தாள்கள் விபரம்
         settle_res = (
             supabase.table("mg_transaction_settlements")
             .select("*, mg_cash_denominations(*)")
             .eq("customer_id", visit["customer_id"])
+            .eq("transaction_date", visit.get("transaction_date"))
             .order("id", desc=True)
             .limit(1)
             .execute()
@@ -1460,7 +1476,13 @@ def get_visit_details_for_hq(visit_id: int):
             "visit": visit,
             "customer": customer,
             "branch": branch,
-            "loans": matched_loans,
+            "loans": loans,
+            "repayments": repayments,
+            "gold_purchases": gold_purchases,
+            "gold_sales": gold_sales,
+            "gss_txns": gss_txns,
+            "rd_txns": rd_txns,
+            "si_payouts": si_payouts,
             "settlement": settlement,
             "otp_info": otp_info
         }

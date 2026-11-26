@@ -1374,7 +1374,7 @@ def request_otp_exemption(data: OtpExemptRequestPayload):
 @app.get("/api/hq/pending-otp-exemptions")
 def get_pending_otp_exemptions():
     try:
-        cust_res = supabase.table("mg_customers").select("id, name, mobile").execute()
+        cust_res = supabase.table("mg_customers").select("*").execute()
         cust_map = {c["id"]: c for c in (cust_res.data or [])}
 
         res = (
@@ -1387,14 +1387,19 @@ def get_pending_otp_exemptions():
         visits_data = res.data or []
         for v in visits_data:
             c = cust_map.get(v.get("customer_id"), {})
+            c_name = c.get("name") or c.get("full_name") or c.get("customer_name") or f"வாடிக்கையாளர் #{v.get('customer_id')}"
+            c_mobile = c.get("mobile") or "-"
             v["mg_customers"] = {
-                "name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"),
-                "mobile": c.get("mobile", "-")
+                "name": c_name,
+                "mobile": c_mobile
             }
+            v["customer_name"] = c_name
+            v["customer_mobile"] = c_mobile
+
         return {"status": "success", "data": visits_data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OTP விலக்கு பட்டியல் பிழை: {str(e)}")
-
+        
 @app.get("/api/hq/visit-details/{visit_id}")
 def get_visit_details_for_hq(visit_id: int):
     try:
@@ -2016,9 +2021,11 @@ def settle_with_otp(data: SettleWithOtpPayload):
 @app.get("/api/packets/list")
 def get_gold_packets(branch_id: Optional[int] = None, role: str = "BRANCH"):
     try:
-        cust_res = supabase.table("mg_customers").select("id, name, mobile").execute()
-        c_map = {c["id"]: c for c in (cust_res.data or [])}
-
+        cust_res = supabase.table("mg_customers").select("*").execute()
+        c_map = {}
+        for c in (cust_res.data or []):
+            c_name = c.get("name") or c.get("full_name") or c.get("customer_name") or "-"
+            c_map[c["id"]] = {"name": c_name, "mobile": c.get("mobile") or "-"}
         br_res = supabase.table("mg_branches").select("id, branch_name, branch_code").execute()
         b_map = {b["id"]: b for b in (br_res.data or [])}
 
@@ -2042,7 +2049,10 @@ def get_gold_packets(branch_id: Optional[int] = None, role: str = "BRANCH"):
             lno_clean = str(p.get("loan_no") or "").strip().upper()
             if lno_clean in cancelled_loan_nos:
                 continue
-            p["mg_customers"] = c_map.get(p.get("customer_id"), {"name": "-", "mobile": "-"})
+            c_info = c_map.get(p.get("customer_id"), {"name": "-", "mobile": "-"})
+            p["mg_customers"] = c_info
+            p["customer_name"] = c_info["name"]
+            p["customer_mobile"] = c_info["mobile"]
             p["mg_branches"] = b_map.get(p.get("branch_id"), {"branch_name": "-", "branch_code": "BR"})
             packets.append(p)
 
@@ -3084,7 +3094,9 @@ def get_all_pending_approvals():
         payouts_data = payouts_res.data or []
         for p in payouts_data:
             c = cust_map.get(p.get("customer_id"), {})
-            p["mg_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{p.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+            p_name = c.get("name") or c.get("full_name") or f"வாடிக்கையாளர் #{p.get('customer_id')}"
+            p["mg_customers"] = {"name": p_name, "mobile": c.get("mobile", "-")}
+            p["customer_name"] = p_name
     except Exception:
         pass
 
@@ -3093,7 +3105,9 @@ def get_all_pending_approvals():
         receipts_data = receipts_res.data or []
         for r in receipts_data:
             c = cust_map.get(r.get("customer_id"), {})
-            r["mg_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{r.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+            r_name = c.get("name") or c.get("full_name") or f"வாடிக்கையாளர் #{r.get('customer_id')}"
+            r["mg_customers"] = {"name": r_name, "mobile": c.get("mobile", "-")}
+            r["customer_name"] = r_name
     except Exception:
         pass
 
@@ -3103,7 +3117,9 @@ def get_all_pending_approvals():
         for v in visits_data:
             c = cust_map.get(v.get("customer_id"), {})
             b = branch_map.get(v.get("branch_id"), {})
-            v["mg_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{v.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+            c_name = c.get("name") or c.get("full_name") or f"வாடிக்கையாளர் #{v.get('customer_id')}"
+            v["mg_customers"] = {"name": c_name, "mobile": c.get("mobile", "-")}
+            v["customer_name"] = c_name
             v["mg_branches"] = {"branch_name": b.get("branch_name", f"கிளை #{v.get('branch_id')}"), "branch_code": b.get("branch_code", "BR")}
     except Exception:
         pass
@@ -3120,7 +3136,9 @@ def get_all_pending_approvals():
         for u in updates_data:
             c = cust_map.get(u.get("customer_id"), {})
             b = branch_map.get(u.get("branch_id"), {})
-            u["mg_customers"] = {"name": c.get("name", f"வாடிக்கையாளர் #{u.get('customer_id')}"), "mobile": c.get("mobile", "-")}
+            u_name = c.get("name") or c.get("full_name") or f"வாடிக்கையாளர் #{u.get('customer_id')}"
+            u["mg_customers"] = {"name": u_name, "mobile": c.get("mobile", "-")}
+            u["customer_name"] = u_name
             u["mg_branches"] = {"branch_name": b.get("branch_name", f"கிளை #{u.get('branch_id')}"), "branch_code": b.get("branch_code", "BR")}
     except Exception:
         pass

@@ -13053,5 +13053,142 @@
     }
   }
 </script>
+  <script>
+  let adminBankLockersCache = [];
+
+ async function loadAdminBankLockers() {
+    try {
+      if (!Array.isArray(companyBanksCache) || companyBanksCache.length === 0) {
+        const bkRes = await fetch('/api/admin/company-banks?t=' + Date.now());
+        const bkData = await bkRes.json();
+        companyBanksCache = bkData.data || [];
+      }
+
+      const bankSel = document.getElementById('adm_locker_bank_id');
+      if (bankSel) {
+        const prevVal = bankSel.value;
+        bankSel.innerHTML = `<option value="">-- நிறுவன வங்கியைத் தேர்வு செய்க --</option>` +
+          (companyBanksCache || []).map(b => `<option value="${b.id}">${b.bank_name} - ${b.account_no} (${b.branch_name || ''})</option>`).join('');
+        if (prevVal && companyBanksCache.some(b => String(b.id) === prevVal)) bankSel.value = prevVal;
+      }
+
+      const res = await fetch('/api/admin/bank-lockers?t=' + Date.now());
+      const out = await res.json();
+      adminBankLockersCache = out.data || [];
+
+      const tbody = document.getElementById('adminBankLockersTbody');
+      if (tbody) {
+        tbody.innerHTML = adminBankLockersCache.length === 0
+          ? `<tr><td colspan="4" class="p-4 text-center text-slate-400">லாக்கர்கள் எதுவும் சேர்க்கப்படவில்லை</td></tr>`
+          : adminBankLockersCache.map(l => `
+              <tr>
+                <td class="p-2.5 font-bold text-brand-violet">${l.bank_label}</td>
+                <td class="p-2.5 font-black text-amber-950">${l.locker_name}</td>
+                <td class="p-2.5 font-mono">${l.locker_no || '-'}</td>
+                <td class="p-2.5 text-center"><button type="button" onclick="deleteAdminBankLocker(${l.id})" class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded font-bold text-[11px] cursor-pointer">டிலீட்</button></td>
+              </tr>
+            `).join('');
+      }
+    } catch (e) {}
+  }
+
+  async function createAdminBankLocker() {
+    const bankId = document.getElementById('adm_locker_bank_id')?.value;
+    const lockerName = document.getElementById('adm_locker_name')?.value.trim();
+    const lockerNo = document.getElementById('adm_locker_no')?.value.trim();
+    if (!bankId || !lockerName) return alert("நிறுவன வங்கி மற்றும் லாக்கர் பெயரை உள்ளிடவும்.");
+
+    const res = await fetch('/api/admin/bank-locker/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ company_bank_id: parseInt(bankId), locker_name: lockerName, locker_no: lockerNo })
+    });
+    const out = await res.json();
+    if (res.ok) {
+      alert("✅ " + out.message);
+      document.getElementById('adm_locker_name').value = '';
+      document.getElementById('adm_locker_no').value = '';
+      loadAdminBankLockers();
+    } else alert("❌ " + (out.detail || "பிழை"));
+  }
+
+  async function deleteAdminBankLocker(id) {
+    if (!confirm("இந்த லாக்கரை நீக்கவா?")) return;
+    await fetch(`/api/admin/bank-locker/${id}`, { method: 'DELETE' });
+    loadAdminBankLockers();
+  }
+
+  // வங்கி மாறும்போது அந்த வங்கிக்குரிய லாக்கர் பெயர்களை மட்டும் டிராப்மெனுவில் நிரப்புதல்
+  function filterLockersForSelectedBank() {
+    const bankId = document.getElementById('bp_company_bank_id')?.value;
+    const lockerSel = document.getElementById('bp_locker_name');
+    if (!lockerSel) return;
+
+    const matched = adminBankLockersCache.filter(l => String(l.company_bank_id) === String(bankId));
+    if (matched.length === 0) {
+      lockerSel.innerHTML = `<option value="">-- இந்த வங்கிக்கு லாக்கர் இல்லை (நிர்வாகத்தில் சேர்க்கவும்) --</option>`;
+    } else {
+      lockerSel.innerHTML = `<option value="">-- லாக்கர் பெயரைத் தேர்வு செய்க --</option>` +
+        matched.map(l => `<option value="${l.locker_name}">${l.locker_name}${l.locker_no ? ' (' + l.locker_no + ')' : ''}</option>`).join('');
+    }
+  }
+
+  document.getElementById('bp_company_bank_id')?.addEventListener('change', filterLockersForSelectedBank);
+
+  // Admin டேப் திறக்கும்போது லாக்கர் பட்டியலையும் ஏற்றுதல்
+  const _origLoadCompanyBanksList = loadCompanyBanksList;
+  loadCompanyBanksList = async function() {
+    await _origLoadCompanyBanksList();
+    await loadAdminBankLockers();
+  };
+
+  // Bank Pledge சாளரம் திறக்கும்போது லாக்கர்களை ஏற்றி முதல் வங்கிக்குரிய லாக்கர்களைக் காட்டுதல்
+  const _origOpenHqBankPledgeModal = openHqBankPledgeModal;
+  openHqBankPledgeModal = async function() {
+    await _origOpenHqBankPledgeModal();
+    await loadAdminBankLockers();
+    filterLockersForSelectedBank();
+  };
+
+  // Bank Pledge சமர்ப்பிக்கும்போது Locker Name கட்டாயம் தேர்வு செய்யப்பட்டுள்ளதா எனச் சரிபார்த்தல்
+  submitHqBankPledgeForm = async function() {
+    const lnos = getSelectedPacketLoanNos();
+    const compBankId = document.getElementById('bp_company_bank_id').value;
+    const lockerName = document.getElementById('bp_locker_name')?.value.trim();
+    const bankRef = document.getElementById('bp_bank_loan_ref').value.trim();
+    const amt = parseFloat(document.getElementById('bp_received_amt').value) || 0;
+    const chg = parseFloat(document.getElementById('bp_charges_amt').value) || 0;
+    const tokenInput = document.getElementById('bp_token_photo');
+
+    if (!compBankId || !bankRef || amt <= 0) return alert("நிறுவன வங்கி, கடன் எண் மற்றும் பெற்ற தொகையை உள்ளிடவும்.");
+    if (!lockerName) return alert("🔐 தயவுசெய்து லாக்கர் பெயரைக் (Locker Name) கட்டாயம் தேர்வு செய்யவும்!");
+    if (!tokenInput || !tokenInput.files || !tokenInput.files[0]) return alert("📸 வங்கி அளித்த டோக்கன் படத்தைக் கட்டாயம் இணைக்கவும்!");
+
+    const btn = document.getElementById('btnSubmitBankPledge');
+    if (btn) { btn.disabled = true; btn.innerText = "அனுப்பப்படுகிறது..."; }
+
+    try {
+      const tokenBase64 = await readFileAsBase64(tokenInput);
+      const res = await fetch('/api/hq/packets/bank-pledge', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          loan_nos: lnos, company_bank_id: parseInt(compBankId), bank_locker_name: lockerName,
+          bank_loan_ref: bankRef, total_received_amount: amt, bank_charges: chg,
+          token_photo: tokenBase64, staff_id: currentUser?.id || 1
+        })
+      });
+      const out = await res.json();
+      if (res.ok) {
+        alert("✅ " + out.message);
+        closeHqBankPledgeModal();
+        loadGoldPacketsList();
+      } else alert("❌ " + (out.detail || "பிழை"));
+    } catch (e) {
+      alert("❌ இணைப்புப் பிழை: " + e.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerText = "✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு"; }
+    }
+  };
+</script>
 </body>
 </html>

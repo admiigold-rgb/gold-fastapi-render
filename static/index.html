@@ -1613,6 +1613,10 @@
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
             <div>
               <label class="block font-bold text-slate-700 mb-1">1. வணிக நடவடிக்கை வகை *</label>
+              <input type="hidden" id="adm_edit_doc_rule_id" value="">
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">1. வணிக நடவடிக்கை வகை *</label>
               <select id="adm_doc_act_type" onchange="toggleAdminDocSchemeSelect()" class="w-full border p-2.5 rounded-xl bg-white font-bold text-teal-950">
                 <option value="GL_NEW">புதிய நகைக்கடன் (New Gold Loan)</option>
                 <option value="GL_CLOSE">நகைக்கடன் முடிப்பு (Full Closure)</option>
@@ -1620,8 +1624,11 @@
                 <option value="OLD_GOLD">பழைய தங்கம் வாங்குதல் (Old Gold Purchase)</option>
                 <option value="GOLD_SALE">நகை விற்பனை (Gold Sales)</option>
                 <option value="GSS">நகை சேமிப்புத் திட்டம் (GSS)</option>
+                <option value="GSS_CLOSE">GSS முடிப்பு / Pre-Closure</option>
                 <option value="RD">தொடர்வைப்புத் திட்டம் (RD)</option>
+                <option value="RD_CLOSE">RD முடிப்பு / Pre-Closure</option>
                 <option value="SI">நிலையான முதலீடு (SI / FD)</option>
+                <option value="SI_CLOSE">SI முடிப்பு / Pre-Closure</option>
               </select>
             </div>
             <div id="adm_doc_scheme_box">
@@ -1631,23 +1638,30 @@
               </select>
             </div>
             <div>
-              <label class="block font-bold text-slate-700 mb-1">3. கட்டாய ஆவணத்தின் பெயர் *</label>
+              <label class="block font-bold text-slate-700 mb-1">3. ஆவணத்தின் பெயர் *</label>
               <input type="text" id="adm_doc_name" placeholder="எ.கா: சிறப்பு கடன் ஒப்புதல் படிவம்" class="w-full border p-2.5 rounded-xl">
             </div>
-            <div class="flex items-end">
-              <button type="button" onclick="addAuditDocRuleAdmin()" style="background-color:#0d9488;color:#fff;" class="w-full py-2.5 px-4 rounded-xl text-xs font-black shadow cursor-pointer">
+            <div class="flex items-center pt-5">
+              <label class="flex items-center gap-2 font-black text-teal-950 cursor-pointer bg-teal-50 border border-teal-300 px-3 py-2 rounded-xl w-full">
+                <input type="checkbox" id="adm_doc_is_mandatory" checked class="w-4 h-4 accent-teal-700">
+                <span>கட்டாய ஆவணம் (Mandatory)</span>
+              </label>
+            </div>
+            <div class="flex items-end gap-1.5">
+              <button type="button" id="btnCancelDocRuleEdit" onclick="resetAuditDocRuleForm()" class="hidden px-3 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold cursor-pointer">ரத்து</button>
+              <button type="button" id="btnSaveAuditDocRule" onclick="addAuditDocRuleAdmin()" style="background-color:#0d9488;color:#fff;" class="flex-1 py-2.5 px-4 rounded-xl text-xs font-black shadow cursor-pointer">
                 + ஆவணத்தைச் சேர்
               </button>
             </div>
           </div>
           <div class="overflow-x-auto border border-teal-100 rounded-xl">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-teal-50 text-teal-950 border-b">
+            <thead class="bg-teal-50 text-teal-950 border-b">
                 <tr>
                   <th class="p-2.5">நடவடிக்கை வகை</th>
                   <th class="p-2.5">திட்டம் (Scheme)</th>
-                  <th class="p-2.5">கட்டாய ஆவணத்தின் பெயர்</th>
-                  <th class="p-2.5 text-center">நீக்கு</th>
+                  <th class="p-2.5">ஆவணத்தின் பெயர்</th>
+                  <th class="p-2.5 text-center">நிலை (கட்டாயமா?)</th>
+                  <th class="p-2.5 text-center">செயல்</th>
                 </tr>
               </thead>
               <tbody id="admAuditDocRulesTbody" class="divide-y divide-teal-100"></tbody>
@@ -11051,7 +11065,6 @@
 </div>
 
 <script>
-  
   let currentAudPage = 1;
   let currentBrDocPage = 1;
   let currentBrDocStatus = 'DOCS_PENDING';
@@ -11065,8 +11078,11 @@
     'OLD_GOLD': '🛍️ பழைய தங்கம் வாங்குதல்',
     'GOLD_SALE': '💍 நகை விற்பனை',
     'GSS': '✨ நகை சேமிப்பு (GSS)',
+    'GSS_CLOSE': '🏁 GSS முடிப்பு / Pre-Closure',
     'RD': '💰 தொடர்வைப்பு (RD)',
-    'SI': '💎 நிலையான முதலீடு (SI)'
+    'RD_CLOSE': '🏁 RD முடிப்பு / Pre-Closure',
+    'SI': '💎 நிலையான முதலீடு (SI)',
+    'SI_CLOSE': '🏁 SI முடிப்பு / Pre-Closure'
   };
 
   function toggleAdminDocSchemeSelect() {
@@ -11088,31 +11104,58 @@
     toggleAdminDocSchemeSelect();
 
     if (!tbody) return;
-    const res = await fetch('/api/admin/audit-doc-rules');
+    const res = await fetch('/api/admin/audit-doc-rules?t=' + Date.now());
     const out = await res.json();
     const list = out.data || [];
-    tbody.innerHTML = list.map(r => `
-      <tr>
-        <td class="p-2.5 font-bold text-teal-900">${ACT_NAMES_TA[r.activity_type] || r.activity_type}</td>
-        <td class="p-2.5 font-mono font-bold text-brand-violet">${r.scheme_code && r.scheme_code !== 'ALL' ? r.scheme_code : 'அனைத்துத் திட்டங்களும்'}</td>
-        <td class="p-2.5 font-bold">${r.document_name}</td>
-        <td class="p-2.5 text-center"><button type="button" onclick="deleteAuditDocRule(${r.id})" class="text-rose-600 font-bold hover:underline cursor-pointer">நீக்கு</button></td>
-      </tr>
-    `).join('');
+    window._auditRulesCache = list;
+
+    tbody.innerHTML = list.map(r => {
+      const isMand = r.is_mandatory !== false;
+      const mandBadge = isMand
+        ? `<span class="px-2 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 rounded font-black text-[10px]">⚠️ கட்டாய ஆவணம்</span>`
+        : `<span class="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-300 rounded font-bold text-[10px]">○ விருப்ப ஆவணம்</span>`;
+
+      return `
+        <tr>
+          <td class="p-2.5 font-bold text-teal-900">${ACT_NAMES_TA[r.activity_type] || r.activity_type}</td>
+          <td class="p-2.5 font-mono font-bold text-brand-violet">${r.scheme_code && r.scheme_code !== 'ALL' ? r.scheme_code : 'அனைத்துத் திட்டங்களும்'}</td>
+          <td class="p-2.5 font-bold">${r.document_name}</td>
+          <td class="p-2.5 text-center">${mandBadge}</td>
+          <td class="p-2.5 text-center space-x-2 whitespace-nowrap">
+            <button type="button" onclick="editAuditDocRuleAdmin(${r.id})" class="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 rounded-lg font-bold cursor-pointer">✏️ எடிட்</button>
+            <button type="button" onclick="deleteAuditDocRule(${r.id})" class="text-rose-600 font-bold hover:underline cursor-pointer">நீக்கு</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
   }
 
   async function addAuditDocRuleAdmin() {
+    const editId = document.getElementById('adm_edit_doc_rule_id')?.value;
     const act = document.getElementById('adm_doc_act_type').value;
     const sch = act === 'GL_NEW' ? (document.getElementById('adm_doc_scheme_code')?.value || 'ALL') : 'ALL';
     const name = document.getElementById('adm_doc_name').value.trim();
+    const isMand = document.getElementById('adm_doc_is_mandatory')?.checked ?? true;
+
     if (!name) return alert("ஆவணத்தின் பெயரை உள்ளிடவும்!");
-    const res = await fetch('/api/admin/audit-doc-rule/create', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ activity_type: act, scheme_code: sch, document_name: name })
+
+    const url = editId ? `/api/admin/audit-doc-rule/${editId}` : '/api/admin/audit-doc-rule/create';
+    const method = editId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activity_type: act,
+        scheme_code: sch,
+        document_name: name,
+        is_mandatory: isMand
+      })
     });
     const out = await res.json();
+    if (!res.ok) return alert("❌ " + (out.detail || "சேமிக்க முடியவில்லை"));
     alert("✅ " + out.message);
-    document.getElementById('adm_doc_name').value = '';
+    if (typeof resetAuditDocRuleForm === 'function') resetAuditDocRuleForm();
     loadAuditDocRulesAdmin();
   }
 
@@ -11121,6 +11164,49 @@
     await fetch(`/api/admin/audit-doc-rule/${id}`, { method: 'DELETE' });
     loadAuditDocRulesAdmin();
   }
+
+  (function upgradeAuditDocMasterUI() {
+    window.ACT_NAMES_TA = ACT_NAMES_TA;
+
+    window.resetAuditDocRuleForm = function() {
+      const hid = document.getElementById('adm_edit_doc_rule_id');
+      const nameEl = document.getElementById('adm_doc_name');
+      const mandEl = document.getElementById('adm_doc_is_mandatory');
+      const btnSave = document.getElementById('btnSaveAuditDocRule');
+      const btnCancel = document.getElementById('btnCancelDocRuleEdit');
+      if (hid) hid.value = '';
+      if (nameEl) nameEl.value = '';
+      if (mandEl) mandEl.checked = true;
+      if (btnSave) btnSave.innerText = '+ ஆவணத்தைச் சேர்';
+      if (btnCancel) btnCancel.classList.add('hidden');
+    };
+
+    window.editAuditDocRuleAdmin = function(ruleId) {
+      const list = window._auditRulesCache || [];
+      const rule = list.find(x => Number(x.id) === Number(ruleId));
+      if (!rule) return;
+
+      document.getElementById('adm_edit_doc_rule_id').value = rule.id;
+      const actSel = document.getElementById('adm_doc_act_type');
+      if (actSel) {
+        actSel.value = rule.activity_type || 'GL_NEW';
+        toggleAdminDocSchemeSelect();
+      }
+      const schSel = document.getElementById('adm_doc_scheme_code');
+      if (schSel) schSel.value = rule.scheme_code || 'ALL';
+
+      document.getElementById('adm_doc_name').value = rule.document_name || '';
+      const mandEl = document.getElementById('adm_doc_is_mandatory');
+      if (mandEl) mandEl.checked = rule.is_mandatory !== false;
+
+      const btnSave = document.getElementById('btnSaveAuditDocRule');
+      const btnCancel = document.getElementById('btnCancelDocRuleEdit');
+      if (btnSave) btnSave.innerText = '💾 மாற்றத்தைச் சேமி';
+      if (btnCancel) btnCancel.classList.remove('hidden');
+      document.getElementById('adm_doc_name')?.focus();
+    };
+  })();
+</script>
 
   // 📄 கிளை ஆவணங்கள் இணைப்பு சாளரம் (வேகமான 50-50 Pagination + நிலை வாரியான டேப்கள்)
   async function openBranchAuditDocsModal(page = 1, statusFilter = null) {

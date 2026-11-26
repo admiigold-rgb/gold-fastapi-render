@@ -14101,81 +14101,69 @@
   })();
 </script>
 <script>
-  (function addAdminMasterAuditButton() {
-    if (window._addAdminMasterAuditButtonDone) return;
-    window._addAdminMasterAuditButtonDone = true;
+  (function addSingleAdminMasterAuditButton() {
+    if (window._addSingleAdminMasterAuditButtonDone) return;
+    window._addSingleAdminMasterAuditButtonDone = true;
 
-    window.runMasterAuditAndSync = async function(autoSync = false) {
-      if (autoSync) {
-        const ok = confirm(
-          "விடுபட்டுள்ள பாக்கெட்டுகளை (mg_gold_packets) தானாகச் சேர்க்க வேண்டுமா?\n(மற்ற நிதிப் பதிவுகள் மாற்றப்படாமல் அறிக்கையாகக் காட்டப்படும்)"
-        );
-        if (!ok) return;
-      }
-
+    window.runSingleMasterAudit = async function() {
       try {
         const res = await fetch('/api/audit/master-check-and-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auto_sync: autoSync })
+          body: JSON.stringify({ auto_sync: false })
         });
         const out = await res.json();
-        if (!res.ok) {
-          return alert("❌ " + (out.detail || "Audit தோல்வியடைந்தது"));
-        }
+        if (!res.ok) return alert("❌ " + (out.detail || "Audit தோல்வியடைந்தது"));
 
         const lines = (out.discrepancies || []).slice(0, 15).map(d => "• " + d.message);
-        const extraNote = (out.discrepancies || []).length > 15
-          ? `\n... மற்றும் ${(out.discrepancies.length - 15)} விவரங்கள் உள்ளன.`
+        const extra = (out.discrepancies || []).length > 15
+          ? `\n... மற்றும் ${out.discrepancies.length - 15} விவரங்கள் உள்ளன.`
           : "";
 
+        const wantSync = confirm(
+          "📋 Master Audit அறிக்கை:\n" +
+          "• சோதிக்கப்பட்ட வருகைகள்: " + (out.total_visits_checked ?? 0) + "\n" +
+          "• கண்டறியப்பட்ட முரண்பாடுகள்: " + (out.discrepancy_count ?? 0) + "\n" +
+          (lines.length ? "\nவிவரங்கள்:\n" + lines.join("\n") + extra : "\nஎந்த விடுபடலும் இல்லை!") +
+          "\n\nஇப்போது விடுபட்ட பாக்கெட்டுகளை Auto-Sync செய்ய வேண்டுமா?"
+        );
+        if (!wantSync) return;
+
+        const syncRes = await fetch('/api/audit/master-check-and-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ auto_sync: true })
+        });
+        const syncOut = await syncRes.json();
+        if (!syncRes.ok) return alert("❌ " + (syncOut.detail || "Sync தோல்வியடைந்தது"));
+
         alert(
-          (autoSync ? "✅ Master Audit & Sync முடிந்தது!\n" : "📋 Master Audit அறிக்கை!\n") +
-          "சோதிக்கப்பட்ட வருகைகள்: " + (out.total_visits_checked ?? 0) + "\n" +
-          "கண்டறியப்பட்ட முரண்பாடுகள்: " + (out.discrepancy_count ?? 0) + "\n" +
-          "புதிதாகச் சேர்க்கப்பட்ட பாக்கெட்டுகள்: " + (out.synced_packets_count ?? 0) +
-          (lines.length ? "\n\nவிவரங்கள்:\n" + lines.join("\n") + extraNote : "\n\nஎந்த விடுபடலும் இல்லை!")
+          "✅ Sync முடிந்தது!\n" +
+          "புதிதாகச் சேர்க்கப்பட்ட பாக்கெட்டுகள்: " + (syncOut.synced_packets_count ?? 0)
         );
       } catch (err) {
         alert("❌ இணைப்புப் பிழை: " + err.message);
       }
     };
 
-    function placeAdminMasterAuditButton() {
-      if (document.getElementById('btnMasterAuditSync')) return;
-
-      // Admin / HQ / Audit தொடர்புடைய பகுதி திரையில் உள்ளதா எனப் பார்த்தல்
+    function placeButton() {
+      if (document.getElementById('btnSingleMasterAudit')) return;
       const bodyText = document.body ? document.body.innerText : "";
-      const isAdminContext = /Admin|HQ|Audit|Deviation|Checklist/i.test(bodyText);
-      if (!isAdminContext) return;
+      if (!/Admin|HQ|Audit|Deviation|Checklist/i.test(bodyText)) return;
 
-      const wrap = document.createElement('div');
-      wrap.id = 'btnMasterAuditSync';
-      wrap.style.cssText =
-        "position:fixed; bottom:16px; right:16px; z-index:9999; display:flex; gap:8px; background:#ffffff; padding:8px 10px; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.15); border:1px solid #d8b4fe;";
-
-      const checkBtn = document.createElement('button');
-      checkBtn.type = 'button';
-      checkBtn.innerText = '🔍 All Visits Audit';
-      checkBtn.style.cssText =
-        "padding:6px 12px; font-size:11px; font-weight:800; border-radius:8px; background:#f3e8ff; color:#581c87; border:1px solid #c084fc; cursor:pointer;";
-      checkBtn.onclick = () => window.runMasterAuditAndSync(false);
-
-      const syncBtn = document.createElement('button');
-      syncBtn.type = 'button';
-      syncBtn.innerText = '⚡ Audit & Safe Sync';
-      syncBtn.style.cssText =
-        "padding:6px 12px; font-size:11px; font-weight:800; border-radius:8px; background:#723a91; color:#ffffff; border:none; cursor:pointer;";
-      syncBtn.onclick = () => window.runMasterAuditAndSync(true);
-
-      wrap.appendChild(checkBtn);
-      wrap.appendChild(syncBtn);
-      document.body.appendChild(wrap);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'btnSingleMasterAudit';
+      btn.innerText = '⚡ Master Audit & Sync';
+      btn.style.cssText =
+        "position:fixed; bottom:16px; right:16px; z-index:9999; padding:8px 14px; font-size:12px; font-weight:800; border-radius:10px; background:#723a91; color:#ffffff; border:1px solid #d4af37; box-shadow:0 4px 14px rgba(0,0,0,0.2); cursor:pointer;";
+      btn.onclick = () => window.runSingleMasterAudit();
+      document.body.appendChild(btn);
     }
 
-    const mo = new MutationObserver(() => placeAdminMasterAuditButton());
+    const mo = new MutationObserver(() => placeButton());
     if (document.body) mo.observe(document.body, { childList: true, subtree: true });
-    setTimeout(placeAdminMasterAuditButton, 800);
+    setTimeout(placeButton, 800);
   })();
 </script>
 </body>

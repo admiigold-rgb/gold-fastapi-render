@@ -13852,14 +13852,25 @@
           `);
         });
 
-        // B. வட்டி வரவு / பகுதி அசல் / கடன் முடிப்பு
+        // B. வட்டி வரவு / பகுதி அசல் / கடன் முடிப்பு (Duplicate வராமல் ஒரே முறை மட்டும் காட்டல்)
+        const seenRepayments = new Set();
         (data.repayments || []).forEach(rp => {
           const actLabels = { 'INTEREST': 'வட்டி வரவு', 'PART_PRINCIPAL': 'பகுதி அசல் + வட்டி', 'FULL_CLOSURE': 'முழு கடன் முடிப்பு' };
+          const totalRepAmt =
+            (parseFloat(rp.interest_paid || 0) - parseFloat(rp.discount_amount || 0)) +
+            parseFloat(rp.principal_paid || 0) +
+            parseFloat(rp.other_charges || 0) +
+            parseFloat(rp.auction_notice_charges || 0);
+
+          const dupKey = `${rp.action_type || ''}__${rp.loan_no || rp.loan_id || ''}__${totalRepAmt}`;
+          if (seenRepayments.has(dupKey)) return;
+          seenRepayments.add(dupKey);
+
           htmlBlocks.push(`
             <div class="p-3 bg-emerald-50/70 rounded-xl border border-emerald-300 text-xs space-y-1">
               <div class="flex justify-between font-bold">
                 <span class="text-emerald-900">💵 ${actLabels[rp.action_type] || rp.action_type} (${rp.loan_no})</span>
-                <span class="text-emerald-700 font-black">மொத்த வரவு: ₹${(parseFloat(rp.interest_paid||0) - parseFloat(rp.discount_amount||0) + parseFloat(rp.principal_paid||0) + parseFloat(rp.other_charges||0) + parseFloat(rp.auction_notice_charges||0)).toLocaleString('en-IN')}</span>
+                <span class="text-emerald-700 font-black">மொத்த வரவு: ₹${totalRepAmt.toLocaleString('en-IN')}</span>
               </div>
               <div class="text-[11px] text-slate-700">வட்டி: <b>₹${rp.interest_paid || 0}</b> | தள்ளுபடி: <b>₹${rp.discount_amount || 0}</b> | அசல்: <b>₹${rp.principal_paid || 0}</b> | இதர கட்டணம்: <b>₹${(parseFloat(rp.other_charges||0) + parseFloat(rp.auction_notice_charges||0))}</b></div>
             </div>

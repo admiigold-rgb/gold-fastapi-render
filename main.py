@@ -1622,418 +1622,450 @@ def settle_with_otp(data: SettleWithOtpPayload):
             }).eq("id", target_visit_id).execute()
 
         default_src_staff = data.business_source_staff_id
+        warnings_list = []
 
-        for item in (data.cart_items or []):
-            item_src_staff = item.get("business_source_staff_id") or default_src_staff
+        for idx, item in enumerate(data.cart_items or [], start=1):
+            try:
+                item_src_staff = item.get("business_source_staff_id") or default_src_staff
 
-            # 🏆 0. புதிய அடகுக் கடனுக்கு இன்சென்டிவ் புள்ளிகள் (+) (பாக்கெட் தலைமையக ஒப்புதலுக்குப் பின் உருவாகும்)
-            if not item.get("is_repayment") and not item.get("is_gold_purchase") and not item.get("is_gold_sale") and not item.get("is_gss_account") and not item.get("is_rd_account") and not item.get("is_si_account") and item.get("loan_no"):
-                try:
-                    l_no = str(item.get("loan_no")).strip()
-                    l_id = item.get("loan_id")
+                # 🏆 0. புதிய அடகுக் கடனுக்கு இன்சென்டிவ் புள்ளிகள் (+)
+                if (
+                    not item.get("is_repayment")
+                    and not item.get("is_gold_purchase")
+                    and not item.get("is_gold_sale")
+                    and not item.get("is_gss_account")
+                    and not item.get("is_rd_account")
+                    and not item.get("is_si_account")
+                    and item.get("loan_no")
+                ):
+                    try:
+                        l_no = str(item.get("loan_no")).strip()
+                        l_id = item.get("loan_id")
+                        loan_amt_val = float(item.get("loan_amount") or 0)
+                        if loan_amt_val <= 0 and l_id:
+                            l_chk = supabase.table("mg_gold_loans").select("loan_amount").eq("id", l_id).execute()
+                            if l_chk.data:
+                                loan_amt_val = float(l_chk.data[0].get("loan_amount") or 0)
+                        if loan_amt_val > 0:
+                            record_incentive_points(
+                                branch_id=data.branch_id,
+                                txn_type="GL_NEW",
+                                ref_no=l_no,
+                                amount_or_grams=loan_amt_val,
+                                source_staff_id=item_src_staff,
+                                txn_date=txn_date,
+                                remarks=f"புதிய நகைக்கடன் ({l_no}) - ₹{loan_amt_val:,.0f}"
+                            )
+                    except Exception as inc_err:
+                        warnings_list.append(f"Item #{idx} Incentive warning: {str(inc_err)}")
 
-                    # 🏆 புதிய நகைக்கடன் இன்சென்டிவ் புள்ளிகள் (+)
-                    loan_amt_val = float(item.get("loan_amount") or 0)
-                    if loan_amt_val <= 0 and l_id:
-                        l_chk = supabase.table("mg_gold_loans").select("loan_amount").eq("id", l_id).execute()
-                        if l_chk.data:
-                            loan_amt_val = float(l_chk.data[0].get("loan_amount") or 0)
-                    if loan_amt_val > 0:
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="GL_NEW",
-                            ref_no=l_no,
-                            amount_or_grams=loan_amt_val,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            remarks=f"புதிய நகைக்கடன் ({l_no}) - ₹{loan_amt_val:,.0f}"
-                        )
-                except Exception as inc_err:
-                    print("Incentive creation note:", inc_err)
+                if item.get("is_repayment") is True:
+                    loan_id = item.get("loan_id")
+                    action_type = item.get("action_type")
+                    meta = item.get("repayment_meta") or {}
 
-            if item.get("is_repayment") is True:
-                loan_id = item.get("loan_id")
-                action_type = item.get("action_type")
-                meta = item.get("repayment_meta") or {}
+                    int_paid = float(meta.get("interest_paid", 0))
+                    prin_paid = float(meta.get("principal_paid", 0))
+                    disc_amt = float(meta.get("discount_amount", 0))
 
-                int_paid = float(meta.get("interest_paid", 0))
-                prin_paid = float(meta.get("principal_paid", 0))
-                disc_amt = float(meta.get("discount_amount", 0))
-
-                supabase.table("mg_loan_repayments").insert({
-                    "visit_id": target_visit_id,
-                    "loan_id": loan_id,
-                    "customer_id": data.customer_id,
-                    "branch_id": data.branch_id,
-                    "action_type": action_type,
-                    "interest_paid": int_paid,
-                    "principal_paid": prin_paid,
-                    "discount_amount": disc_amt,
-                    "other_charges": float(meta.get("other_charges", 0)),
-                    "auction_notice_charges": float(meta.get("auction_charges", 0)),
-                    "days_calculated": meta.get("days_calculated", 0),
-                    "rate_applied": meta.get("rate_applied", 0),
-                    "transaction_date": txn_date
-                }).execute()
-
-                loan_res = supabase.table("mg_gold_loans").select("*").eq("id", loan_id).execute()
-                if loan_res.data:
-                    loan_row = loan_res.data[0]
-                    curr_prin = float(loan_row.get("outstanding_principal") or loan_row.get("loan_amount") or 0)
-                    new_prin = max(0.0, curr_prin - prin_paid)
-
-                    # 🏆 பகுதி அசல் வசூல் / கடன் முடிப்பு இன்சென்டிவ் புள்ளிகள் கழித்தல் (-)
-                    if prin_paid > 0:
-                        inc_code = "GL_CLOSE" if (action_type == "FULL_CLOSURE" or new_prin <= 0) else "GL_PART_PRINCIPAL"
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type=inc_code,
-                            ref_no=loan_row.get("loan_no", str(loan_id)),
-                            amount_or_grams=prin_paid,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            remarks=f"கடன் அசல் வரவு/முடிப்பு ({loan_row.get('loan_no')}) - ₹{prin_paid:,.0f}"
-                        )
-
-                    update_fields = {
-                        "outstanding_principal": new_prin,
-                        "last_interest_paid_date": txn_date
-                    }
-                    if action_type == "FULL_CLOSURE" or new_prin <= 0:
-                        update_fields["status"] = "CLOSED"
-                        update_fields["closed_date"] = txn_date
-                        try:
-                            supabase.table("mg_gold_packets").update({
-                                "is_loan_closed": True,
-                                "updated_at": datetime.now(IST).isoformat()
-                            }).eq("loan_no", loan_row["loan_no"]).execute()
-                        except Exception as pe:
-                            print("Packet close flag update note:", pe)
-
-                    supabase.table("mg_gold_loans").update(update_fields).eq("id", loan_id).execute()
-
-            elif item.get("is_gold_purchase") is True:
-                gp_meta = item.get("gp_meta") or {}
-                gp_items = gp_meta.get("items") or []
-                if gp_items:
-                    br_res = supabase.table("mg_branches").select("branch_code").eq("id", data.branch_id).execute()
-                    b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
-                    cnt_res = supabase.table("mg_gold_purchases").select("id", count="exact").eq("branch_id", data.branch_id).execute()
-                    next_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
-                    final_gp_no = f"{b_code}/GP/{next_seq:04d}"
-
-                    tot_gross = sum(float(x.get("gross_weight") or 0) for x in gp_items)
-                    tot_net = sum(float(x.get("net_weight") or 0) for x in gp_items)
-                    tot_amt = sum(float(x.get("item_amount") or 0) for x in gp_items)
-
-                    gp_master = {
-                        "gp_no": final_gp_no,
-                        "branch_id": data.branch_id,
-                        "customer_id": data.customer_id,
+                    supabase.table("mg_loan_repayments").insert({
                         "visit_id": target_visit_id,
-                        "transaction_date": txn_date,
-                        "total_items": len(gp_items),
-                        "total_gross_weight": round(tot_gross, 3),
-                        "total_net_weight": round(tot_net, 3),
-                        "total_purchase_amount": round(tot_amt, 2),
-                        "handover_photo_url": gp_meta.get("handover_photo"),
-                        "status": "COMPLETED"
-                    }
-                    gp_ins = supabase.table("mg_gold_purchases").insert(gp_master).execute()
-                    if gp_ins.data:
-                        new_gp_id = gp_ins.data[0]["id"]
-                        total_cnt = len(gp_items)
-                        items_to_save = []
-                        for idx, g_item in enumerate(gp_items, start=1):
-                            tag_no = f"{final_gp_no}/{idx}/{total_cnt}"
-                            items_to_save.append({
-                                "purchase_id": new_gp_id,
-                                "item_tag_no": tag_no,
-                                "item_type": g_item.get("item_type"),
-                                "quantity": int(g_item.get("quantity") or 1),
-                                "gross_weight": float(g_item.get("gross_weight") or 0),
-                                "net_weight": float(g_item.get("net_weight") or 0),
-                                "purity": g_item.get("purity"),
-                                "rate_per_gram": float(g_item.get("rate_per_gram") or 0),
-                                "item_amount": float(g_item.get("item_amount") or 0),
-                                "item_photo_url": g_item.get("item_photo"),
-                                "stock_status": "AT_BRANCH"
-                            })
-                        supabase.table("mg_gold_purchase_items").insert(items_to_save).execute()
-
-                    # 🏆 பழைய தங்கம் வாங்குதல் இன்சென்டிவ் புள்ளிகள் (கிராம் கணக்கில்)
-                    if tot_net > 0:
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="OLD_GOLD",
-                            ref_no=final_gp_no,
-                            amount_or_grams=tot_net,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            remarks=f"பழைய தங்கம் கொள்முதல் ({final_gp_no}) - {tot_net:.3f}g"
-                        )
-
-            elif item.get("is_gold_sale") is True:
-                gs_meta = item.get("gs_meta") or {}
-                stock_item_id = gs_meta.get("stock_item_id")
-                if stock_item_id:
-                    br_res = supabase.table("mg_branches").select("branch_code").eq("id", data.branch_id).execute()
-                    b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
-                    cnt_res = supabase.table("mg_gold_sales").select("id", count="exact").eq("branch_id", data.branch_id).execute()
-                    next_gs_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
-                    final_gs_no = f"{b_code}/GS/{next_gs_seq:04d}"
-                    sale_net_wt = float(gs_meta.get("net_weight") or 0)
-
-                    gs_record = {
-                        "gs_no": final_gs_no,
-                        "branch_id": data.branch_id,
+                        "loan_id": loan_id,
                         "customer_id": data.customer_id,
-                        "visit_id": target_visit_id,
-                        "purchase_item_id": stock_item_id,
-                        "item_tag_no": gs_meta.get("item_tag_no", "-"),
-                        "transaction_date": txn_date,
-                        "net_weight": sale_net_wt,
-                        "gold_value": float(gs_meta.get("gold_value") or 0),
-                        "making_charge": float(gs_meta.get("making_charge") or 0),
-                        "gst_amount": float(gs_meta.get("gst_amount") or 0),
-                        "total_sale_amount": float(gs_meta.get("total_sale_amount") or 0)
-                    }
-                    supabase.table("mg_gold_sales").insert(gs_record).execute()
-                    supabase.table("mg_gold_purchase_items").update({"stock_status": "SOLD"}).eq("id", stock_item_id).execute()
+                        "branch_id": data.branch_id,
+                        "action_type": action_type,
+                        "interest_paid": int_paid,
+                        "principal_paid": prin_paid,
+                        "discount_amount": disc_amt,
+                        "other_charges": float(meta.get("other_charges", 0)),
+                        "auction_notice_charges": float(meta.get("auction_charges", 0)),
+                        "days_calculated": meta.get("days_calculated", 0),
+                        "rate_applied": meta.get("rate_applied", 0),
+                        "transaction_date": txn_date
+                    }).execute()
 
-                    # 🏆 நகை விற்பனை இன்சென்டிவ் புள்ளிகள் (கிராம் கணக்கில்)
-                    if sale_net_wt > 0:
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="GOLD_SALE",
-                            ref_no=final_gs_no,
-                            amount_or_grams=sale_net_wt,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            remarks=f"நகை விற்பனை ({final_gs_no}) - {sale_net_wt:.3f}g"
-                        )
+                    loan_res = supabase.table("mg_gold_loans").select("*").eq("id", loan_id).execute()
+                    if loan_res.data:
+                        loan_row = loan_res.data[0]
+                        curr_prin = float(loan_row.get("outstanding_principal") or loan_row.get("loan_amount") or 0)
+                        new_prin = max(0.0, curr_prin - prin_paid)
 
-            elif item.get("is_gss_account") is True:
-                gss_meta = item.get("gss_meta") or {}
-                mode = gss_meta.get("mode", "NEW")
-                gss_no = gss_meta.get("gss_no")
-                scheme_id = int(gss_meta.get("scheme_id") or 1)
-                init_amount = float(gss_meta.get("initial_amount") or 0)
-                penalty_amt = float(gss_meta.get("penalty_amount") or 0)
-                gold_rate = float(gss_meta.get("gold_rate") or 0)
-                wt_credited = float(gss_meta.get("weight_credited") or 0)
-                maturity_opt = gss_meta.get("maturity_option", "GOLD")
+                        if prin_paid > 0:
+                            try:
+                                inc_code = "GL_CLOSE" if (action_type == "FULL_CLOSURE" or new_prin <= 0) else "GL_PART_PRINCIPAL"
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type=inc_code,
+                                    ref_no=loan_row.get("loan_no", str(loan_id)),
+                                    amount_or_grams=prin_paid,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    remarks=f"கடன் அசல் வரவு/முடிப்பு ({loan_row.get('loan_no')}) - ₹{prin_paid:,.0f}"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"Repayment incentive warning: {str(inc_err)}")
 
-                if mode == "CLOSE":
-                    acc_id = gss_meta.get("account_id")
-                    if acc_id:
-                        supabase.table("mg_customer_savings_accounts").update({
-                            "status": "CLOSED",
-                            "maturity_option": gss_meta.get("close_type", "GOLD")
-                        }).eq("id", acc_id).execute()
-                else:
-                    acc_res = supabase.table("mg_customer_savings_accounts").select("*").eq("gss_no", gss_no).execute()
-                    if acc_res.data:
-                        acc_row = acc_res.data[0]
-                        account_id = acc_row["id"]
-                        old_total = float(acc_row.get("total_amount_paid") or 0)
-                        old_wt = float(acc_row.get("total_accumulated_weight") or 0)
-                        old_penalty = float(acc_row.get("total_penalty_accrued") or 0)
+                        update_fields = {
+                            "outstanding_principal": new_prin,
+                            "last_interest_paid_date": txn_date
+                        }
+                        if action_type == "FULL_CLOSURE" or new_prin <= 0:
+                            update_fields["status"] = "CLOSED"
+                            update_fields["closed_date"] = txn_date
+                            try:
+                                supabase.table("mg_gold_packets").update({
+                                    "is_loan_closed": True,
+                                    "updated_at": datetime.now(IST).isoformat()
+                                }).eq("loan_no", loan_row["loan_no"]).execute()
+                            except Exception as pe:
+                                warnings_list.append(f"Packet close flag warning: {str(pe)}")
 
-                        supabase.table("mg_savings_transactions").insert({
-                            "account_id": account_id,
+                        supabase.table("mg_gold_loans").update(update_fields).eq("id", loan_id).execute()
+
+                elif item.get("is_gold_purchase") is True:
+                    gp_meta = item.get("gp_meta") or {}
+                    gp_items = gp_meta.get("items") or []
+                    if gp_items:
+                        br_res = supabase.table("mg_branches").select("branch_code").eq("id", data.branch_id).execute()
+                        b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
+                        cnt_res = supabase.table("mg_gold_purchases").select("id", count="exact").eq("branch_id", data.branch_id).execute()
+                        next_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
+                        final_gp_no = f"{b_code}/GP/{next_seq:04d}"
+
+                        tot_gross = sum(float(x.get("gross_weight") or 0) for x in gp_items)
+                        tot_net = sum(float(x.get("net_weight") or 0) for x in gp_items)
+                        tot_amt = sum(float(x.get("item_amount") or 0) for x in gp_items)
+
+                        gp_master = {
+                            "gp_no": final_gp_no,
+                            "branch_id": data.branch_id,
+                            "customer_id": data.customer_id,
                             "visit_id": target_visit_id,
                             "transaction_date": txn_date,
-                            "amount_paid": init_amount,
-                            "gold_rate_on_day": gold_rate,
-                            "weight_credited": wt_credited,
-                            "penalty_amount": penalty_amt,
-                            "receipt_no": f"{gss_no}/INST"
-                        }).execute()
+                            "total_items": len(gp_items),
+                            "total_gross_weight": round(tot_gross, 3),
+                            "total_net_weight": round(tot_net, 3),
+                            "total_purchase_amount": round(tot_amt, 2),
+                            "handover_photo_url": gp_meta.get("handover_photo"),
+                            "status": "COMPLETED"
+                        }
+                        gp_ins = supabase.table("mg_gold_purchases").insert(gp_master).execute()
+                        if gp_ins.data:
+                            new_gp_id = gp_ins.data[0]["id"]
+                            total_cnt = len(gp_items)
+                            items_to_save = []
+                            for g_idx, g_item in enumerate(gp_items, start=1):
+                                tag_no = f"{final_gp_no}/{g_idx}/{total_cnt}"
+                                items_to_save.append({
+                                    "purchase_id": new_gp_id,
+                                    "item_tag_no": tag_no,
+                                    "item_type": g_item.get("item_type"),
+                                    "quantity": int(g_item.get("quantity") or 1),
+                                    "gross_weight": float(g_item.get("gross_weight") or 0),
+                                    "net_weight": float(g_item.get("net_weight") or 0),
+                                    "purity": g_item.get("purity"),
+                                    "rate_per_gram": float(g_item.get("rate_per_gram") or 0),
+                                    "item_amount": float(g_item.get("item_amount") or 0),
+                                    "item_photo_url": g_item.get("item_photo"),
+                                    "stock_status": "AT_BRANCH"
+                                })
+                            supabase.table("mg_gold_purchase_items").insert(items_to_save).execute()
 
-                        supabase.table("mg_customer_savings_accounts").update({
-                            "total_amount_paid": round(old_total + init_amount, 2),
-                            "total_accumulated_weight": round(old_wt + wt_credited, 3),
-                            "total_penalty_accrued": round(old_penalty + penalty_amt, 2)
-                        }).eq("id", account_id).execute()
+                        if tot_net > 0:
+                            try:
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type="OLD_GOLD",
+                                    ref_no=final_gp_no,
+                                    amount_or_grams=tot_net,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    remarks=f"பழைய தங்கம் கொள்முதல் ({final_gp_no}) - {tot_net:.3f}g"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"GP incentive warning: {str(inc_err)}")
 
-                        # 🏆 GSS தவணை வசூல் இன்சென்டிவ் புள்ளிகள்
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="GSS_INST",
-                            ref_no=gss_no,
-                            amount_or_grams=init_amount,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            remarks=f"GSS தவணை வசூல் ({gss_no})"
-                        )
-                    else:
-                        new_acc_res = supabase.table("mg_customer_savings_accounts").insert({
-                            "gss_no": gss_no,
-                            "customer_id": data.customer_id,
+                elif item.get("is_gold_sale") is True:
+                    gs_meta = item.get("gs_meta") or {}
+                    stock_item_id = gs_meta.get("stock_item_id")
+                    if stock_item_id:
+                        br_res = supabase.table("mg_branches").select("branch_code").eq("id", data.branch_id).execute()
+                        b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
+                        cnt_res = supabase.table("mg_gold_sales").select("id", count="exact").eq("branch_id", data.branch_id).execute()
+                        next_gs_seq = (cnt_res.count or len(cnt_res.data or [])) + 1
+                        final_gs_no = f"{b_code}/GS/{next_gs_seq:04d}"
+                        sale_net_wt = float(gs_meta.get("net_weight") or 0)
+
+                        gs_record = {
+                            "gs_no": final_gs_no,
                             "branch_id": data.branch_id,
-                            "scheme_id": scheme_id,
-                            "start_date": txn_date,
-                            "maturity_option": maturity_opt,
-                            "total_amount_paid": round(init_amount, 2),
-                            "total_accumulated_weight": round(wt_credited, 3),
-                            "total_penalty_accrued": round(penalty_amt, 2),
-                            "status": "ACTIVE"
-                        }).execute()
+                            "customer_id": data.customer_id,
+                            "visit_id": target_visit_id,
+                            "purchase_item_id": stock_item_id,
+                            "item_tag_no": gs_meta.get("item_tag_no", "-"),
+                            "transaction_date": txn_date,
+                            "net_weight": sale_net_wt,
+                            "gold_value": float(gs_meta.get("gold_value") or 0),
+                            "making_charge": float(gs_meta.get("making_charge") or 0),
+                            "gst_amount": float(gs_meta.get("gst_amount") or 0),
+                            "total_sale_amount": float(gs_meta.get("total_sale_amount") or 0)
+                        }
+                        supabase.table("mg_gold_sales").insert(gs_record).execute()
+                        supabase.table("mg_gold_purchase_items").update({"stock_status": "SOLD"}).eq("id", stock_item_id).execute()
 
-                        if new_acc_res.data:
-                            new_account_id = new_acc_res.data[0]["id"]
+                        if sale_net_wt > 0:
+                            try:
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type="GOLD_SALE",
+                                    ref_no=final_gs_no,
+                                    amount_or_grams=sale_net_wt,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    remarks=f"நகை விற்பனை ({final_gs_no}) - {sale_net_wt:.3f}g"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"GS incentive warning: {str(inc_err)}")
+
+                elif item.get("is_gss_account") is True:
+                    gss_meta = item.get("gss_meta") or {}
+                    mode = gss_meta.get("mode", "NEW")
+                    gss_no = gss_meta.get("gss_no")
+                    scheme_id = int(gss_meta.get("scheme_id") or 1)
+                    init_amount = float(gss_meta.get("initial_amount") or 0)
+                    penalty_amt = float(gss_meta.get("penalty_amount") or 0)
+                    gold_rate = float(gss_meta.get("gold_rate") or 0)
+                    wt_credited = float(gss_meta.get("weight_credited") or 0)
+                    maturity_opt = gss_meta.get("maturity_option", "GOLD")
+
+                    if mode == "CLOSE":
+                        acc_id = gss_meta.get("account_id")
+                        if acc_id:
+                            supabase.table("mg_customer_savings_accounts").update({
+                                "status": "CLOSED",
+                                "maturity_option": gss_meta.get("close_type", "GOLD")
+                            }).eq("id", acc_id).execute()
+                    else:
+                        acc_res = supabase.table("mg_customer_savings_accounts").select("*").eq("gss_no", gss_no).execute()
+                        if acc_res.data:
+                            acc_row = acc_res.data[0]
+                            account_id = acc_row["id"]
+                            old_total = float(acc_row.get("total_amount_paid") or 0)
+                            old_wt = float(acc_row.get("total_accumulated_weight") or 0)
+                            old_penalty = float(acc_row.get("total_penalty_accrued") or 0)
+
                             supabase.table("mg_savings_transactions").insert({
-                                "account_id": new_account_id,
+                                "account_id": account_id,
                                 "visit_id": target_visit_id,
                                 "transaction_date": txn_date,
                                 "amount_paid": init_amount,
                                 "gold_rate_on_day": gold_rate,
                                 "weight_credited": wt_credited,
                                 "penalty_amount": penalty_amt,
-                                "receipt_no": f"{gss_no}/NEW"
+                                "receipt_no": f"{gss_no}/INST"
                             }).execute()
 
-                        # 🏆 GSS புதிய சேர்க்கை இன்சென்டிவ் புள்ளிகள்
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="GSS_JOIN",
-                            ref_no=gss_no,
-                            amount_or_grams=init_amount,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            remarks=f"புதிய GSS திட்டம் துவக்கம் ({gss_no})"
-                        )
+                            supabase.table("mg_customer_savings_accounts").update({
+                                "total_amount_paid": round(old_total + init_amount, 2),
+                                "total_accumulated_weight": round(old_wt + wt_credited, 3),
+                                "total_penalty_accrued": round(old_penalty + penalty_amt, 2)
+                            }).eq("id", account_id).execute()
 
-            elif item.get("is_rd_account") is True:
-                rd_meta = item.get("rd_meta") or {}
-                mode = rd_meta.get("mode", "NEW")
-                rd_no = rd_meta.get("rd_no")
-                scheme_id = int(rd_meta.get("scheme_id") or 1)
-                init_amount = float(rd_meta.get("initial_amount") or 0)
+                            try:
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type="GSS_INST",
+                                    ref_no=gss_no,
+                                    amount_or_grams=init_amount,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    remarks=f"GSS தவணை வசூல் ({gss_no})"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"GSS inst incentive warning: {str(inc_err)}")
+                        else:
+                            new_acc_res = supabase.table("mg_customer_savings_accounts").insert({
+                                "gss_no": gss_no,
+                                "customer_id": data.customer_id,
+                                "branch_id": data.branch_id,
+                                "scheme_id": scheme_id,
+                                "start_date": txn_date,
+                                "maturity_option": maturity_opt,
+                                "total_amount_paid": round(init_amount, 2),
+                                "total_accumulated_weight": round(wt_credited, 3),
+                                "total_penalty_accrued": round(penalty_amt, 2),
+                                "status": "ACTIVE"
+                            }).execute()
 
-                if mode == "CLOSE":
-                    acc_id = rd_meta.get("account_id")
-                    if acc_id:
-                        supabase.table("mg_customer_rd_accounts").update({"status": "CLOSED"}).eq("id", acc_id).execute()
-                else:
-                    acc_res = supabase.table("mg_customer_rd_accounts").select("*").eq("rd_no", rd_no).execute()
-                    if acc_res.data:
-                        acc_row = acc_res.data[0]
-                        account_id = acc_row["id"]
-                        old_total = float(acc_row.get("total_amount_paid") or 0)
-                        supabase.table("mg_rd_transactions").insert({
-                            "account_id": account_id,
-                            "visit_id": target_visit_id,
-                            "transaction_date": txn_date,
-                            "amount_paid": init_amount,
-                            "receipt_no": f"{rd_no}/INST"
-                        }).execute()
-                        supabase.table("mg_customer_rd_accounts").update({
-                            "total_amount_paid": round(old_total + init_amount, 2)
-                        }).eq("id", account_id).execute()
+                            if new_acc_res.data:
+                                new_account_id = new_acc_res.data[0]["id"]
+                                supabase.table("mg_savings_transactions").insert({
+                                    "account_id": new_account_id,
+                                    "visit_id": target_visit_id,
+                                    "transaction_date": txn_date,
+                                    "amount_paid": init_amount,
+                                    "gold_rate_on_day": gold_rate,
+                                    "weight_credited": wt_credited,
+                                    "penalty_amount": penalty_amt,
+                                    "receipt_no": f"{gss_no}/NEW"
+                                }).execute()
 
-                        # 🏆 RD தவணை வசூல் இன்சென்டிவ் புள்ளிகள்
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="RD_INST",
-                            ref_no=rd_no,
-                            amount_or_grams=init_amount,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            scheme_id=scheme_id,
-                            remarks=f"RD தவணை வசூல் ({rd_no})"
-                        )
+                            try:
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type="GSS_JOIN",
+                                    ref_no=gss_no,
+                                    amount_or_grams=init_amount,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    remarks=f"புதிய GSS திட்டம் துவக்கம் ({gss_no})"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"GSS join incentive warning: {str(inc_err)}")
+
+                elif item.get("is_rd_account") is True:
+                    rd_meta = item.get("rd_meta") or {}
+                    mode = rd_meta.get("mode", "NEW")
+                    rd_no = rd_meta.get("rd_no")
+                    scheme_id = int(rd_meta.get("scheme_id") or 1)
+                    init_amount = float(rd_meta.get("initial_amount") or 0)
+
+                    if mode == "CLOSE":
+                        acc_id = rd_meta.get("account_id")
+                        if acc_id:
+                            supabase.table("mg_customer_rd_accounts").update({"status": "CLOSED"}).eq("id", acc_id).execute()
                     else:
-                        new_acc = supabase.table("mg_customer_rd_accounts").insert({
-                            "rd_no": rd_no,
-                            "customer_id": data.customer_id,
-                            "branch_id": data.branch_id,
-                            "scheme_id": scheme_id,
-                            "start_date": txn_date,
-                            "total_amount_paid": round(init_amount, 2),
-                            "nominee_name": rd_meta.get("nominee_name"),
-                            "nominee_relation": rd_meta.get("nominee_relation"),
-                            "nominee_mobile": rd_meta.get("nominee_mobile"),
-                            "status": "ACTIVE"
-                        }).execute()
-                        if new_acc.data:
-                            new_acc_id = new_acc.data[0]["id"]
+                        acc_res = supabase.table("mg_customer_rd_accounts").select("*").eq("rd_no", rd_no).execute()
+                        if acc_res.data:
+                            acc_row = acc_res.data[0]
+                            account_id = acc_row["id"]
+                            old_total = float(acc_row.get("total_amount_paid") or 0)
                             supabase.table("mg_rd_transactions").insert({
-                                "account_id": new_acc_id,
+                                "account_id": account_id,
                                 "visit_id": target_visit_id,
                                 "transaction_date": txn_date,
                                 "amount_paid": init_amount,
-                                "receipt_no": f"{rd_no}/NEW"
+                                "receipt_no": f"{rd_no}/INST"
                             }).execute()
+                            supabase.table("mg_customer_rd_accounts").update({
+                                "total_amount_paid": round(old_total + init_amount, 2)
+                            }).eq("id", account_id).execute()
 
-                        # 🏆 RD புதிய சேர்க்கை இன்சென்டிவ் புள்ளிகள்
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="RD_JOIN",
-                            ref_no=rd_no,
-                            amount_or_grams=init_amount,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            scheme_id=scheme_id,
-                            remarks=f"புதிய RD திட்டம் துவக்கம் ({rd_no})"
-                        )
+                            try:
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type="RD_INST",
+                                    ref_no=rd_no,
+                                    amount_or_grams=init_amount,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    scheme_id=scheme_id,
+                                    remarks=f"RD தவணை வசூல் ({rd_no})"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"RD inst incentive warning: {str(inc_err)}")
+                        else:
+                            new_acc = supabase.table("mg_customer_rd_accounts").insert({
+                                "rd_no": rd_no,
+                                "customer_id": data.customer_id,
+                                "branch_id": data.branch_id,
+                                "scheme_id": scheme_id,
+                                "start_date": txn_date,
+                                "total_amount_paid": round(init_amount, 2),
+                                "nominee_name": rd_meta.get("nominee_name"),
+                                "nominee_relation": rd_meta.get("nominee_relation"),
+                                "nominee_mobile": rd_meta.get("nominee_mobile"),
+                                "status": "ACTIVE"
+                            }).execute()
+                            if new_acc.data:
+                                new_acc_id = new_acc.data[0]["id"]
+                                supabase.table("mg_rd_transactions").insert({
+                                    "account_id": new_acc_id,
+                                    "visit_id": target_visit_id,
+                                    "transaction_date": txn_date,
+                                    "amount_paid": init_amount,
+                                    "receipt_no": f"{rd_no}/NEW"
+                                }).execute()
 
-            elif item.get("is_si_account") and item.get("si_meta"):
-                sm = item["si_meta"]
-                s_mode = sm.get("mode")
-                if s_mode == "NEW":
-                    prin_val = float(sm.get("principal_amount") or 0)
-                    si_no_val = sm.get("si_no")
-                    supabase.table("mg_si_accounts").insert({
-                        "si_no": si_no_val,
-                        "customer_id": data.customer_id,
-                        "branch_id": data.branch_id,
-                        "scheme_id": sm.get("scheme_id"),
-                        "principal_amount": prin_val,
-                        "nominees": sm.get("nominees", []),
-                        "status": "ACTIVE"
-                    }).execute()
+                            try:
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type="RD_JOIN",
+                                    ref_no=rd_no,
+                                    amount_or_grams=init_amount,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    scheme_id=scheme_id,
+                                    remarks=f"புதிய RD திட்டம் துவக்கம் ({rd_no})"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"RD join incentive warning: {str(inc_err)}")
 
-                    # 🏆 FD / SI புதிய வைப்பு இன்சென்டிவ் புள்ளிகள்
-                    if prin_val > 0:
-                        record_incentive_points(
-                            branch_id=data.branch_id,
-                            txn_type="FD_NEW",
-                            ref_no=si_no_val,
-                            amount_or_grams=prin_val,
-                            source_staff_id=item_src_staff,
-                            txn_date=txn_date,
-                            remarks=f"புதிய FD / SI வைப்பு ({si_no_val}) - ₹{prin_val:,.0f}"
-                        )
-                elif s_mode == "RETURN_PAYOUT":
-                    acc_id = sm.get("account_id")
-                    ret_amt = float(sm.get("return_amount", 0))
-                    supabase.table("mg_si_return_payouts").insert({
-                        "si_account_id": acc_id,
-                        "visit_id": target_visit_id,
-                        "settlement_id": new_settle_id,
-                        "voucher_no": f"SIV-{new_settle_id}-{acc_id}",
-                        "payout_date": txn_date,
-                        "period_label": sm.get("period_label", "Periodic Return"),
-                        "return_amount": ret_amt
-                    }).execute()
-                    cur = supabase.table("mg_si_accounts").select("total_return_paid").eq("id", acc_id).execute()
-                    prev_paid = float(cur.data[0]["total_return_paid"] or 0) if cur.data else 0
-                    supabase.table("mg_si_accounts").update({"total_return_paid": prev_paid + ret_amt}).eq("id", acc_id).execute()
-                elif s_mode == "CLOSE":
-                    acc_id = sm.get("account_id")
-                    supabase.table("mg_si_accounts").update({
-                        "status": "CLOSED",
-                        "closed_at": datetime.now(IST).isoformat()
-                    }).eq("id", acc_id).execute()
+                elif item.get("is_si_account") and item.get("si_meta"):
+                    sm = item["si_meta"]
+                    s_mode = sm.get("mode")
+                    if s_mode == "NEW":
+                        prin_val = float(sm.get("principal_amount") or 0)
+                        si_no_val = sm.get("si_no")
+                        supabase.table("mg_si_accounts").insert({
+                            "si_no": si_no_val,
+                            "customer_id": data.customer_id,
+                            "branch_id": data.branch_id,
+                            "scheme_id": sm.get("scheme_id"),
+                            "principal_amount": prin_val,
+                            "nominees": sm.get("nominees", []),
+                            "status": "ACTIVE"
+                        }).execute()
 
-        return {"status": "success", "message": "பரிவர்த்தனை முடிந்தது!", "settlement_id": new_settle_id}
+                        if prin_val > 0:
+                            try:
+                                record_incentive_points(
+                                    branch_id=data.branch_id,
+                                    txn_type="FD_NEW",
+                                    ref_no=si_no_val,
+                                    amount_or_grams=prin_val,
+                                    source_staff_id=item_src_staff,
+                                    txn_date=txn_date,
+                                    remarks=f"புதிய FD / SI வைப்பு ({si_no_val}) - ₹{prin_val:,.0f}"
+                                )
+                            except Exception as inc_err:
+                                warnings_list.append(f"FD/SI incentive warning: {str(inc_err)}")
+                    elif s_mode == "RETURN_PAYOUT":
+                        acc_id = sm.get("account_id")
+                        ret_amt = float(sm.get("return_amount", 0))
+                        supabase.table("mg_si_return_payouts").insert({
+                            "si_account_id": acc_id,
+                            "visit_id": target_visit_id,
+                            "settlement_id": new_settle_id,
+                            "voucher_no": f"SIV-{new_settle_id}-{acc_id}",
+                            "payout_date": txn_date,
+                            "period_label": sm.get("period_label", "Periodic Return"),
+                            "return_amount": ret_amt
+                        }).execute()
+                        cur = supabase.table("mg_si_accounts").select("total_return_paid").eq("id", acc_id).execute()
+                        prev_paid = float(cur.data[0]["total_return_paid"] or 0) if cur.data else 0
+                        supabase.table("mg_si_accounts").update({"total_return_paid": prev_paid + ret_amt}).eq("id", acc_id).execute()
+                    elif s_mode == "CLOSE":
+                        acc_id = sm.get("account_id")
+                        supabase.table("mg_si_accounts").update({
+                            "status": "CLOSED",
+                            "closed_at": datetime.now(IST).isoformat()
+                        }).eq("id", acc_id).execute()
+
+            except Exception as item_err:
+                warnings_list.append(f"Item #{idx} error: {str(item_err)}")
+
+        return {
+            "status": "success",
+            "message": "பரிவர்த்தனை முடிந்தது!",
+            "settlement_id": new_settle_id,
+            "warnings": warnings_list
+        }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"தீர்வுப் பிழை: {str(e)}")
-
+        
 # =========================================================================
 # 🔐 நகைக்கடன் பாக்கெட் & லாக்கர் மேலாண்மை (Gold Packet Lifecycle APIs)
 # =========================================================================

@@ -1301,33 +1301,35 @@
                 <option value="BOTH">அடகு வைக்கும் போதும் & திருப்பும் போதும் (Pledge & Release)</option>
               </select>
             </div>
-            <!-- 🪙 அடகு வைக்கும் போது (Pledge) கட்டண அமைப்பு -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-emerald-50/60 p-3 rounded-2xl border border-emerald-200 text-xs">
-            <div>
-              <label class="block text-[11px] font-bold text-emerald-950 mb-1">அடகு வைக்கும் போது கணக்கீடு முறை</label>
-              <select id="sch_pledge_calc" class="w-full border-2 border-emerald-200 p-2 rounded-xl bg-white font-bold">
-                <option value="AMOUNT">நிலையான தொகை (₹)</option>
-                <option value="PERCENTAGE">சதவீதம் (%)</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-[11px] font-bold text-emerald-950 mb-1">அடகு வைக்கும் போது மதிப்பு (₹ / %)</label>
-              <input type="number" step="0.01" id="sch_pledge_val" class="w-full border-2 border-emerald-200 p-2 rounded-xl bg-white font-bold" value="100">
-            </div>
           </div>
-
-          <!-- 🔓 நகை திருப்பும் போது (Release) கட்டண அமைப்பு -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/60 p-3 rounded-2xl border border-indigo-200 text-xs">
-            <div>
-              <label class="block text-[11px] font-bold text-indigo-950 mb-1">திருப்பும் போது கணக்கீடு முறை</label>
-              <select id="sch_release_calc" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold">
-                <option value="AMOUNT">நிலையான தொகை (₹)</option>
-                <option value="PERCENTAGE">சதவீதம் (%)</option>
-              </select>
+            <!-- 🪙 அடகு வைக்கும் போது (Pledge) கட்டண அமைப்பு -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-emerald-50/60 p-3.5 rounded-2xl border-2 border-emerald-200">
+              <div>
+                <label class="block text-[11px] font-bold text-emerald-950 mb-1">அடகு வைக்கும் போது கணக்கீடு முறை</label>
+                <select id="sch_pledge_calc" class="w-full border-2 border-emerald-200 p-2 rounded-xl bg-white font-bold">
+                  <option value="AMOUNT">நிலையான தொகை (₹)</option>
+                  <option value="PERCENTAGE">சதவீதம் (%)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-emerald-950 mb-1">அடகு வைக்கும் போது மதிப்பு (₹ / %)</label>
+                <input type="number" step="0.01" id="sch_pledge_val" class="w-full border-2 border-emerald-200 p-2 rounded-xl bg-white font-bold" value="100">
+              </div>
             </div>
-            <div>
-              <label class="block text-[11px] font-bold text-indigo-950 mb-1">திருப்பும் போது மதிப்பு (₹ / %)</label>
-              <input type="number" step="0.01" id="sch_release_val" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold" value="100">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/60 p-3.5 rounded-2xl border-2 border-indigo-200">
+              <div>
+                <label class="block text-[11px] font-bold text-indigo-950 mb-1">திருப்பும் போது கணக்கீடு முறை</label>
+                <select id="sch_release_calc" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold">
+                  <option value="AMOUNT">நிலையான தொகை (₹)</option>
+                  <option value="PERCENTAGE">சதவீதம் (%)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-indigo-950 mb-1">திருப்பும் போது மதிப்பு (₹ / %)</label>
+                <input type="number" step="0.01" id="sch_release_val" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold" value="100">
+              </div>
             </div>
           </div>
             

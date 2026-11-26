@@ -5033,3 +5033,74 @@ def delete_admin_bank_locker(locker_id: int):
         return {"status": "success", "message": "வங்கி லாக்கர் நிரந்தரமாக நீக்கப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+import re
+
+@app.get("/api/audit/missing-loans-check")
+def audit_missing_loans_across_branches(branch_id: int | None = None):
+    """
+    அனைத்து கிளைகளிலும் (அல்லது குறிப்பிட்ட ஒரு கிளையில்) வருகைகளில் குறிப்பிட்ட
+    நகைக்கடன் எண்கள் mg_gold_loans அட்டவணையில் விடுபட்டுள்ளதா எனச் சரிபார்க்கும் API.
+    """
+    try:
+        q = supabase.table("mg_customer_visits").select(
+            "id, customer_id, branch_id, transaction_date, visit_status, status, net_amount, actions_summary"
+        )
+        if branch_id is not None:
+            q = q.eq("branch_id", branch_id)
+        visits = q.order("id", desc=True).limit(2000).execute().data or []
+
+        loans_q = supabase.table("mg_gold_loans").select("loan_no, branch_id")
+        if branch_id is not None:
+            loans_q = loans_q.eq("branch_id", branch_id)
+        loans = loans_q.execute().data or []
+
+        existing_loan_nos = {
+            str(row.get("loan_no") or "").strip().upper()
+            for row in loans
+            if row.get("loan_no")
+        }
+
+        branches_res = supabase.table("mg_branches").select("id, branch_name, branch_code").execute().data or []
+        branch_map = {
+            b["id"]: f"{b.get('branch_name', '')} ({b.get('branch_code', '')})".strip()
+            for b in branches_res
+        }
+
+        missing_items = []
+        checked_count = 0
+
+        for v in visits:
+            summary = str(v.get("actions_summary") or "")
+            if not summary:
+                continue
+            # 'நகைக்கடன் (KMK/1405)' போன்ற வடிவங்களில் உள்ள எண்களை எடுத்தல்
+            found_nos = re.findall(r"நகைக்கடன்\s*\(([^)]+)\)", summary)
+            for raw_no in found_nos:
+                clean_no = raw_no.strip().upper()
+                if not clean_no:
+                    continue
+                checked_count += 1
+                if clean_no not in existing_loan_nos:
+                    missing_items.append({
+                        "visit_id": v.get("id"),
+                        "branch_id": v.get("branch_id"),
+                        "branch_name": branch_map.get(v.get("branch_id"), f"Branch #{v.get('branch_id')}"),
+                        "customer_id": v.get("customer_id"),
+                        "transaction_date": v.get("transaction_date"),
+                        "loan_no": clean_no,
+                        "visit_status": v.get("visit_status"),
+                        "approval_status": v.get("status"),
+                        "net_amount": v.get("net_amount"),
+                        "actions_summary": summary
+                    })
+
+        return {
+            "status": "success",
+            "total_visits_scanned": len(visits),
+            "total_loan_refs_checked": checked_count,
+            "missing_count": len(missing_items),
+            "missing_loans": missing_items
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"விடுபட்ட கடன் சோதனை பிழை: {str(e)}")

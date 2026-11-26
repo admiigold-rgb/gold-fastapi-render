@@ -1614,7 +1614,7 @@
             <div>
               <label class="block font-bold text-slate-700 mb-1">1. வணிக நடவடிக்கை வகை *</label>
               <input type="hidden" id="adm_edit_doc_rule_id" value="">
-          <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label class="block font-bold text-slate-700 mb-1">1. வணிக நடவடிக்கை வகை *</label>
               <select id="adm_doc_act_type" onchange="toggleAdminDocSchemeSelect()" class="w-full border p-2.5 rounded-xl bg-white font-bold text-teal-950">
@@ -11094,6 +11094,44 @@
     }
   }
 
+  function resetAuditDocRuleForm() {
+    const hid = document.getElementById('adm_edit_doc_rule_id');
+    const nameEl = document.getElementById('adm_doc_name');
+    const mandEl = document.getElementById('adm_doc_is_mandatory');
+    const btnSave = document.getElementById('btnSaveAuditDocRule');
+    const btnCancel = document.getElementById('btnCancelDocRuleEdit');
+    if (hid) hid.value = '';
+    if (nameEl) nameEl.value = '';
+    if (mandEl) mandEl.checked = true;
+    if (btnSave) btnSave.innerText = '+ ஆவணத்தைச் சேர்';
+    if (btnCancel) btnCancel.classList.add('hidden');
+  }
+
+  function editAuditDocRuleAdmin(ruleId) {
+    const list = window._auditRulesCache || [];
+    const rule = list.find(x => Number(x.id) === Number(ruleId));
+    if (!rule) return;
+
+    document.getElementById('adm_edit_doc_rule_id').value = rule.id;
+    const actSel = document.getElementById('adm_doc_act_type');
+    if (actSel) {
+      actSel.value = rule.activity_type || 'GL_NEW';
+      toggleAdminDocSchemeSelect();
+    }
+    const schSel = document.getElementById('adm_doc_scheme_code');
+    if (schSel) schSel.value = rule.scheme_code || 'ALL';
+
+    document.getElementById('adm_doc_name').value = rule.document_name || '';
+    const mandEl = document.getElementById('adm_doc_is_mandatory');
+    if (mandEl) mandEl.checked = rule.is_mandatory !== false;
+
+    const btnSave = document.getElementById('btnSaveAuditDocRule');
+    const btnCancel = document.getElementById('btnCancelDocRuleEdit');
+    if (btnSave) btnSave.innerText = '💾 மாற்றத்தைச் சேமி';
+    if (btnCancel) btnCancel.classList.remove('hidden');
+    document.getElementById('adm_doc_name')?.focus();
+  }
+
   async function loadAuditDocRulesAdmin() {
     const tbody = document.getElementById('admAuditDocRulesTbody');
     const schSel = document.getElementById('adm_doc_scheme_code');
@@ -11155,7 +11193,7 @@
     const out = await res.json();
     if (!res.ok) return alert("❌ " + (out.detail || "சேமிக்க முடியவில்லை"));
     alert("✅ " + out.message);
-    if (typeof resetAuditDocRuleForm === 'function') resetAuditDocRuleForm();
+    resetAuditDocRuleForm();
     loadAuditDocRulesAdmin();
   }
 
@@ -11164,7 +11202,6 @@
     await fetch(`/api/admin/audit-doc-rule/${id}`, { method: 'DELETE' });
     loadAuditDocRulesAdmin();
   }
-
   (function upgradeAuditDocMasterUI() {
     window.ACT_NAMES_TA = ACT_NAMES_TA;
 
@@ -11206,7 +11243,6 @@
       document.getElementById('adm_doc_name')?.focus();
     };
   })();
-</script>
 
   // 📄 கிளை ஆவணங்கள் இணைப்பு சாளரம் (வேகமான 50-50 Pagination + நிலை வாரியான டேப்கள்)
   async function openBranchAuditDocsModal(page = 1, statusFilter = null) {

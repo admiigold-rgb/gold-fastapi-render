@@ -13568,5 +13568,113 @@
     }
   })();
 </script>
+<script>
+  (function fixAllCustomerNamesEverywhere() {
+    if (window._fixAllCustomerNamesEverywhereDone) return;
+    window._fixAllCustomerNamesEverywhereDone = true;
+
+    const custNameById = {};
+    const custNameByLoan = {};
+
+    async function loadCustomersLookup() {
+      try {
+        const res = await fetch('/api/customer/search?query=a&branch_id=1').catch(() => null);
+        if (!res || !res.ok) return;
+        const out = await res.json().catch(() => null);
+        const rows = Array.isArray(out) ? out : (out?.data || []);
+        rows.forEach(c => {
+          const nm = c.name || c.full_name || c.customer_name;
+          if (c.id && nm) custNameById[String(c.id)] = nm;
+        });
+      } catch (e) {}
+    }
+
+    loadCustomersLookup();
+
+    const origFetch = window.fetch;
+    window.fetch = async function() {
+      const response = await origFetch.apply(this, arguments);
+      try {
+        const clone = response.clone();
+        const urlStr = typeof arguments[0] === 'string' ? arguments[0] : (arguments[0]?.url || '');
+        if (
+          urlStr.includes('packet') ||
+          urlStr.includes('otp') ||
+          urlStr.includes('exemption') ||
+          urlStr.includes('approval') ||
+          urlStr.includes('deviation') ||
+          urlStr.includes('rebate') ||
+          urlStr.includes('visit') ||
+          urlStr.includes('customer')
+        ) {
+          const json = await clone.json().catch(() => null);
+          const rows = Array.isArray(json) ? json : (json?.data || []);
+          if (Array.isArray(rows)) {
+            rows.forEach(r => {
+              const nm =
+                r.customer_name ||
+                r.cust_name ||
+                r.full_name ||
+                r.name ||
+                r.mg_customers?.name ||
+                r.mg_customers?.full_name;
+              if (r.customer_id && nm) custNameById[String(r.customer_id)] = nm;
+              if (r.id && r.name && urlStr.includes('customer')) custNameById[String(r.id)] = r.name;
+              if (r.loan_no && nm) custNameByLoan[String(r.loan_no).trim().toUpperCase()] = nm;
+            });
+          }
+        }
+      } catch (e) {}
+      return response;
+    };
+
+    function patchCustomerNameCells() {
+      const tables = document.querySelectorAll('table');
+      tables.forEach(tbl => {
+        const headers = Array.from(tbl.querySelectorAll('th')).map(th => th.innerText.trim());
+        const custColIdx = headers.findIndex(h => h.includes('வாடிக்கையாளர்'));
+        if (custColIdx === -1) return;
+
+        tbl.querySelectorAll('tbody tr').forEach(tr => {
+          const cells = tr.querySelectorAll('td');
+          const nameCell = cells[custColIdx];
+          if (!nameCell) return;
+
+          const curText = nameCell.innerText.trim();
+          if (curText === '-' || curText === '' || curText === 'வாடிக்கையாளர்') {
+            const rowText = tr.innerText || '';
+            const loanMatch = rowText.match(/[A-Z]{2,5}\/\d+/i);
+            if (loanMatch) {
+              const mappedByLoan = custNameByLoan[loanMatch[0].toUpperCase()];
+              if (mappedByLoan) {
+                nameCell.innerText = mappedByLoan;
+                return;
+              }
+            }
+
+            const visMatch = rowText.match(/#VIS-(\d+)/i);
+            if (visMatch && custNameById[visMatch[1]]) {
+              nameCell.innerText = custNameById[visMatch[1]];
+              return;
+            }
+
+            const anyNumMatch = rowText.match(/\b(\d{1,6})\b/);
+            if (anyNumMatch && custNameById[anyNumMatch[1]]) {
+              nameCell.innerText = custNameById[anyNumMatch[1]];
+            }
+          }
+        });
+      });
+    }
+
+    const observer = new MutationObserver(() => {
+      patchCustomerNameCells();
+    });
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+    setInterval(patchCustomerNameCells, 1200);
+  })();
+</script>
 </body>
 </html>

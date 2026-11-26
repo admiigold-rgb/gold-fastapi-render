@@ -4045,27 +4045,59 @@ def process_visit_approval(data: ApprovalActionPayload):
 @app.get("/api/admin/audit-doc-rules")
 def get_audit_doc_rules():
     res = supabase.table("mg_audit_document_rules").select("*").order("activity_type").order("id").execute()
-    return {"status": "success", "data": res.data or []}
+    rows = res.data or []
+    for r in rows:
+        if "is_mandatory" not in r or r.get("is_mandatory") is None:
+            r["is_mandatory"] = True
+    return {"status": "success", "data": rows}
 
 @app.post("/api/admin/audit-doc-rule/create")
 def create_audit_doc_rule(data: dict):
     act = str(data.get("activity_type") or "").strip()
     doc_name = str(data.get("document_name") or "").strip()
     sch_code = str(data.get("scheme_code") or "ALL").strip().upper()
+    is_mand = bool(data.get("is_mandatory", True))
     if not act or not doc_name:
         raise HTTPException(status_code=400, detail="நடவடிக்கை மற்றும் ஆவணத்தின் பெயரை உள்ளிடவும்.")
-    supabase.table("mg_audit_document_rules").insert({
+    rec = {
         "activity_type": act,
         "scheme_code": sch_code if act == "GL_NEW" else "ALL",
-        "document_name": doc_name
-    }).execute()
+        "document_name": doc_name,
+        "is_mandatory": is_mand
+    }
+    try:
+        supabase.table("mg_audit_document_rules").insert(rec).execute()
+    except Exception:
+        rec.pop("is_mandatory", None)
+        supabase.table("mg_audit_document_rules").insert(rec).execute()
     return {"status": "success", "message": "புதிய ஆவண விதி சேர்க்கப்பட்டது!"}
+
+@app.put("/api/admin/audit-doc-rule/{rule_id}")
+def update_audit_doc_rule(rule_id: int, data: dict):
+    act = str(data.get("activity_type") or "").strip()
+    doc_name = str(data.get("document_name") or "").strip()
+    sch_code = str(data.get("scheme_code") or "ALL").strip().upper()
+    is_mand = bool(data.get("is_mandatory", True))
+    if not act or not doc_name:
+        raise HTTPException(status_code=400, detail="நடவடிக்கை மற்றும் ஆவணத்தின் பெயரை உள்ளிடவும்.")
+    rec = {
+        "activity_type": act,
+        "scheme_code": sch_code if act == "GL_NEW" else "ALL",
+        "document_name": doc_name,
+        "is_mandatory": is_mand
+    }
+    try:
+        supabase.table("mg_audit_document_rules").update(rec).eq("id", rule_id).execute()
+    except Exception:
+        rec.pop("is_mandatory", None)
+        supabase.table("mg_audit_document_rules").update(rec).eq("id", rule_id).execute()
+    return {"status": "success", "message": "ஆவண விதி வெற்றிகரமாகப் புதுப்பிக்கப்பட்டது!"}
 
 @app.delete("/api/admin/audit-doc-rule/{rule_id}")
 def delete_audit_doc_rule(rule_id: int):
     supabase.table("mg_audit_document_rules").delete().eq("id", rule_id).execute()
     return {"status": "success", "message": "ஆவண விதி நீக்கப்பட்டது."}
-
+    
 @app.get("/api/audit/visits")
 def get_audit_visits_list(
     branch_id: int = 0,

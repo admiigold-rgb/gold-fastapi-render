@@ -711,7 +711,6 @@ def get_next_loan_no(branch_id: int = Query(...)):
 
         max_num = 0
 
-        # 1. mg_gold_loans (ஏற்கனவே உள்ள கடன்கள் + கூடையில் உள்ள கடன்கள்)
         loans_res = supabase.table("mg_gold_loans").select("loan_no").eq("branch_id", branch_id).execute()
         for row in (loans_res.data or []):
             lno = str(row.get("loan_no") or "").strip().upper()
@@ -720,7 +719,6 @@ def get_next_loan_no(branch_id: int = Query(...)):
                 if tail.isdigit():
                     max_num = max(max_num, int(tail))
 
-        # 2. mg_loan_deviation_approvals (நிறுத்திவைக்கப்பட்டுள்ள கடன்கள்)
         dev_res = (
             supabase.table("mg_loan_deviation_approvals")
             .select("loan_no, status")

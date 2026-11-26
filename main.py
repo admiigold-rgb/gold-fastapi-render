@@ -2127,6 +2127,7 @@ def pledge_packets_in_bank(data: dict):
     try:
         loan_nos = data.get("loan_nos") or []
         comp_bank_id = int(data.get("company_bank_id") or 0)
+        locker_name = str(data.get("bank_locker_name") or "").strip()
         bank_loan_ref = str(data.get("bank_loan_ref") or "-").strip()
         total_received = float(data.get("total_received_amount") or 0)
         bank_charges = float(data.get("bank_charges") or 0)
@@ -2135,6 +2136,8 @@ def pledge_packets_in_bank(data: dict):
 
         if not loan_nos or not comp_bank_id or total_received <= 0:
             raise HTTPException(status_code=400, detail="நிறுவன வங்கி, தொகை மற்றும் பாக்கெட்டுகளைச் சரியாக உள்ளிடவும்.")
+        if not locker_name:
+            raise HTTPException(status_code=400, detail="🔐 வங்கி லாக்கர் பெயரைக் (Locker Name) கட்டாயம் தேர்வு செய்யவும்!")
         if not token_photo:
             raise HTTPException(status_code=400, detail="📸 வங்கி அளித்த டோக்கன் படத்தைக் கட்டாயம் பதிவேற்றவும்!")
 
@@ -2164,17 +2167,18 @@ def pledge_packets_in_bank(data: dict):
                 "pending_request_status": "PENDING",
                 "pending_request_data": {
                     "bank_name": bank_name,
+                    "bank_locker_name": locker_name,
                     "bank_loan_ref": bank_loan_ref,
                     "total_received": total_received,
                     "bank_charges": bank_charges,
                     "company_bank_id": comp_bank_id,
                     "packet_count": len(valid_packets)
                 },
-                "audit_notes": f"வங்கி லாக்கர் வைப்பு பதிவு ({bank_name}) - 2-வது HQ சரிபார்ப்பு நிலுவை",
+                "audit_notes": f"வங்கி லாக்கர் வைப்பு ({bank_name} - {locker_name}) - 2-வது HQ சரிபார்ப்பு நிலுவை",
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
-        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் டோக்கனுடன் வங்கி லாக்கரில் வைக்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
+        return {"status": "success", "message": f"{len(valid_packets)} பாக்கெட்டுகள் [{locker_name}] லாக்கரில் வைக்கப் பதியப்பட்டன! மற்றொரு HQ பணியாளர் சரிபார்த்த பின் உறுதி செய்யப்படும்."}
     except HTTPException:
         raise
     except Exception as e:
@@ -2363,6 +2367,7 @@ def verify_bank_locker_second_staff(data: dict):
 
         if v_status == "PENDING_PLEDGE_VERIFY":
             bank_name = r_data.get("bank_name", "-")
+            locker_name = r_data.get("bank_locker_name", "-")
             bank_ref = r_data.get("bank_loan_ref", "-")
             share_amt = float(r_data.get("total_received") or 0) / cnt
             share_chg = float(r_data.get("bank_charges") or 0) / cnt
@@ -2372,12 +2377,13 @@ def verify_bank_locker_second_staff(data: dict):
                 "packet_status": "PLEDGED_IN_BANK",
                 "current_location": "BANK_LOCKER",
                 "bank_name": bank_name,
+                "bank_locker_name": locker_name,
                 "bank_loan_ref": bank_ref,
                 "bank_pledge_amount": round(share_amt, 2),
                 "bank_charges_amount": round(share_chg, 2),
                 "bank_verify_status": "VERIFIED",
                 "pending_request_status": "APPROVED",
-                "audit_notes": f"2-வது HQ பணியாளரால் சரிபார்க்கப்பட்டு வங்கி லாக்கரில் வைக்கப்பட்டது ({bank_name})",
+                "audit_notes": f"2-வது HQ சரிபார்க்கப்பட்டு வங்கி லாக்கரில் வைக்கப்பட்டது ({bank_name} | லாக்கர்: {locker_name})",
                 "updated_at": now_t
             }).eq("id", pkt["id"]).execute()
 
@@ -2386,17 +2392,21 @@ def verify_bank_locker_second_staff(data: dict):
                 "from_location": "HQ_VAULT", "to_location": "BANK_LOCKER",
                 "company_bank_id": comp_bank_id, "amount_involved": round(share_amt, 2),
                 "charges_or_interest": round(share_chg, 2), "verified_by_hq": True,
-                "performed_by": verifier_id, "remarks": f"2-வது HQ சரிபார்ப்பு முடிந்து வங்கியில் வைக்கப்பட்டது ({bank_name})"
+                "performed_by": verifier_id, "remarks": f"வங்கியில் வைக்கப்பட்டது ({bank_name} | லாக்கர்: {locker_name} | Ref: {bank_ref})"
             }).execute()
 
-            bk_res = supabase.table("mg_company_banks").select("*").eq("id", comp_bank_id).execute()
-            if bk_res.data:
-                for bal_col in ["current_balance", "balance", "opening_balance"]:
-                    if bal_col in bk_res.data[0]:
-                        old_bal = float(bk_res.data[0].get(bal_col) or 0)
-                        supabase.table("mg_company_banks").update({bal_col: old_bal + net_credit}).eq("id", comp_bank_id).execute()
-                        break
-
+            record_company_bank_ledger(
+                company_bank_id=comp_bank_id,
+                category="BANK_LOCKER_PLEDGE",
+                credit_amount=round(net_credit, 2),
+                debit_amount=0.0,
+                reference_no=bank_ref,
+                party_name=f"{bank_name} ({locker_name})",
+                description=f"வங்கி லாக்கர் அடகு வரவு - பாக்கெட் {lno}",
+                branch_id=pkt.get("branch_id"),
+                created_by=verifier_id,
+                update_bank_balance=True
+            )
         elif v_status == "PENDING_REDEEM_VERIFY":
             share_prin = float(r_data.get("principal_paid") or 0) / cnt
             share_int = float(r_data.get("interest_paid") or 0) / cnt
@@ -4858,5 +4868,55 @@ def toggle_bank_ledger_reconcile(entry_id: int):
             "reconciled_at": datetime.now(IST).isoformat() if new_val else None
         }).eq("id", entry_id).execute()
         return {"status": "success", "is_reconciled": new_val}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# 🔐 வங்கி வாரியான லாக்கர் மேலாண்மை API-கள் (Admin Bank Lockers)
+# ==============================================================================
+@app.get("/api/admin/bank-lockers")
+def get_admin_bank_lockers(company_bank_id: int = 0):
+    try:
+        bk_res = supabase.table("mg_company_banks").select("id, bank_name, account_no, branch_name").execute().data or []
+        b_map = {b["id"]: f"{b['bank_name']} - {b['account_no']} ({b.get('branch_name','')})" for b in bk_res}
+
+        q = supabase.table("mg_bank_lockers").select("*").eq("is_active", True).order("id", desc=True)
+        if company_bank_id and int(company_bank_id) > 0:
+            q = q.eq("company_bank_id", int(company_bank_id))
+        rows = q.execute().data or []
+        for r in rows:
+            r["bank_label"] = b_map.get(r.get("company_bank_id"), "-")
+        return {"status": "success", "data": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/bank-locker/create")
+def create_admin_bank_locker(data: dict):
+    try:
+        bank_id = int(data.get("company_bank_id") or 0)
+        locker_name = str(data.get("locker_name") or "").strip()
+        locker_no = str(data.get("locker_no") or "").strip()
+        if not bank_id or not locker_name:
+            raise HTTPException(status_code=400, detail="நிறுவன வங்கி மற்றும் லாக்கர் பெயரை உள்ளிடவும்.")
+
+        res = supabase.table("mg_bank_lockers").insert({
+            "company_bank_id": bank_id,
+            "locker_name": locker_name,
+            "locker_no": locker_no or None,
+            "is_active": True
+        }).execute()
+        return {"status": "success", "message": f"'{locker_name}' லாக்கர் வெற்றிகரமாகச் சேர்க்கப்பட்டது!", "data": res.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/admin/bank-locker/{locker_id}")
+def delete_admin_bank_locker(locker_id: int):
+    try:
+        supabase.table("mg_bank_lockers").update({"is_active": False}).eq("id", locker_id).execute()
+        return {"status": "success", "message": "வங்கி லாக்கர் நீக்கப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

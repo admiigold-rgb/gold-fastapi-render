@@ -4875,12 +4875,14 @@ def toggle_bank_ledger_reconcile(entry_id: int):
 # 🔐 வங்கி வாரியான லாக்கர் மேலாண்மை API-கள் (Admin Bank Lockers)
 # ==============================================================================
 @app.get("/api/admin/bank-lockers")
-def get_admin_bank_lockers(company_bank_id: int = 0):
+def get_admin_bank_lockers(company_bank_id: int = 0, include_inactive: bool = False):
     try:
         bk_res = supabase.table("mg_company_banks").select("id, bank_name, account_no, branch_name").execute().data or []
         b_map = {b["id"]: f"{b['bank_name']} - {b['account_no']} ({b.get('branch_name','')})" for b in bk_res}
 
-        q = supabase.table("mg_bank_lockers").select("*").eq("is_active", True).order("id", desc=True)
+        q = supabase.table("mg_bank_lockers").select("*").order("id", desc=True)
+        if not include_inactive:
+            q = q.eq("is_active", True)
         if company_bank_id and int(company_bank_id) > 0:
             q = q.eq("company_bank_id", int(company_bank_id))
         rows = q.execute().data or []
@@ -4913,10 +4915,47 @@ def create_admin_bank_locker(data: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/api/admin/bank-locker/{locker_id}")
+def update_admin_bank_locker(locker_id: int, data: dict):
+    try:
+        bank_id = int(data.get("company_bank_id") or 0)
+        locker_name = str(data.get("locker_name") or "").strip()
+        locker_no = str(data.get("locker_no") or "").strip()
+        if not bank_id or not locker_name:
+            raise HTTPException(status_code=400, detail="நிறுவன வங்கி மற்றும் லாக்கர் பெயரை உள்ளிடவும்.")
+
+        supabase.table("mg_bank_lockers").update({
+            "company_bank_id": bank_id,
+            "locker_name": locker_name,
+            "locker_no": locker_no or None
+        }).eq("id", locker_id).execute()
+        return {"status": "success", "message": f"'{locker_name}' லாக்கர் விபரங்கள் புதுப்பிக்கப்பட்டன!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/admin/bank-locker/{locker_id}/toggle-active")
+def toggle_admin_bank_locker_active(locker_id: int):
+    try:
+        curr = supabase.table("mg_bank_lockers").select("locker_name, is_active").eq("id", locker_id).execute()
+        if not curr.data:
+            raise HTTPException(status_code=404, detail="லாக்கர் விபரம் கிடைக்கவில்லை.")
+        new_status = False if curr.data[0].get("is_active") is not False else True
+        supabase.table("mg_bank_lockers").update({"is_active": new_status}).eq("id", locker_id).execute()
+        st_txt = "Active (செயலில்)" if new_status else "Deactive (நிறுத்தப்பட்டது)"
+        return {"status": "success", "message": f"'{curr.data[0]['locker_name']}' நிலை '{st_txt}' என மாற்றப்பட்டது!", "is_active": new_status}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/api/admin/bank-locker/{locker_id}")
 def delete_admin_bank_locker(locker_id: int):
     try:
-        supabase.table("mg_bank_lockers").update({"is_active": False}).eq("id", locker_id).execute()
-        return {"status": "success", "message": "வங்கி லாக்கர் நீக்கப்பட்டது."}
+        supabase.table("mg_bank_lockers").delete().eq("id", locker_id).execute()
+        return {"status": "success", "message": "வங்கி லாக்கர் நிரந்தரமாக நீக்கப்பட்டது."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -14053,5 +14053,52 @@
     };
   })();
 </script>
+<script>
+  (function lockLoanNumberOnWaiverApproval() {
+    if (window._lockLoanNumberOnWaiverApprovalDone) return;
+    window._lockLoanNumberOnWaiverApprovalDone = true;
+
+    const origFetchAutoLoanNo = window.fetchAutoLoanNumber;
+    if (typeof origFetchAutoLoanNo === 'function') {
+      window.fetchAutoLoanNumber = async function() {
+        // Waiver ஒப்புதல் பெற்று செயலில் உள்ள கடனுக்கு கடன் எண் மாறாமல் தடுத்தல்
+        if (typeof activeLoanWaiverState !== 'undefined' && activeLoanWaiverState && activeLoanWaiverState.status === 'APPROVED' && !activeLoanWaiverState.used) {
+          const loanNoEl = document.getElementById('loan_no');
+          if (loanNoEl && activeLoanWaiverState.locked_loan_no) {
+            loanNoEl.value = activeLoanWaiverState.locked_loan_no;
+          }
+          return;
+        }
+        return origFetchAutoLoanNo.apply(this, arguments);
+      };
+    }
+
+    const origRestore = window.restoreCustomerDraft;
+    if (typeof origRestore === 'function') {
+      window.restoreCustomerDraft = function(customerId) {
+        let drafts = [];
+        try {
+          drafts = JSON.parse(localStorage.getItem('counter_held_drafts') || '[]');
+        } catch (e) {}
+        const target = drafts.find(d => String(d.customer?.id) === String(customerId));
+        const lockedNo = String(target?.approved_deviation?.loan_no || target?.reserved_loan_no || '').trim();
+
+        const res = origRestore.apply(this, arguments);
+
+        if (lockedNo) {
+          const loanNoEl = document.getElementById('loan_no');
+          if (loanNoEl) {
+            loanNoEl.value = lockedNo;
+            loanNoEl.readOnly = true;
+          }
+          if (typeof activeLoanWaiverState !== 'undefined' && activeLoanWaiverState) {
+            activeLoanWaiverState.locked_loan_no = lockedNo;
+          }
+        }
+        return res;
+      };
+    }
+  })();
+</script>
 </body>
 </html>

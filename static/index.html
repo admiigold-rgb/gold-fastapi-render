@@ -5143,8 +5143,10 @@
       document.getElementById('sch_ltv').value = s.max_ltv_percentage ?? 75;
       document.getElementById('sch_auction_charge').value = s.auction_charge_amount ?? 500;
       document.getElementById('sch_proc_type').value = s.processing_charge_type || 'PLEDGE';
-      document.getElementById('sch_proc_calc').value = s.processing_charge_calc || 'AMOUNT';
-      document.getElementById('sch_proc_val').value = s.processing_charge_value ?? 0;
+      const procCalcEl = document.getElementById('sch_proc_calc');
+      const procValEl = document.getElementById('sch_proc_val');
+      if (procCalcEl) procCalcEl.value = s.processing_charge_calc || 'AMOUNT';
+      if (procValEl) procValEl.value = s.processing_charge_value ?? 0;
 
       // வட்டி அடுக்குகளை (Interest Slabs) நிரப்புதல்
       const slabsContainer = document.getElementById('slabsContainer');
@@ -13270,6 +13272,161 @@
       if (btn) { btn.disabled = false; btn.innerText = "✓ 2-வது HQ சரிபார்ப்புக்கு அனுப்பு"; }
     }
   };
+</script>
+<script>
+  (function fixSchemeEditAndSeparateCharges() {
+    if (window._fixSchemeEditAndChargesDone) return;
+    window._fixSchemeEditAndChargesDone = true;
+
+    const origEditScheme = window.editScheme;
+    if (typeof origEditScheme === 'function') {
+      window.editScheme = function(id) {
+        // தற்காலிகமாக இல்லாத பழைய element-களுக்கு dummy object கொடுத்து TypeError வராமல் தடுத்தல்
+        const origGetById = document.getElementById.bind(document);
+        const dummyProcCalc = { value: 'AMOUNT' };
+        const dummyProcVal = { value: '0' };
+
+        document.getElementById = function(elId) {
+          const found = origGetById(elId);
+          if (found) return found;
+          if (elId === 'sch_proc_calc') return dummyProcCalc;
+          if (elId === 'sch_proc_val') return dummyProcVal;
+          return null;
+        };
+
+        try {
+          origEditScheme.apply(this, arguments);
+        } finally {
+          document.getElementById = origGetById;
+        }
+
+        const s = (schemesCache || []).find(item => item.id === id);
+        if (!s) return;
+
+        const pCalc = origGetById('sch_pledge_calc');
+        const pVal = origGetById('sch_pledge_val');
+        const rCalc = origGetById('sch_release_calc');
+        const rVal = origGetById('sch_release_val');
+
+        if (pCalc) pCalc.value = s.pledge_charge_calc || s.processing_charge_calc || 'AMOUNT';
+        if (pVal) pVal.value = s.pledge_charge_value ?? s.processing_charge_value ?? 0;
+        if (rCalc) rCalc.value = s.release_charge_calc || s.processing_charge_calc || 'AMOUNT';
+        if (rVal) rVal.value = s.release_charge_value ?? s.processing_charge_value ?? 0;
+      };
+    }
+
+    const origResetScheme = window.resetSchemeForm;
+    if (typeof origResetScheme === 'function') {
+      window.resetSchemeForm = function() {
+        const origGetById = document.getElementById.bind(document);
+        const dummyProcCalc = { value: 'AMOUNT' };
+        const dummyProcVal = { value: '100' };
+
+        document.getElementById = function(elId) {
+          const found = origGetById(elId);
+          if (found) return found;
+          if (elId === 'sch_proc_calc') return dummyProcCalc;
+          if (elId === 'sch_proc_val') return dummyProcVal;
+          return null;
+        };
+
+        try {
+          origResetScheme.apply(this, arguments);
+        } finally {
+          document.getElementById = origGetById;
+        }
+
+        const pCalc = origGetById('sch_pledge_calc');
+        const pVal = origGetById('sch_pledge_val');
+        const rCalc = origGetById('sch_release_calc');
+        const rVal = origGetById('sch_release_val');
+        if (pCalc) pCalc.value = 'AMOUNT';
+        if (pVal) pVal.value = '100';
+        if (rCalc) rCalc.value = 'AMOUNT';
+        if (rVal) rVal.value = '100';
+      };
+    }
+
+    const origFetch = window.fetch;
+    window.fetch = async function(url, options = {}) {
+      const uStr = typeof url === 'string' ? url : (url?.url || '');
+      if ((uStr.includes('/api/admin/scheme/create') || uStr.includes('/api/admin/scheme/')) && options?.body) {
+        try {
+          const bodyObj = JSON.parse(options.body);
+          const pCalc = document.getElementById('sch_pledge_calc')?.value || 'AMOUNT';
+          const pVal = parseFloat(document.getElementById('sch_pledge_val')?.value || 0) || 0;
+          const rCalc = document.getElementById('sch_release_calc')?.value || 'AMOUNT';
+          const rVal = parseFloat(document.getElementById('sch_release_val')?.value || 0) || 0;
+
+          bodyObj.processing_charge_calc = pCalc;
+          bodyObj.processing_charge_value = pVal;
+          bodyObj.pledge_charge_calc = pCalc;
+          bodyObj.pledge_charge_value = pVal;
+          bodyObj.release_charge_calc = rCalc;
+          bodyObj.release_charge_value = rVal;
+
+          options = { ...options, body: JSON.stringify(bodyObj) };
+        } catch (e) {}
+      }
+      return origFetch.call(this, url, options);
+    };
+
+    window.recalculatePledgeCharge = function() {
+      const chargesInput = document.getElementById('charges_amount');
+      const loanInput = document.getElementById('loan_amount');
+      if (!chargesInput || !loanInput || !currentSelectedScheme || isDraftLocked) return;
+
+      const currentLoanAmt = parseFloat(loanInput.value) || 0;
+      const pType = currentSelectedScheme.processing_charge_type;
+
+      if (pType === 'PLEDGE' || pType === 'BOTH') {
+        const calcMode = currentSelectedScheme.pledge_charge_calc || currentSelectedScheme.processing_charge_calc || 'AMOUNT';
+        const calcVal = parseFloat(currentSelectedScheme.pledge_charge_value ?? currentSelectedScheme.processing_charge_value ?? 0);
+
+        if (currentLoanAmt <= 0) {
+          chargesInput.value = 0;
+        } else if (calcMode === 'AMOUNT') {
+          chargesInput.value = calcVal;
+        } else {
+          chargesInput.value = Math.round((currentLoanAmt * calcVal) / 100);
+        }
+      } else {
+        chargesInput.value = 0;
+      }
+    };
+
+    const origOpenRepay = window.openLoanRepaymentModal;
+    if (typeof origOpenRepay === 'function') {
+      window.openLoanRepaymentModal = function(loanId, actionType) {
+        origOpenRepay.apply(this, arguments);
+        if (!currentRepayLoanObj) return;
+
+        const loan = currentRepayLoanObj;
+        const schemeObj = (schemesCache || []).find(s => s.scheme_name === loan.scheme_name);
+        if (!schemeObj) return;
+
+        const pType = schemeObj.processing_charge_type;
+        const principal = parseFloat(loan.outstanding_principal ?? loan.loan_amount ?? 0);
+
+        let otherChg = 0;
+        if (pType === 'RELEASE' || pType === 'BOTH') {
+          const rMode = schemeObj.release_charge_calc || schemeObj.processing_charge_calc || 'AMOUNT';
+          const rVal = parseFloat(schemeObj.release_charge_value ?? schemeObj.processing_charge_value ?? 0);
+          if (rMode === 'AMOUNT') {
+            otherChg = rVal;
+          } else {
+            otherChg = Math.round((principal * rVal) / 100);
+          }
+        }
+
+        currentRepayLoanObj._otherChg = otherChg;
+        if (typeof switchRepaymentTab === 'function') {
+          const curTab = document.getElementById('rep_action_type')?.value || actionType || 'INTEREST';
+          switchRepaymentTab(curTab);
+        }
+      };
+    }
+  })();
 </script>
 <script>
   (function enableSeparatePledgeAndReleaseCharges() {

@@ -5078,6 +5078,9 @@ def master_audit_check_and_sync(payload: dict | None = None):
     data = payload or {}
     auto_sync = bool(data.get("auto_sync", False))
     branch_id = data.get("branch_id")
+    user_role = str(data.get("role") or data.get("user_role") or "").strip().upper()
+    if user_role and user_role not in ["ADMIN", "SUPER_ADMIN", "HQ", "HQ_ADMIN", "DIRECTOR"]:
+        raise HTTPException(status_code=403, detail="❌ அனுமதி மறுக்கப்பட்டது: அட்மின் மட்டுமே இதைப் பயன்படுத்த முடியும்!")
 
     try:
         # 1. Visits எடுத்தல்

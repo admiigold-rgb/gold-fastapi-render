@@ -280,6 +280,8 @@ class StaffPayload(BaseModel):
     can_approve_hq_packets: bool = False
     can_audit_documents: bool = False
     can_view_loan_reminders: bool = False
+    can_view_360_search: bool = False
+    can_view_bank_passbook: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -681,7 +683,9 @@ def staff_unified_login(data: LoginRequest):
                 "can_access_hq_packets": bool(user.get("can_access_hq_packets", False)),
                 "can_approve_hq_packets": bool(user.get("can_approve_hq_packets", False)),
                 "can_audit_documents": True if is_admin_role else bool(user.get("can_audit_documents", False)),
-                "can_view_loan_reminders": bool(user.get("can_view_loan_reminders", False))
+                "can_view_loan_reminders": bool(user.get("can_view_loan_reminders", False)),
+                "can_view_360_search": bool(user.get("can_view_360_search", False)),
+                "can_view_bank_passbook": bool(user.get("can_view_bank_passbook", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -3174,6 +3178,9 @@ def update_staff(staff_id: int, data: dict):
             "can_approve_hq_packets": bool(data.get("can_approve_hq_packets", False)),
             "can_audit_documents": bool(data.get("can_audit_documents", False)),
             "can_view_loan_reminders": bool(data.get("can_view_loan_reminders", False)),
+            "can_view_360_search": bool(data.get("can_view_360_search", False)),
+            "can_view_bank_passbook": bool(data.get("can_view_bank_passbook", False)),
+        }
         }
         if data.get("password"):
             update_dict["password"] = data.get("password")

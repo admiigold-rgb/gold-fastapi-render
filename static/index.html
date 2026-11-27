@@ -14508,5 +14508,305 @@
     setTimeout(syncHqUiElements, 1800);
   })();
 </script>
+<script>
+  (function initUniversalDocumentAndReceiptEngine() {
+    if (window._universalDocEngineReady) return;
+    window._universalDocEngineReady = true;
+
+    function escHtml(val) {
+      return String(val ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function fmtMoney(num) {
+      const n = Number(num || 0);
+      return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // 📄 பொதுவான A4 ஆவணம் & ரசீது அச்சு இயந்திரம் (LTV>70% Declaration, GP Legal Doc, Loan/GS/GSS/RD/SI Receipts)
+    window.openUniversalDocument = function(docConfig = {}) {
+      const docType = String(docConfig.docType || 'RECEIPT').toUpperCase();
+      const isDuplicate = Boolean(docConfig.isDuplicate);
+      const copyNo = Number(docConfig.copyNo || 1);
+      const branchLabel = docConfig.branchName || document.getElementById('loggedBranchName')?.innerText || 'Branch';
+      const issueDate = docConfig.date || document.getElementById('txn_date')?.value || new Date().toLocaleDateString('en-IN');
+      const cust = docConfig.customer || activeCustomer || {};
+
+      const watermarkHtml = isDuplicate
+        ? `<div style="position:fixed; top:46%; left:50%; transform:translate(-50%, -50%) rotate(-32deg); font-size:74px; font-weight:900; color:rgba(220, 38, 38, 0.17); border:6px solid rgba(220, 38, 38, 0.22); padding:10px 30px; border-radius:16px; pointer-events:none; z-index:999; white-space:nowrap; letter-spacing:4px;">DUPLICATE / நகல்</div>`
+        : '';
+
+      const copyBadgeHtml = isDuplicate
+        ? `<span style="background:#fee2e2; color:#b91c1c; border:1.5px solid #dc2626; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:900;">DUPLICATE / நகல் (Copy #${copyNo})</span>`
+        : `<span style="background:#f3e8ff; color:#581c87; border:1.5px solid #723a91; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:900;">ORIGINAL</span>`;
+
+      const itemsRowsHtml = (Array.isArray(docConfig.items) ? docConfig.items : []).map((it, i) => `
+        <tr>
+          <td style="border:1px solid #cbd5e1; padding:5px 7px; text-align:center;">${i + 1}</td>
+          <td style="border:1px solid #cbd5e1; padding:5px 7px; font-weight:700;">${escHtml(it.name || it.item_type || '-')}</td>
+          <td style="border:1px solid #cbd5e1; padding:5px 7px; text-align:center;">${escHtml(it.qty ?? it.item_count ?? it.quantity ?? '-')}</td>
+          <td style="border:1px solid #cbd5e1; padding:5px 7px; text-align:right; font-family:monospace;">${it.gross_weight != null ? Number(it.gross_weight).toFixed(3) + 'g' : '-'}</td>
+          <td style="border:1px solid #cbd5e1; padding:5px 7px; text-align:right; font-family:monospace; font-weight:700;">${it.net_weight != null ? Number(it.net_weight).toFixed(3) + 'g' : '-'}</td>
+          <td style="border:1px solid #cbd5e1; padding:5px 7px; text-align:center;">${escHtml(it.purity || it.meta || '-')}</td>
+          <td style="border:1px solid #cbd5e1; padding:5px 7px; text-align:right; font-family:monospace; font-weight:700;">${it.amount != null ? fmtMoney(it.amount) : '-'}</td>
+        </tr>
+      `).join('');
+
+      const kvRowsHtml = (Array.isArray(docConfig.summaryRows) ? docConfig.summaryRows : []).map(r => `
+        <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e2e8f0; font-size:12px;">
+          <span style="color:#475569;">${escHtml(r.label)}</span>
+          <strong style="color:#1e293b; font-family:monospace;">${escHtml(r.value)}</strong>
+        </div>
+      `).join('');
+
+      const legalClausesHtml = (Array.isArray(docConfig.clauses) ? docConfig.clauses : []).map(c =>
+        `<li style="margin-bottom:4px;">${c}</li>`
+      ).join('');
+
+      const win = window.open('', '_blank', 'width=920,height=1120');
+      win.document.write(`
+        <!DOCTYPE html>
+        <html lang="ta">
+        <head>
+          <meta charset="UTF-8" />
+          <title>${escHtml(docConfig.title || 'Document')}</title>
+          <style>
+            @page { size: A4 portrait; margin: 10mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; color: #1e293b; background: #fff; }
+            .sheet { border: 3px double #723a91; border-radius: 10px; padding: 14px 18px; position: relative; min-height: 272mm; box-sizing: border-box; }
+            .top-hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #d4af37; padding-bottom: 8px; margin-bottom: 10px; }
+            .banner { background: linear-gradient(90deg, #723a91, #4c1d95); color: #fff; text-align: center; padding: 7px; border-radius: 6px; font-size: 14px; font-weight: 800; margin-bottom: 10px; border: 1px solid #d4af37; }
+            .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; font-size: 11.5px; }
+            .box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; background: #faf8fc; }
+            .box h4 { margin: 0 0 5px 0; color: #723a91; font-size: 12px; border-bottom: 1px solid #e9d5ff; padding-bottom: 3px; }
+            table.tbl { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 10px; }
+            table.tbl th { background: #f3e8ff; color: #4c1d95; border: 1px solid #cbd5e1; padding: 5px; text-align: center; }
+            .legal-box { border: 1.5px solid #d4af37; background: #fffbeb; border-radius: 8px; padding: 9px 12px; font-size: 10px; line-height: 1.48; margin-top: 8px; }
+            .signs { display: flex; justify-content: space-between; margin-top: 28px; font-size: 11px; font-weight: 700; }
+          </style>
+        </head>
+        <body>
+          ${watermarkHtml}
+          <div class="sheet">
+            <div class="top-hdr">
+              <div>
+                <div style="font-size:18px; font-weight:900; color:#723a91;">MUTHUSISE GOLD PRODUCT PRIVATE LIMITED</div>
+                <div style="font-size:11px; font-weight:700; color:#92400e;">Indian Gold Company | நாகர்கோவில், கன்னியாகுமரி மாவட்டம்</div>
+                <div style="font-size:10.5px; color:#475569;">கிளை: <b>${escHtml(branchLabel)}</b> | ஆவண எண்: <b>${escHtml(docConfig.refNo || '-')}</b></div>
+              </div>
+              <div style="text-align:right;">
+                ${copyBadgeHtml}
+                <div style="font-size:10.5px; margin-top:5px;">தேதி: <b>${escHtml(issueDate)}</b></div>
+              </div>
+            </div>
+
+            <div class="banner">${escHtml(docConfig.title || 'OFFICIAL DOCUMENT / RECEIPT')}</div>
+
+            <div class="two-col">
+              <div class="box">
+                <h4>வாடிக்கையாளர் விவரங்கள் (Customer Details)</h4>
+                <div>பெயர்: <b>${escHtml(cust.name || cust.full_name || '-')}</b></div>
+                <div>கைபேசி: <b>${escHtml(cust.mobile || cust.phone || '-')}</b></div>
+                <div>அடையாளச் சான்று: <b>${escHtml(cust.id_proof_type || '')} ${escHtml(cust.id_proof_no || '-')}</b></div>
+                <div>முகவரி: <b>${escHtml(cust.address || '-')}</b></div>
+              </div>
+              <div class="box">
+                <h4>பரிவர்த்தனை சுருக்கம் (Summary)</h4>
+                ${kvRowsHtml || '<div>விவரங்கள் இல்லை</div>'}
+              </div>
+            </div>
+
+            ${itemsRowsHtml ? `
+              <table class="tbl">
+                <thead>
+                  <tr>
+                    <th>வ.எண்</th>
+                    <th>பொருள் / நடவடிக்கை</th>
+                    <th>எண்ணிக்கை</th>
+                    <th>மொத்த எடை</th>
+                    <th>நிகர எடை</th>
+                    <th>தரம் / விவரம்</th>
+                    <th>தொகை</th>
+                  </tr>
+                </thead>
+                <tbody>${itemsRowsHtml}</tbody>
+              </table>
+            ` : ''}
+
+            ${legalClausesHtml ? `
+              <div class="legal-box">
+                <div style="font-weight:900; color:#78350f; font-size:11px; margin-bottom:4px;">${escHtml(docConfig.clausesTitle || 'உறுதிமொழி & விதிமுறைகள் (Declaration & Terms):')}</div>
+                <ol style="margin:0; padding-left:16px;">${legalClausesHtml}</ol>
+              </div>
+            ` : ''}
+
+            <div class="signs">
+              <div>வாடிக்கையாளர் கையொப்பம்<br><span style="font-weight:400; font-size:9.5px;">(Customer Signature)</span></div>
+              <div style="text-align:center;">கிளை சரிபார்ப்பு<br><span style="font-weight:400; font-size:9.5px;">(Branch Verification)</span></div>
+              <div style="text-align:right;">நிறுவன அங்கீகரிக்கப்பட்ட கையொப்பம்<br><span style="font-weight:400; font-size:9.5px;">(Authorized Signatory)</span></div>
+            </div>
+          </div>
+          <script>window.onload = function() { window.print(); };<\/script>
+        </body>
+        </html>
+      `);
+      win.document.close();
+    };
+
+    // 1️⃣ LTV 70% மேல் செல்லும் நகைக்கடன் Declaration (தானாக உருவாகும்)
+    window.printLtv70PlusDeclarationIfNeeded = function(opts = {}) {
+      const mktVal = Number(opts.marketValue || totalGoldMarketValue || 0);
+      const loanAmt = Number(opts.loanAmount || 0);
+      if (mktVal <= 0 || loanAmt <= 0) return false;
+
+      const ltvPct = (loanAmt / mktVal) * 100;
+      if (ltvPct <= 70) return false; // 70% அல்லது அதற்குக் கீழ் எனில் தேவையில்லை
+
+      const loanNo = opts.loanNo || document.getElementById('loan_no')?.value || 'PROVISIONAL';
+      const scheme = opts.schemeName || document.getElementById('scheme_name')?.value || '-';
+      const items = Array.isArray(opts.items) ? opts.items : [];
+
+      window.openUniversalDocument({
+        docType: 'LTV_70_DECLARATION',
+        refNo: loanNo,
+        title: 'LTV 70% மேல் கடன் ஒப்புதல் பிரகடனம் / DECLARATION (>70% LTV PLEDGE)',
+        summaryRows: [
+          { label: 'கடன் எண் (Loan No)', value: loanNo },
+          { label: 'திட்டம் (Scheme)', value: scheme },
+          { label: 'நகைகளின் சந்தை மதிப்பு', value: fmtMoney(mktVal) },
+          { label: 'வழங்கப்படும் கடன் தொகை', value: fmtMoney(loanAmt) },
+          { label: 'நடைமுறை LTV சதவீதம்', value: ltvPct.toFixed(2) + '% (> 70%)' }
+        ],
+        items: items.map(it => ({
+          name: it.item_type,
+          qty: it.item_count,
+          gross_weight: it.gross_weight,
+          net_weight: it.net_weight,
+          purity: it.purity
+        })),
+        clausesTitle: 'LTV 70%-க்கு மேற்பட்ட நகைக்கடன் வாடிக்கையாளர் பிரகடனம் (Customer Declaration):',
+        clauses: [
+          `எனது நகைகளின் அன்றைய சந்தை மதிப்பு <b>${fmtMoney(mktVal)}</b> என மதிப்பிடப்பட்ட நிலையில், எனது சொந்த விருப்பம் மற்றும் தேவையின் அடிப்படையில் <b>${ltvPct.toFixed(2)}% LTV</b> அளவிற்கு <b>${fmtMoney(loanAmt)}</b> கடன் தொகையைப் பெறுகிறேன்.`,
+          `தங்கத்தின் சந்தை விலையில் ஏற்ற இறக்கம் ஏற்பட்டாலோ அல்லது வட்டி/கால அவகாசம் நீடித்தாலோ, திட்ட விதிமுறைகளின்படி உரிய வட்டி மற்றும் அசலைச் செலுத்தி நகையை மீட்டுக்கொள்ள முழுப் பொறுப்பேற்கிறேன்.`,
+          `இந்தப் பிரகடனத்தில் உள்ள அனைத்து விவரங்களும் உண்மையானவை என உறுதி அளித்து கையொப்பமிடுகிறேன்.`
+        ]
+      });
+      return true;
+    };
+
+    // 2️⃣ நகை வாங்கும் (GP) சட்டப் பாதுகாப்பு ஆவணம் (Legal Purchase Agreement & Receipt)
+    window.printGoldPurchaseLegalDocument = function(gpData = {}) {
+      const gpNo = gpData.gpNo || document.getElementById('gp_no')?.value || 'GP-DOC';
+      const items = Array.isArray(gpData.items) ? gpData.items : [];
+      const totalAmt = Number(gpData.totalAmount || 0);
+      const totalNetWt = Number(gpData.totalNetWeight || 0);
+
+      window.openUniversalDocument({
+        docType: 'GOLD_PURCHASE_LEGAL',
+        refNo: gpNo,
+        title: 'நகை கொள்முதல் சட்ட ஒப்பந்தம் & ரசீது / GOLD PURCHASE DECLARATION & RECEIPT',
+        summaryRows: [
+          { label: 'GP ரசீது எண்', value: gpNo },
+          { label: 'மொத்த நகைகளின் எண்ணிக்கை', value: String(items.length) },
+          { label: 'மொத்த நிகர எடை', value: totalNetWt.toFixed(3) + ' g' },
+          { label: 'மொத்தக் கொள்முதல் தொகை', value: fmtMoney(totalAmt) }
+        ],
+        items: items.map(it => ({
+          name: it.item_type,
+          qty: it.quantity || it.item_count || 1,
+          gross_weight: it.gross_weight,
+          net_weight: it.net_weight,
+          purity: it.purity,
+          amount: it.item_amount
+        })),
+        clausesTitle: 'சட்டப் பாதுகாப்பு உறுதிமொழிகள் (Legal Ownership & Indemnity Clauses):',
+        clauses: [
+          `கீழே குறிப்பிட்டுள்ள தங்க நகைகள் எனது <b>முழுச் சொந்த உடைமை (Absolute Ownership)</b> என்றும், இவற்றின் மீது எந்த வங்கி, அடகுக் கடை, நிதி நிறுவனம் அல்லது மூன்றாம் நபரின் உரிமையோ, அடமானமோ, கடனோ, நீதிமன்றத் தடையோ இல்லை என்றும் உறுதி கூறுகிறேன்.`,
+          `இந்த நகைகளை நான் எனது சுய விருப்பத்தின் பேரிலேயே <b>Muthusise Gold Product Private Limited</b> நிறுவனத்திற்கு முழு விலைக்கு விற்பனை செய்து, <b>${fmtMoney(totalAmt)}</b> தொகையை முழுமையாகப் பெற்றுக்கொண்டேன்; இனி இந்த நகைகள் மீது எனக்கு எந்த உரிமையும் இல்லை.`,
+          `இந்த நகைகளின் உரிமை, அசல்/தரம் அல்லது சட்டப்பூர்வத் தன்மை குறித்து எதிர்காலத்தில் காவல்துறை, அரசு அல்லது மூன்றாம் நபரிடமிருந்து எந்தப் புகார், வழக்கு அல்லது சட்டச் சிக்கல் எழுந்தாலும், அதற்கு நானே முழுப் பொறுப்பேற்று நிறுவனத்திற்கு ஏற்படும் அனைத்து இழப்புகளையும் செலவுகளையும் ஈடுசெய்து பாதுகாப்பேன் (Full Indemnity).`,
+          `இந்த ஆவணத்தில் உள்ள அனைத்து விவரங்களும் உண்மையானவை என உறுதி அளித்து கையொப்பமிடுகிறேன்.`
+        ]
+      });
+    };
+
+    // 3️⃣ எதிர்கால RD / GSS / SI / GS / Loan ரசீதுகளுக்கான பொதுவான அழைப்புச் செயல்பாடு
+    window.printModuleReceipt = function(moduleName, receiptMeta = {}) {
+      const mod = String(moduleName || 'LOAN').toUpperCase();
+      const titleMap = {
+        'LOAN': 'நகைக்கடன் பரிவர்த்தனை ரசீது / GOLD LOAN RECEIPT',
+        'GS': 'நகை விற்பனை ரசீது / GOLD SALES INVOICE & RECEIPT',
+        'GSS': 'நகை சேமிப்புத் திட்ட ரசீது / GSS INSTALLMENT & MATURITY RECEIPT',
+        'RD': 'தொடர்வைப்புத் திட்ட ரசீது / RD INSTALLMENT & MATURITY RECEIPT',
+        'SI': 'நிலையான முதலீடு ரசீது / SI INVESTMENT & PAYOUT RECEIPT'
+      };
+
+      window.openUniversalDocument({
+        docType: mod + '_RECEIPT',
+        refNo: receiptMeta.refNo || '-',
+        title: titleMap[mod] || (mod + ' RECEIPT'),
+        isDuplicate: Boolean(receiptMeta.isDuplicate),
+        copyNo: Number(receiptMeta.copyNo || 1),
+        summaryRows: receiptMeta.summaryRows || [],
+        items: receiptMeta.items || [],
+        clausesTitle: 'ரசீது விதிமுறைகள் (Receipt Terms):',
+        clauses: receiptMeta.clauses || [
+          'இந்த ரசீது கணினி வழியாக உருவாக்கப்பட்டது; தொகை/விவரங்களைப் பெற்றுக்கொண்டவுடன் சரிபார்த்துக் கொள்ளவும்.',
+          'எதிர்காலக் கணக்கு மற்றும் முதிர்வு/முடிப்பு நடவடிக்கைகளுக்கு இந்த ரசீதைப் பாதுகாப்பாக வைத்திருக்கவும்.'
+        ]
+      });
+    };
+
+    // 🎯 Add to Cart / GP சேர்க்கும்போது LTV > 70% Declaration & GP சட்ட ஆவணத்தைத் தானாக இணைத்தல்
+    const origSubmitPawn = window.submitPawnToDatabase;
+    if (typeof origSubmitPawn === 'function') {
+      window.submitPawnToDatabase = async function(...args) {
+        const loanAmt = Number(document.getElementById('loan_amount')?.value || 0);
+        const schemeName = document.getElementById('scheme_name')?.value || '';
+        const mktVal = Number(typeof totalGoldMarketValue !== 'undefined' ? totalGoldMarketValue : 0);
+        const itemsCopy = Array.isArray(typeof ornamentList !== 'undefined' ? ornamentList : null) ? [...ornamentList] : [];
+
+        const res = await origSubmitPawn.apply(this, args);
+
+        if (mktVal > 0 && loanAmt > 0 && (loanAmt / mktVal) * 100 > 70) {
+          window.printLtv70PlusDeclarationIfNeeded({
+            marketValue: mktVal,
+            loanAmount: loanAmt,
+            schemeName: schemeName,
+            items: itemsCopy
+          });
+        }
+        return res;
+      };
+    }
+
+    const origAddGpCart = window.addGoldPurchaseToCart;
+    if (typeof origAddGpCart === 'function') {
+      window.addGoldPurchaseToCart = async function(...args) {
+        const gpNoVal = document.getElementById('gp_no')?.value || 'GP-DOC';
+        const itemsCopy = Array.isArray(typeof gpOrnamentList !== 'undefined' ? gpOrnamentList : null) ? [...gpOrnamentList] : [];
+        const totalAmt = itemsCopy.reduce((s, x) => s + Number(x.item_amount || 0), 0);
+        const totalNetWt = itemsCopy.reduce((s, x) => s + Number(x.net_weight || 0), 0);
+
+        const res = await origAddGpCart.apply(this, args);
+
+        if (itemsCopy.length > 0 && totalAmt > 0) {
+          const wantLegalDoc = confirm("நகை வாங்கும் (GP) சட்டப் பாதுகாப்பு ஒப்பந்த ஆவணத்தை (Legal Declaration) இப்போது அச்சிட வேண்டுமா?");
+          if (wantLegalDoc) {
+            window.printGoldPurchaseLegalDocument({
+              gpNo: gpNoVal,
+              items: itemsCopy,
+              totalAmount: totalAmt,
+              totalNetWeight: totalNetWt
+            });
+          }
+        }
+        return res;
+      };
+    }
+  })();
+</script>
 </body>
 </html>

@@ -14101,55 +14101,29 @@
   })();
 </script>
 <script>
-  (function addSingleAdminMasterAuditButton() {
-    if (window._addSingleAdminMasterAuditButtonDone) return;
-    window._addSingleAdminMasterAuditButtonDone = true;
+  (function initHqAdminToolsAndPrintService() {
+    if (window._hqAdminToolsAndPrintServiceDone) return;
+    window._hqAdminToolsAndPrintServiceDone = true;
 
-    function isStrictHqOrAdminUser() {
-      const role = String(
-        window.currentUserRole ||
-        localStorage.getItem('user_role') ||
-        sessionStorage.getItem('user_role') ||
-        ''
-      ).trim().toUpperCase();
-
-      const branchId = String(
-        window.currentBranchId ||
-        localStorage.getItem('branch_id') ||
-        sessionStorage.getItem('branch_id') ||
-        ''
-      ).trim();
-
-      // கிளைப் பயனர்கள் (Branch Staff / Manager) எனில் கண்டிப்பாக False
-      if (role.includes('BRANCH') || role.includes('STAFF') || role.includes('CASHIER') || role.includes('MANAGER')) {
-        return false;
-      }
-
-      // Admin / HQ / Director / Super Admin மட்டும் அனுமதி
-      if (['ADMIN', 'SUPER_ADMIN', 'HQ', 'HQ_ADMIN', 'DIRECTOR'].includes(role)) {
-        return true;
-      }
-
-      // Role தெளிவாக இல்லாவிட்டால், Branch ID 1 (HQ) மற்றும் Admin டேப் செயலில் உள்ளதா எனப் பார்த்தல்
-      const adminTabBtn = Array.from(document.querySelectorAll('button, a')).find(
-        el => /^ADMIN$/i.test((el.innerText || '').trim())
-      );
-      const isAdminTabVisible = !!(adminTabBtn && adminTabBtn.offsetParent !== null);
-      return isAdminTabVisible && (branchId === '' || branchId === '1' || branchId === '0');
+    function isHqOrAdminScreenVisible() {
+      const allBtns = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
+      return allBtns.some(el => {
+        const txt = (el.innerText || '').trim().toUpperCase();
+        return (txt === 'ADMIN' || txt === 'INTERNAL AUDIT' || txt === 'HQ APPROVAL') && el.offsetParent !== null;
+      });
     }
 
+    // 1. Master Audit & Sync (Admin / HQ மட்டும்)
     window.runSingleMasterAudit = async function() {
-      if (!isStrictHqOrAdminUser()) {
-        return alert("❌ அனுமதி மறுக்கப்பட்டது: இந்த வசதி அட்மின் (Admin / HQ) பயன்பாட்டிற்கு மட்டுமே!");
+      if (!isHqOrAdminScreenVisible()) {
+        return alert("❌ அனுமதி மறுக்கப்பட்டது: அட்மின் / தலைமையகப் பக்கத்தில் மட்டுமே இதைப் பயன்படுத்த முடியும்!");
       }
-
-      const role = String(window.currentUserRole || localStorage.getItem('user_role') || 'ADMIN').toUpperCase();
 
       try {
         const res = await fetch('/api/audit/master-check-and-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auto_sync: false, role: role })
+          body: JSON.stringify({ auto_sync: false, role: 'ADMIN' })
         });
         const out = await res.json();
         if (!res.ok) return alert("❌ " + (out.detail || "Audit தோல்வியடைந்தது"));
@@ -14171,7 +14145,7 @@
         const syncRes = await fetch('/api/audit/master-check-and-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auto_sync: true, role: role })
+          body: JSON.stringify({ auto_sync: true, role: 'ADMIN' })
         });
         const syncOut = await syncRes.json();
         if (!syncRes.ok) return alert("❌ " + (syncOut.detail || "Sync தோல்வியடைந்தது"));
@@ -14185,40 +14159,12 @@
       }
     };
 
-    function placeButton() {
-      const existing = document.getElementById('btnSingleMasterAudit');
-      if (!isStrictHqOrAdminUser()) {
-        if (existing) existing.remove();
-        return;
-      }
-      if (existing) return;
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.id = 'btnSingleMasterAudit';
-      btn.innerText = '⚡ Master Audit & Sync';
-      btn.style.cssText =
-        "position:fixed; bottom:16px; right:16px; z-index:9999; padding:8px 14px; font-size:12px; font-weight:800; border-radius:10px; background:#723a91; color:#ffffff; border:1px solid #d4af37; box-shadow:0 4px 14px rgba(0,0,0,0.2); cursor:pointer;";
-      btn.onclick = () => window.runSingleMasterAudit();
-      document.body.appendChild(btn);
-    }
-
-    const mo = new MutationObserver(() => placeButton());
-    if (document.body) mo.observe(document.body, { childList: true, subtree: true });
-    setTimeout(placeButton, 800);
-  })();
-</script>
-<script>
-  (function initHqPrintServiceTab() {
-    if (window._hqPrintServiceTabInitialized) return;
-    window._hqPrintServiceTabInitialized = true;
-
+    // 2. HQ Print Service — RD Certificate
     let allPrintRecords = [];
-    let activeSubTab = 'PENDING'; // 'PENDING' | 'PRINTED'
+    let activeSubTab = 'PENDING';
 
     window.printHqRdCertificate = async function(rdAccountId, currentCount = 0) {
       try {
-        const role = (window.currentUserRole || localStorage.getItem('user_role') || 'HQ').toUpperCase();
         const userName = window.currentUserName || localStorage.getItem('user_name') || 'HQ Admin';
 
         let dupReason = "";
@@ -14240,7 +14186,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            role: role,
+            role: 'HQ',
             issued_by: userName,
             duplicate_reason: dupReason
           })
@@ -14250,7 +14196,6 @@
           return alert(out.detail || "❌ RD Certificate உருவாக்க முடியவில்லை");
         }
 
-        // பட்டியலைப் புதுப்பித்தல்
         if (typeof window.loadHqPrintServiceData === 'function') {
           window.loadHqPrintServiceData();
         }
@@ -14588,32 +14533,53 @@
       window.loadHqPrintServiceData();
     };
 
-    function injectPrintServiceNavTab() {
-      if (document.getElementById('navTabPrintService')) return;
-      // ADMIN அல்லது INTERNAL AUDIT பட்டனைக் கண்டறிந்து அதற்கு அருகில் PRINT SERVICE டேப் சேர்த்தல்
-      const buttons = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
-      const anchorTab = buttons.find(el => /\b(ADMIN|INTERNAL AUDIT|HQ APPROVAL)\b/i.test((el.innerText || '').trim()));
-      if (!anchorTab || !anchorTab.parentElement) return;
+    function syncHqUiElements() {
+      const isHq = isHqOrAdminScreenVisible();
 
-      const tabBtn = document.createElement('button');
-      tabBtn.type = 'button';
-      tabBtn.id = 'navTabPrintService';
-      tabBtn.innerText = '🖨️ PRINT SERVICE';
-      tabBtn.className = anchorTab.className || '';
-      if (!tabBtn.className) {
-        tabBtn.style.cssText = "padding:8px 14px; font-size:12px; font-weight:800; border-radius:8px; background:#723a91; color:#fff; border:1px solid #d4af37; cursor:pointer; margin-left:6px;";
+      // A. Master Audit & Sync பட்டன்
+      const existingAuditBtn = document.getElementById('btnSingleMasterAudit');
+      if (!isHq) {
+        if (existingAuditBtn) existingAuditBtn.remove();
+      } else if (!existingAuditBtn) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'btnSingleMasterAudit';
+        btn.innerText = '⚡ Master Audit & Sync';
+        btn.style.cssText =
+          "position:fixed; bottom:16px; right:16px; z-index:9999; padding:8px 14px; font-size:12px; font-weight:800; border-radius:10px; background:#723a91; color:#ffffff; border:1px solid #d4af37; box-shadow:0 4px 14px rgba(0,0,0,0.2); cursor:pointer;";
+        btn.onclick = () => window.runSingleMasterAudit();
+        document.body.appendChild(btn);
       }
-      tabBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        window.openHqPrintServiceModal();
-      };
-      anchorTab.parentElement.appendChild(tabBtn);
+
+      // B. PRINT SERVICE டேப்
+      const existingPrintTab = document.getElementById('navTabPrintService');
+      if (!isHq) {
+        if (existingPrintTab) existingPrintTab.remove();
+      } else if (!existingPrintTab) {
+        const buttons = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
+        const anchorTab = buttons.find(el => /\b(ADMIN|INTERNAL AUDIT|HQ APPROVAL)\b/i.test((el.innerText || '').trim()) && el.offsetParent !== null);
+        if (anchorTab && anchorTab.parentElement) {
+          const tabBtn = document.createElement('button');
+          tabBtn.type = 'button';
+          tabBtn.id = 'navTabPrintService';
+          tabBtn.innerText = '🖨️ PRINT SERVICE';
+          tabBtn.className = anchorTab.className || '';
+          if (!tabBtn.className) {
+            tabBtn.style.cssText = "padding:8px 14px; font-size:12px; font-weight:800; border-radius:8px; background:#723a91; color:#fff; border:1px solid #d4af37; cursor:pointer; margin-left:6px;";
+          }
+          tabBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.openHqPrintServiceModal();
+          };
+          anchorTab.parentElement.appendChild(tabBtn);
+        }
+      }
     }
 
-    const mo = new MutationObserver(() => injectPrintServiceNavTab());
+    const mo = new MutationObserver(() => syncHqUiElements());
     if (document.body) mo.observe(document.body, { childList: true, subtree: true });
-    setTimeout(injectPrintServiceNavTab, 800);
+    setTimeout(syncHqUiElements, 800);
   })();
 </script>
 </body>

@@ -14526,9 +14526,8 @@
       return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // 📄 பொதுவான A4 ஆவணம் & ரசீது அச்சு இயந்திரம் (LTV>70% Declaration, GP Legal Doc, Loan/GS/GSS/RD/SI Receipts)
+    // 📄 பொதுவான A4 ஆவணம் & ரசீது அச்சு இயந்திரம்
     window.openUniversalDocument = function(docConfig = {}) {
-      const docType = String(docConfig.docType || 'RECEIPT').toUpperCase();
       const isDuplicate = Boolean(docConfig.isDuplicate);
       const copyNo = Number(docConfig.copyNo || 1);
       const branchLabel = docConfig.branchName || document.getElementById('loggedBranchName')?.innerText || 'Branch';
@@ -14656,14 +14655,14 @@
       win.document.close();
     };
 
-    // 1️⃣ LTV 70% மேல் செல்லும் நகைக்கடன் Declaration (தானாக உருவாகும்)
+    // 1️⃣ LTV 70% மேல் செல்லும் நகைக்கடன் Declaration
     window.printLtv70PlusDeclarationIfNeeded = function(opts = {}) {
       const mktVal = Number(opts.marketValue || totalGoldMarketValue || 0);
       const loanAmt = Number(opts.loanAmount || 0);
       if (mktVal <= 0 || loanAmt <= 0) return false;
 
       const ltvPct = (loanAmt / mktVal) * 100;
-      if (ltvPct <= 70) return false; // 70% அல்லது அதற்குக் கீழ் எனில் தேவையில்லை
+      if (ltvPct <= 70) return false;
 
       const loanNo = opts.loanNo || document.getElementById('loan_no')?.value || 'PROVISIONAL';
       const scheme = opts.schemeName || document.getElementById('scheme_name')?.value || '-';
@@ -14697,7 +14696,7 @@
       return true;
     };
 
-    // 2️⃣ நகை வாங்கும் (GP) சட்டப் பாதுகாப்பு ஆவணம் (Legal Purchase Agreement & Receipt)
+    // 2️⃣ நகை வாங்கும் (GP) சட்டப் பாதுகாப்பு ஆவணம்
     window.printGoldPurchaseLegalDocument = function(gpData = {}) {
       const gpNo = gpData.gpNo || document.getElementById('gp_no')?.value || 'GP-DOC';
       const items = Array.isArray(gpData.items) ? gpData.items : [];
@@ -14732,7 +14731,7 @@
       });
     };
 
-    // 3️⃣ எதிர்கால RD / GSS / SI / GS / Loan ரசீதுகளுக்கான பொதுவான அழைப்புச் செயல்பாடு
+    // 3️⃣ பொதுவான ரசீது மையம் (LOAN, GS, GSS, RD, SI)
     window.printModuleReceipt = function(moduleName, receiptMeta = {}) {
       const mod = String(moduleName || 'LOAN').toUpperCase();
       const titleMap = {
@@ -14746,24 +14745,89 @@
       window.openUniversalDocument({
         docType: mod + '_RECEIPT',
         refNo: receiptMeta.refNo || '-',
-        title: titleMap[mod] || (mod + ' RECEIPT'),
+        title: receiptMeta.customTitle || titleMap[mod] || (mod + ' RECEIPT'),
         isDuplicate: Boolean(receiptMeta.isDuplicate),
         copyNo: Number(receiptMeta.copyNo || 1),
         summaryRows: receiptMeta.summaryRows || [],
         items: receiptMeta.items || [],
         clausesTitle: 'ரசீது விதிமுறைகள் (Receipt Terms):',
         clauses: receiptMeta.clauses || [
-          'இந்த ரசீது கணினி வழியாக உருவாக்கப்பட்டது; தொகை/விவரங்களைப் பெற்றுக்கொண்டவுடன் சரிபார்த்துக் கொள்ளவும்.',
+          'இந்த ரசீது கணினி வழியாக உருவாக்கப்பட்டது; தொகை மற்றும் விவரங்களைப் பெற்றுக்கொண்டவுடன் சரிபார்த்துக் கொள்ளவும்.',
           'எதிர்காலக் கணக்கு மற்றும் முதிர்வு/முடிப்பு நடவடிக்கைகளுக்கு இந்த ரசீதைப் பாதுகாப்பாக வைத்திருக்கவும்.'
         ]
       });
     };
 
-    // 🎯 Add to Cart / GP சேர்க்கும்போது LTV > 70% Declaration & GP சட்ட ஆவணத்தைத் தானாக இணைத்தல்
+    // 4️⃣ அடகு / வட்டி / பகுதி அசல் / கடன் முடிப்பு ரசீது
+    window.printLoanActionReceipt = function(loanMeta = {}) {
+      const actionType = String(loanMeta.actionType || 'NEW_LOAN').toUpperCase();
+      const loanNo = loanMeta.loanNo || '-';
+      const rows = [{ label: 'கடன் எண் (Loan No)', value: loanNo }];
+
+      if (actionType === 'NEW_LOAN') {
+        if (loanMeta.schemeName) rows.push({ label: 'திட்டம் (Scheme)', value: loanMeta.schemeName });
+        rows.push({ label: 'கடன் தொகை (Loan Amount)', value: fmtMoney(loanMeta.loanAmount) });
+        rows.push({ label: 'Processing கட்டணம்', value: fmtMoney(loanMeta.chargesAmount) });
+      } else {
+        const typeLabelMap = {
+          'INTEREST': 'வட்டி வரவு (Interest Only)',
+          'PART_PRINCIPAL': 'பகுதி அசல் + வட்டி (Part Payment)',
+          'FULL_CLOSURE': 'முழு கடன் முடிப்பு (Full Closure)'
+        };
+        rows.push({ label: 'நடவடிக்கை வகை', value: typeLabelMap[actionType] || actionType });
+        if (loanMeta.daysCalculated != null) rows.push({ label: 'கணக்கிட்ட நாட்கள்', value: `${loanMeta.daysCalculated} நாட்கள் (${loanMeta.rateApplied || 12}% p.a)` });
+        rows.push({ label: 'செலுத்திய வட்டி', value: fmtMoney(loanMeta.interestPaid) });
+        if (Number(loanMeta.discountAmount || 0) > 0) rows.push({ label: 'வட்டி தள்ளுபடி (Rebate)', value: fmtMoney(loanMeta.discountAmount) });
+        const totFee = Number(loanMeta.otherCharges || 0) + Number(loanMeta.auctionCharges || 0);
+        if (totFee > 0) rows.push({ label: 'இதர / ஏலக் கட்டணம்', value: fmtMoney(totFee) });
+        rows.push({ label: 'குறைத்த அசல்', value: fmtMoney(loanMeta.principalPaid) });
+        if (loanMeta.newBalance != null) {
+          rows.push({
+            label: 'புதிய நிலுவை அசல்',
+            value: actionType === 'FULL_CLOSURE' || Number(loanMeta.newBalance) === 0 ? '₹0.00 (CLOSED)' : fmtMoney(loanMeta.newBalance)
+          });
+        }
+      }
+
+      window.printModuleReceipt('LOAN', {
+        refNo: loanNo,
+        customTitle: actionType === 'NEW_LOAN'
+          ? 'புதிய நகைக்கடன் ரசீது / NEW GOLD LOAN RECEIPT'
+          : 'நகைக்கடன் வட்டி / வரவு ரசீது / LOAN PAYMENT RECEIPT',
+        summaryRows: rows,
+        items: loanMeta.items || []
+      });
+    };
+
+    // 5️⃣ நகை விற்பனை (GS) ரசீது
+    window.printGoldSaleReceipt = function(gsMeta = {}) {
+      const gsNo = gsMeta.gsNo || 'GS-RECEIPT';
+      window.printModuleReceipt('GS', {
+        refNo: gsNo,
+        summaryRows: [
+          { label: 'GS ரசீது எண்', value: gsNo },
+          { label: 'நகை டேக் எண் (Tag No)', value: gsMeta.itemTagNo || '-' },
+          { label: 'தங்க மதிப்பு (Gold Value)', value: fmtMoney(gsMeta.goldValue) },
+          { label: 'செய்கூலி (Making Charge)', value: fmtMoney(gsMeta.makingCharge) },
+          { label: 'GST தொகை', value: fmtMoney(gsMeta.gstAmount) },
+          { label: 'மொத்த விற்பனைத் தொகை', value: fmtMoney(gsMeta.totalSaleAmount) }
+        ],
+        items: [{
+          name: gsMeta.itemType || 'Gold Ornament',
+          qty: 1,
+          net_weight: gsMeta.netWeight,
+          purity: gsMeta.purity,
+          amount: gsMeta.totalSaleAmount
+        }]
+      });
+    };
+
+    // 🎯 Add to Cart / GP / GS சேர்க்கும்போது தானாக இணைத்தல்
     const origSubmitPawn = window.submitPawnToDatabase;
     if (typeof origSubmitPawn === 'function') {
       window.submitPawnToDatabase = async function(...args) {
         const loanAmt = Number(document.getElementById('loan_amount')?.value || 0);
+        const chgAmt = Number(document.getElementById('charges_amount')?.value || 0);
         const schemeName = document.getElementById('scheme_name')?.value || '';
         const mktVal = Number(typeof totalGoldMarketValue !== 'undefined' ? totalGoldMarketValue : 0);
         const itemsCopy = Array.isArray(typeof ornamentList !== 'undefined' ? ornamentList : null) ? [...ornamentList] : [];
@@ -14776,6 +14840,49 @@
             loanAmount: loanAmt,
             schemeName: schemeName,
             items: itemsCopy
+          });
+        } else if (loanAmt > 0 && itemsCopy.length > 0) {
+          if (confirm("புதிய நகைக்கடன் ரசீதை (Loan Receipt) இப்போது அச்சிட வேண்டுமா?")) {
+            window.printLoanActionReceipt({
+              actionType: 'NEW_LOAN',
+              loanNo: 'PROVISIONAL',
+              schemeName: schemeName,
+              loanAmount: loanAmt,
+              chargesAmount: chgAmt,
+              items: itemsCopy
+            });
+          }
+        }
+        return res;
+      };
+    }
+
+    const origAddRepayCart = window.addRepaymentItemToCart;
+    if (typeof origAddRepayCart === 'function') {
+      window.addRepaymentItemToCart = async function(...args) {
+        const actType = document.getElementById('rep_action_type')?.value || 'INTEREST';
+        const lNo = document.getElementById('rep_loan_no')?.value || '-';
+        const intPaid = Number(document.getElementById('rep_input_interest')?.value || 0);
+        const discAmt = Number(document.getElementById('rep_input_discount')?.value || 0);
+        const otherChg = Number(document.getElementById('rep_input_other_charges')?.value || 0);
+        const aucChg = Number(document.getElementById('rep_input_auction_charges')?.value || 0);
+        const prinPaid = Number(document.getElementById('rep_input_principal')?.value || 0);
+        const maxPrin = Number(currentRepayLoanObj?._principal || 0);
+
+        const res = await origAddRepayCart.apply(this, args);
+
+        if (confirm(`${lNo} கடன் நடவடிக்கை ரசீதை (Receipt) இப்போது அச்சிட வேண்டுமா?`)) {
+          window.printLoanActionReceipt({
+            actionType: actType,
+            loanNo: lNo,
+            daysCalculated: currentRepayLoanObj?._calcDays,
+            rateApplied: currentRepayLoanObj?._annualRate,
+            interestPaid: intPaid,
+            discountAmount: discAmt,
+            otherCharges: otherChg,
+            auctionCharges: aucChg,
+            principalPaid: prinPaid,
+            newBalance: Math.max(0, maxPrin - prinPaid)
           });
         }
         return res;
@@ -14793,13 +14900,40 @@
         const res = await origAddGpCart.apply(this, args);
 
         if (itemsCopy.length > 0 && totalAmt > 0) {
-          const wantLegalDoc = confirm("நகை வாங்கும் (GP) சட்டப் பாதுகாப்பு ஒப்பந்த ஆவணத்தை (Legal Declaration) இப்போது அச்சிட வேண்டுமா?");
-          if (wantLegalDoc) {
+          if (confirm("நகை வாங்கும் (GP) சட்டப் பாதுகாப்பு ஒப்பந்த ஆவணத்தை (Legal Declaration) இப்போது அச்சிட வேண்டுமா?")) {
             window.printGoldPurchaseLegalDocument({
               gpNo: gpNoVal,
               items: itemsCopy,
               totalAmount: totalAmt,
               totalNetWeight: totalNetWt
+            });
+          }
+        }
+        return res;
+      };
+    }
+
+    const origAddGsCart = window.addGoldSaleToCart;
+    if (typeof origAddGsCart === 'function') {
+      window.addGoldSaleToCart = function(...args) {
+        const gsNoVal = document.getElementById('gs_no')?.value || 'GS-DOC';
+        const selItem = typeof selectedGsStockItem !== 'undefined' ? selectedGsStockItem : null;
+        const calcObj = selItem?._calc || {};
+
+        const res = origAddGsCart.apply(this, args);
+
+        if (selItem) {
+          if (confirm(`நகை விற்பனை ரசீதை (${gsNoVal}) இப்போது அச்சிட வேண்டுமா?`)) {
+            window.printGoldSaleReceipt({
+              gsNo: gsNoVal,
+              itemTagNo: selItem.item_tag_no,
+              itemType: selItem.item_type,
+              purity: selItem.purity,
+              netWeight: selItem.net_weight,
+              goldValue: calcObj.goldVal,
+              makingCharge: calcObj.mc,
+              gstAmount: calcObj.gstAmt,
+              totalSaleAmount: calcObj.totalSale
             });
           }
         }

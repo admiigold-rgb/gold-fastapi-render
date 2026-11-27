@@ -3578,12 +3578,8 @@
     }
 
     async function fetchAutoLoanNumber() {
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
-      try {
-        const res = await fetch(`/api/loan/next-loan-no?branch_id=${branchId}`);
-        const data = await res.json();
-        if (res.ok) document.getElementById('loan_no').value = data.next_loan_no;
-      } catch (e) { console.error("கடன் எண் பிழை:", e); }
+      const el = document.getElementById('loan_no');
+      if (el) el.value = "OTP முடிந்த பின் உருவாகும் (AUTO)";
     }
     // 4. Ornaments & LTV Calculation
     function addOrnamentToTable() {

@@ -3181,7 +3181,6 @@ def update_staff(staff_id: int, data: dict):
             "can_view_360_search": bool(data.get("can_view_360_search", False)),
             "can_view_bank_passbook": bool(data.get("can_view_bank_passbook", False)),
         }
-        }
         if data.get("password"):
             update_dict["password"] = data.get("password")
 

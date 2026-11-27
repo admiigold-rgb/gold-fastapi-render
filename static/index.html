@@ -335,8 +335,8 @@
         <div class="login-logo-shine-frame mx-auto">
           <img src="/static/logo.png" alt="Logo">
         </div>
-        <h1 class="text-xl font-extrabold text-brand-violet tracking-wide">Indian Gold Company</h1>
-        <p class="text-xs text-amber-800 font-bold uppercase tracking-wider">கிளை & தலைமையக பணியாளர் உள்நுழைவு</p>
+        <h1 id="loginBrandTitle" class="text-xl font-extrabold tracking-wide" style="color: #723a91 !important;">Indian Gold Company</h1>
+        <p id="loginSubTitle" class="text-xs font-bold uppercase tracking-wider" style="color: #723a91 !important;">Management Sign In</p>
       </div>
       <div class="space-y-4">
         <div>
@@ -15186,6 +15186,40 @@
         resetIdleTimer();
         return res;
       };
+    }
+  })();
+</script>
+<script>
+  (function applyVioletBrandAndManagementSignIn() {
+    if (window._violetLoginBrandingReady) return;
+    window._violetLoginBrandingReady = true;
+
+    function enforceLoginLabels() {
+      const titleEl = document.getElementById('loginBrandTitle') || document.querySelector('#loginScreen h1');
+      const subEl = document.getElementById('loginSubTitle') || document.querySelector('#loginScreen p');
+
+      if (titleEl) {
+        titleEl.textContent = 'Indian Gold Company';
+        titleEl.style.setProperty('color', '#723a91', 'important');
+      }
+
+      if (subEl) {
+        subEl.textContent = 'Management Sign In';
+        subEl.classList.remove('uppercase');
+        subEl.style.setProperty('color', '#723a91', 'important');
+        subEl.style.setProperty('text-transform', 'none', 'important');
+      }
+    }
+
+    enforceLoginLabels();
+    document.addEventListener('DOMContentLoaded', enforceLoginLabels);
+    setTimeout(enforceLoginLabels, 300);
+    setTimeout(enforceLoginLabels, 1000);
+
+    const loginScreen = document.getElementById('loginScreen');
+    if (loginScreen) {
+      const obs = new MutationObserver(enforceLoginLabels);
+      obs.observe(loginScreen, { childList: true, subtree: true, characterData: true });
     }
   })();
 </script>

@@ -1363,6 +1363,10 @@
             <input type="number" id="sch_min_days" placeholder="Min Interest Days" class="border-2 border-purple-100 p-2 rounded-xl text-xs" value="7">
             <input type="number" id="sch_ltv" placeholder="அதிகபட்ச LTV % (LTV)" class="border-2 border-purple-100 p-2 rounded-xl text-xs font-bold text-emerald-600" value="75">
           </div>
+          <div>
+            <label class="block text-[10px] font-bold text-amber-900 mb-0.5">🔔 வட்டி நினைவூட்டல் (Reminder Days) *</label>
+            <input type="number" id="sch_reminder_days" placeholder="Reminder Days (எ.கா: 30)" class="w-full border-2 border-amber-300 p-2 rounded-xl text-xs font-bold text-amber-950 bg-amber-50/50" value="30">
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-purple-50/50 p-3.5 rounded-2xl border-2 border-purple-100 text-xs">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 mb-1">ஏலக் கட்டணம் (₹)</label>
@@ -15187,6 +15191,326 @@
         return res;
       };
     }
+  })();
+</script>
+<script>
+  (function initFloatingLoanReminderDock() {
+    if (window._floatingReminderDockReady) return;
+    window._floatingReminderDockReady = true;
+
+    let allReminders = [];
+    let activeRemTab = 'ALL';
+    let isDockExpanded = false;
+
+    // 1. Admin Scheme Save & Edit-ல் reminder_days இணைத்தல்
+    const origEditScheme = window.editScheme;
+    if (typeof origEditScheme === 'function') {
+      window.editScheme = function(id) {
+        origEditScheme.apply(this, arguments);
+        const s = (schemesCache || []).find(item => item.id === id);
+        const el = document.getElementById('sch_reminder_days');
+        if (el && s) el.value = s.reminder_days ?? 30;
+      };
+    }
+
+    const origResetScheme = window.resetSchemeForm;
+    if (typeof origResetScheme === 'function') {
+      window.resetSchemeForm = function() {
+        origResetScheme.apply(this, arguments);
+        const el = document.getElementById('sch_reminder_days');
+        if (el) el.value = 30;
+      };
+    }
+
+    const origFetch = window.fetch;
+    window.fetch = async function(url, options = {}) {
+      const uStr = typeof url === 'string' ? url : (url?.url || '');
+      if ((uStr.includes('/api/admin/scheme/create') || uStr.includes('/api/admin/scheme/')) && options?.body) {
+        try {
+          const bodyObj = JSON.parse(options.body);
+          const remEl = document.getElementById('sch_reminder_days');
+          bodyObj.reminder_days = parseInt(remEl?.value) || 30;
+          options = { ...options, body: JSON.stringify(bodyObj) };
+        } catch (e) {}
+      }
+      return origFetch.call(this, url, options);
+    };
+
+    // 2. திரையில் மிதக்கும் Dock UI உருவாக்குதல்
+    const dockWrap = document.createElement('div');
+    dockWrap.id = 'floatingReminderDockWrap';
+    dockWrap.style.cssText = 'position:fixed; bottom:18px; left:18px; z-index:99990; font-family:system-ui,-apple-system,sans-serif;';
+    dockWrap.innerHTML = `
+      <!-- சுருங்கிய மிதக்கும் பட்டை (Minimized Pill) -->
+      <button type="button" id="remDockPillBtn" style="display:none; align-items:center; gap:8px; background:linear-gradient(135deg,#240538 0%,#723a91 100%); color:#fff; border:2px solid #d4af37; padding:10px 16px; border-radius:9999px; box-shadow:0 10px 25px rgba(36,5,56,0.4); font-size:12px; font-weight:900; cursor:pointer;">
+        <span>📞 வட்டி / கடன் நினைவூட்டல்:</span>
+        <span id="remPillBadge" style="background:#f7dc7c; color:#240538; padding:2px 8px; border-radius:9999px; font-weight:900;">0</span>
+        <span style="font-size:10px; color:#f3e8ff;">▲ திற</span>
+      </button>
+
+      <!-- விரிவடைந்த நினைவூட்டல் சாளரம் (Expanded Floating Drawer) -->
+      <div id="remDockPanel" style="display:none; width:430px; max-width:94vw; max-height:78vh; background:#fff; border:2px solid #723a91; border-top:4px solid #d4af37; border-radius:20px; box-shadow:0 20px 45px rgba(0,0,0,0.35); flex-direction:column; overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#240538 0%,#723a91 100%); color:#fff; padding:11px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #d4af37;">
+          <div>
+            <div style="font-size:13px; font-weight:900; color:#f7dc7c;">📞 வட்டி & கடன் காலம் நினைவூட்டல்</div>
+            <div style="font-size:10px; color:#f3e8ff;">அழைத்துப் பதிவு செய்க • வாடிக்கையாளர் வந்தால் சுருக்கவும்</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button type="button" id="btnRefreshReminders" title="புதுப்பி" style="background:rgba(255,255,255,0.18); color:#fff; border:none; border-radius:8px; padding:4px 8px; font-size:11px; font-weight:800; cursor:pointer;">🔄</button>
+            <button type="button" id="btnMinimizeReminderDock" title="மினிமைஸ் செய்" style="background:#f7dc7c; color:#240538; border:none; border-radius:8px; padding:4px 10px; font-size:11px; font-weight:900; cursor:pointer;">— மினிமைஸ்</button>
+          </div>
+        </div>
+
+        <!-- பிரிவு டேப்கள் -->
+        <div id="remTabsBar" style="display:flex; gap:4px; padding:8px 10px; background:#faf5ff; border-bottom:1px solid #e9d5ff; font-size:10.5px; font-weight:800; flex-wrap:wrap;"></div>
+
+        <!-- வாடிக்கையாளர் பட்டியல் -->
+        <div id="remCardsList" style="flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; background:#f8fafc;"></div>
+      </div>
+    `;
+    document.body.appendChild(dockWrap);
+
+    function setDockState(expand) {
+      isDockExpanded = expand;
+      const pill = document.getElementById('remDockPillBtn');
+      const panel = document.getElementById('remDockPanel');
+      if (!pill || !panel) return;
+      if (expand) {
+        pill.style.display = 'none';
+        panel.style.display = 'flex';
+      } else {
+        panel.style.display = 'none';
+        pill.style.display = 'inline-flex';
+      }
+    }
+
+    document.getElementById('remDockPillBtn').onclick = () => setDockState(true);
+    document.getElementById('btnMinimizeReminderDock').onclick = () => setDockState(false);
+    document.getElementById('btnRefreshReminders').onclick = () => loadDailyReminders(true);
+
+    // 3. கவுண்ட்டரில் வாடிக்கையாளர் தேர்ந்தெடுத்தால் Auto-Minimize, முடிந்தால் Auto-Restore
+    const origSelectCust = window.selectCustomer;
+    if (typeof origSelectCust === 'function') {
+      window.selectCustomer = async function(cust) {
+        setDockState(false); // கவுண்ட்டர் வாடிக்கையாளர் வந்தவுடன் தானாக மினிமைஸ் ஆகும்
+        return origSelectCust.apply(this, arguments);
+      };
+    }
+
+    const origResetCust = window.resetCustomer;
+    if (typeof origResetCust === 'function') {
+      window.resetCustomer = function() {
+        const res = origResetCust.apply(this, arguments);
+        loadDailyReminders(false).then(() => {
+          if (allReminders.length > 0) setDockState(true);
+        });
+        return res;
+      };
+    }
+
+    // 4. நினைவூட்டல் பட்டியலைப் பெறுதல் & வரைதல்
+    async function loadDailyReminders(forceOpen = false) {
+      const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || 'null');
+      if (!u || !u.permissions?.can_access_counter) {
+        dockWrap.style.display = 'none';
+        return;
+      }
+      dockWrap.style.display = 'block';
+
+      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || u.branch_id || 1;
+      const dateStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
+
+      try {
+        const res = await origFetch(`/api/branch/daily-reminders?branch_id=${branchId}&date_str=${dateStr}&t=${Date.now()}`);
+        const out = await res.json();
+        if (!res.ok) return;
+
+        allReminders = out.reminders || [];
+        const counts = out.counts || {};
+        document.getElementById('remPillBadge').innerText = allReminders.length;
+
+        renderReminderTabs(counts);
+        renderReminderCards();
+
+        const hasActiveCust = Boolean(window.activeCustomer && window.activeCustomer.id);
+        if (forceOpen) {
+          setDockState(true);
+        } else if (!hasActiveCust && allReminders.length > 0 && !window._remInitialShown) {
+          window._remInitialShown = true;
+          setDockState(true);
+        } else if (!isDockExpanded) {
+          setDockState(false);
+        }
+      } catch (e) {}
+    }
+
+    function renderReminderTabs(counts) {
+      const bar = document.getElementById('remTabsBar');
+      if (!bar) return;
+      const tabs = [
+        { k: 'ALL', lbl: `அனைத்தும் (${allReminders.length})` },
+        { k: 'INTEREST_DUE', lbl: `💰 வட்டி (${counts.INTEREST_DUE || 0})` },
+        { k: 'TENURE_EXPIRING', lbl: `⏰ கடன் முடிவு (${counts.TENURE_EXPIRING || 0})` },
+        { k: 'LETTER_NOTICE', lbl: `✉️ கடிதம் (${counts.LETTER_NOTICE || 0})` }
+      ];
+      bar.innerHTML = tabs.map(t => {
+        const active = activeRemTab === t.k;
+        return `<button type="button" onclick="window._setRemTab('${t.k}')" style="padding:4px 8px; border-radius:8px; border:1px solid #c084fc; cursor:pointer; background:${active ? '#723a91' : '#fff'}; color:${active ? '#fff' : '#4c1d95'};">${t.lbl}</button>`;
+      }).join('');
+    }
+
+    window._setRemTab = function(k) {
+      activeRemTab = k;
+      renderReminderCards();
+    };
+
+    function renderReminderCards() {
+      const listEl = document.getElementById('remCardsList');
+      if (!listEl) return;
+      const filtered = activeRemTab === 'ALL'
+        ? allReminders
+        : allReminders.filter(r => r.category === activeRemTab);
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div style="text-align:center; padding:24px; color:#64748b; font-size:12px; font-weight:700;">✅ இந்தப் பிரிவில் அழைக்க வேண்டிய வாடிக்கையாளர்கள் இல்லை</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(r => {
+        let catBadge = `<span style="background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px; font-size:10px; font-weight:800;">💰 வட்டி நிலுவை (${r.days_since_interest} நாள்)</span>`;
+        if (r.category === 'TENURE_EXPIRING') {
+          const dTxt = r.days_to_maturity < 0 ? `${Math.abs(r.days_to_maturity)} நாள் தாண்டியது` : `${r.days_to_maturity} நாளில் முடிகிறது`;
+          catBadge = `<span style="background:#fee2e2; color:#b91c1c; padding:2px 6px; border-radius:6px; font-size:10px; font-weight:900;">⏰ கடன் காலம் (${dTxt})</span>`;
+        } else if (r.category === 'LETTER_NOTICE') {
+          catBadge = `<span style="background:#fce7f3; color:#9d174d; padding:2px 6px; border-radius:6px; font-size:10px; font-weight:900;">✉️ கடிதம் அனுப்ப வேண்டும் (${r.no_answer_count}x No Answer)</span>`;
+        }
+
+        return `
+          <div style="background:#fff; border:1.5px solid #e2e8f0; border-left:4px solid #723a91; border-radius:14px; padding:10px; font-size:11.5px; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:4px; margin-bottom:4px;">
+              <span style="font-family:monospace; font-weight:900; color:#723a91; font-size:12.5px;">${r.loan_no}</span>
+              ${catBadge}
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <b style="color:#0f172a; font-size:12.5px;">${r.customer_name}</b>
+              <a href="tel:${r.customer_mobile}" style="background:#ecfdf5; color:#047857; border:1px solid #6ee7b7; padding:2px 8px; border-radius:8px; font-family:monospace; font-weight:900; text-decoration:none;">📞 ${r.customer_mobile}</a>
+            </div>
+            <div style="color:#475569; font-size:10.5px; margin-top:4px;">
+              அசல்: <b>₹${Number(r.principal).toLocaleString('en-IN')}</b> | கடைசி வட்டி: <b>${r.last_interest_date}</b> | முடிவு: <b>${r.maturity_date}</b>
+            </div>
+            ${r.last_remark ? `<div style="font-size:10px; color:#6b21a8; background:#faf5ff; padding:3px 6px; border-radius:6px; margin-top:4px;">📝 முந்தைய குறிப்பு: ${r.last_remark}</div>` : ''}
+
+            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-top:8px;">
+              <button type="button" onclick="window._recordReminderCall(${r.loan_id}, 'PROMISED')" style="background:#059669; color:#fff; border:none; border-radius:7px; padding:5px 3px; font-size:10px; font-weight:800; cursor:pointer;">✅ வருவார்</button>
+              <button type="button" onclick="window._recordReminderCall(${r.loan_id}, 'RENEWAL_AGREED')" style="background:#7c3aed; color:#fff; border:none; border-radius:7px; padding:5px 3px; font-size:10px; font-weight:800; cursor:pointer;">🔄 மாற்றுவார்</button>
+              <button type="button" onclick="window._recordReminderCall(${r.loan_id}, 'NO_ANSWER')" style="background:#d97706; color:#fff; border:none; border-radius:7px; padding:5px 3px; font-size:10px; font-weight:800; cursor:pointer;">📵 எடுக்கல</button>
+              <button type="button" onclick="window._printAndLogReminderLetter(${r.loan_id})" style="background:#e11d48; color:#fff; border:none; border-radius:7px; padding:5px 3px; font-size:10px; font-weight:800; cursor:pointer;">✉️ கடிதம்</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 5. அழைப்பு முடிவைப் பதிவு செய்தல்
+    window._recordReminderCall = async function(loanId, outcome) {
+      const rem = allReminders.find(x => x.loan_id === loanId);
+      if (!rem) return;
+
+      let promisedDate = null;
+      if (outcome === 'PROMISED' || outcome === 'RENEWAL_AGREED') {
+        const defDate = new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0];
+        const pInput = prompt(`${rem.customer_name} (${rem.loan_no}) வருவதாகச் சொன்ன தேதியை உள்ளிடவும் (YYYY-MM-DD):`, defDate);
+        if (!pInput) return;
+        promisedDate = pInput.trim();
+      }
+
+      const remarks = prompt("அழைப்பு குறிப்பு (Remarks - விருப்பமானது):", outcome === 'NO_ANSWER' ? 'அழைப்பு எடுக்கவில்லை' : 'தொடர்பு கொண்டு நினைவூட்டப்பட்டது') || '';
+      const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || '{}');
+      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || u.branch_id || 1;
+
+      const res = await origFetch('/api/branch/log-reminder-followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branch_id: branchId,
+          loan_id: rem.loan_id,
+          loan_no: rem.loan_no,
+          customer_id: rem.customer_id,
+          followup_category: rem.category,
+          outcome_status: outcome,
+          promised_date: promisedDate,
+          remarks: remarks,
+          staff_id: u.id || 1
+        })
+      });
+      if (res.ok) {
+        loadDailyReminders(true);
+      }
+    };
+
+    // 6. நினைவூட்டல் கடிதம் (A4 Notice) அச்சிட்டுப் பதிவு செய்தல்
+    window._printAndLogReminderLetter = async function(loanId) {
+      const rem = allReminders.find(x => x.loan_id === loanId);
+      if (!rem) return;
+
+      const refNo = prompt("தபால் / கடித எண் (Letter / Post Ref No):", `LTR/${rem.loan_no}`);
+      if (!refNo) return;
+
+      if (typeof window.openUniversalDocument === 'function') {
+        window.openUniversalDocument({
+          docType: 'LOAN_REMINDER_NOTICE',
+          refNo: refNo,
+          title: 'நகைக்கடன் வட்டி & கடன் முடிவு நினைவூட்டல் கடிதம் / REMINDER NOTICE',
+          customer: {
+            name: rem.customer_name,
+            mobile: rem.customer_mobile,
+            address: rem.customer_address
+          },
+          summaryRows: [
+            { label: 'கடன் எண் (Loan No)', value: rem.loan_no },
+            { label: 'திட்டம் (Scheme)', value: rem.scheme_name },
+            { label: 'நிலுவை அசல் தொகை', value: `₹${Number(rem.principal).toLocaleString('en-IN')}` },
+            { label: 'கடைசி வட்டி செலுத்திய தேதி', value: rem.last_interest_date },
+            { label: 'கடன் முடிவுத் தேதி', value: rem.maturity_date }
+          ],
+          clausesTitle: 'அன்புடைய வாடிக்கையாளருக்கு முக்கிய அறிவிப்பு:',
+          clauses: [
+            `தாங்கள் நமது நிறுவனத்தில் அடகு வைத்துள்ள நகைக்கடன் எண் <b>${rem.loan_no}</b>-க்கு <b>${rem.days_since_interest} நாட்களாக</b> வட்டி நிலுவையில் உள்ளது (அல்லது கடன் காலம் முடிவடையும் நிலையில் உள்ளது).`,
+            `எனவே தாங்கள் உடனடியாக நமது கிளைக்கு நேரில் வருகை தந்து நிலுவை வட்டியைச் செலுத்தவும், கடன் காலம் முடிந்திருப்பின் கணக்கை முடித்து நகையை மீட்டுக்கொள்ளவும் அல்லது புதுப்பித்து (Renewal / Re-pledge) கொள்ளவும் அன்புடன் கேட்டுக்கொள்கிறோம்.`
+          ]
+        });
+      }
+
+      const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || '{}');
+      const branchId = parseInt(document.getElementById('active_branch_id')?.value) || u.branch_id || 1;
+      await origFetch('/api/branch/log-reminder-followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branch_id: branchId,
+          loan_id: rem.loan_id,
+          loan_no: rem.loan_no,
+          customer_id: rem.customer_id,
+          followup_category: 'LETTER_NOTICE',
+          outcome_status: 'LETTER_SENT',
+          letter_ref_no: refNo,
+          remarks: `கடிதம் அனுப்பப்பட்டது (${refNo})`,
+          staff_id: u.id || 1
+        })
+      });
+      loadDailyReminders(true);
+    };
+
+    // லாகின் ஆனவுடன் தானாக ஏற்றுதல்
+    const origShowDash = window.showDashboard;
+    if (typeof origShowDash === 'function') {
+      window.showDashboard = function() {
+        const r = origShowDash.apply(this, arguments);
+        setTimeout(() => loadDailyReminders(false), 800);
+        return r;
+      };
+    }
+    setTimeout(() => loadDailyReminders(false), 1500);
   })();
 </script>
 </body>

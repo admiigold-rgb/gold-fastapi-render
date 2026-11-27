@@ -279,6 +279,7 @@ class StaffPayload(BaseModel):
     can_access_hq_packets: bool = False
     can_approve_hq_packets: bool = False
     can_audit_documents: bool = False
+    can_view_loan_reminders: bool = False
 
 class CompanyBankPayload(BaseModel):
     bank_name: str
@@ -310,6 +311,7 @@ class LoanSchemePayload(BaseModel):
     release_charge_calc: Optional[str] = "AMOUNT"
     release_charge_value: Optional[float] = 0.00
     max_ltv_percentage: float = 75.00
+    reminder_days: Optional[int] = 30
     interest_slabs: List[InterestSlab]
     purity_rate_multipliers: Optional[Dict[str, float]] = {
         "916": 0.75, "22CT": 0.75, "18CT": 0.60, "999": 0.85
@@ -678,7 +680,8 @@ def staff_unified_login(data: LoginRequest):
                 "can_approve_gss_benefit": True if is_admin_role else bool(user.get("can_approve_gss_benefit", False)),
                 "can_access_hq_packets": bool(user.get("can_access_hq_packets", False)),
                 "can_approve_hq_packets": bool(user.get("can_approve_hq_packets", False)),
-                "can_audit_documents": True if is_admin_role else bool(user.get("can_audit_documents", False))
+                "can_audit_documents": True if is_admin_role else bool(user.get("can_audit_documents", False)),
+                "can_view_loan_reminders": bool(user.get("can_view_loan_reminders", False))
             }
         }
         return {"status": "success", "message": "உள்நுழைவு முடிந்தது!", "user": user_profile}
@@ -3170,6 +3173,7 @@ def update_staff(staff_id: int, data: dict):
             "can_access_hq_packets": bool(data.get("can_access_hq_packets", False)),
             "can_approve_hq_packets": bool(data.get("can_approve_hq_packets", False)),
             "can_audit_documents": bool(data.get("can_audit_documents", False)),
+            "can_view_loan_reminders": bool(data.get("can_view_loan_reminders", False)),
         }
         if data.get("password"):
             update_dict["password"] = data.get("password")

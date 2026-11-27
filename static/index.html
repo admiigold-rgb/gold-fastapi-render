@@ -14166,5 +14166,195 @@
     setTimeout(placeButton, 800);
   })();
 </script>
+<script>
+  window.printHqRdCertificate = async function(rdAccountId) {
+    try {
+      // முதல் அழைப்பில் நிலை அறிந்து, மறுமுறை எனில் உறுதிப்படுத்தல்
+      const role = (window.currentUserRole || localStorage.getItem('user_role') || 'HQ').toUpperCase();
+      const userName = window.currentUserName || localStorage.getItem('user_name') || 'HQ Admin';
+
+      const res = await fetch(`/api/hq/rd-certificate/${rdAccountId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: role, issued_by: userName })
+      });
+      const out = await res.json();
+      if (!res.ok) {
+        return alert(out.detail || "❌ RD Certificate உருவாக்க முடியவில்லை");
+      }
+
+      if (out.is_duplicate) {
+        alert(`⚠️ கவனம்: இந்த RD சான்றிதழ் ஏற்கனவே அச்சிடப்பட்டுள்ளது (அச்சு எண்: ${out.print_count}). இப்போது 'DUPLICATE / நகல்' முத்திரையுடன் மட்டுமே அச்சிடப்படும்.`);
+      }
+
+      const acc = out.account || {};
+      const cust = out.customer || {};
+      const br = out.branch || {};
+      const sch = out.scheme || {};
+
+      const instAmt = Number(acc.installment_amount || acc.monthly_amount || sch.monthly_amount || 0);
+      const tenure = Number(sch.tenure_months || sch.tenure_count || 12);
+      const intRate = Number(sch.interest_rate || 0);
+      const graceDays = Number(sch.grace_period_days || 5);
+      const penaltyPer1k = Number(sch.penalty_per_thousand || 2);
+      const lockMonths = Number(sch.locking_period_count || 12);
+
+      const totalPrincipal = instAmt * tenure;
+      const estInterest = Number(acc.proposed_benefit_amount || ((totalPrincipal * intRate * (tenure + 1)) / 2400));
+      const maturityVal = Number(acc.maturity_amount || (totalPrincipal + estInterest));
+
+      const slabs = Array.isArray(sch.premature_slabs) && sch.premature_slabs.length
+        ? sch.premature_slabs
+        : [
+            { period: `${lockMonths} மாதத்திற்கு முன்`, rate: "அனுமதி இல்லை" },
+            { period: `${lockMonths}-வது மாதம்`, rate: "0% (வட்டி இல்லை)" },
+            { period: "13 முதல் 24 மாதங்கள் வரை", rate: "திட்ட வட்டியில் 50%" },
+            { period: "24 மாதங்களுக்கு மேல்", rate: "திட்ட வட்டியில் 75%" }
+          ];
+
+      const slabRowsHtml = slabs.map(s => `
+        <tr>
+          <td style="border:1px solid #cbd5e1; padding:3px 6px;">${s.period || '-'}</td>
+          <td style="border:1px solid #cbd5e1; padding:3px 6px; font-weight:700;">${s.rate || '-'}</td>
+        </tr>
+      `).join('');
+
+      const dupWatermarkHtml = out.is_duplicate
+        ? `<div style="position:fixed; top:48%; left:50%; transform:translate(-50%, -50%) rotate(-32deg); font-size:74px; font-weight:900; color:rgba(220, 38, 38, 0.18); border:6px solid rgba(220, 38, 38, 0.22); padding:10px 30px; border-radius:16px; pointer-events:none; z-index:999; white-space:nowrap; letter-spacing:4px;">DUPLICATE / நகல்</div>`
+        : '';
+
+      const copyBadgeHtml = out.is_duplicate
+        ? `<span style="background:#fee2e2; color:#b91c1c; border:1.5px solid #dc2626; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:900;">DUPLICATE / நகல் (Copy #${out.print_count})</span>`
+        : `<span style="background:#f3e8ff; color:#581c87; border:1.5px solid #723a91; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:900;">ORIGINAL CERTIFICATE</span>`;
+
+      const printWin = window.open('', '_blank', 'width=900,height=1100');
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="ta">
+        <head>
+          <meta charset="UTF-8" />
+          <title>RD Certificate - ${acc.rd_no || ''}</title>
+          <style>
+            @page { size: A4 portrait; margin: 10mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; color: #1e293b; background: #fff; }
+            .cert-box { border: 3px double #723a91; border-radius: 10px; padding: 14px 18px; position: relative; min-height: 272mm; box-sizing: border-box; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #d4af37; padding-bottom: 8px; margin-bottom: 10px; }
+            .title-banner { text-align: center; background: linear-gradient(90deg, #723a91, #581c87); color: #fff; padding: 6px; border-radius: 6px; font-size: 15px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 10px; border: 1px solid #d4af37; }
+            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; font-size: 11.5px; }
+            .card { border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; background: #faf8fc; }
+            .card h4 { margin: 0 0 5px 0; color: #723a91; font-size: 12px; border-bottom: 1px solid #e9d5ff; padding-bottom: 3px; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+            table.fin { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-bottom: 10px; }
+            table.fin th { background: #f3e8ff; color: #4c1d95; border: 1px solid #cbd5e1; padding: 5px; text-align: center; }
+            table.fin td { border: 1px solid #cbd5e1; padding: 6px; text-align: center; font-weight: 700; }
+            .terms { font-size: 9.2px; line-height: 1.42; color: #334155; border-top: 1.5px dashed #cbd5e1; padding-top: 7px; }
+            .terms ol { margin: 4px 0; padding-left: 16px; }
+            .terms li { margin-bottom: 2.5px; }
+            .decl { margin-top: 8px; padding: 6px 8px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; font-size: 9.8px; font-weight: 700; color: #78350f; }
+            .signs { display: flex; justify-content: space-between; margin-top: 26px; font-size: 11px; font-weight: 700; }
+          </style>
+        </head>
+        <body>
+          ${dupWatermarkHtml}
+          <div class="cert-box">
+            <div class="header">
+              <div>
+                <div style="font-size:18px; font-weight:900; color:#723a91;">MUTHUSISE GOLD PRODUCT PRIVATE LIMITED</div>
+                <div style="font-size:11px; font-weight:700; color:#92400e;">Indian Gold Company | நாகர்கோவில், கன்னியாகுமரி மாவட்டம்</div>
+                <div style="font-size:10.5px; color:#475569;">கிளை: <b>${br.branch_name || '-'} (${br.branch_code || '-'})</b></div>
+              </div>
+              <div style="text-align:right;">
+                ${copyBadgeHtml}
+                <div style="font-size:10.5px; margin-top:5px;">தேதி: <b>${new Date().toLocaleDateString('en-IN')}</b></div>
+              </div>
+            </div>
+
+            <div class="title-banner">RECURRING DEPOSIT CERTIFICATE / தொடர் வைப்புத் நிதிச் சான்றிதழ்</div>
+
+            <div class="grid-2">
+              <div class="card">
+                <h4>கணக்கு விவரங்கள் (Account Details)</h4>
+                <div class="row"><span>RD கணக்கு எண்:</span><b>${acc.rd_no || '-'}</b></div>
+                <div class="row"><span>திட்டம் (Scheme):</span><b>${sch.scheme_name || '-'} (${sch.scheme_code || '-'})</b></div>
+                <div class="row"><span>தொடங்கிய தேதி:</span><b>${acc.start_date || (acc.created_at || '').slice(0,10) || '-'}</b></div>
+                <div class="row"><span>முதிர்வுத் தேதி:</span><b>${acc.maturity_date || '-'}</b></div>
+              </div>
+              <div class="card">
+                <h4>வாடிக்கையாளர் & வாரிசு விவரங்கள் (Customer & Nominee)</h4>
+                <div class="row"><span>பெயர்:</span><b>${cust.full_name || cust.name || '-'} (ID: ${acc.customer_id || '-'})</b></div>
+                <div class="row"><span>கைபேசி:</span><b>${cust.mobile || cust.phone || '-'}</b></div>
+                <div class="row"><span>முகவரி:</span><b>${cust.address || '-'}</b></div>
+                <div class="row"><span>வாரிசுதாரர் (Nominee):</span><b>${acc.nominee_name || '-'} (${acc.nominee_relation || '-'})</b></div>
+              </div>
+            </div>
+
+            <table class="fin">
+              <thead>
+                <tr>
+                  <th>மாதத் தவணை (Monthly)</th>
+                  <th>கால அளவு (Tenure)</th>
+                  <th>வட்டி விகிதம் (Interest)</th>
+                  <th>மொத்த அசல் (Total Principal)</th>
+                  <th>மதிப்பிடப்பட்ட வட்டி</th>
+                  <th>முதிர்வுத் தொகை (Maturity Value)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>₹${instAmt.toLocaleString('en-IN')}</td>
+                  <td>${tenure} மாதங்கள்</td>
+                  <td>${intRate}% p.a.</td>
+                  <td>₹${totalPrincipal.toLocaleString('en-IN')}</td>
+                  <td>₹${estInterest.toLocaleString('en-IN')}</td>
+                  <td style="color:#723a91; font-size:13px;">₹${maturityVal.toLocaleString('en-IN')}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="terms">
+              <div style="font-weight:800; color:#723a91; font-size:10.5px;">விதிமுறைகள் மற்றும் நிபந்தனைகள் (Terms & Conditions):</div>
+              <ol>
+                <li>தங்களினால் தொடர்வைப்பு கணக்கு ஆரம்பிக்கும் போது அளிக்கப்பட்ட முகவரி மற்றும் தொடர்பு எண்ணிலேயே தொடர்பு கொள்ளப்படும். முகவரி மற்றும் தொலைபேசி எண்களில் மாறுதல் இருந்தால் உடனடியாக தெரிவித்து ஒப்புதல் சீட்டு பெறுதல் வேண்டும்.</li>
+                <li>தங்களின் வைப்பிற்கு <b>${intRate}%</b> சாதாரண வட்டி கணக்கிட்டு தங்களின் ஒப்புகையில் குறிப்பிட்டுள்ள தொகை முதிர்வின்போது அளிக்கப்படும். இதில் குறிப்பிட்டுள்ள முதிர்வு தொகையானது சரியான நேரத்தில் தாங்கள் கட்டக்கூடிய அனைத்து மாத செலுத்து தொகையினை மற்றும் தவணை செலுத்திய காலத்தினை பொறுத்தே அமையும்.</li>
+                <li>முடிவு செய்யப்பட்ட செலுத்து தொகையினை இடையில் மாற்றுவதற்கு முடியாது. பகுதி மாத தவணை செலுத்து தொகை செலுத்த முடியாது.</li>
+                <li>ஒன்றுக்கு மேற்பட்ட தவணை தொகை செலுத்த தவறி இருப்பின், அதன் பின் தாங்கள் செலுத்தும் தவணை தொகை; தவறிய முதல் மாத தொகையிலேயே வரவு வைக்கப்படும்.</li>
+                <li>தவணை தொகை செலுத்த கருணைகாலம் <b>${graceDays} நாட்கள்</b> அளிக்கப்படும். அதன் பின் செலுத்தும் அனைத்து தவணைக்கும், தவணை தவறிய முதல் நாளில் இருந்தே ஒரு நாளைக்கு ₹1000 ரூபாய்க்கு <b>₹${penaltyPer1k}</b> வீதம் அபராதம் வசூலிக்கப்படும்.</li>
+                <li><b>${lockMonths} மாதத்திற்கு</b> முன் திட்டத்தினை முடிக்க முடியாது. அதன் பின் ${lockMonths}-வது மாதம் முன்முடிப்பு செய்பவர்களுக்கு வட்டி வழங்கப்பட மாட்டாது. அதன்பின் முடிக்கும் நபர்களுக்கு கீழ் உள்ள அட்டவணைப்படி அளிக்கப்படும்:
+                  <table style="width:65%; border-collapse:collapse; margin:3px 0; font-size:9px;">
+                    <thead>
+                      <tr style="background:#f1f5f9;">
+                        <th style="border:1px solid #cbd5e1; padding:2px 6px; text-align:left;">முன்முடிப்பு காலம்</th>
+                        <th style="border:1px solid #cbd5e1; padding:2px 6px; text-align:left;">வட்டி விகிதம்</th>
+                      </tr>
+                    </thead>
+                    <tbody>${slabRowsHtml}</tbody>
+                  </table>
+                </li>
+                <li>தவணை தொகையினை நிறுவனத்தின் அனைத்து கிளைகளிலும் செலுத்தலாம் அல்லது இணையம் மூலமும் செலுத்தலாம். செலுத்தும் அனைத்து தவணைக்கும் உரிய ரசீது அளிக்கப்படும்; ரசீதுகளை பாதுகாப்பது மிக அவசியம். தவறினால் அதற்குரிய கட்டணத்தினை செலுத்தி செலுத்திய அனைத்து தவணைகளின் விபரங்களை மொத்தமாக பெறலாம்.</li>
+                <li>முதிர்வு தொகையை பெறும்போது இந்த அசல் பத்திரத்தினை ஒப்படைக்க வேண்டும். பத்திரம் தொலைந்தால் எழுத்துப்பூர்வ விண்ணப்பம் மற்றும் அடையாளச் சான்றுடன் நகல் (Duplicate) பெறலாம்.</li>
+                <li>கணக்குதாரரின் காலத்திற்குப் பிறகு பத்திரத்தில் குறிப்பிட்டுள்ள வாரிசுதாரருக்கு உரிய ஆவண சரிபார்ப்பிற்குப் பின் முதிர்வு தொகை வழங்கப்படும். இந்தச் சான்றிதழ் வேறு நபருக்கு மாற்றத்தக்கதல்ல; அனைத்து சட்ட விவகாரங்களும் நாகர்கோவில் நீதிமன்ற அதிகார வரம்பிற்கு உட்பட்டவை.</li>
+              </ol>
+            </div>
+
+            <div class="decl">
+              மேற்கூறிய அனைத்து விதிமுறைகள் மற்றும் நிபந்தனைகளை முழுமையாக சம்மதிக்கிறேன். இந்த தொடர் வைப்பிற்கான பத்திரத்தினையும் பெற்று கொண்டேன்.
+            </div>
+
+            <div class="signs">
+              <div>வாடிக்கையாளர் கையொப்பம்<br><span style="font-weight:400; font-size:9.5px;">(Customer Signature)</span></div>
+              <div style="text-align:center;">கிளை மேலாளர் சரிபார்ப்பு<br><span style="font-weight:400; font-size:9.5px;">(Branch Verification)</span></div>
+              <div style="text-align:right;">தலைமையக அங்கீகரிக்கப்பட்ட கையொப்பம்<br><span style="font-weight:400; font-size:9.5px;">(Authorized Signatory - HQ)</span></div>
+            </div>
+          </div>
+          <script>window.onload = function() { window.print(); };<\/script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    } catch (e) {
+      alert("❌ RD Certificate பிழை: " + e.message);
+    }
+  };
+</script>
 </body>
 </html>

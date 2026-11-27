@@ -5842,3 +5842,135 @@ def log_branch_reminder_followup(payload: LoanFollowupCreatePayload):
         return {"status": "success", "message": "✅ வாடிக்கையாளர் தொடர்பு விவரம் பதிவு செய்யப்பட்டது!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"பதிவு பிழை: {str(e)}")
+
+@app.get("/api/hq/reminder-monitoring")
+def get_hq_reminder_monitoring(date_str: Optional[str] = None):
+    try:
+        target_date = (date_str or datetime.now(IST).strftime("%Y-%m-%d")).strip()[:10]
+        target_dt = datetime.strptime(target_date, "%Y-%m-%d").date()
+
+        branches = supabase.table("mg_branches").select("id, branch_name, branch_code").order("id").execute().data or []
+        schemes = supabase.table("mg_loan_schemes").select("scheme_name, tenure_months, reminder_days").execute().data or []
+        scheme_map = {
+            s["scheme_name"]: {
+                "tenure_months": int(s.get("tenure_months") or 12),
+                "reminder_days": int(s.get("reminder_days") or 30),
+            }
+            for s in schemes
+        }
+
+        active_loans = (
+            supabase.table("mg_gold_loans")
+            .select("id, loan_no, customer_id, branch_id, scheme_name, transaction_date, last_interest_paid_date, status")
+            .eq("status", "ACTIVE")
+            .execute()
+            .data
+            or []
+        )
+
+        all_followups = (
+            supabase.table("mg_loan_followups")
+            .select("*")
+            .order("created_at", desc=True)
+            .execute()
+            .data
+            or []
+        )
+
+        followups_by_loan = {}
+        today_followups_by_branch = {}
+
+        for f in all_followups:
+            lid = f.get("loan_id")
+            followups_by_loan.setdefault(lid, []).append(f)
+
+            f_date = str(f.get("created_at") or "")[:10]
+            if f_date == target_date:
+                bid = f.get("branch_id")
+                today_followups_by_branch.setdefault(bid, []).append(f)
+
+        branch_rows = []
+        totals = {
+            "due_loans": 0,
+            "completed_today": 0,
+            "promised_count": 0,
+            "renewal_count": 0,
+            "no_answer_count": 0,
+            "letter_sent_count": 0,
+        }
+
+        for br in branches:
+            bid = br["id"]
+            br_loans = [l for l in active_loans if l.get("branch_id") == bid]
+
+            due_loan_ids = set()
+            for loan in br_loans:
+                lid = loan["id"]
+                sch_info = scheme_map.get(loan.get("scheme_name"), {"tenure_months": 12, "reminder_days": 30})
+                rem_days_rule = sch_info["reminder_days"]
+                tenure_months = sch_info["tenure_months"]
+
+                orig_str = str(loan.get("transaction_date") or target_date)[:10]
+                last_int_str = str(loan.get("last_interest_paid_date") or orig_str)[:10]
+
+                try:
+                    orig_dt = datetime.strptime(orig_str, "%Y-%m-%d").date()
+                except Exception:
+                    orig_dt = target_dt
+
+                try:
+                    last_int_dt = datetime.strptime(last_int_str, "%Y-%m-%d").date()
+                except Exception:
+                    last_int_dt = orig_dt
+
+                days_since_interest = max(0, (target_dt - last_int_dt).days)
+                maturity_dt = orig_dt + timedelta(days=tenure_months * 30)
+                days_to_maturity = (maturity_dt - target_dt).days
+
+                if days_to_maturity <= 10 or days_since_interest >= rem_days_rule:
+                    due_loan_ids.add(lid)
+
+            t_fups = today_followups_by_branch.get(bid, [])
+            handled_loan_ids = {f.get("loan_id") for f in t_fups if f.get("loan_id")}
+
+            # இன்று நடவடிக்கை எடுக்கப்பட்ட கடன்கள் (நிலுவையில் இருந்தவை + இன்று அழைக்கப்பட்டவை)
+            total_target = max(len(due_loan_ids) + len(handled_loan_ids - due_loan_ids), len(handled_loan_ids))
+            completed_cnt = len(handled_loan_ids)
+            completion_pct = round((completed_cnt / total_target) * 100, 1) if total_target > 0 else 100.0
+
+            promised_cnt = sum(1 for f in t_fups if f.get("outcome_status") == "PROMISED")
+            renewal_cnt = sum(1 for f in t_fups if f.get("outcome_status") == "RENEWAL_AGREED")
+            no_ans_cnt = sum(1 for f in t_fups if f.get("outcome_status") == "NO_ANSWER")
+            letter_cnt = sum(1 for f in t_fups if f.get("outcome_status") == "LETTER_SENT")
+
+            totals["due_loans"] += total_target
+            totals["completed_today"] += completed_cnt
+            totals["promised_count"] += promised_cnt
+            totals["renewal_count"] += renewal_cnt
+            totals["no_answer_count"] += no_ans_cnt
+            totals["letter_sent_count"] += letter_cnt
+
+            branch_rows.append({
+                "branch_id": bid,
+                "branch_name": br.get("branch_name") or f"கிளை #{bid}",
+                "branch_code": br.get("branch_code") or "BR",
+                "total_due": total_target,
+                "completed_count": completed_cnt,
+                "completion_pct": completion_pct,
+                "promised_count": promised_cnt,
+                "renewal_count": renewal_cnt,
+                "no_answer_count": no_ans_cnt,
+                "letter_sent_count": letter_cnt,
+            })
+
+        overall_pct = round((totals["completed_today"] / totals["due_loans"]) * 100, 1) if totals["due_loans"] > 0 else 100.0
+
+        return {
+            "status": "success",
+            "date": target_date,
+            "overall_pct": overall_pct,
+            "totals": totals,
+            "branches": branch_rows,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"HQ நினைவூட்டல் கண்காணிப்பு பிழை: {str(e)}")

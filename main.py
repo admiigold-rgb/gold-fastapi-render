@@ -3995,35 +3995,101 @@ def extract_visit_action_items(actions_summary: str):
 def process_visit_approval(data: ApprovalActionPayload):
     try:
         if data.action != "APPROVE":
+            v_chk = supabase.table("mg_customer_visits").select("*").eq("id", data.request_id).execute()
+            visit_row = v_chk.data[0] if v_chk.data else {}
+            v_date = visit_row.get("transaction_date")
+            v_cust_id = visit_row.get("customer_id")
+
             supabase.table("mg_customer_visits").update({
                 "status": "REJECTED",
                 "audit_status": "REJECTED"
             }).eq("id", data.request_id).execute()
 
-            # ❌ நிராகரிக்கப்பட்ட வருகையின் கடன், பாக்கெட், GP ஆகியவற்றை CANCELLED ஆக்குதல்
+            # 1. இந்த வருகையில் உருவான புதிய நகைக்கடன்கள் & பாக்கெட்டுகளை CANCELLED ஆக்குதல்
             try:
-                rej_loans = supabase.table("mg_gold_loans").select("id").eq("visit_id", data.request_id).execute().data or []
+                rej_loans = supabase.table("mg_gold_loans").select("id, loan_no").eq("visit_id", data.request_id).execute().data or []
                 if rej_loans:
                     loan_ids = [l["id"] for l in rej_loans]
+                    loan_nos_rej = [str(l.get("loan_no") or "").strip() for l in rej_loans if l.get("loan_no")]
                     supabase.table("mg_gold_loans").update({"status": "CANCELLED"}).in_("id", loan_ids).execute()
                     supabase.table("mg_gold_packets").update({"packet_status": "CANCELLED"}).in_("loan_id", loan_ids).execute()
-                supabase.table("mg_gold_purchases").update({"status": "CANCELLED"}).eq("visit_id", data.request_id).execute()
+                    for r_no in loan_nos_rej:
+                        try:
+                            supabase.table("mg_staff_incentive_ledger").delete().eq("ref_no", r_no).execute()
+                        except Exception:
+                            pass
             except Exception as cancel_err:
-                print("Auto-cancel note:", cancel_err)
+                print("Auto-cancel loans note:", cancel_err)
 
-            return {"status": "success", "message": "வருகை நிராகரிக்கப்பட்டு, அதன் நடவடிக்கை எண்கள் ரத்து (CANCELLED) செய்யப்பட்டன."}
+            # 2. இந்த வருகையில் கட்டப்பட்ட வட்டி / பகுதி அசல் / கடன் முடிப்பைத் தலைகீழாக மாற்றுதல் (Rollback)
+            try:
+                reps = supabase.table("mg_loan_repayments").select("*").eq("visit_id", data.request_id).execute().data or []
+                for rp in reps:
+                    lid = rp.get("loan_id")
+                    prin_paid = float(rp.get("principal_paid") or 0.0)
+                    if lid:
+                        l_res = supabase.table("mg_gold_loans").select("*").eq("id", lid).execute().data or []
+                        if l_res:
+                            l_row = l_res[0]
+                            curr_prin = float(l_row.get("outstanding_principal") or l_row.get("loan_amount") or 0.0)
+                            restored_prin = round(curr_prin + prin_paid, 2)
+                            supabase.table("mg_gold_loans").update({
+                                "outstanding_principal": restored_prin,
+                                "status": "ACTIVE",
+                                "closed_date": None
+                            }).eq("id", lid).execute()
+                            if l_row.get("loan_no"):
+                                supabase.table("mg_gold_packets").update({
+                                    "is_loan_closed": False,
+                                    "updated_at": datetime.now(IST).isoformat()
+                                }).eq("loan_no", l_row["loan_no"]).execute()
+                if reps:
+                    supabase.table("mg_loan_repayments").delete().eq("visit_id", data.request_id).execute()
+            except Exception as rep_err:
+                print("Rollback repayment note:", rep_err)
+
+            # 3. இந்த வருகையில் நடந்த GP, GS, GSS, RD, SI பதிவுகளை CANCELLED / நீக்குதல்
+            try:
+                gps = supabase.table("mg_gold_purchases").select("id, gp_no").eq("visit_id", data.request_id).execute().data or []
+                for gp in gps:
+                    supabase.table("mg_gold_purchase_items").delete().eq("purchase_id", gp["id"]).execute()
+                    if gp.get("gp_no"):
+                        try:
+                            supabase.table("mg_staff_incentive_ledger").delete().eq("ref_no", gp["gp_no"]).execute()
+                        except Exception:
+                            pass
+                supabase.table("mg_gold_purchases").update({"status": "CANCELLED"}).eq("visit_id", data.request_id).execute()
+
+                gss_list = supabase.table("mg_savings_transactions").select("*").eq("visit_id", data.request_id).execute().data or []
+                for gt in gss_list:
+                    if gt.get("receipt_no") and str(gt["receipt_no"]).endswith("/NEW") and gt.get("account_id"):
+                        supabase.table("mg_customer_savings_accounts").update({"status": "CANCELLED"}).eq("id", gt["account_id"]).execute()
+                if gss_list:
+                    supabase.table("mg_savings_transactions").delete().eq("visit_id", data.request_id).execute()
+
+                rd_list = supabase.table("mg_rd_transactions").select("*").eq("visit_id", data.request_id).execute().data or []
+                for rt in rd_list:
+                    if rt.get("receipt_no") and str(rt["receipt_no"]).endswith("/NEW") and rt.get("account_id"):
+                        supabase.table("mg_customer_rd_accounts").update({"status": "CANCELLED"}).eq("id", rt["account_id"]).execute()
+                if rd_list:
+                    supabase.table("mg_rd_transactions").delete().eq("visit_id", data.request_id).execute()
+
+                if v_cust_id and v_date:
+                    supabase.table("mg_si_accounts").update({"status": "CANCELLED"}).eq("customer_id", v_cust_id).eq("status", "ACTIVE").execute()
+            except Exception as sub_err:
+                print("Rollback sub-items note:", sub_err)
+
+            return {"status": "success", "message": "வருகை நிராகரிக்கப்பட்டு, தொடர்புடைய கடன்/பாக்கெட்/வரவுகள் பாதுகாப்பாக ரத்து செய்யப்பட்டன."}
 
         v_res = supabase.table("mg_customer_visits").select("*").eq("id", data.request_id).execute()
         if not v_res.data:
             raise HTTPException(status_code=404, detail="வருகை விபரம் கிடைக்கவில்லை.")
         visit = v_res.data[0]
 
-        # 1. அனைத்து ஆவண விதிகளையும், திட்டக் குறியீடுகளையும் எடுத்தல்
         all_rules = supabase.table("mg_audit_document_rules").select("*").execute().data or []
         sch_res = supabase.table("mg_loan_schemes").select("scheme_name, scheme_code").execute().data or []
         scheme_name_to_code = {s["scheme_name"]: s["scheme_code"] for s in sch_res}
 
-        # இந்த வருகையில் உள்ள நகைக்கடன்களின் திட்டக் குறியீடுகளை எடுத்தல்
         loans_res = supabase.table("mg_gold_loans").select("loan_no, scheme_name").eq("visit_id", visit["id"]).execute().data or []
         loan_no_to_scheme_code = {l["loan_no"]: scheme_name_to_code.get(l.get("scheme_name"), "ALL") for l in loans_res}
 
@@ -4039,7 +4105,6 @@ def process_visit_approval(data: ApprovalActionPayload):
                 if r["activity_type"] != act:
                     continue
                 rule_sch = str(r.get("scheme_code") or "ALL").strip().upper()
-                # பொதுவான விதி (ALL) அல்லது குறிப்பிட்ட திட்ட விதி பொருந்தினால் சேர்த்தல்
                 if rule_sch == "ALL" or rule_sch == str(target_scheme_code).upper():
                     docs_payload.append({
                         "visit_id": visit["id"],
@@ -4065,7 +4130,6 @@ def process_visit_approval(data: ApprovalActionPayload):
             "audit_status": new_audit_st
         }).eq("id", data.request_id).execute()
 
-        # ✅ தலைமையகம் ஒப்புதல் அளித்த பிறகே புதிய நகைக்கடன் பாக்கெட்டை உருவாக்குதல்
         try:
             approved_loans = (
                 supabase.table("mg_gold_loans")
@@ -4076,7 +4140,6 @@ def process_visit_approval(data: ApprovalActionPayload):
                 .data or []
             )
 
-            # visit_id இணைப்பு விடுபட்டிருந்தால், actions_summary-ல் உள்ள கடன் எண் (loan_no) மூலம் எடுத்தல்
             existing_lno_set = {str(x.get("loan_no") or "").strip().upper() for x in approved_loans}
             gl_refs = [
                 str(it.get("ref_no") or "").strip()
@@ -5335,6 +5398,14 @@ def get_hq_approved_rd_print_list(branch_id: int | None = None):
         if branch_id is not None:
             rq = rq.eq("branch_id", branch_id)
         all_rds = rq.order("id", desc=True).limit(2000).execute().data or []
+        if not all_rds:
+            try:
+                crq = supabase.table("mg_customer_rd_accounts").select("*")
+                if branch_id is not None:
+                    crq = crq.eq("branch_id", branch_id)
+                all_rds = crq.order("id", desc=True).limit(2000).execute().data or []
+            except Exception:
+                all_rds = []
 
         # வாடிக்கையாளர்கள், கிளைகள், திட்டங்கள் விவரங்கள்
         cust_rows = supabase.table("mg_customers").select("id, full_name, name, mobile, phone, address").execute().data or []

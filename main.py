@@ -629,7 +629,7 @@ def serve_ui():
         return FileResponse("static/index.html")
     return {"message": "FastAPI Server Running"}
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "active", "service": "Enterprise API v6.6"}
 
@@ -2758,19 +2758,32 @@ def delete_rd_scheme(scheme_id: int):
 @app.get("/api/customer/{customer_id}/rd-accounts")
 def get_customer_rd_accounts(customer_id: int):
     try:
-        sch_res = supabase.table("mg_rd_schemes").select("*").execute()
-        sch_map = {s["id"]: s for s in (sch_res.data or [])}
+        sch_map = {}
+        try:
+            sch_res = supabase.table("mg_rd_schemes").select("*").execute()
+            sch_map = {s["id"]: s for s in (sch_res.data or [])}
+        except Exception:
+            sch_map = {}
 
-        acc_res = supabase.table("mg_customer_rd_accounts").select("*").eq("customer_id", customer_id).eq("status", "ACTIVE").execute()
-        accounts = acc_res.data or []
+        acc_res = supabase.table("mg_customer_rd_accounts").select("*").eq("customer_id", customer_id).execute()
+        accounts = [
+            a for a in (acc_res.data or [])
+            if str(a.get("status") or "ACTIVE").upper() == "ACTIVE"
+        ]
+
         for acc in accounts:
             acc["scheme_details"] = sch_map.get(acc.get("scheme_id"), {})
-            txn_res = supabase.table("mg_rd_transactions").select("*").eq("account_id", acc["id"]).order("id", desc=False).execute()
-            acc["transactions"] = txn_res.data or []
+            txns = []
+            try:
+                txn_res = supabase.table("mg_rd_transactions").select("*").eq("account_id", acc["id"]).order("id", desc=False).execute()
+                txns = txn_res.data or []
+            except Exception:
+                txns = []
+            acc["transactions"] = txns
 
         return {"status": "success", "data": accounts}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"RD கணக்குகள் பிழை: {str(e)}")
         
 @app.post("/api/admin/rd-scheme/create")
 def create_rd_scheme(data: dict):

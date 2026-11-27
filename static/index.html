@@ -1668,6 +1668,15 @@
               <input type="checkbox" id="perm_loan_reminders" class="w-4 h-4 text-amber-700 rounded">
               <span class="text-xs font-bold">📞 14. வட்டி & கடன் காலம் நினைவூட்டல் சாளர அணுகல் (Loan Reminder Dock Access)</span>
             </label>
+            <label class="flex items-center space-x-2.5 font-bold text-indigo-950 col-span-1 sm:col-span-2 bg-indigo-50 p-2 rounded-xl border border-indigo-300 hover:bg-indigo-100 cursor-pointer shadow-xs">
+              <input type="checkbox" id="perm_360_search" class="w-4 h-4 text-indigo-700 rounded">
+              <span class="text-xs font-bold">🔎 15. 360° முழு பரிவர்த்தனை வரலாறு தேடல் (360° Master Search Access)</span>
+            </label>
+
+            <label class="flex items-center space-x-2.5 font-bold text-emerald-950 col-span-1 sm:col-span-2 bg-emerald-50 p-2 rounded-xl border border-emerald-300 hover:bg-emerald-100 cursor-pointer shadow-xs">
+              <input type="checkbox" id="perm_bank_passbook" class="w-4 h-4 text-emerald-700 rounded">
+              <span class="text-xs font-bold">🏦 16. Company Bank Passbook & Ledger அணுகல் (Bank Passbook Access)</span>
+            </label>
         
             <div class="flex justify-end">
               <button type="button" onclick="submitStaffForm()" id="btnSubmitStaff" class="brand-gradient-gold-btn font-black text-xs px-6 py-2.5 rounded-xl shadow border border-yellow-500 cursor-pointer">+ பணியாளரை உருவாக்கு</button>
@@ -6462,6 +6471,10 @@
       document.getElementById('perm_audit_docs').checked = !!s.can_audit_documents;
       const elRemEdit = document.getElementById('perm_loan_reminders');
       if (elRemEdit) elRemEdit.checked = !!s.can_view_loan_reminders;
+      const el360Edit = document.getElementById('perm_360_search');
+      if (el360Edit) el360Edit.checked = !!s.can_view_360_search;
+      const elBankEdit = document.getElementById('perm_bank_passbook');
+      if (elBankEdit) elBankEdit.checked = !!s.can_view_bank_passbook;
     }
 
     function cancelStaffEdit() {
@@ -6491,6 +6504,10 @@
       document.getElementById('perm_audit_docs').checked = false;
       const elRemCancel = document.getElementById('perm_loan_reminders');
       if (elRemCancel) elRemCancel.checked = false;
+      const el360Cancel = document.getElementById('perm_360_search');
+      if (el360Cancel) el360Cancel.checked = false;
+      const elBankCancel = document.getElementById('perm_bank_passbook');
+      if (elBankCancel) elBankCancel.checked = false;
     }
 
     async function submitStaffForm() {
@@ -6520,7 +6537,9 @@
         can_access_hq_packets: document.getElementById('perm_hq_packet_access')?.checked || false,
         can_approve_hq_packets: document.getElementById('perm_hq_packet_approve')?.checked || false,
         can_audit_documents: document.getElementById('perm_audit_docs')?.checked || false,
-        can_view_loan_reminders: document.getElementById('perm_loan_reminders')?.checked || false
+        can_view_loan_reminders: document.getElementById('perm_loan_reminders')?.checked || false,
+        can_view_360_search: document.getElementById('perm_360_search')?.checked || false,
+        can_view_bank_passbook: document.getElementById('perm_bank_passbook')?.checked || false
       };
   
       try {
@@ -15514,6 +15533,57 @@
       };
     }
     setTimeout(() => loadDailyReminders(false), 1500);
+  })();
+</script>
+<script>
+  (function enforce360AndBankPassbookPermissions() {
+    if (window._perm360AndBankReady) return;
+    window._perm360AndBankReady = true;
+
+    function applyFeatureVisibility() {
+      const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || 'null');
+      const perms = u?.permissions || {};
+      const can360 = Boolean(perms.can_view_360_search === true);
+      const canBank = Boolean(perms.can_view_bank_passbook === true);
+
+      const btn360 = document.querySelector("button[onclick*='openMasterAudit360Modal']");
+      const btnBank = document.querySelector("button[onclick*='openCompanyBankPassbookModal']");
+
+      if (btn360) {
+        btn360.classList.toggle('hidden', !can360);
+        btn360.style.display = can360 ? '' : 'none';
+      }
+
+      if (btnBank) {
+        btnBank.classList.toggle('hidden', !canBank);
+        btnBank.style.display = canBank ? '' : 'none';
+      }
+    }
+
+    const origShowDash = window.showDashboard;
+    if (typeof origShowDash === 'function') {
+      window.showDashboard = function() {
+        const res = origShowDash.apply(this, arguments);
+        setTimeout(applyFeatureVisibility, 100);
+        return res;
+      };
+    }
+
+    const origSwitchTab = window.switchTab;
+    if (typeof origSwitchTab === 'function') {
+      window.switchTab = function() {
+        const res = origSwitchTab.apply(this, arguments);
+        setTimeout(applyFeatureVisibility, 100);
+        return res;
+      };
+    }
+
+    const obs = new MutationObserver(applyFeatureVisibility);
+    if (document.body) {
+      obs.observe(document.body, { childList: true, subtree: true });
+    }
+    setTimeout(applyFeatureVisibility, 300);
+    setTimeout(applyFeatureVisibility, 1200);
   })();
 </script>
 </body>

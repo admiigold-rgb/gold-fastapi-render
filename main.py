@@ -5242,15 +5242,94 @@ def master_audit_check_and_sync(payload: dict | None = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Master Audit பிழை: {str(e)}")
 
+@app.get("/api/hq/print-service/rd-list")
+def get_hq_approved_rd_print_list(branch_id: int | None = None):
+    """
+    தலைமையகத்தால் (HQ) ஒப்புதல் (APPROVED) பெற்ற வருகைகளில் உள்ள RD கணக்குகள்
+    மற்றும் ஏற்கனவே அச்சிடப்பட்ட RD கணக்குகளைப் பட்டியலிடும் API.
+    """
+    try:
+        # 1. HQ Approved visits எடுத்தல்
+        vq = supabase.table("mg_customer_visits").select("id, customer_id, branch_id, status, actions_summary, transaction_date").eq("status", "APPROVED")
+        if branch_id is not None:
+            vq = vq.eq("branch_id", branch_id)
+        approved_visits = vq.order("id", desc=True).limit(2000).execute().data or []
+
+        approved_rd_nos = set()
+        approved_cust_ids = set()
+        for v in approved_visits:
+            summary = str(v.get("actions_summary") or "")
+            if "RD" in summary.upper() or "ஆர்டி" in summary:
+                if v.get("customer_id"):
+                    approved_cust_ids.add(v.get("customer_id"))
+                for ref in re.findall(r"\bRD\s*\(([^)]+)\)", summary, flags=re.IGNORECASE):
+                    approved_rd_nos.add(ref.strip().upper())
+
+        # 2. mg_rd_accounts எடுத்தல்
+        rq = supabase.table("mg_rd_accounts").select("*")
+        if branch_id is not None:
+            rq = rq.eq("branch_id", branch_id)
+        all_rds = rq.order("id", desc=True).limit(2000).execute().data or []
+
+        # வாடிக்கையாளர்கள், கிளைகள், திட்டங்கள் விவரங்கள்
+        cust_rows = supabase.table("mg_customers").select("id, full_name, name, mobile, phone, address").execute().data or []
+        cust_map = {c["id"]: c for c in cust_rows}
+
+        br_rows = supabase.table("mg_branches").select("id, branch_name, branch_code").execute().data or []
+        br_map = {b["id"]: b for b in br_rows}
+
+        sch_rows = supabase.table("mg_rd_schemes").select("*").execute().data or []
+        sch_map = {s["id"]: s for s in sch_rows}
+
+        result_list = []
+        for acc in all_rds:
+            r_no = str(acc.get("rd_no") or "").strip().upper()
+            p_cnt = int(acc.get("certificate_print_count") or 0)
+            # HQ ஒப்புதல் பெற்ற வருகையில் உள்ள RD அல்லது ஏற்கனவே அச்சிடப்பட்டவை
+            is_hq_approved = (r_no in approved_rd_nos) or (acc.get("customer_id") in approved_cust_ids) or (p_cnt > 0)
+            if not is_hq_approved:
+                continue
+
+            c_info = cust_map.get(acc.get("customer_id"), {})
+            b_info = br_map.get(acc.get("branch_id"), {})
+            s_info = sch_map.get(acc.get("scheme_id"), {})
+
+            result_list.append({
+                "id": acc.get("id"),
+                "rd_no": acc.get("rd_no"),
+                "customer_id": acc.get("customer_id"),
+                "customer_name": c_info.get("full_name") or c_info.get("name") or "-",
+                "customer_mobile": c_info.get("mobile") or c_info.get("phone") or "-",
+                "branch_id": acc.get("branch_id"),
+                "branch_name": f"{b_info.get('branch_name', '-')} ({b_info.get('branch_code', '-')})",
+                "scheme_name": s_info.get("scheme_name") or "-",
+                "installment_amount": acc.get("installment_amount") or acc.get("monthly_amount") or s_info.get("monthly_amount") or 0,
+                "start_date": acc.get("start_date") or str(acc.get("created_at") or "")[:10],
+                "status": acc.get("status") or "ACTIVE",
+                "certificate_print_count": p_cnt,
+                "certificate_issued_at": acc.get("certificate_issued_at"),
+                "is_dispatched_to_branch": bool(acc.get("is_dispatched_to_branch", False))
+            })
+
+        return {
+            "status": "success",
+            "branches": br_rows,
+            "records": result_list
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Print Service பட்டியல் பிழை: {str(e)}")
+
+
 @app.post("/api/hq/rd-certificate/{rd_id}")
 def generate_hq_rd_certificate(rd_id: int, payload: dict | None = None):
     """
     தலைமையகத்தால் (HQ) மட்டுமே RD Certificate உருவாக்கும் API.
-    1-வது முறை Original (count=1), 2-வது முறையிலிருந்து DUPLICATE / நகல் (count>=2).
+    1-வது முறை Original (count=1), 2-வது முறையிலிருந்து DUPLICATE / நகல் + காரணம் பதிவு.
     """
     data = payload or {}
     user_role = str(data.get("role") or data.get("user_role") or "").strip().upper()
     issued_by = str(data.get("issued_by") or "HQ_ADMIN").strip()
+    dup_reason = str(data.get("duplicate_reason") or "").strip()
 
     if user_role and user_role not in ["HQ", "ADMIN", "SUPER_ADMIN", "DIRECTOR"]:
         raise HTTPException(status_code=403, detail="❌ அனுமதி மறுக்கப்பட்டது: RD சான்றிதழ் தலைமையகத்தால் (HQ) மட்டுமே உருவாக்க முடியும்!")
@@ -5266,14 +5345,27 @@ def generate_hq_rd_certificate(rd_id: int, payload: dict | None = None):
         is_duplicate = prev_count >= 1
         now_iso = datetime.now(IST).isoformat()
 
+        if is_duplicate and not dup_reason:
+            raise HTTPException(status_code=400, detail="நகல் (Duplicate) சான்றிதழ் எடுப்பதற்கான காரணத்தை உள்ளிடவும்!")
+
         upd = {"certificate_print_count": new_count}
         if prev_count == 0:
             upd["certificate_issued_at"] = now_iso
             upd["certificate_issued_by"] = issued_by
+        else:
+            existing_logs = acc.get("duplicate_print_logs") or []
+            if not isinstance(existing_logs, list):
+                existing_logs = []
+            existing_logs.append({
+                "copy_no": new_count,
+                "printed_at": now_iso,
+                "printed_by": issued_by,
+                "reason": dup_reason
+            })
+            upd["duplicate_print_logs"] = existing_logs
 
         supabase.table("mg_rd_accounts").update(upd).eq("id", rd_id).execute()
 
-        # வாடிக்கையாளர், கிளை, திட்ட விவரங்கள் எடுத்தல்
         cust = {}
         if acc.get("customer_id"):
             c_res = supabase.table("mg_customers").select("*").eq("id", acc["customer_id"]).execute()
@@ -5306,3 +5398,13 @@ def generate_hq_rd_certificate(rd_id: int, payload: dict | None = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"RD Certificate உருவாக்கப் பிழை: {str(e)}")
+
+
+@app.post("/api/hq/rd-certificate/{rd_id}/dispatch")
+def mark_rd_certificate_dispatched(rd_id: int):
+    """சான்றிதழ் கிளைக்கு அனுப்பப்பட்டதாகக் குறிக்கும் API."""
+    try:
+        supabase.table("mg_rd_accounts").update({"is_dispatched_to_branch": True}).eq("id", rd_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Dispatch பிழை: {str(e)}")

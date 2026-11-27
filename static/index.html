@@ -15586,5 +15586,151 @@
     setTimeout(applyFeatureVisibility, 1200);
   })();
 </script>
+<script>
+  (function initHqReminderMonitoringPanel() {
+    if (window._hqReminderMonitoringReady) return;
+    window._hqReminderMonitoringReady = true;
+
+    function ensureHqMonitoringSection() {
+      const hqTab = document.getElementById('hqApprovalTab');
+      if (!hqTab || document.getElementById('hqReminderMonitoringBox')) return;
+
+      const cardContainer = hqTab.querySelector('div.bg-white') || hqTab;
+      const box = document.createElement('div');
+      box.id = 'hqReminderMonitoringBox';
+      box.className = 'space-y-3 bg-gradient-to-r from-purple-50 to-amber-50 p-4 rounded-2xl border-2 border-brand-violet shadow-sm';
+
+      const todayStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
+
+      box.innerHTML = `
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-purple-200 pb-2">
+          <div>
+            <h3 class="text-xs font-black text-brand-violet uppercase flex items-center gap-2">
+              <span>📞</span> கிளை வட்டி & கடன் நினைவூட்டல் கண்காணிப்பு (HQ Reminder Monitoring)
+            </h3>
+            <p class="text-[11px] text-slate-600">ஒவ்வொரு கிளையும் அன்றைய அழைப்புகளில் எத்தனை % முடித்துள்ளது, வரச் சம்மதித்தவர்கள் & கடித எண்ணிக்கை</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <input type="date" id="hq_rem_mon_date" value="${todayStr}" onchange="window.loadHqReminderMonitoring()" class="border-2 border-purple-200 px-2.5 py-1 rounded-xl bg-white font-bold text-brand-violet">
+            <button type="button" onclick="window.loadHqReminderMonitoring()" class="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-brand-violet rounded-xl font-black cursor-pointer">புதுப்பி 🔄</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+          <div class="bg-white p-2.5 rounded-xl border border-purple-200">
+            <span class="text-slate-500 block font-bold text-[10px]">மொத்த முடிந்த சதவீதம்</span>
+            <b id="hq_rem_tot_pct" class="text-base font-black text-brand-violet">0%</b>
+          </div>
+          <div class="bg-white p-2.5 rounded-xl border border-emerald-200">
+            <span class="text-emerald-800 block font-bold text-[10px]">✅ வரச் சம்மதித்தவர்கள்</span>
+            <b id="hq_rem_tot_promised" class="text-base font-black text-emerald-700">0</b>
+          </div>
+          <div class="bg-white p-2.5 rounded-xl border border-purple-200">
+            <span class="text-purple-800 block font-bold text-[10px]">🔄 மாற்றச் சம்மதம்</span>
+            <b id="hq_rem_tot_renewal" class="text-base font-black text-purple-700">0</b>
+          </div>
+          <div class="bg-white p-2.5 rounded-xl border border-amber-200">
+            <span class="text-amber-800 block font-bold text-[10px]">📵 எடுக்காதவர்கள்</span>
+            <b id="hq_rem_tot_noans" class="text-base font-black text-amber-700">0</b>
+          </div>
+          <div class="bg-white p-2.5 rounded-xl border border-rose-200">
+            <span class="text-rose-800 block font-bold text-[10px]">✉️ அனுப்பிய கடிதங்கள்</span>
+            <b id="hq_rem_tot_letters" class="text-base font-black text-rose-600">0</b>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto border-2 border-purple-200 rounded-xl bg-white">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-purple-100 text-purple-950 border-b border-purple-200">
+              <tr>
+                <th class="p-2.5 font-bold">கிளை</th>
+                <th class="p-2.5 text-center font-bold">முடிந்தது / மொத்தம்</th>
+                <th class="p-2.5 text-center font-bold">முடிந்த %</th>
+                <th class="p-2.5 text-center font-bold">✅ வருவார்</th>
+                <th class="p-2.5 text-center font-bold">🔄 மாற்றுவார்</th>
+                <th class="p-2.5 text-center font-bold">📵 எடுக்கல</th>
+                <th class="p-2.5 text-center font-bold">✉️ கடிதம்</th>
+              </tr>
+            </thead>
+            <tbody id="hqReminderMonitoringTbody" class="divide-y divide-purple-100 text-slate-700">
+              <tr><td colspan="7" class="p-4 text-center text-slate-400 font-semibold">விவரங்கள் ஏற்றப்படுகின்றன...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      cardContainer.prepend(box);
+    }
+
+    window.loadHqReminderMonitoring = async function() {
+      ensureHqMonitoringSection();
+      const tbody = document.getElementById('hqReminderMonitoringTbody');
+      if (!tbody) return;
+
+      const dateVal = document.getElementById('hq_rem_mon_date')?.value || document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
+
+      try {
+        const res = await fetch(`/api/hq/reminder-monitoring?date_str=${encodeURIComponent(dateVal)}&t=${Date.now()}`);
+        const out = await res.json();
+        if (!res.ok) return;
+
+        const tot = out.totals || {};
+        document.getElementById('hq_rem_tot_pct').innerText = `${out.overall_pct ?? 0}%`;
+        document.getElementById('hq_rem_tot_promised').innerText = tot.promised_count ?? 0;
+        document.getElementById('hq_rem_tot_renewal').innerText = tot.renewal_count ?? 0;
+        document.getElementById('hq_rem_tot_noans').innerText = tot.no_answer_count ?? 0;
+        document.getElementById('hq_rem_tot_letters').innerText = tot.letter_sent_count ?? 0;
+
+        const rows = out.branches || [];
+        if (rows.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 font-semibold">கிளைத் தரவுகள் இல்லை</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = rows.map(r => {
+          const pct = Number(r.completion_pct || 0);
+          const pctColor = pct >= 80 ? 'text-emerald-700 bg-emerald-100' : (pct >= 40 ? 'text-amber-800 bg-amber-100' : 'text-rose-700 bg-rose-100');
+          return `
+            <tr class="hover:bg-purple-50/50">
+              <td class="p-2.5 font-bold text-brand-violet">${r.branch_name} <span class="text-[10px] font-mono text-slate-500">(${r.branch_code})</span></td>
+              <td class="p-2.5 text-center font-mono font-bold">${r.completed_count} / ${r.total_due}</td>
+              <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded-lg font-black font-mono ${pctColor}">${pct}%</span></td>
+              <td class="p-2.5 text-center font-mono font-black text-emerald-700">${r.promised_count}</td>
+              <td class="p-2.5 text-center font-mono font-black text-purple-700">${r.renewal_count}</td>
+              <td class="p-2.5 text-center font-mono font-black text-amber-700">${r.no_answer_count}</td>
+              <td class="p-2.5 text-center font-mono font-black text-rose-600">${r.letter_sent_count}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {}
+    };
+
+    const origLoadHq = window.loadAllHqApprovals;
+    if (typeof origLoadHq === 'function') {
+      window.loadAllHqApprovals = async function() {
+        const res = await origLoadHq.apply(this, arguments);
+        window.loadHqReminderMonitoring();
+        return res;
+      };
+    }
+
+    const origSwitch = window.switchTab;
+    if (typeof origSwitch === 'function') {
+      window.switchTab = function(tabId) {
+        const res = origSwitch.apply(this, arguments);
+        if (tabId === 'hqApprovalTab') {
+          setTimeout(window.loadHqReminderMonitoring, 150);
+        }
+        return res;
+      };
+    }
+
+    setTimeout(() => {
+      if (!document.getElementById('hqApprovalTab')?.classList.contains('hidden')) {
+        window.loadHqReminderMonitoring();
+      }
+    }, 1000);
+  })();
+</script>
 </body>
 </html>

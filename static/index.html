@@ -251,6 +251,79 @@
     }
 
     .hidden { display: none !important; }
+
+    /* ✨ Login Logo Shining Animation */
+    @keyframes logoShineSweep {
+      0% {
+        transform: translateX(-140%) skewX(-22deg);
+        opacity: 0;
+      }
+      25% {
+        opacity: 0.85;
+      }
+      55% {
+        opacity: 0.9;
+      }
+      100% {
+        transform: translateX(240%) skewX(-22deg);
+        opacity: 0;
+      }
+    }
+
+    @keyframes logoGoldPulse {
+      0%, 100% {
+        box-shadow:
+          0 0 14px rgba(212, 175, 55, 0.45),
+          0 0 28px rgba(247, 220, 124, 0.25);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow:
+          0 0 22px rgba(247, 220, 124, 0.85),
+          0 0 38px rgba(212, 175, 55, 0.5);
+        transform: scale(1.03);
+      }
+    }
+
+    .login-logo-shine-frame {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 88px;
+      height: 88px;
+      border-radius: 9999px;
+      background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 55%, #f5e6b3 100%);
+      border: 2.5px solid #d4af37;
+      overflow: hidden;
+      animation: logoGoldPulse 2.8s ease-in-out infinite;
+    }
+
+    .login-logo-shine-frame img {
+      width: 66px;
+      height: 66px;
+      object-fit: contain;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-logo-shine-frame::after {
+      content: "";
+      position: absolute;
+      top: -20%;
+      left: 0;
+      width: 55%;
+      height: 140%;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.85) 50%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      animation: logoShineSweep 2.8s ease-in-out infinite;
+      z-index: 2;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body class="min-h-screen text-slate-800 font-sans">
@@ -259,7 +332,9 @@
   <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-white p-8 rounded-3xl shadow-2xl border-2 border-brand-gold max-w-md w-full space-y-6">
       <div class="text-center space-y-2">
-        <div class="inline-block p-4 rounded-full bg-purple-50 border border-brand-gold shadow-inner text-4xl">🪙</div>
+        <div class="login-logo-shine-frame mx-auto">
+          <img src="/static/logo.png" alt="Logo">
+        </div>
         <h1 class="text-xl font-extrabold text-brand-violet tracking-wide">Indian Gold Company</h1>
         <p class="text-xs text-amber-800 font-bold uppercase tracking-wider">கிளை & தலைமையக பணியாளர் உள்நுழைவு</p>
       </div>

@@ -956,7 +956,20 @@ def get_cash_day_status(branch_id: int, date: Optional[str] = None, date_str: Op
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"நாள் நிலை அறியும் பிழை: {str(e)}")
-
+        
+def _to_ist_hhmm(dt_val):
+    if not dt_val:
+        return "--:--"
+    try:
+        s = str(dt_val).strip().replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(IST).strftime("%H:%M")
+    except Exception:
+        s = str(dt_val)
+        return s[11:16] if len(s) >= 16 else "--:--"
+        
 # 6. Day Report
 @app.get("/api/cash-day/report")
 def get_cash_day_report(branch_id: int, date_str: str):
@@ -1049,8 +1062,8 @@ def get_cash_day_report(branch_id: int, date_str: str):
                 tot_cash_in += cash_val
                 tot_bank_in += bank_val
 
-            created_t = str(v.get("created_at") or "")
-            t_str = created_t[11:16] if len(created_t) >= 16 else "--:--"
+            created_t = v.get("created_at")
+            t_str = _to_ist_hhmm(created_t)
 
             unified_entries.append({
                 "time": t_str,
@@ -1078,8 +1091,8 @@ def get_cash_day_report(branch_id: int, date_str: str):
             for e in (exp_res.data or []):
                 amt = float(e.get("amount") or 0.0)
                 e_mode = str(e.get("payment_mode") or "CASH").upper()
-                e_time = str(e.get("created_at") or "")
-                t_str = e_time[11:16] if len(e_time) >= 16 else "--:--"
+                e_time = e.get("created_at")
+                t_str = _to_ist_hhmm(e_time)
                 if e_mode == "CASH":
                     tot_cash_out += amt
                     c_chg, b_chg = -amt, 0.0
@@ -1121,8 +1134,8 @@ def get_cash_day_report(branch_id: int, date_str: str):
             for t in (tr_res.data or []):
                 amt = float(t.get("amount") or 0.0)
                 ttype = t.get("transfer_type")
-                t_time = str(t.get("created_at") or "")
-                t_str = t_time[11:16] if len(t_time) >= 16 else "--:--"
+                t_time = t.get("created_at")
+                t_str = _to_ist_hhmm(t_time)
                 t_title, t_desc = type_names.get(ttype, ('பணப் பரிமாற்றம்', ttype))
 
                 if ttype in ['HQ_TO_BRANCH', 'BANK_TO_CASH']:

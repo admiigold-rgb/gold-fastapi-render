@@ -15189,39 +15189,5 @@
     }
   })();
 </script>
-<script>
-  (function applyVioletBrandAndManagementSignIn() {
-    if (window._violetLoginBrandingReady) return;
-    window._violetLoginBrandingReady = true;
-
-    function enforceLoginLabels() {
-      const titleEl = document.getElementById('loginBrandTitle') || document.querySelector('#loginScreen h1');
-      const subEl = document.getElementById('loginSubTitle') || document.querySelector('#loginScreen p');
-
-      if (titleEl) {
-        titleEl.textContent = 'Indian Gold Company';
-        titleEl.style.setProperty('color', '#723a91', 'important');
-      }
-
-      if (subEl) {
-        subEl.textContent = 'Management Sign In';
-        subEl.classList.remove('uppercase');
-        subEl.style.setProperty('color', '#723a91', 'important');
-        subEl.style.setProperty('text-transform', 'none', 'important');
-      }
-    }
-
-    enforceLoginLabels();
-    document.addEventListener('DOMContentLoaded', enforceLoginLabels);
-    setTimeout(enforceLoginLabels, 300);
-    setTimeout(enforceLoginLabels, 1000);
-
-    const loginScreen = document.getElementById('loginScreen');
-    if (loginScreen) {
-      const obs = new MutationObserver(enforceLoginLabels);
-      obs.observe(loginScreen, { childList: true, subtree: true, characterData: true });
-    }
-  })();
-</script>
 </body>
 </html>

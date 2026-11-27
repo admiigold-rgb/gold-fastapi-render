@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from database import supabase
 import re
 
-#இந்திய நேர மண்டலம் (IST = UTC + 5 மணி 30 நிமிடங்கள்)
+# இந்திய நேர மண்டலம் (IST = UTC + 5 மணி 30 நிமிடங்கள்)
 IST = timezone(timedelta(hours=5, minutes=30))
 
 app = FastAPI(

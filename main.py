@@ -5648,3 +5648,187 @@ def mark_rd_certificate_dispatched(rd_id: int):
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Dispatch பிழை: {str(e)}")
+
+class LoanFollowupCreatePayload(BaseModel):
+    branch_id: int
+    loan_id: int
+    loan_no: str
+    customer_id: int
+    followup_category: str
+    outcome_status: str
+    promised_date: Optional[str] = None
+    letter_ref_no: Optional[str] = None
+    remarks: Optional[str] = None
+    staff_id: Optional[int] = 1
+
+
+@app.get("/api/branch/daily-reminders")
+def get_branch_daily_reminders(branch_id: int, date_str: Optional[str] = None):
+    try:
+        today_str = date_str or datetime.now(IST).strftime("%Y-%m-%d")
+        today_dt = datetime.strptime(today_str, "%Y-%m-%d").date()
+
+        # 1. திட்டங்கள் & அவற்றின் Reminder Days + Tenure Months எடுத்தல்
+        sch_res = supabase.table("mg_loan_schemes").select("scheme_name, tenure_months, reminder_days").execute()
+        scheme_map = {}
+        for s in (sch_res.data or []):
+            scheme_map[s["scheme_name"]] = {
+                "tenure_months": int(s.get("tenure_months") or 12),
+                "reminder_days": int(s.get("reminder_days") or 30),
+            }
+
+        # 2. கிளையின் நடப்பு (ACTIVE) கடன்கள் எடுத்தல்
+        loans_res = (
+            supabase.table("mg_gold_loans")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .eq("status", "ACTIVE")
+            .execute()
+        )
+        active_loans = loans_res.data or []
+        if not active_loans:
+            return {"status": "success", "reminders": [], "counts": {"INTEREST_DUE": 0, "TENURE_EXPIRING": 0, "LETTER_NOTICE": 0}}
+
+        cust_ids = list({l["customer_id"] for l in active_loans if l.get("customer_id")})
+        cust_map = {}
+        if cust_ids:
+            c_res = supabase.table("mg_customers").select("id, name, mobile, address").in_("id", cust_ids).execute()
+            for c in (c_res.data or []):
+                cust_map[c["id"]] = c
+
+        # 3. முந்தைய அழைப்பு / கடிதப் பதிவுகள் எடுத்தல்
+        f_res = (
+            supabase.table("mg_loan_followups")
+            .select("*")
+            .eq("branch_id", branch_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        followups_by_loan = {}
+        for f in (f_res.data or []):
+            lid = f.get("loan_id")
+            followups_by_loan.setdefault(lid, []).append(f)
+
+        reminders = []
+        counts = {"INTEREST_DUE": 0, "TENURE_EXPIRING": 0, "LETTER_NOTICE": 0}
+
+        for loan in active_loans:
+            lid = loan["id"]
+            sch_info = scheme_map.get(loan.get("scheme_name"), {"tenure_months": 12, "reminder_days": 30})
+            rem_days_rule = sch_info["reminder_days"]
+            tenure_months = sch_info["tenure_months"]
+
+            orig_date_str = str(loan.get("transaction_date") or (loan.get("created_at") or today_str)[:10])
+            last_int_str = str(loan.get("last_interest_paid_date") or orig_date_str)[:10]
+
+            try:
+                orig_dt = datetime.strptime(orig_date_str, "%Y-%m-%d").date()
+            except Exception:
+                orig_dt = today_dt
+
+            try:
+                last_int_dt = datetime.strptime(last_int_str, "%Y-%m-%d").date()
+            except Exception:
+                last_int_dt = orig_dt
+
+            days_since_interest = max(0, (today_dt - last_int_dt).days)
+            maturity_dt = orig_dt + timedelta(days=tenure_months * 30)
+            days_to_maturity = (maturity_dt - today_dt).days
+
+            # முந்தைய follow-up நிலை சரிபார்த்தல்
+            loan_fups = followups_by_loan.get(lid, [])
+            latest_fup = loan_fups[0] if loan_fups else None
+            no_answer_streak = 0
+            for item in loan_fups:
+                if item.get("outcome_status") == "NO_ANSWER":
+                    no_answer_streak += 1
+                else:
+                    break
+
+            # வாடிக்கையாளர் வருவதாகச் சொன்ன தேதி (Promised Date) இன்னும் வரவில்லை என்றால் தற்காலிகமாக மறைத்தல்
+            if latest_fup:
+                out_st = latest_fup.get("outcome_status")
+                p_date_str = latest_fup.get("promised_date")
+                f_created_str = str(latest_fup.get("created_at") or "")[:10]
+
+                if out_st in ["PROMISED", "RENEWAL_AGREED"] and p_date_str and p_date_str > today_str:
+                    continue
+                if out_st == "LETTER_SENT" and p_date_str and p_date_str > today_str:
+                    continue
+                if out_st == "NO_ANSWER" and f_created_str == today_str:
+                    continue
+
+            is_tenure_due = days_to_maturity <= 10
+            is_interest_due = days_since_interest >= rem_days_rule
+
+            if not is_tenure_due and not is_interest_due:
+                continue
+
+            if no_answer_streak >= 3:
+                category = "LETTER_NOTICE"
+            elif is_tenure_due:
+                category = "TENURE_EXPIRING"
+            else:
+                category = "INTEREST_DUE"
+
+            counts[category] += 1
+            cust = cust_map.get(loan.get("customer_id"), {})
+            principal = float(loan.get("outstanding_principal") or loan.get("loan_amount") or 0)
+
+            reminders.append({
+                "loan_id": lid,
+                "loan_no": loan.get("loan_no"),
+                "customer_id": loan.get("customer_id"),
+                "customer_name": cust.get("name") or "வாடிக்கையாளர்",
+                "customer_mobile": cust.get("mobile") or "-",
+                "customer_address": cust.get("address") or "-",
+                "scheme_name": loan.get("scheme_name"),
+                "principal": principal,
+                "orig_date": orig_date_str,
+                "last_interest_date": last_int_str,
+                "days_since_interest": days_since_interest,
+                "reminder_days_rule": rem_days_rule,
+                "maturity_date": maturity_dt.strftime("%Y-%m-%d"),
+                "days_to_maturity": days_to_maturity,
+                "category": category,
+                "no_answer_count": no_answer_streak,
+                "last_remark": latest_fup.get("remarks") if latest_fup else "",
+                "last_outcome": latest_fup.get("outcome_status") if latest_fup else "NONE",
+            })
+
+        # அதிக நாட்கள் நிலுவை உள்ளவர்கள் முதலில் வருமாறு வரிசைப்படுத்துதல்
+        reminders.sort(key=lambda x: (0 if x["category"] == "LETTER_NOTICE" else (1 if x["category"] == "TENURE_EXPIRING" else 2), -x["days_since_interest"]))
+
+        return {"status": "success", "reminders": reminders, "counts": counts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"நினைவூட்டல் பட்டியல் பிழை: {str(e)}")
+
+
+@app.post("/api/branch/log-reminder-followup")
+def log_branch_reminder_followup(payload: LoanFollowupCreatePayload):
+    try:
+        today_dt = datetime.now(IST).date()
+        promised = payload.promised_date
+        if not promised:
+            if payload.outcome_status == "LETTER_SENT":
+                promised = (today_dt + timedelta(days=7)).strftime("%Y-%m-%d")
+            elif payload.outcome_status == "NO_ANSWER":
+                promised = (today_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        row = {
+            "branch_id": payload.branch_id,
+            "loan_id": payload.loan_id,
+            "loan_no": payload.loan_no,
+            "customer_id": payload.customer_id,
+            "followup_category": payload.followup_category,
+            "outcome_status": payload.outcome_status,
+            "promised_date": promised,
+            "letter_ref_no": payload.letter_ref_no,
+            "remarks": payload.remarks,
+            "staff_id": payload.staff_id,
+            "created_at": datetime.now(IST).isoformat(),
+        }
+        supabase.table("mg_loan_followups").insert(row).execute()
+        return {"status": "success", "message": "✅ வாடிக்கையாளர் தொடர்பு விவரம் பதிவு செய்யப்பட்டது!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"பதிவு பிழை: {str(e)}")

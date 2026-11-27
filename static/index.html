@@ -14105,12 +14105,51 @@
     if (window._addSingleAdminMasterAuditButtonDone) return;
     window._addSingleAdminMasterAuditButtonDone = true;
 
+    function isStrictHqOrAdminUser() {
+      const role = String(
+        window.currentUserRole ||
+        localStorage.getItem('user_role') ||
+        sessionStorage.getItem('user_role') ||
+        ''
+      ).trim().toUpperCase();
+
+      const branchId = String(
+        window.currentBranchId ||
+        localStorage.getItem('branch_id') ||
+        sessionStorage.getItem('branch_id') ||
+        ''
+      ).trim();
+
+      // கிளைப் பயனர்கள் (Branch Staff / Manager) எனில் கண்டிப்பாக False
+      if (role.includes('BRANCH') || role.includes('STAFF') || role.includes('CASHIER') || role.includes('MANAGER')) {
+        return false;
+      }
+
+      // Admin / HQ / Director / Super Admin மட்டும் அனுமதி
+      if (['ADMIN', 'SUPER_ADMIN', 'HQ', 'HQ_ADMIN', 'DIRECTOR'].includes(role)) {
+        return true;
+      }
+
+      // Role தெளிவாக இல்லாவிட்டால், Branch ID 1 (HQ) மற்றும் Admin டேப் செயலில் உள்ளதா எனப் பார்த்தல்
+      const adminTabBtn = Array.from(document.querySelectorAll('button, a')).find(
+        el => /^ADMIN$/i.test((el.innerText || '').trim())
+      );
+      const isAdminTabVisible = !!(adminTabBtn && adminTabBtn.offsetParent !== null);
+      return isAdminTabVisible && (branchId === '' || branchId === '1' || branchId === '0');
+    }
+
     window.runSingleMasterAudit = async function() {
+      if (!isStrictHqOrAdminUser()) {
+        return alert("❌ அனுமதி மறுக்கப்பட்டது: இந்த வசதி அட்மின் (Admin / HQ) பயன்பாட்டிற்கு மட்டுமே!");
+      }
+
+      const role = String(window.currentUserRole || localStorage.getItem('user_role') || 'ADMIN').toUpperCase();
+
       try {
         const res = await fetch('/api/audit/master-check-and-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auto_sync: false })
+          body: JSON.stringify({ auto_sync: false, role: role })
         });
         const out = await res.json();
         if (!res.ok) return alert("❌ " + (out.detail || "Audit தோல்வியடைந்தது"));
@@ -14132,7 +14171,7 @@
         const syncRes = await fetch('/api/audit/master-check-and-sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auto_sync: true })
+          body: JSON.stringify({ auto_sync: true, role: role })
         });
         const syncOut = await syncRes.json();
         if (!syncRes.ok) return alert("❌ " + (syncOut.detail || "Sync தோல்வியடைந்தது"));
@@ -14147,9 +14186,12 @@
     };
 
     function placeButton() {
-      if (document.getElementById('btnSingleMasterAudit')) return;
-      const bodyText = document.body ? document.body.innerText : "";
-      if (!/Admin|HQ|Audit|Deviation|Checklist/i.test(bodyText)) return;
+      const existing = document.getElementById('btnSingleMasterAudit');
+      if (!isStrictHqOrAdminUser()) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing) return;
 
       const btn = document.createElement('button');
       btn.type = 'button';

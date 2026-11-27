@@ -1628,25 +1628,87 @@ def settle_with_otp(data: SettleWithOtpPayload):
             try:
                 item_src_staff = item.get("business_source_staff_id") or default_src_staff
 
-                # 🏆 0. புதிய அடகுக் கடனுக்கு இன்சென்டிவ் புள்ளிகள் (+)
+                # 🏆 0. புதிய அடகுக் கடன் (OTP முடிந்த பிறகே Loan No + Loan + Packet மூன்றும் ஒரே நேரத்தில் உருவாகும்)
                 if (
-                    not item.get("is_repayment")
-                    and not item.get("is_gold_purchase")
-                    and not item.get("is_gold_sale")
-                    and not item.get("is_gss_account")
-                    and not item.get("is_rd_account")
-                    and not item.get("is_si_account")
-                    and item.get("loan_no")
+                    item.get("is_new_pawn") is True
+                    or (
+                        not item.get("is_repayment")
+                        and not item.get("is_gold_purchase")
+                        and not item.get("is_gold_sale")
+                        and not item.get("is_gss_account")
+                        and not item.get("is_rd_account")
+                        and not item.get("is_si_account")
+                        and (item.get("pawn_meta") or item.get("loan_no"))
+                    )
                 ):
-                    try:
-                        l_no = str(item.get("loan_no")).strip()
-                        l_id = item.get("loan_id")
-                        loan_amt_val = float(item.get("loan_amount") or 0)
-                        if loan_amt_val <= 0 and l_id:
-                            l_chk = supabase.table("mg_gold_loans").select("loan_amount").eq("id", l_id).execute()
-                            if l_chk.data:
-                                loan_amt_val = float(l_chk.data[0].get("loan_amount") or 0)
-                        if loan_amt_val > 0:
+                    p_meta = item.get("pawn_meta") or {}
+                    l_no = str(item.get("loan_no") or "").strip()
+                    l_id = item.get("loan_id")
+                    loan_amt_val = float(p_meta.get("loan_amount") or item.get("loan_amount") or item.get("debit") or 0)
+                    chg_amt_val = float(p_meta.get("charges_amount") or item.get("credit") or 0)
+
+                    # இன்னும் டேட்டாபேஸில் உருவாகாத புதிய கடனாக இருந்தால் இப்போது உருவாக்குதல்
+                    if not l_id and p_meta:
+                        br_res = supabase.table("mg_branches").select("branch_code").eq("id", data.branch_id).execute()
+                        b_code = br_res.data[0]["branch_code"].strip().upper() if br_res.data else "BR"
+
+                        # கடைசி கடன் எண்ணிலிருந்து அடுத்த தொடர் எண்ணை எடுத்தல்
+                        existing_loans = supabase.table("mg_gold_loans").select("loan_no").eq("branch_id", data.branch_id).execute().data or []
+                        max_seq = 0
+                        for r in existing_loans:
+                            m = re.search(r"/(\d+)$", str(r.get("loan_no") or ""))
+                            if m:
+                                max_seq = max(max_seq, int(m.group(1)))
+                        l_no = f"{b_code}/{max_seq + 1:04d}"
+
+                        loan_ins = supabase.table("mg_gold_loans").insert({
+                            "loan_no": l_no,
+                            "customer_id": data.customer_id,
+                            "branch_id": data.branch_id,
+                            "visit_id": target_visit_id,
+                            "scheme_name": p_meta.get("scheme_name", ""),
+                            "total_gross_weight": float(p_meta.get("total_gross_weight") or 0),
+                            "total_net_weight": float(p_meta.get("total_net_weight") or 0),
+                            "loan_amount": loan_amt_val,
+                            "outstanding_principal": loan_amt_val,
+                            "charges_amount": chg_amt_val,
+                            "net_payable_amount": max(0.0, loan_amt_val - chg_amt_val),
+                            "ornament_photo": p_meta.get("ornament_photo"),
+                            "photo_url": p_meta.get("ornament_photo"),
+                            "transaction_date": txn_date,
+                            "last_interest_paid_date": txn_date,
+                            "status": "ACTIVE"
+                        }).execute()
+
+                        if loan_ins.data:
+                            l_id = loan_ins.data[0]["id"]
+                            p_items = p_meta.get("items") or []
+                            if p_items:
+                                supabase.table("mg_gold_loan_items").insert([
+                                    {
+                                        "loan_id": l_id,
+                                        "item_type": it.get("item_type"),
+                                        "item_count": int(it.get("item_count") or 1),
+                                        "gross_weight": float(it.get("gross_weight") or 0),
+                                        "net_weight": float(it.get("net_weight") or 0),
+                                        "purity": it.get("purity")
+                                    }
+                                    for it in p_items
+                                ]).execute()
+
+                            # அதே வினாடியில் mg_gold_packets அட்டவணையிலும் பாக்கெட் உருவாக்குதல்
+                            supabase.table("mg_gold_packets").insert({
+                                "loan_id": l_id,
+                                "loan_no": l_no,
+                                "customer_id": data.customer_id,
+                                "branch_id": data.branch_id,
+                                "packet_status": "AT_BRANCH_NEW",
+                                "current_location": "BRANCH",
+                                "is_loan_closed": False
+                            }).execute()
+
+                    if loan_amt_val > 0 and l_no:
+                        try:
                             record_incentive_points(
                                 branch_id=data.branch_id,
                                 txn_type="GL_NEW",
@@ -1656,9 +1718,9 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 txn_date=txn_date,
                                 remarks=f"புதிய நகைக்கடன் ({l_no}) - ₹{loan_amt_val:,.0f}"
                             )
-                    except Exception as inc_err:
-                        warnings_list.append(f"Item #{idx} Incentive warning: {str(inc_err)}")
-
+                        except Exception as inc_err:
+                            warnings_list.append(f"Item #{idx} Incentive warning: {str(inc_err)}")
+                            
                 if item.get("is_repayment") is True:
                     loan_id = item.get("loan_id")
                     action_type = item.get("action_type")

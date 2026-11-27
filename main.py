@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from database import supabase
+import re
 
 #இந்திய நேர மண்டலம் (IST = UTC + 5 மணி 30 நிமிடங்கள்)
 IST = timezone(timedelta(hours=5, minutes=30))
@@ -1532,13 +1533,39 @@ def trigger_otp_sms(payload: SendOtpPayload):
     }).execute()
     return {"status": "success", "message": "OTP SMS அனுப்பப்பட்டது."}
 
+import time
+
+def _retry_db_call(fn, retries: int = 3, base_delay: float = 0.4):
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as exc:
+            last_exc = exc
+            err_txt = str(exc).lower()
+            if ("11" in err_txt or "temporarily unavailable" in err_txt or "resource" in err_txt or "timeout" in err_txt) and attempt < retries - 1:
+                time.sleep(base_delay * (attempt + 1))
+                continue
+            raise
+    raise last_exc
+
+
 @app.post("/api/transaction/settle-with-otp")
 def settle_with_otp(data: SettleWithOtpPayload):
     try:
         txn_date = data.transaction_date or datetime.now(IST).strftime("%Y-%m-%d")
-        day_status_res = supabase.table("mg_branch_cash_days").select("status").eq("branch_id", data.branch_id).eq("business_date", txn_date).execute()
+        day_status_res = _retry_db_call(
+            lambda: supabase.table("mg_branch_cash_days")
+            .select("status")
+            .eq("branch_id", data.branch_id)
+            .eq("business_date", txn_date)
+            .execute()
+        )
         if day_status_res.data and day_status_res.data[0]["status"] == "CLOSED":
-            raise HTTPException(status_code=400, detail="தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் பணப் பரிவர்த்தனை செய்ய முடியாது!")
+            raise HTTPException(
+                status_code=400,
+                detail="தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் பணப் பரிவர்த்தனை செய்ய முடியாது!"
+            )
 
         for item in (data.cart_items or []):
             if item.get("is_repayment") is True:
@@ -1547,14 +1574,22 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 req_id = item.get("rebate_req_id")
                 if disc_amt > 0:
                     if not req_id:
-                        raise HTTPException(status_code=400, detail="பாதுகாப்புப் பிழை: வட்டி தள்ளுபடி கோரிக்கை எண் (Rebate ID) காணப்படவில்லை!")
-                    rebate_check = supabase.table("mg_rebate_approvals").select("status").eq("id", req_id).execute()
+                        raise HTTPException(
+                            status_code=400,
+                            detail="பாதுகாப்புப் பிழை: வட்டி தள்ளுபடி கோரிக்கை எண் (Rebate ID) காணப்படவில்லை!"
+                        )
+                    rebate_check = _retry_db_call(
+                        lambda rid=req_id: supabase.table("mg_rebate_approvals").select("status").eq("id", rid).execute()
+                    )
                     if not rebate_check.data or rebate_check.data[0].get("status") != "APPROVED":
-                        raise HTTPException(status_code=400, detail="❌ பரிவர்த்தனை நிராகரிக்கப்பட்டது: வட்டி தள்ளுபடிக்குத் தலைமையக ஒப்புதல் கிடைக்கவில்லை!")
+                        raise HTTPException(
+                            status_code=400,
+                            detail="❌ பரிவர்த்தனை நிராகரிக்கப்பட்டது: வட்டி தள்ளுபடிக்குத் தலைமையக ஒப்புதல் கிடைக்கவில்லை!"
+                        )
 
         if not data.is_exempted:
-            otp_query = (
-                supabase.table("mg_transaction_otps")
+            otp_query = _retry_db_call(
+                lambda: supabase.table("mg_transaction_otps")
                 .select("id, otp_code, is_verified")
                 .eq("customer_id", data.customer_id)
                 .eq("is_verified", False)
@@ -1564,7 +1599,12 @@ def settle_with_otp(data: SettleWithOtpPayload):
             )
             if not otp_query.data or otp_query.data[0]["otp_code"] != (data.otp_code or "").strip():
                 raise HTTPException(status_code=400, detail="OTP தவறானது அல்லது காலாவதியானது.")
-            supabase.table("mg_transaction_otps").update({"is_verified": True}).eq("id", otp_query.data[0]["id"]).execute()
+            _retry_db_call(
+                lambda oid=otp_query.data[0]["id"]: supabase.table("mg_transaction_otps")
+                .update({"is_verified": True})
+                .eq("id", oid)
+                .execute()
+            )
 
         settle_record = {
             "customer_id": data.customer_id,
@@ -1578,28 +1618,32 @@ def settle_with_otp(data: SettleWithOtpPayload):
             "direction": data.direction,
             "transaction_date": txn_date
         }
-        res_settle = supabase.table("mg_transaction_settlements").insert(settle_record).execute()
+        res_settle = _retry_db_call(
+            lambda: supabase.table("mg_transaction_settlements").insert(settle_record).execute()
+        )
         if not res_settle.data:
             raise HTTPException(status_code=500, detail="பரிவர்த்தனை பதிவு தோல்வியடைந்தது.")
         new_settle_id = res_settle.data[0]["id"]
 
         if data.cash_amount > 0 and data.denominations:
-            supabase.table("mg_cash_denominations").insert({
-                "settlement_id": new_settle_id,
-                "c_500": data.denominations.c_500,
-                "c_200": data.denominations.c_200,
-                "c_100": data.denominations.c_100,
-                "c_50": data.denominations.c_50,
-                "c_20": data.denominations.c_20,
-                "c_10": data.denominations.c_10,
-                "c_coins": data.denominations.c_coins,
-                "total_calculated_cash": data.cash_amount
-            }).execute()
+            _retry_db_call(
+                lambda: supabase.table("mg_cash_denominations").insert({
+                    "settlement_id": new_settle_id,
+                    "c_500": data.denominations.c_500,
+                    "c_200": data.denominations.c_200,
+                    "c_100": data.denominations.c_100,
+                    "c_50": data.denominations.c_50,
+                    "c_20": data.denominations.c_20,
+                    "c_10": data.denominations.c_10,
+                    "c_coins": data.denominations.c_coins,
+                    "total_calculated_cash": data.cash_amount
+                }).execute()
+            )
 
         target_visit_id = data.visit_id
         if not target_visit_id:
-            last_visit = (
-                supabase.table("mg_customer_visits")
+            last_visit = _retry_db_call(
+                lambda: supabase.table("mg_customer_visits")
                 .select("id")
                 .eq("customer_id", data.customer_id)
                 .eq("branch_id", data.branch_id)
@@ -1611,16 +1655,18 @@ def settle_with_otp(data: SettleWithOtpPayload):
                 target_visit_id = last_visit.data[0]["id"]
 
         if target_visit_id:
-            supabase.table("mg_customer_visits").update({
-                "status": "PENDING_HQ",
-                "transaction_date": txn_date,
-                "net_amount": data.net_amount,
-                "cash_amount": data.cash_amount,
-                "bank_amount": data.bank_amount,
-                "direction": data.direction,
-                "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை நிறைவுற்றது"
-            }).eq("id", target_visit_id).execute()
-
+            _retry_db_call(
+                lambda vid=target_visit_id: supabase.table("mg_customer_visits").update({
+                    "status": "PENDING_HQ",
+                    "transaction_date": txn_date,
+                    "net_amount": data.net_amount,
+                    "cash_amount": data.cash_amount,
+                    "bank_amount": data.bank_amount,
+                    "direction": data.direction,
+                    "actions_summary": data.actions_summary or "நகைக்கடன் பரிவர்த்தனை நிறைவுற்றது"
+                }).eq("id", vid).execute()
+            )
+            
         default_src_staff = data.business_source_staff_id
         warnings_list = []
 
@@ -1706,6 +1752,19 @@ def settle_with_otp(data: SettleWithOtpPayload):
                                 "current_location": "BRANCH",
                                 "is_loan_closed": False
                             }).execute()
+
+                            if target_visit_id and l_no:
+                                try:
+                                    v_cur = supabase.table("mg_customer_visits").select("actions_summary").eq("id", target_visit_id).execute().data
+                                    cur_sum = (v_cur[0].get("actions_summary") or "") if v_cur else ""
+                                    upd_sum = re.sub(r"நகைக்கடன்\s*\(\s*புதிய அடகு #\d+\s*\)", f"நகைக்கடன் ({l_no})", cur_sum, count=1)
+                                    if upd_sum == cur_sum:
+                                        upd_sum = re.sub(r"புதிய அடகு #\d+", l_no, cur_sum, count=1)
+                                    if upd_sum == cur_sum:
+                                        upd_sum = f"{cur_sum}, நகைக்கடன் ({l_no})".strip(", ")
+                                    supabase.table("mg_customer_visits").update({"actions_summary": upd_sum}).eq("id", target_visit_id).execute()
+                                except Exception:
+                                    pass
 
                     if loan_amt_val > 0 and l_no:
                         try:

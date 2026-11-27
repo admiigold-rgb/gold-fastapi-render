@@ -15014,5 +15014,105 @@
     }
   })();
 </script>
+<script>
+  (function initIdleAndCloseAutoLogout() {
+    if (window._idleAndCloseAutoLogoutReady) return;
+    window._idleAndCloseAutoLogoutReady = true;
+
+    const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 நிமிடங்கள்
+    const SESSION_ACTIVE_KEY = 'gold_app_tab_active';
+    const REFRESH_FLAG_KEY = 'gold_app_page_refreshing';
+    let idleTimerId = null;
+
+    function isUserLoggedIn() {
+      return Boolean(window.currentUser || localStorage.getItem('gold_app_user'));
+    }
+
+    function performAutoLogout(reasonText) {
+      if (idleTimerId) {
+        clearTimeout(idleTimerId);
+        idleTimerId = null;
+      }
+      sessionStorage.removeItem(SESSION_ACTIVE_KEY);
+      sessionStorage.removeItem(REFRESH_FLAG_KEY);
+      localStorage.removeItem('gold_app_user');
+      if (typeof window.currentUser !== 'undefined') {
+        window.currentUser = null;
+      }
+
+      const loginScreen = document.getElementById('loginScreen');
+      const mainDash = document.getElementById('mainDashboard');
+      if (mainDash) mainDash.classList.add('hidden');
+      if (loginScreen) loginScreen.classList.remove('hidden');
+
+      if (reasonText && typeof window.alert === 'function') {
+        window.alert(reasonText);
+      }
+
+      if (typeof window.handleLogout === 'function') {
+        try {
+          // handleLogout மறுபடியும் location.reload() செய்தாலும் gold_app_user ஏற்கனவே நீக்கப்பட்டுள்ளதால் loginScreen-ல்தான் நிற்கும்
+          window.handleLogout();
+        } catch (e) {}
+      }
+    }
+
+    function resetIdleTimer() {
+      if (idleTimerId) clearTimeout(idleTimerId);
+      if (!isUserLoggedIn()) return;
+      sessionStorage.setItem(SESSION_ACTIVE_KEY, '1');
+      idleTimerId = setTimeout(() => {
+        if (isUserLoggedIn()) {
+          performAutoLogout("15 நிமிடங்களாக எந்த நடவடிக்கையும் இல்லாததால் பாதுகாப்புக் கருதி தானாகவே Logout செய்யப்பட்டது.");
+        }
+      }, IDLE_TIMEOUT_MS);
+    }
+
+    // 1. டேப்/பிரவுசர் புதிதாகத் திறக்கப்பட்டதா அல்லது Refresh செய்யப்பட்டதா எனச் சரிபார்த்தல்
+    const wasRefreshing = sessionStorage.getItem(REFRESH_FLAG_KEY) === '1';
+    const wasActiveInTab = sessionStorage.getItem(SESSION_ACTIVE_KEY) === '1';
+    sessionStorage.removeItem(REFRESH_FLAG_KEY);
+
+    if (isUserLoggedIn() && !wasRefreshing && !wasActiveInTab) {
+      // முந்தைய டேப்/பிரவுசர் மூடப்பட்ட பிறகு புதிதாகத் திறக்கப்பட்டால் உடனே Logout
+      performAutoLogout();
+    } else if (isUserLoggedIn()) {
+      sessionStorage.setItem(SESSION_ACTIVE_KEY, '1');
+      resetIdleTimer();
+    }
+
+    // 2. Refresh விசைகள் (F5 / Ctrl+R) அழுத்தப்படும்போது மட்டும் Refresh கொடியை வைத்தல்
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'r')) {
+        sessionStorage.setItem(REFRESH_FLAG_KEY, '1');
+      }
+      resetIdleTimer();
+    }, true);
+
+    // 3. பயனர் செயல்பாடுகளைக் கண்காணித்து 15 நிமிட டைமரை Reset செய்தல்
+    ['mousedown', 'mousemove', 'click', 'scroll', 'touchstart', 'wheel'].forEach(evtName => {
+      window.addEventListener(evtName, resetIdleTimer, { passive: true, capture: true });
+    });
+
+    // 4. டேப்/பிரவுசர் மூடப்படும்போது செஷனை நீக்குதல்
+    window.addEventListener('pagehide', () => {
+      if (sessionStorage.getItem(REFRESH_FLAG_KEY) !== '1') {
+        sessionStorage.removeItem(SESSION_ACTIVE_KEY);
+        localStorage.removeItem('gold_app_user');
+      }
+    });
+
+    // லாகின் ஆன பிறகு டைமரைத் தொடங்க `showDashboard` உடன் இணைத்தல்
+    const origShowDashboard = window.showDashboard;
+    if (typeof origShowDashboard === 'function') {
+      window.showDashboard = function() {
+        const res = origShowDashboard.apply(this, arguments);
+        sessionStorage.setItem(SESSION_ACTIVE_KEY, '1');
+        resetIdleTimer();
+        return res;
+      };
+    }
+  })();
+</script>
 </body>
 </html>

@@ -5241,3 +5241,68 @@ def master_audit_check_and_sync(payload: dict | None = None):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Master Audit பிழை: {str(e)}")
+
+@app.post("/api/hq/rd-certificate/{rd_id}")
+def generate_hq_rd_certificate(rd_id: int, payload: dict | None = None):
+    """
+    தலைமையகத்தால் (HQ) மட்டுமே RD Certificate உருவாக்கும் API.
+    1-வது முறை Original (count=1), 2-வது முறையிலிருந்து DUPLICATE / நகல் (count>=2).
+    """
+    data = payload or {}
+    user_role = str(data.get("role") or data.get("user_role") or "").strip().upper()
+    issued_by = str(data.get("issued_by") or "HQ_ADMIN").strip()
+
+    if user_role and user_role not in ["HQ", "ADMIN", "SUPER_ADMIN", "DIRECTOR"]:
+        raise HTTPException(status_code=403, detail="❌ அனுமதி மறுக்கப்பட்டது: RD சான்றிதழ் தலைமையகத்தால் (HQ) மட்டுமே உருவாக்க முடியும்!")
+
+    try:
+        acc_res = supabase.table("mg_rd_accounts").select("*").eq("id", rd_id).execute()
+        if not acc_res.data:
+            raise HTTPException(status_code=404, detail="RD கணக்கு விவரம் காணப்படவில்லை.")
+        acc = acc_res.data[0]
+
+        prev_count = int(acc.get("certificate_print_count") or 0)
+        new_count = prev_count + 1
+        is_duplicate = prev_count >= 1
+        now_iso = datetime.now(IST).isoformat()
+
+        upd = {"certificate_print_count": new_count}
+        if prev_count == 0:
+            upd["certificate_issued_at"] = now_iso
+            upd["certificate_issued_by"] = issued_by
+
+        supabase.table("mg_rd_accounts").update(upd).eq("id", rd_id).execute()
+
+        # வாடிக்கையாளர், கிளை, திட்ட விவரங்கள் எடுத்தல்
+        cust = {}
+        if acc.get("customer_id"):
+            c_res = supabase.table("mg_customers").select("*").eq("id", acc["customer_id"]).execute()
+            if c_res.data:
+                cust = c_res.data[0]
+
+        branch = {}
+        if acc.get("branch_id"):
+            b_res = supabase.table("mg_branches").select("*").eq("id", acc["branch_id"]).execute()
+            if b_res.data:
+                branch = b_res.data[0]
+
+        scheme = {}
+        if acc.get("scheme_id"):
+            s_res = supabase.table("mg_rd_schemes").select("*").eq("id", acc["scheme_id"]).execute()
+            if s_res.data:
+                scheme = s_res.data[0]
+
+        return {
+            "status": "success",
+            "is_duplicate": is_duplicate,
+            "print_count": new_count,
+            "issued_at": acc.get("certificate_issued_at") or now_iso,
+            "account": acc,
+            "customer": cust,
+            "branch": branch,
+            "scheme": scheme
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RD Certificate உருவாக்கப் பிழை: {str(e)}")

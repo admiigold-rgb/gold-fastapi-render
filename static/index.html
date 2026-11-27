@@ -14946,5 +14946,76 @@
     }
   })();
 </script>
+<script>
+  (function enforceExactProcessingFeeCalculation() {
+    if (window._exactProcFeeReady) return;
+    window._exactProcFeeReady = true;
+
+    function computeExactPledgeFee() {
+      const chargesInput = document.getElementById('charges_amount');
+      const loanInput = document.getElementById('loan_amount');
+      if (!chargesInput || !loanInput) return 0;
+
+      const schemeName = document.getElementById('scheme_name')?.value;
+      const sch = currentSelectedScheme || (Array.isArray(schemesCache) ? schemesCache.find(s => s.scheme_name === schemeName) : null);
+      if (!sch) return 0;
+
+      const currentLoanAmt = parseFloat(loanInput.value) || 0;
+      const pType = String(sch.processing_charge_type || 'PLEDGE').toUpperCase();
+
+      if (pType !== 'PLEDGE' && pType !== 'BOTH') {
+        chargesInput.value = 0;
+        return 0;
+      }
+
+      const calcMode = String(sch.pledge_charge_calc || sch.processing_charge_calc || 'AMOUNT').toUpperCase();
+      const calcVal = parseFloat(sch.pledge_charge_value ?? sch.processing_charge_value ?? 0) || 0;
+
+      if (currentLoanAmt <= 0 || calcVal <= 0) {
+        chargesInput.value = 0;
+        return 0;
+      }
+
+      let fee = 0;
+      if (calcMode === 'AMOUNT') {
+        fee = calcVal;
+      } else {
+        // சதவீதம் (%) எனில் துல்லியமான கணக்கீடு (எ.கா. 23200 * 0.25 / 100 = 58)
+        fee = (currentLoanAmt * calcVal) / 100;
+      }
+
+      const cleanFee = Number.isInteger(fee) ? fee : Number(fee.toFixed(2));
+      chargesInput.value = cleanFee;
+      return cleanFee;
+    }
+
+    // எல்லா இடங்களிலும் இதே துல்லியமான ஃபங்ஷன் இயங்குமாறு உறுதி செய்தல்
+    window.recalculatePledgeCharge = function() {
+      return computeExactPledgeFee();
+    };
+
+    // Loan Amount அல்லது Scheme மாறும்போதெல்லாம் உடனுக்குடன் கணக்கிடுதல்
+    document.addEventListener('input', function(e) {
+      if (e.target && e.target.id === 'loan_amount') {
+        computeExactPledgeFee();
+      }
+    }, true);
+
+    document.addEventListener('change', function(e) {
+      if (e.target && (e.target.id === 'loan_amount' || e.target.id === 'scheme_name')) {
+        setTimeout(computeExactPledgeFee, 30);
+      }
+    }, true);
+
+    // Add to Cart அழுத்தும் முன் கடைசி விநாடியில் ஒருமுறை கட்டாயமாகச் சரிபார்த்து புதுப்பித்தல்
+    const origSubmitPawn = window.submitPawnToDatabase;
+    if (typeof origSubmitPawn === 'function') {
+      window.submitPawnToDatabase = async function(...args) {
+        computeExactPledgeFee();
+        return origSubmitPawn.apply(this, args);
+      };
+    }
+  })();
+</script>
 </body>
 </html>

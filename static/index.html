@@ -4239,35 +4239,26 @@
     }, 5000);
     
    // 6. Cart & Loan Submission
+// 6. Cart & Loan Submission (தற்காலிகமாக Cart-ல் மட்டும் சேர்க்கும் முறை - OTP பிறகே DB-ல் சேரும்)
     async function submitPawnToDatabase() {
       if (isDraftLocked) {
-        return alert("⚠️ இந்த வருகை நிறுத்தி வைக்கப்பட்டு மீண்டும் திறக்கப்பட்டுள்ளது! இதில் புதிய நகைகளையோ கடன்களையோ சேர்க்க முடியாது. தீர்வு (Checkout) மட்டுமே செய்ய இயலும்.");
+        return alert("⚠️ இந்த வருகை நிறுத்தி வைக்கப்பட்டு மீண்டும் திறக்கப்பட்டுள்ளது! தீர்வு (Checkout) மட்டுமே செய்ய இயலும்.");
       }
       if (currentCashDayData && currentCashDayData.status === 'CLOSED') {
         return alert("❌ தேர்வு செய்யப்பட்ட நாள் ஏற்கனவே பூட்டப்பட்டுவிட்டது (CLOSED). இதில் புதிய அடகு வைக்க முடியாது!");
       }
-      const loanNo = document.getElementById('loan_no').value.trim();
       const scheme = document.getElementById('scheme_name').value;
       const loanAmt = parseFloat(document.getElementById('loan_amount').value) || 0;
       const chgAmt = parseFloat(document.getElementById('charges_amount').value) || 0;
-      const branchId = parseInt(document.getElementById('active_branch_id').value) || 1;
 
-      if (!loanNo || loanAmt <= 0) return alert("கடன் விபரம் உள்ளிடவும்.");
+      if (loanAmt <= 0) return alert("கடன் தொகையை உள்ளிடவும்.");
       if (ornamentList.length === 0) return alert("நகைகளைச் சேர்க்கவும்.");
 
-      // 📸 நகையின் புகைப்படத்தை நேரடியாகப் படித்தல்
       const ornamentPhotoInput = document.getElementById('ornament_photo_input');
       const ornamentPhotoFile = ornamentPhotoInput && ornamentPhotoInput.files ? ornamentPhotoInput.files[0] : null;
       if (!ornamentPhotoFile) {
         return alert("📸 தயவுசெய்து நகையின் புகைப்படத்தை இணைக்கவும்!");
       }
-
-      const ornamentPhotoBase64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(ornamentPhotoFile);
-      });
 
       if (currentSelectedScheme) {
         if (loanAmt < currentSelectedScheme.min_loan_amount) {
@@ -4278,111 +4269,47 @@
         }
       }
 
-      // 1. கவுண்ட்டரில் உள்ள பரிவர்த்தனை தேதியை எடுத்தல்
-      const transDateInput = document.querySelector('input[type="date"]');
-      const transDate = transDateInput && transDateInput.value ? transDateInput.value : new Date().toISOString().split('T')[0];
-      await ensureActiveVisitId();
-      const payload = {
-        customer_id: activeCustomer.id,
-        branch_id: branchId,
-        visit_id: activeVisitId,
-        loan_no: loanNo,
-        scheme_name: scheme,
-        loan_amount: loanAmt,
-        charges_amount: chgAmt,
-        photo_url: ornamentPhotoBase64,
-        ornament_photo: ornamentPhotoBase64,
-        transaction_date: transDate,
-        items: ornamentList
-      };
+      const ornamentPhotoBase64 = await readFileAsBase64(ornamentPhotoInput);
+      const totGross = ornamentList.reduce((s, x) => s + (parseFloat(x.gross_weight) || 0), 0);
+      const totNet = ornamentList.reduce((s, x) => s + (parseFloat(x.net_weight) || 0), 0);
 
-      try {
-        const res = await fetch('/api/loan/new-pawn', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          cartItems.push({
-            loan_id: data.loan_id, loan_no: loanNo,
-            title: `நகைக்கடன் (${loanNo})`,
-            details: `${ornamentList.length} நகைகள் | திட்டம்: ${scheme}`,
-            business_source_staff_id: parseInt(document.getElementById('src_staff_pawn')?.value) || 0,
-            debit: loanAmt, credit: chgAmt
-          });
-          renderCart();
-          alert(`✅ கடன் (${loanNo}) கூடையில் சேர்க்கப்பட்டது! அடுத்த கடனைப் பதியலாம்.`);
+      const newPawnCount = cartItems.filter(c => c.is_new_pawn).length + 1;
+      const tempRef = `புதிய அடகு #${newPawnCount}`;
 
-          document.getElementById('loan_amount').value = '';
-          ornamentList = [];
-          renderOrnamentsTable();
-          fetchAutoLoanNumber();
-
-          // நகைப் படப் பகுதியை அடுத்த கடனுக்காகத் தூய்மை செய்தல்
-          if (ornamentPhotoInput) ornamentPhotoInput.value = '';
-          const photoElem = document.getElementById('ornament_photo_preview');
-          if (photoElem) photoElem.src = '';
-          if (typeof capturedOrnamentPhoto !== 'undefined') capturedOrnamentPhoto = null;
-        } else alert("❌ பிழை: " + data.detail);
-      } catch (err) { alert("பிழை: " + err.message); }
-    }
-
-    // ✅ [Errno 11] தற்காலிக சர்வர் பிழை வந்தால் தானாக மீண்டும் முயற்சித்து, பிழை வந்தால் Loader-ஐ உடனே மறைக்கும் பாதுகாப்பு
-    (function patchPawnSubmitWithRetry() {
-      const origSubmit = window.submitPawnToDatabase;
-      if (typeof origSubmit !== 'function') return;
-
-      function hideGlobalLoaderNow() {
-        const overlay = document.getElementById('globalLoadingOverlay');
-        if (overlay) overlay.style.display = 'none';
-        window._userActionLoading = false;
-      }
-
-      window.submitPawnToDatabase = async function(...args) {
-        const origFetch = window.fetch;
-        let attempts = 0;
-
-        window.fetch = async function(url, options = {}) {
-          const uStr = typeof url === 'string' ? url : (url?.url || '');
-          if (!uStr.includes('/api/loan/new-pawn')) {
-            return origFetch.apply(this, arguments);
-          }
-
-          while (true) {
-            attempts++;
-            try {
-              const resp = await origFetch.apply(this, arguments);
-              if ((resp.status === 503 || resp.status === 502) && attempts < 3) {
-                await new Promise(r => setTimeout(r, 500 * attempts));
-                continue;
-              }
-              return resp;
-            } catch (fetchErr) {
-              const msg = String(fetchErr?.message || '').toLowerCase();
-              if ((msg.includes('11') || msg.includes('temporarily') || msg.includes('failed to fetch') || msg.includes('network')) && attempts < 3) {
-                await new Promise(r => setTimeout(r, 500 * attempts));
-                continue;
-              }
-              throw fetchErr;
-            }
-          }
-        };
-
-        try {
-          return await origSubmit.apply(this, args);
-        } catch (err) {
-          hideGlobalLoaderNow();
-          alert("❌ பிழை: " + (err?.message || "கடன் சேர்க்க முடியவில்லை"));
-        } finally {
-          window.fetch = origFetch;
-          hideGlobalLoaderNow();
-          if (typeof syncLoanCartActionButton === 'function') {
-            syncLoanCartActionButton();
-          }
+      cartItems.push({
+        is_new_pawn: true,
+        loan_id: null,
+        loan_no: null,
+        title: `நகைக்கடன் (${tempRef})`,
+        details: `${ornamentList.length} நகைகள் | நிகர எடை: ${totNet.toFixed(3)}g | திட்டம்: ${scheme}`,
+        business_source_staff_id: parseInt(document.getElementById('src_staff_pawn')?.value) || 0,
+        debit: loanAmt,
+        credit: chgAmt,
+        pawn_meta: {
+          scheme_name: scheme,
+          loan_amount: loanAmt,
+          charges_amount: chgAmt,
+          total_gross_weight: Number(totGross.toFixed(3)),
+          total_net_weight: Number(totNet.toFixed(3)),
+          ornament_photo: ornamentPhotoBase64,
+          items: [...ornamentList]
         }
-      };
-    })();
+      });
+
+      renderCart();
+      alert(`✅ ${tempRef} கூடையில் சேர்க்கப்பட்டது! (வாடிக்கையாளர் OTP முடித்தவுடன் தொடர் கடன் எண் தானாக உருவாகும்)`);
+
+      document.getElementById('loan_amount').value = '';
+      document.getElementById('charges_amount').value = '0';
+      ornamentList = [];
+      renderOrnamentsTable();
+
+      if (ornamentPhotoInput) ornamentPhotoInput.value = '';
+      const photoElem = document.getElementById('ornament_photo_preview');
+      if (photoElem) photoElem.src = '';
+      if (typeof capturedOrnamentPhoto !== 'undefined') capturedOrnamentPhoto = null;
+    }
+    
     async function removeLastCartItem() {
       if (isDraftLocked) {
         return alert("⚠️ நிறுத்தி வைக்கப்பட்ட வருகையில் கார்ட்டை மாற்ற முடியாது!");
@@ -14105,18 +14032,25 @@
     if (window._hqAdminToolsAndPrintServiceDone) return;
     window._hqAdminToolsAndPrintServiceDone = true;
 
-    function isHqOrAdminScreenVisible() {
-      const allBtns = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
-      return allBtns.some(el => {
-        const txt = (el.innerText || '').trim().toUpperCase();
-        return (txt === 'ADMIN' || txt === 'INTERNAL AUDIT' || txt === 'HQ APPROVAL') && el.offsetParent !== null;
-      });
+    function isHqOrAdminUser() {
+      // உள்நுழைந்த பயனரின் நேரடி உரிமைகளை (currentUser.permissions) சரிபார்த்தல்
+      const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || 'null');
+      if (!u) return false;
+      const p = u.permissions || {};
+      const role = String(u.role_key || '').toUpperCase();
+      return (
+        role === 'HQ_ADMIN' ||
+        role === 'ADMIN' ||
+        p.can_manage_users === true ||
+        p.can_approve_kyc === true ||
+        p.can_audit_documents === true
+      );
     }
 
     // 1. Master Audit & Sync (Admin / HQ மட்டும்)
     window.runSingleMasterAudit = async function() {
-      if (!isHqOrAdminScreenVisible()) {
-        return alert("❌ அனுமதி மறுக்கப்பட்டது: அட்மின் / தலைமையகப் பக்கத்தில் மட்டுமே இதைப் பயன்படுத்த முடியும்!");
+      if (!isHqOrAdminUser()) {
+        return alert("❌ அனுமதி மறுக்கப்பட்டது: அட்மின் / தலைமையகப் பயனர்கள் மட்டுமே இதைப் பயன்படுத்த முடியும்!");
       }
 
       try {
@@ -14165,12 +14099,13 @@
 
     window.printHqRdCertificate = async function(rdAccountId, currentCount = 0) {
       try {
-        const userName = window.currentUserName || localStorage.getItem('user_name') || 'HQ Admin';
+        const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || '{}');
+        const userName = u.full_name || 'HQ Admin';
 
         let dupReason = "";
         if (currentCount >= 1) {
           const reasonInput = prompt(
-            `⚠️ இந்த RD சான்றிதழ் ஏற்கனவே ${currentCount} முறை அச்சிடப்பட்டுள்ளது.\nஇப்போது 'DUPLICATE / நகல்' முத்திரையுடன் மட்டுமே அச்சிடப்படும்.\n\nநகல் எடுப்பதற்கான காரணத்தை உள்ளிடவும் (எ.கா: பத்திரம் தொலைந்துவிட்டது / பிரிண்டர் சிக்கல்):`
+            `⚠️ இந்த RD சான்றிதழ் ஏற்கனவே ${currentCount} முறை அச்சிடப்பட்டுள்ளது.\nஇப்போது 'DUPLICATE / நகல்' முத்திரையுடன் மட்டுமே அச்சிடப்படும்.\n\nநகல் எடுப்பதற்கான காரணத்தை உள்ளிடவும்:`
           );
           if (reasonInput === null) return;
           dupReason = reasonInput.trim();
@@ -14413,7 +14348,7 @@
       tbody.innerHTML = filtered.map(r => {
         const cnt = Number(r.certificate_print_count || 0);
         const btnHtml = cnt === 0
-          ? `<button type="button" onclick="window.printHqRdCertificate(${r.id}, 0)" style="background:#16a34a; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:800; font-size:11.5px; cursor:pointer; box-shadow:0 2px 6px rgba(22,163,74,0.3);">🖨️ Print Original [${r.rd_no}]</button>`
+          ? `<button type="button" onclick="window.printHqRdCertificate(${r.id}, 0)" style="background:#16a34a; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:800; font-size:11.5px; cursor:pointer;">🖨️ Print Original [${r.rd_no}]</button>`
           : `<button type="button" onclick="window.printHqRdCertificate(${r.id}, ${cnt})" style="background:#dc2626; color:#fff; border:none; padding:6px 12px; border-radius:8px; font-weight:800; font-size:11.5px; cursor:pointer;">🔄 Reprint Duplicate [${r.rd_no}] (${cnt})</button>`;
 
         const dispatchHtml = cnt === 0
@@ -14453,9 +14388,7 @@
           });
         }
         window.renderPrintServiceTable();
-      } catch (e) {
-        console.error("Print service load error:", e);
-      }
+      } catch (e) {}
     };
 
     window.openHqPrintServiceModal = function() {
@@ -14471,7 +14404,7 @@
                 <div style="font-size:16px; font-weight:900;">🖨️ HQ PRINT SERVICE — RD CERTIFICATE CENTER</div>
                 <div style="font-size:11px; color:#f3e8ff;">தலைமையக ஒப்புதல் பெற்ற RD கணக்குகளுக்கு அசல் (Original) மற்றும் நகல் (Duplicate) சான்றிதழ் அச்சிடுதல்</div>
               </div>
-              <button type="button" onclick="document.getElementById('hqPrintServiceModal').style.display='none'" style="background:rgba(255,255,255,0.2); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-weight:800; cursor:pointer;">✕ மூடு</button>
+              <button type="button" onclick="document.getElementById('hqPrintServiceModal').style.display='none'" style="background:rgba(255,255,255,0.2); color:#fff; border:none; border-radius:8px; padding:6px 12px; font-weight:800; cursor:pointer;">✕ Close</button>
             </div>
 
             <div style="padding:12px 20px; background:#faf8fc; border-bottom:1px solid #e2e8f0; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
@@ -14487,7 +14420,7 @@
                 <select id="hqPrintBranchSelect" onchange="window.renderPrintServiceTable()" style="padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; font-size:12px; font-weight:600;">
                   <option value="">அனைத்து கிளைகளும் (All Branches)</option>
                 </select>
-                <input type="text" id="hqPrintSearchInput" oninput="window.renderPrintServiceTable()" placeholder="RD எண் / பெயர் / மொபைல் தேடுக..." style="padding:6px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:12px; width:220px;" />
+                <input type="text" id="hqPrintSearchInput" oninput="window.renderPrintServiceTable()" placeholder="RD எண் / பெயர் / மொபைல்..." style="padding:6px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:12px; width:220px;" />
                 <button type="button" onclick="window.loadHqPrintServiceData()" style="padding:6px 10px; border-radius:8px; background:#f3e8ff; color:#723a91; border:1px solid #c084fc; font-weight:800; font-size:12px; cursor:pointer;">🔄 Refresh</button>
               </div>
             </div>
@@ -14534,9 +14467,9 @@
     };
 
     function syncHqUiElements() {
-      const isHq = isHqOrAdminScreenVisible();
+      const isHq = isHqOrAdminUser();
 
-      // A. Master Audit & Sync பட்டன்
+      // A. Master Audit & Sync பட்டன் (Admin / HQ-க்கு மட்டும்)
       const existingAuditBtn = document.getElementById('btnSingleMasterAudit');
       if (!isHq) {
         if (existingAuditBtn) existingAuditBtn.remove();
@@ -14551,35 +14484,32 @@
         document.body.appendChild(btn);
       }
 
-      // B. PRINT SERVICE டேப்
+      // B. PRINT SERVICE டேப் (மேல் மெனு பட்டையில் ADMIN-க்கு அருகில்)
       const existingPrintTab = document.getElementById('navTabPrintService');
       if (!isHq) {
         if (existingPrintTab) existingPrintTab.remove();
       } else if (!existingPrintTab) {
-        const buttons = Array.from(document.querySelectorAll('button, a, div[role="button"]'));
-        const anchorTab = buttons.find(el => /\b(ADMIN|INTERNAL AUDIT|HQ APPROVAL)\b/i.test((el.innerText || '').trim()) && el.offsetParent !== null);
-        if (anchorTab && anchorTab.parentElement) {
+        const navBox = document.getElementById('navButtonsContainer');
+        if (navBox && navBox.children.length > 0) {
           const tabBtn = document.createElement('button');
           tabBtn.type = 'button';
           tabBtn.id = 'navTabPrintService';
           tabBtn.innerText = '🖨️ PRINT SERVICE';
-          tabBtn.className = anchorTab.className || '';
-          if (!tabBtn.className) {
-            tabBtn.style.cssText = "padding:8px 14px; font-size:12px; font-weight:800; border-radius:8px; background:#723a91; color:#fff; border:1px solid #d4af37; cursor:pointer; margin-left:6px;";
-          }
+          tabBtn.className = "px-3.5 py-1.5 text-xs font-bold rounded-xl bg-purple-900 bg-opacity-40 text-purple-100 hover:bg-opacity-60 border border-purple-400";
           tabBtn.onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
             window.openHqPrintServiceModal();
           };
-          anchorTab.parentElement.appendChild(tabBtn);
+          navBox.appendChild(tabBtn);
         }
       }
     }
 
     const mo = new MutationObserver(() => syncHqUiElements());
     if (document.body) mo.observe(document.body, { childList: true, subtree: true });
-    setTimeout(syncHqUiElements, 800);
+    setTimeout(syncHqUiElements, 600);
+    setTimeout(syncHqUiElements, 1800);
   })();
 </script>
 </body>

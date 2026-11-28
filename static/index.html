@@ -898,15 +898,18 @@
       <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-purple-100 space-y-5">
         
         <!-- தலைப்பு மற்றும் புதுப்பித்தல் பட்டன் -->
-        <div class="flex justify-between items-center border-b border-purple-100 pb-3">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-purple-100 pb-3">
           <h2 class="text-base font-extrabold text-brand-violet flex items-center gap-2">
             <span>🛡️</span> தலைமையக ஒப்புதல் & வங்கி தீர்வு மையம்
           </h2>
-          <button type="button" id="btnOpenHqPacketHub" onclick="openPacketManagementModal('HQ')" 
-                style="background-color: #4c1d95 !important; color: #ffffff !important;" 
-                class="hidden px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition cursor-pointer">
-          🔐 HQ பாக்கெட் & வங்கி லாக்கர் மேலாண்மை
-        </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" id="btnOpenHqPacketHub" onclick="openPacketManagementModal('HQ')" 
+                    style="background-color: #4c1d95 !important; color: #ffffff !important;" 
+                    class="hidden px-3.5 py-1.5 rounded-xl text-xs font-black shadow-md hover:opacity-90 transition cursor-pointer">
+              🔐 HQ பாக்கெட் & வங்கி லாக்கர் மேலாண்மை
+            </button>
+          </div>
+        </div>
         <!-- 🪙 கூடுதல் கடன் தொகை ஒப்புதல் கோரிக்கைகள் (LTV Deviation Approval) -->
         <div id="hqLoanDeviationSection" class="space-y-2 bg-gradient-to-r from-amber-50 to-purple-50 p-4 rounded-2xl border-2 border-amber-400 shadow-sm">
           <div class="flex justify-between items-center border-b border-amber-200 pb-2">

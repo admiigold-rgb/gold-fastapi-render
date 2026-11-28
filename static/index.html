@@ -15922,5 +15922,86 @@
     }
   })();
 </script>
+<script>
+  (function forceShowAdminTabAndLoadMenus() {
+    if (window._forceShowAdminTabReady) return;
+    window._forceShowAdminTabReady = true;
+
+    function openAdminTabCleanly() {
+      ['counterTab', 'hqApprovalTab', 'internalAuditTab', 'misTab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.add('hidden');
+          el.style.setProperty('display', 'none', 'important');
+        }
+      });
+
+      const adminTab = document.getElementById('adminPanelTab');
+      if (adminTab) {
+        adminTab.classList.remove('hidden');
+        adminTab.style.setProperty('display', 'block', 'important');
+        adminTab.style.setProperty('visibility', 'visible', 'important');
+        adminTab.style.setProperty('opacity', '1', 'important');
+      }
+
+      const navContainer = document.getElementById('navButtonsContainer');
+      if (navContainer) {
+        navContainer.querySelectorAll('button').forEach(btn => {
+          const isAdminBtn = btn.id === 'btn_adminPanelTab' || (btn.textContent || '').includes('Admin') || (btn.textContent || '').includes('நிர்வாகம்');
+          btn.className = isAdminBtn
+            ? 'px-3.5 py-1.5 text-xs font-black rounded-xl brand-gradient-gold-btn border border-yellow-400 shadow'
+            : 'px-3.5 py-1.5 text-xs font-bold rounded-xl bg-purple-900 bg-opacity-40 text-purple-100 hover:bg-opacity-60 border border-purple-400';
+        });
+      }
+
+      if (typeof fetchAndSetupPurityDropdown === 'function') fetchAndSetupPurityDropdown();
+      if (typeof loadSchemesList === 'function') loadSchemesList();
+      if (typeof loadCompanyBanksList === 'function') loadCompanyBanksList();
+      if (typeof loadAdminBankLockers === 'function') loadAdminBankLockers();
+      if (typeof loadBranchesList === 'function') loadBranchesList();
+      if (typeof loadStaffList === 'function') loadStaffList();
+      if (typeof loadAuditDocRulesAdmin === 'function') loadAuditDocRulesAdmin();
+      if (typeof loadGssSchemesList === 'function') loadGssSchemesList();
+      if (typeof loadRdSchemesList === 'function') loadRdSchemesList();
+      if (typeof loadSiSchemesList === 'function') loadSiSchemesList();
+    }
+
+    const prevSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+      if (tabId === 'adminPanelTab') {
+        window._isOnAdminTab = true;
+        openAdminTabCleanly();
+        return;
+      }
+      window._isOnAdminTab = false;
+      const adminTab = document.getElementById('adminPanelTab');
+      if (adminTab) adminTab.style.setProperty('display', 'none', 'important');
+      if (typeof prevSwitchTab === 'function') {
+        return prevSwitchTab.apply(this, arguments);
+      }
+    };
+
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const txt = (btn.textContent || '').trim();
+      if (btn.id === 'btn_adminPanelTab' || txt.includes('Admin') || txt.includes('நிர்வாகம்')) {
+        window._isOnAdminTab = true;
+        setTimeout(openAdminTabCleanly, 30);
+      } else if (btn.id !== 'btn_misTab' && !txt.includes('MIS')) {
+        window._isOnAdminTab = false;
+      }
+    }, true);
+
+    setInterval(() => {
+      if (window._isOnAdminTab) {
+        const adminTab = document.getElementById('adminPanelTab');
+        if (adminTab && (adminTab.classList.contains('hidden') || getComputedStyle(adminTab).display === 'none')) {
+          openAdminTabCleanly();
+        }
+      }
+    }, 500);
+  })();
+</script>
 </body>
 </html>

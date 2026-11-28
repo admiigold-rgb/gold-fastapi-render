@@ -1340,7 +1340,7 @@
             <span>📜</span> புதிய நகைக்கடன் திட்டம் உருவாக்கம் (New Loan Scheme)
           </h3>
 
-          <!-- வரிசை 1: திட்டக் குறியீடு, பெயர், கடன் காலம் -->
+          <!-- வரிசை 1: 3 பெட்டிகள் -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 mb-1">திட்டக் குறியீடு (Code) *</label>
@@ -1356,8 +1356,8 @@
             </div>
           </div>
 
-          <!-- வரிசை 2: கடன் வரம்பு, Min Days, LTV %, Reminder Days (5 சீரான பெட்டிகள்) -->
-          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+          <!-- வரிசை 2: 4 பெட்டிகள் (Tailwind 2.2 ஆதரவுடன்) -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div>
               <label class="block text-[11px] font-bold text-slate-700 mb-1">குறைந்தபட்ச கடன் (₹)</label>
               <input type="number" id="sch_min_loan" value="1000" class="w-full border-2 border-purple-100 p-2 rounded-xl font-mono">
@@ -1374,14 +1374,14 @@
               <label class="block text-[11px] font-bold text-emerald-800 mb-1">அதிகபட்ச LTV %</label>
               <input type="number" id="sch_ltv" value="75" class="w-full border-2 border-purple-100 p-2 rounded-xl font-bold text-emerald-700 font-mono">
             </div>
-            <div class="col-span-2 sm:col-span-1">
-              <label class="block text-[11px] font-bold text-amber-900 mb-1">🔔 Reminder Days *</label>
-              <input type="number" id="sch_reminder_days" value="30" placeholder="30" class="w-full border-2 border-amber-300 p-2 rounded-xl font-bold text-amber-950 bg-amber-50/60 font-mono">
-            </div>
           </div>
 
-          <!-- வரிசை 3: ஏலக் கட்டணம் & Processing கட்டண நேரம் -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-purple-50/50 p-3.5 rounded-2xl border-2 border-purple-100 text-xs">
+          <!-- வரிசை 3: 3 பெட்டிகள் (Reminder Days, ஏலக் கட்டணம், Processing நேரம்) -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-purple-50/50 p-3.5 rounded-2xl border-2 border-purple-100 text-xs">
+            <div>
+              <label class="block text-[11px] font-bold text-amber-900 mb-1">🔔 வட்டி நினைவூட்டல் (Reminder Days) *</label>
+              <input type="number" id="sch_reminder_days" value="30" placeholder="30" class="w-full border-2 border-amber-300 p-2 rounded-xl font-bold text-amber-950 bg-amber-50/70 font-mono">
+            </div>
             <div>
               <label class="block text-[11px] font-bold text-slate-700 mb-1">ஏலக் கட்டணம் (Auction Charge ₹)</label>
               <input type="number" id="sch_auction_charge" class="w-full border-2 border-purple-100 p-2 rounded-xl bg-white font-bold" value="500">
@@ -1397,8 +1397,8 @@
           </div>
 
           <!-- வரிசை 4: அடகு வைக்கும் போது & திருப்பும் போது கட்டண அமைப்பு -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-emerald-50/60 p-3.5 rounded-2xl border-2 border-emerald-200">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="grid grid-cols-2 gap-3 bg-emerald-50/60 p-3.5 rounded-2xl border-2 border-emerald-200">
               <div>
                 <label class="block text-[11px] font-bold text-emerald-950 mb-1">அடகு வைக்கும் போது முறை</label>
                 <select id="sch_pledge_calc" class="w-full border-2 border-emerald-200 p-2 rounded-xl bg-white font-bold">
@@ -1412,7 +1412,7 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/60 p-3.5 rounded-2xl border-2 border-indigo-200">
+            <div class="grid grid-cols-2 gap-3 bg-indigo-50/60 p-3.5 rounded-2xl border-2 border-indigo-200">
               <div>
                 <label class="block text-[11px] font-bold text-indigo-950 mb-1">திருப்பும் போது முறை</label>
                 <select id="sch_release_calc" class="w-full border-2 border-indigo-200 p-2 rounded-xl bg-white font-bold">
@@ -1427,7 +1427,7 @@
             </div>
           </div>
 
-          <!-- வரிசை 5: வட்டி  அடுக்குகள் (Interest Slabs) -->
+          <!-- வரிசை 5: வட்டி அடுக்குகள் (Interest Slabs) -->
           <div class="bg-amber-50 p-3.5 rounded-2xl border-2 border-amber-200 space-y-2">
             <div class="flex justify-between items-center">
               <span class="text-xs font-black text-amber-900">வட்டி அடுக்குகள் (Interest Slabs):</span>
@@ -15990,15 +15990,15 @@
   })();
 </script>
 <script>
-  (function fixLoanSchemeEditAndSlabsCleanly() {
-    if (window._cleanLoanSchemeEditReady) return;
-    window._cleanLoanSchemeEditReady = true;
+  (function masterLoanSchemeController() {
+    if (window._masterLoanSchemeControllerDone) return;
+    window._masterLoanSchemeControllerDone = true;
 
     window.editScheme = function(id) {
-      const s = (schemesCache || []).find(item => Number(item.id) === Number(id));
+      const s = (schemesCache || []).find(item => String(item.id) === String(id));
       if (!s) return alert("திட்ட விபரம் கிடைக்கவில்லை.");
 
-      editingSchemeId = id;
+      editingSchemeId = s.id;
       document.getElementById('sch_code').value = s.scheme_code || '';
       document.getElementById('sch_name').value = s.scheme_name || '';
       document.getElementById('sch_tenure').value = s.tenure_months || '';
@@ -16010,16 +16010,12 @@
       document.getElementById('sch_auction_charge').value = s.auction_charge_amount ?? 500;
       document.getElementById('sch_proc_type').value = s.processing_charge_type || 'PLEDGE';
 
-      const pCalc = document.getElementById('sch_pledge_calc');
-      const pVal = document.getElementById('sch_pledge_val');
-      const rCalc = document.getElementById('sch_release_calc');
-      const rVal = document.getElementById('sch_release_val');
-      if (pCalc) pCalc.value = s.pledge_charge_calc || s.processing_charge_calc || 'AMOUNT';
-      if (pVal) pVal.value = s.pledge_charge_value ?? s.processing_charge_value ?? 0;
-      if (rCalc) rCalc.value = s.release_charge_calc || s.processing_charge_calc || 'AMOUNT';
-      if (rVal) rVal.value = s.release_charge_value ?? s.processing_charge_value ?? 0;
+      document.getElementById('sch_pledge_calc').value = s.pledge_charge_calc || s.processing_charge_calc || 'AMOUNT';
+      document.getElementById('sch_pledge_val').value = s.pledge_charge_value ?? s.processing_charge_value ?? 0;
+      document.getElementById('sch_release_calc').value = s.release_charge_calc || s.processing_charge_calc || 'AMOUNT';
+      document.getElementById('sch_release_val').value = s.release_charge_value ?? s.processing_charge_value ?? 0;
 
-      // வட்டி அடுக்குகளை (Interest Slabs) சரியாக நிரப்புதல்
+      // வட்டி அடுக்குகளை (Interest Slabs) நிரப்புதல்
       const slabsContainer = document.getElementById('slabsContainer');
       if (slabsContainer) {
         slabsContainer.innerHTML = '';
@@ -16067,10 +16063,10 @@
       document.getElementById('sch_reminder_days').value = '30';
       document.getElementById('sch_auction_charge').value = '500';
       document.getElementById('sch_proc_type').value = 'PLEDGE';
-      if (document.getElementById('sch_pledge_calc')) document.getElementById('sch_pledge_calc').value = 'AMOUNT';
-      if (document.getElementById('sch_pledge_val')) document.getElementById('sch_pledge_val').value = '100';
-      if (document.getElementById('sch_release_calc')) document.getElementById('sch_release_calc').value = 'AMOUNT';
-      if (document.getElementById('sch_release_val')) document.getElementById('sch_release_val').value = '100';
+      document.getElementById('sch_pledge_calc').value = 'AMOUNT';
+      document.getElementById('sch_pledge_val').value = '100';
+      document.getElementById('sch_release_calc').value = 'AMOUNT';
+      document.getElementById('sch_release_val').value = '100';
 
       const slabsContainer = document.getElementById('slabsContainer');
       if (slabsContainer) {
@@ -16096,6 +16092,73 @@
 
       const cancelBtn = document.getElementById('btnCancelSchemeEdit');
       if (cancelBtn) cancelBtn.classList.add('hidden');
+    };
+
+    window.submitLoanSchemeForm = async function() {
+      const code = document.getElementById('sch_code').value.trim();
+      const name = document.getElementById('sch_name').value.trim();
+      const tenure = parseInt(document.getElementById('sch_tenure').value);
+      if (!code || !name || !tenure) return alert("திட்டக் குறியீடு, பெயர் மற்றும் கடன் காலம் தேவை.");
+
+      const slabRows = document.querySelectorAll('#slabsContainer .slab-row');
+      const slabs = [];
+      slabRows.forEach(row => {
+        const f = parseInt(row.querySelector('.slab-from').value);
+        const t = parseInt(row.querySelector('.slab-to').value);
+        const r = parseFloat(row.querySelector('.slab-rate').value);
+        if (!isNaN(f) && !isNaN(t) && !isNaN(r)) {
+          slabs.push({ from_days: f, to_days: t, rate_percent: r });
+        }
+      });
+
+      if (slabs.length === 0) return alert("குறைந்தது ஒரு வட்டி அடுக்காவது அமைக்கவும்.");
+
+      const pCalc = document.getElementById('sch_pledge_calc').value || 'AMOUNT';
+      const pVal = parseFloat(document.getElementById('sch_pledge_val').value) || 0;
+      const rCalc = document.getElementById('sch_release_calc').value || 'AMOUNT';
+      const rVal = parseFloat(document.getElementById('sch_release_val').value) || 0;
+
+      const payload = {
+        scheme_code: code,
+        scheme_name: name,
+        tenure_months: tenure,
+        min_loan_amount: parseFloat(document.getElementById('sch_min_loan').value) || 1000,
+        max_loan_amount: parseFloat(document.getElementById('sch_max_loan').value) || 1500000,
+        min_interest_days: parseInt(document.getElementById('sch_min_days').value) || 7,
+        max_ltv_percentage: parseFloat(document.getElementById('sch_ltv').value) || 75,
+        reminder_days: parseInt(document.getElementById('sch_reminder_days').value) || 30,
+        auction_grace_days: 30,
+        auction_charge_amount: parseFloat(document.getElementById('sch_auction_charge').value) || 500,
+        processing_charge_type: document.getElementById('sch_proc_type').value,
+        processing_charge_calc: pCalc,
+        processing_charge_value: pVal,
+        pledge_charge_calc: pCalc,
+        pledge_charge_value: pVal,
+        release_charge_calc: rCalc,
+        release_charge_value: rVal,
+        interest_slabs: slabs,
+        purity_rate_multipliers: { "916": 0.75, "22CT": 0.75, "18CT": 0.60, "999": 0.85 }
+      };
+
+      const url = editingSchemeId
+        ? `/api/admin/scheme/${editingSchemeId}`
+        : '/api/admin/scheme/create';
+      const method = editingSchemeId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ " + data.message);
+        window.resetSchemeForm();
+        loadSchemesList();
+        loadSchemesDropdown();
+      } else {
+        alert("❌ பிழை: " + (data.detail || "சேமிக்க முடியவில்லை"));
+      }
     };
   })();
 </script>

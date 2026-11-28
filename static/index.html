@@ -1628,7 +1628,12 @@
         
               <label class="flex items-center space-x-2.5 font-bold text-amber-900 col-span-1 sm:col-span-2 bg-yellow-100/80 p-2 rounded-xl border border-yellow-300 hover:bg-yellow-100 cursor-pointer shadow-xs">
                 <input type="checkbox" id="perm_otp_exempt" class="w-4 h-4 text-yellow-600 rounded">
-                <span class="text-xs font-bold">⚡ 7. அவசர OTP விலக்கு ஒப்புதல் உரிமை</span>
+                <span class="text-xs font-bold">⚡ 7A. அவசர OTP விலக்கு ஒப்புதல் உரிமை (Counter OTP Exemption)</span>
+              </label>
+
+              <label class="flex items-center space-x-2.5 font-bold text-purple-900 col-span-1 sm:col-span-2 bg-amber-50 p-2 rounded-xl border border-amber-300 hover:bg-amber-100 cursor-pointer shadow-xs">
+                <input type="checkbox" id="perm_packet_otp_exempt" class="w-4 h-4 text-purple-700 rounded">
+                <span class="text-xs font-bold">🔐 7B. பாக்கெட் ஒப்படைப்பு OTP விலக்கு ஒப்புதல் உரிமை (Packet Handover OTP Exemption)</span>
               </label>
 
               <label class="flex items-center space-x-2.5 font-bold text-purple-950 col-span-1 sm:col-span-2 bg-purple-100/80 p-2 rounded-xl border border-purple-300 hover:bg-purple-100 cursor-pointer shadow-xs">
@@ -6455,6 +6460,8 @@
       document.getElementById('perm_updates').checked = !!s.can_approve_updates;
       document.getElementById('perm_admin').checked = !!s.can_manage_users;
       document.getElementById('perm_otp_exempt').checked = !!s.can_approve_otp_exempt;
+      const elPktOtpEdit = document.getElementById('perm_packet_otp_exempt');
+      if (elPktOtpEdit) elPktOtpEdit.checked = !!s.can_approve_packet_otp_exempt;
       document.getElementById('perm_expenses').checked = !!s.can_approve_expenses;
       document.getElementById('perm_treasury').checked = !!s.can_manage_treasury;
       document.getElementById('staffFormTitle').innerText = "✏️ பணியாளர் திருத்துதல்";
@@ -6490,6 +6497,8 @@
       document.getElementById('perm_updates').checked = false;
       document.getElementById('perm_admin').checked = false;
       document.getElementById('perm_otp_exempt').checked = false;
+      const elPktOtpCancel = document.getElementById('perm_packet_otp_exempt');
+      if (elPktOtpCancel) elPktOtpCancel.checked = false;
       document.getElementById('perm_expenses').checked = false;
       document.getElementById('perm_treasury').checked = false;
       document.getElementById('staffFormTitle').innerText = "👤 புதிய பணியாளர் உருவாக்கம்";
@@ -6532,6 +6541,7 @@
         can_approve_updates: document.getElementById('perm_updates').checked,
         can_manage_users: document.getElementById('perm_admin').checked,
         can_approve_otp_exempt: document.getElementById('perm_otp_exempt').checked,
+        can_approve_packet_otp_exempt: document.getElementById('perm_packet_otp_exempt')?.checked || false,
         can_approve_expenses: document.getElementById('perm_expenses').checked,
         can_manage_treasury: document.getElementById('perm_treasury').checked,
         can_approve_rebate: document.getElementById('perm_rebate').checked,
@@ -11870,7 +11880,7 @@
   async function loadPendingPacketOtpExemptionsHQ() {
     const section = document.getElementById('hqPacketOtpExemptSection');
     const tbody = document.getElementById('hqPacketOtpExemptTbody');
-    const isAuth = currentUser?.permissions?.can_approve_otp_exempt === true || currentUser?.permissions?.can_approve_hq_packets === true || currentUser?.role_key === 'HQ_ADMIN';
+    const isAuth = currentUser?.permissions?.can_approve_packet_otp_exempt === true || currentUser?.role_key === 'HQ_ADMIN';
 
     if (!isAuth) {
       if (section) section.classList.add('hidden');
@@ -15610,10 +15620,10 @@
         hqLoanDeviationSection: isSuperAdmin || (!isBranchOnly && Boolean(perms.can_access_counter)),
         // வட்டி தள்ளுபடி ஒப்புதல் (8)
         hqRebateSection: isSuperAdmin || Boolean(perms.can_approve_rebate),
-        // அவசர OTP விலக்கு ஒப்புதல் (7)
+        // 7A. அவசர OTP விலக்கு ஒப்புதல்
         hqOtpExemptSection: isSuperAdmin || Boolean(perms.can_approve_otp_exempt),
-        // பாக்கெட் ஒப்படைப்பு OTP விலக்கு (7 மட்டுமே - 12 அல்ல)
-        hqPacketOtpExemptSection: isSuperAdmin || Boolean(perms.can_approve_otp_exempt)
+        // 7B. பாக்கெட் ஒப்படைப்பு OTP விலக்கு ஒப்புதல்
+        hqPacketOtpExemptSection: isSuperAdmin || Boolean(perms.can_approve_packet_otp_exempt)
       };
 
       Object.entries(hqRulesById).forEach(([secId, isAllowed]) => {
@@ -15685,6 +15695,7 @@
         perms.can_approve_kyc ||
         perms.can_approve_updates ||
         perms.can_approve_otp_exempt ||
+        perms.can_approve_packet_otp_exempt ||
         perms.can_approve_expenses ||
         perms.can_manage_treasury ||
         perms.can_approve_rebate ||

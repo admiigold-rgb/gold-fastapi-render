@@ -271,6 +271,7 @@ class StaffPayload(BaseModel):
     can_approve_updates: bool = False
     can_manage_users: bool = False
     can_approve_otp_exempt: bool = False
+    can_approve_packet_otp_exempt: bool = False
     can_approve_expenses: bool = False  
     can_manage_treasury: bool = False
     can_approve_rebate: bool = False
@@ -676,6 +677,7 @@ def staff_unified_login(data: LoginRequest):
                 "can_approve_updates": True if is_admin_role else bool(user.get("can_approve_updates", False)),
                 "can_manage_users": True if is_admin_role else bool(user.get("can_manage_users", False)),
                 "can_approve_otp_exempt": True if is_admin_role else bool(user.get("can_approve_otp_exempt", False)),
+                "can_approve_packet_otp_exempt": True if is_admin_role else bool(user.get("can_approve_packet_otp_exempt", False)),
                 "can_approve_expenses": True if is_admin_role else bool(user.get("can_approve_expenses", False)),
                 "can_manage_treasury": True if is_admin_role else bool(user.get("can_manage_treasury", False)),
                 "can_approve_rebate": True if is_admin_role else bool(user.get("can_approve_rebate", False)),
@@ -3171,6 +3173,7 @@ def update_staff(staff_id: int, data: dict):
             "can_approve_updates": bool(data.get("can_approve_updates", False)),
             "can_manage_users": bool(data.get("can_manage_users", False)),
             "can_approve_otp_exempt": bool(data.get("can_approve_otp_exempt", False)),
+            "can_approve_packet_otp_exempt": bool(data.get("can_approve_packet_otp_exempt", False)),
             "can_approve_expenses": bool(data.get("can_approve_expenses", False)),
             "can_manage_treasury": bool(data.get("can_manage_treasury", False)),
             "can_approve_rebate": bool(data.get("can_approve_rebate", False)),

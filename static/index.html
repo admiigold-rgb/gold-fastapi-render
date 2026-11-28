@@ -15941,5 +15941,140 @@
     setTimeout(applyMisPermissionVisibility, 1200);
   })();
 </script>
+<script>
+  (function enforceGranularHqSectionPermissions() {
+    if (window._granularHqLockReady) return;
+    window._granularHqLockReady = true;
+
+    function lockHqSectionsByPermission() {
+      const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || 'null');
+      if (!u) return;
+
+      const role = String(u.role_key || '').toUpperCase();
+      const isSuperAdmin = (role === 'HQ_ADMIN' || role === 'ADMIN');
+      const perms = u.permissions || {};
+
+      // ஒவ்வொரு HQ பிரிவுக்கும் உரிய அனுமதி விதிகள்
+      const SECTION_RULES = [
+        {
+          keywords: ['KYC ஒப்புதல்', 'புதிய வாடிக்கையாளர் KYC'],
+          allowed: isSuperAdmin || Boolean(perms.can_approve_kyc)
+        },
+        {
+          keywords: ['சுயவிவர மாற்ற', 'Profile Update'],
+          allowed: isSuperAdmin || Boolean(perms.can_approve_updates)
+        },
+        {
+          keywords: ['வருகை சரிபார்ப்பு', 'கவுண்டர் வருகை', 'கூடுதல் கடன்', 'LTV Deviation'],
+          allowed: isSuperAdmin || Boolean(perms.can_access_counter)
+        },
+        {
+          keywords: ['வங்கிப் பட்டுவாடா', 'வங்கி வரவு', 'Bank Payout', 'Bank Receipt'],
+          allowed: isSuperAdmin || Boolean(perms.can_manage_treasury)
+        },
+        {
+          keywords: ['கிளைச் செலவு', 'Branch Expense'],
+          allowed: isSuperAdmin || Boolean(perms.can_approve_expenses)
+        },
+        {
+          keywords: ['Treasury', 'உள்-பணப் பரிமாற்றம்'],
+          allowed: isSuperAdmin || Boolean(perms.can_manage_treasury)
+        },
+        {
+          keywords: ['OTP விலக்கு', 'OTP Exemption'],
+          allowed: isSuperAdmin || Boolean(perms.can_approve_otp_exempt)
+        },
+        {
+          keywords: ['வட்டி தள்ளுபடி', 'Rebate'],
+          allowed: isSuperAdmin || Boolean(perms.can_approve_rebate)
+        },
+        {
+          keywords: ['நகை இருப்பு', 'விற்பனை ஒதுக்கீடு', 'GP Stock'],
+          allowed: isSuperAdmin || Boolean(perms.can_manage_gp_stock)
+        },
+        {
+          keywords: ['GSS மெச்சியுரிட்டி', 'RD பெனிபிட்', 'SI கணக்கு முடிப்பு', 'Maturity Benefit'],
+          allowed: isSuperAdmin || Boolean(perms.can_approve_gss_benefit)
+        },
+        {
+          keywords: ['HQ பாக்கெட்', 'வங்கி லாக்கர்', 'Vault Access', 'பாக்கெட் சிறப்பு ஒப்புதல்'],
+          allowed: isSuperAdmin || Boolean(perms.can_access_hq_packets || perms.can_approve_hq_packets)
+        },
+        {
+          keywords: ['Print Service', 'RD சான்றிதழ்'],
+          allowed: isSuperAdmin || Boolean(perms.can_approve_gss_benefit || perms.can_access_mis)
+        }
+      ];
+
+      const hqTab = document.getElementById('hqApprovalTab');
+      if (!hqTab) return;
+
+      // hqApprovalTab உள்ளே இருக்கும் ஒவ்வொரு தனிப் பெட்டியையும் (Card / Section) சரிபார்த்தல்
+      const headings = hqTab.querySelectorAll('h2, h3, h4');
+      headings.forEach(h => {
+        const titleTxt = (h.textContent || '').trim();
+        if (!titleTxt) return;
+
+        // அந்தத் தலைப்பு எந்த விதிக்குள் வருகிறது எனப் பார்த்தல்
+        const matchedRule = SECTION_RULES.find(rule =>
+          rule.keywords.some(kw => titleTxt.toLowerCase().includes(kw.toLowerCase()))
+        );
+
+        if (matchedRule) {
+          // அந்தத் தலைப்பைக் கொண்ட முழுப் பெட்டியை (Card Container) கண்டறிதல்
+          const cardBox = h.closest('div.bg-white, div.rounded-2xl, div.border-2, section') || h.parentElement;
+          if (cardBox && cardBox.id !== 'hqApprovalTab') {
+            if (matchedRule.allowed) {
+              cardBox.classList.remove('hidden');
+              cardBox.style.display = '';
+            } else {
+              cardBox.classList.add('hidden');
+              cardBox.style.display = 'none';
+            }
+          }
+        }
+      });
+
+      // 360° Search & Bank Passbook பொத்தான்களையும் அனுமதிப்படி கட்டுப்படுத்துதல்
+      const btn360 = document.querySelector("button[onclick*='openMasterAudit360Modal']");
+      if (btn360) {
+        const allow360 = Boolean(perms.can_view_360_search === true);
+        btn360.style.display = allow360 ? '' : 'none';
+      }
+
+      const btnBank = document.querySelector("button[onclick*='openCompanyBankPassbookModal']");
+      if (btnBank) {
+        const allowBank = Boolean(perms.can_view_bank_passbook === true);
+        btnBank.style.display = allowBank ? '' : 'none';
+      }
+    }
+
+    // பக்கம் மாறும்போதும் தரவுகள் ஏறும்போதும் உடனடியாகச் சரிபார்த்தல்
+    const origSwitch = window.switchTab;
+    if (typeof origSwitch === 'function') {
+      window.switchTab = function() {
+        const res = origSwitch.apply(this, arguments);
+        setTimeout(lockHqSectionsByPermission, 50);
+        return res;
+      };
+    }
+
+    const origLoadHq = window.loadAllHqApprovals;
+    if (typeof origLoadHq === 'function') {
+      window.loadAllHqApprovals = async function() {
+        const res = await origLoadHq.apply(this, arguments);
+        setTimeout(lockHqSectionsByPermission, 50);
+        return res;
+      };
+    }
+
+    const obs = new MutationObserver(lockHqSectionsByPermission);
+    if (document.body) {
+      obs.observe(document.body, { childList: true, subtree: true });
+    }
+    setTimeout(lockHqSectionsByPermission, 300);
+    setTimeout(lockHqSectionsByPermission, 1200);
+  })();
+</script>
 </body>
 </html>

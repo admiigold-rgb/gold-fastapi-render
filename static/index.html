@@ -15601,29 +15601,258 @@
   })();
 </script>
 <script>
-  (function strictHqSectionLockByExactId() {
-    if (window._strictHqLockByIdReady) return;
-    window._strictHqLockByIdReady = true;
+  (function initUnifiedMisHubAndStrictPermissions() {
+    if (window._unifiedMisHubReady) return;
+    window._unifiedMisHubReady = true;
 
-    function enforceExactPermissions() {
+    let activeMisSubSection = 'REMINDER';
+
+    function getLoggedUserPerms() {
       const u = window.currentUser || JSON.parse(localStorage.getItem('gold_app_user') || 'null');
-      if (!u) return;
-
+      if (!u) return { u: null, isSuperAdmin: false, isBranchOnly: false, perms: {} };
       const role = String(u.role_key || '').toUpperCase();
       const isSuperAdmin = (role === 'HQ_ADMIN' || role === 'ADMIN');
       const isBranchOnly = (role === 'BRANCH_STAFF' || role === 'BRANCH_MANAGER');
-      const perms = u.permissions || {};
+      return { u, isSuperAdmin, isBranchOnly, perms: u.permissions || {} };
+    }
 
-      // 1. ஒவ்வொரு HQ பிரிவுக்கும் தனித்தனி அனுமதி விதிகள் (மொழி மாறினாலும் மாறாத ID-கள்)
+    // 1. மேல் மெனு பட்டையில் '📊 MIS' பொத்தான் மற்றும் #misTab பக்கத்தை உருவாக்குதல்
+    function buildMisMenuAndPage() {
+      const mainDash = document.getElementById('mainDashboard');
+      const navContainer = document.getElementById('navButtonsContainer');
+      if (!mainDash || !navContainer) return;
+
+      // பழைய தவறான பெட்டி இருந்தால் நீக்குதல்
+      const oldBox = document.getElementById('hqReminderMonitoringBox');
+      if (oldBox) oldBox.remove();
+
+      if (!document.getElementById('btn_misTab')) {
+        const misBtn = document.createElement('button');
+        misBtn.type = 'button';
+        misBtn.id = 'btn_misTab';
+        misBtn.innerHTML = '📊 MIS';
+        misBtn.className = 'px-3.5 py-1.5 text-xs font-bold rounded-xl bg-purple-900 bg-opacity-40 text-purple-100 hover:bg-opacity-60 border border-purple-400 cursor-pointer';
+        misBtn.onclick = function() {
+          window.switchTab('misTab');
+        };
+        navContainer.appendChild(misBtn);
+      }
+
+      if (!document.getElementById('misTab')) {
+        const refTab = document.getElementById('hqApprovalTab') || mainDash.lastElementChild;
+        const misSec = document.createElement('div');
+        misSec.id = 'misTab';
+        misSec.className = 'hidden space-y-4';
+        const todayStr = document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
+
+        misSec.innerHTML = `
+          <div class="bg-white p-5 rounded-2xl border-2 border-brand-violet shadow-sm space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-2 border-b-2 border-purple-100 pb-3">
+              <div>
+                <h2 class="text-base font-black text-brand-violet flex items-center gap-2">
+                  <span>📊</span> MIS — மேலாண்மை தகவல் & தணிக்கை மையம்
+                </h2>
+                <p class="text-xs text-slate-600">உங்களுக்கு அனுமதிக்கப்பட்ட MIS அறிக்கைகள் & கருவிகளைக் கீழே தேர்வு செய்து பயன்படுத்தவும்</p>
+              </div>
+            </div>
+
+            <!-- MIS உள் மெனு பொத்தான்கள் (4 வசதிகள்) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <button type="button" id="misCardBtn_REMINDER" onclick="window.openMisSubSection('REMINDER')" class="p-3.5 rounded-2xl border-2 border-purple-300 bg-purple-50 hover:bg-purple-100 text-left transition cursor-pointer shadow-xs">
+                <div class="text-lg mb-1">📞</div>
+                <div class="font-black text-brand-violet">கிளை நினைவூட்டல் கண்காணிப்பு</div>
+                <div class="text-[10.5px] text-slate-600 mt-0.5">அழைப்புகள் %, வரச் சம்மதம் & கடிதங்கள்</div>
+              </button>
+
+              <button type="button" id="misCardBtn_PASSBOOK" onclick="window.openMisSubSection('PASSBOOK')" class="p-3.5 rounded-2xl border-2 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-left transition cursor-pointer shadow-xs">
+                <div class="text-lg mb-1">🏦</div>
+                <div class="font-black text-emerald-900">Company Bank Passbook & Ledger</div>
+                <div class="text-[10.5px] text-slate-600 mt-0.5">நிறுவன வங்கி இருப்பு & வரவு-செலவு</div>
+              </button>
+
+              <button type="button" id="misCardBtn_360" onclick="window.openMisSubSection('360')" class="p-3.5 rounded-2xl border-2 border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-left transition cursor-pointer shadow-xs">
+                <div class="text-lg mb-1">🔎</div>
+                <div class="font-black text-indigo-950">360° முழு பரிவர்த்தனை வரலாறு தேடல்</div>
+                <div class="text-[10.5px] text-slate-600 mt-0.5">கடன் எண் / மொபைல் மூலம் முழு வரலாறு</div>
+              </button>
+
+              <button type="button" id="misCardBtn_INCENTIVE" onclick="window.openMisSubSection('INCENTIVE')" class="p-3.5 rounded-2xl border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-left transition cursor-pointer shadow-xs">
+                <div class="text-lg mb-1">🏆</div>
+                <div class="font-black text-amber-950">பணியாளர் இன்சென்டிவ் விதிகள் & அறிக்கை</div>
+                <div class="text-[10.5px] text-slate-600 mt-0.5">பணியாளர் புள்ளிகள் & மாத இன்சென்டிவ்</div>
+              </button>
+            </div>
+
+            <!-- பிரிவு 1: கிளை நினைவூட்டல் கண்காணிப்பு அட்டவணை -->
+            <div id="misReminderSectionBox" class="space-y-3 pt-2 border-t border-purple-100">
+              <div class="flex flex-wrap justify-between items-center gap-2">
+                <h3 class="text-xs font-black text-brand-violet uppercase">📞 கிளை வட்டி & கடன் நினைவூட்டல் கண்காணிப்பு</h3>
+                <div class="flex items-center gap-2 text-xs">
+                  <input type="date" id="mis_rem_date" value="${todayStr}" onchange="window.loadMisReminderMonitoring()" class="border-2 border-purple-200 px-3 py-1 rounded-xl bg-white font-bold text-brand-violet">
+                  <button type="button" onclick="window.loadMisReminderMonitoring()" class="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-brand-violet rounded-xl font-black cursor-pointer">புதுப்பி 🔄</button>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+                <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-200">
+                  <span class="text-purple-900 block font-bold text-[10px]">மொத்த முடிந்த சதவீதம்</span>
+                  <b id="mis_tot_pct" class="text-base font-black text-brand-violet">0%</b>
+                </div>
+                <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                  <span class="text-emerald-900 block font-bold text-[10px]">✅ வரச் சம்மதித்தவர்கள்</span>
+                  <b id="mis_tot_promised" class="text-base font-black text-emerald-700">0</b>
+                </div>
+                <div class="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200">
+                  <span class="text-indigo-900 block font-bold text-[10px]">🔄 மாற்றச் சம்மதம்</span>
+                  <b id="mis_tot_renewal" class="text-base font-black text-indigo-700">0</b>
+                </div>
+                <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200">
+                  <span class="text-amber-900 block font-bold text-[10px]">📵 எடுக்காதவர்கள்</span>
+                  <b id="mis_tot_noans" class="text-base font-black text-amber-700">0</b>
+                </div>
+                <div class="bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                  <span class="text-rose-900 block font-bold text-[10px]">✉️ அனுப்பிய கடிதங்கள்</span>
+                  <b id="mis_tot_letters" class="text-base font-black text-rose-600">0</b>
+                </div>
+              </div>
+
+              <div class="overflow-x-auto border-2 border-purple-100 rounded-xl">
+                <table class="w-full text-xs text-left">
+                  <thead class="bg-purple-100 text-purple-950 border-b border-purple-200">
+                    <tr>
+                      <th class="p-2.5 font-bold">கிளை</th>
+                      <th class="p-2.5 text-center font-bold">முடிந்தது / மொத்தம்</th>
+                      <th class="p-2.5 text-center font-bold">முடிந்த %</th>
+                      <th class="p-2.5 text-center font-bold">✅ வருவார்</th>
+                      <th class="p-2.5 text-center font-bold">🔄 மாற்றுவார்</th>
+                      <th class="p-2.5 text-center font-bold">📵 எடுக்கல</th>
+                      <th class="p-2.5 text-center font-bold">✉️ கடிதம்</th>
+                    </tr>
+                  </thead>
+                  <tbody id="misReminderTbody" class="divide-y divide-purple-50 text-slate-700">
+                    <tr><td colspan="7" class="p-4 text-center text-slate-400 font-semibold">விவரங்கள் ஏற்றப்படுகின்றன...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        `;
+
+        if (refTab && refTab.parentElement) {
+          refTab.parentElement.appendChild(misSec);
+        } else {
+          mainDash.appendChild(misSec);
+        }
+      }
+    }
+
+    // 2. MIS உள் பிரிவுகளைத் திறத்தல்
+    window.openMisSubSection = function(key) {
+      activeMisSubSection = key;
+      const remBox = document.getElementById('misReminderSectionBox');
+
+      if (key === 'REMINDER') {
+        if (remBox) remBox.classList.remove('hidden');
+        window.loadMisReminderMonitoring();
+      } else if (key === 'PASSBOOK') {
+        if (typeof window.openCompanyBankPassbookModal === 'function') {
+          window.openCompanyBankPassbookModal();
+        }
+      } else if (key === '360') {
+        if (typeof window.openMasterAudit360Modal === 'function') {
+          window.openMasterAudit360Modal();
+        }
+      } else if (key === 'INCENTIVE') {
+        if (typeof window.openIncentiveDashboardModal === 'function') {
+          window.openIncentiveDashboardModal();
+        }
+      }
+    };
+
+    window.loadMisReminderMonitoring = async function() {
+      buildMisMenuAndPage();
+      const tbody = document.getElementById('misReminderTbody');
+      if (!tbody) return;
+      const dateVal = document.getElementById('mis_rem_date')?.value || document.getElementById('txn_date')?.value || new Date().toISOString().split('T')[0];
+
+      try {
+        const res = await fetch(`/api/hq/reminder-monitoring?date_str=${encodeURIComponent(dateVal)}&t=${Date.now()}`);
+        const out = await res.json();
+        if (!res.ok) return;
+
+        const tot = out.totals || {};
+        document.getElementById('mis_tot_pct').innerText = `${out.overall_pct ?? 0}%`;
+        document.getElementById('mis_tot_promised').innerText = tot.promised_count ?? 0;
+        document.getElementById('mis_tot_renewal').innerText = tot.renewal_count ?? 0;
+        document.getElementById('mis_tot_noans').innerText = tot.no_answer_count ?? 0;
+        document.getElementById('mis_tot_letters').innerText = tot.letter_sent_count ?? 0;
+
+        const rows = out.branches || [];
+        if (rows.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400 font-semibold">கிளைத் தரவுகள் இல்லை</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = rows.map(r => {
+          const pct = Number(r.completion_pct || 0);
+          const pctColor = pct >= 80 ? 'text-emerald-700 bg-emerald-100' : (pct >= 40 ? 'text-amber-800 bg-amber-100' : 'text-rose-700 bg-rose-100');
+          return `
+            <tr class="hover:bg-purple-50/50">
+              <td class="p-2.5 font-bold text-brand-violet">${r.branch_name} <span class="text-[10px] font-mono text-slate-500">(${r.branch_code})</span></td>
+              <td class="p-2.5 text-center font-mono font-bold">${r.completed_count} / ${r.total_due}</td>
+              <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded-lg font-black font-mono ${pctColor}">${pct}%</span></td>
+              <td class="p-2.5 text-center font-mono font-black text-emerald-700">${r.promised_count}</td>
+              <td class="p-2.5 text-center font-mono font-black text-indigo-700">${r.renewal_count}</td>
+              <td class="p-2.5 text-center font-mono font-black text-amber-700">${r.no_answer_count}</td>
+              <td class="p-2.5 text-center font-mono font-black text-rose-600">${r.letter_sent_count}</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {}
+    };
+
+    // 3. அனைத்து அனுமதிகளையும் (MIS + HQ Approval பிரிவுகள்) துல்லியமாகக் கட்டுப்படுத்துதல்
+    function enforceAllUiPermissions() {
+      const { u, isSuperAdmin, isBranchOnly, perms } = getLoggedUserPerms();
+      if (!u) return;
+
+      buildMisMenuAndPage();
+
+      // A. MIS உரிமைகள் (4 வசதிகளில் ஏதேனும் ஒன்று இருந்தாலும் MIS மெனு தெரியும்)
+      const allowMisReminder = isSuperAdmin || Boolean(perms.can_access_mis);
+      const allowMisPassbook = isSuperAdmin || Boolean(perms.can_view_bank_passbook);
+      const allowMis360 = isSuperAdmin || Boolean(perms.can_view_360_search);
+      const allowMisIncentive = isSuperAdmin || Boolean(perms.can_access_mis || perms.can_manage_users);
+      const showMainMisMenu = allowMisReminder || allowMisPassbook || allowMis360 || allowMisIncentive;
+
+      const misBtn = document.getElementById('btn_misTab');
+      if (misBtn) {
+        misBtn.style.display = showMainMisMenu ? '' : 'none';
+      }
+
+      const cRem = document.getElementById('misCardBtn_REMINDER');
+      const cPb = document.getElementById('misCardBtn_PASSBOOK');
+      const c360 = document.getElementById('misCardBtn_360');
+      const cInc = document.getElementById('misCardBtn_INCENTIVE');
+      const remBox = document.getElementById('misReminderSectionBox');
+
+      if (cRem) cRem.style.display = allowMisReminder ? '' : 'none';
+      if (cPb) cPb.style.display = allowMisPassbook ? '' : 'none';
+      if (c360) c360.style.display = allowMis360 ? '' : 'none';
+      if (cInc) cInc.style.display = allowMisIncentive ? '' : 'none';
+      if (remBox && !allowMisReminder) remBox.classList.add('hidden');
+
+      // B. HQ Approval-ல் உள்ள 360° & Passbook பொத்தான்களை மறைத்தல் (இவை MIS மெனுவுக்குள் மாற்றப்பட்டுவிட்டன)
+      const hqBtn360 = document.querySelector("#hqApprovalTab button[onclick*='openMasterAudit360Modal']");
+      const hqBtnBank = document.querySelector("#hqApprovalTab button[onclick*='openCompanyBankPassbookModal']");
+      if (hqBtn360) hqBtn360.style.display = 'none';
+      if (hqBtnBank) hqBtnBank.style.display = 'none';
+
+      // C. HQ Approval பிரிவுகளைத் தனித்தனி ID மூலம் பூட்டுதல்
       const hqRulesById = {
-        // கூடுதல் கடன் ஒப்புதல்: HQ/Management-ல் Counter அனுமதி உள்ளவர்களுக்கு மட்டும்
         hqLoanDeviationSection: isSuperAdmin || (!isBranchOnly && Boolean(perms.can_access_counter)),
-        // வட்டி தள்ளுபடி ஒப்புதல் (8)
         hqRebateSection: isSuperAdmin || Boolean(perms.can_approve_rebate),
-        // 7A. அவசர OTP விலக்கு ஒப்புதல்
         hqOtpExemptSection: isSuperAdmin || Boolean(perms.can_approve_otp_exempt),
-        // 7B. பாக்கெட் ஒப்படைப்பு OTP விலக்கு ஒப்புதல்
-        hqPacketOtpExemptSection: isSuperAdmin || Boolean(perms.can_approve_packet_otp_exempt)
+        hqPacketOtpExemptSection: isSuperAdmin || Boolean(perms.can_approve_packet_otp_exempt || perms.can_approve_otp_exempt)
       };
 
       Object.entries(hqRulesById).forEach(([secId, isAllowed]) => {
@@ -15634,24 +15863,15 @@
         }
       });
 
-      // 2. அட்டவணை ID அடிப்படையில் மற்ற பிரிவுகளைப் பூட்டுதல்
       const tableParentRules = [
-        // 1 & 2. வங்கிப் பட்டுவாடா & வங்கி வரவு (6. Treasury & வங்கி மேலாண்மை)
         { tbodyId: 'pendingPayoutsTableBody', allow: isSuperAdmin || Boolean(perms.can_manage_treasury) },
         { tbodyId: 'pendingReceiptsTableBody', allow: isSuperAdmin || Boolean(perms.can_manage_treasury) },
-        // 3. கிளைக் கவுண்டர் வருகை சரிபார்ப்பு (HQ/Management-ல் Counter அனுமதி உள்ளவர்களுக்கு மட்டும்)
         { tbodyId: 'pendingVisitsTableBody', allow: isSuperAdmin || (!isBranchOnly && Boolean(perms.can_access_counter)) },
-        // 4. புதிய KYC ஒப்புதல் (2)
         { tbodyId: 'pendingKycTableBody', allow: isSuperAdmin || Boolean(perms.can_approve_kyc) },
-        // 5. சுயவிவர மாற்ற ஒப்புதல் (3)
         { tbodyId: 'pendingUpdatesTableBody', allow: isSuperAdmin || Boolean(perms.can_approve_updates) },
-        // 6. கிளைச் செலவு ஒப்புதல் (5)
         { tbodyId: 'pendingExpensesTableBody', allow: isSuperAdmin || Boolean(perms.can_approve_expenses) },
-        // 7. உள்-பணப் பரிமாற்றம் Treasury (6)
         { tbodyId: 'pendingTreasuryTableBody', allow: isSuperAdmin || Boolean(perms.can_manage_treasury) },
-        // 8. தலைமையக நகை இருப்பு & விற்பனை ஒதுக்கீடு (9)
         { tbodyId: 'hqGpStockTableBody', allow: isSuperAdmin || Boolean(perms.can_manage_gp_stock) },
-        // 9, 10, 11. GSS / RD / SI மெச்சியுரிட்டி பெனிபிட் ஒப்புதல் (10)
         { tbodyId: 'pendingGssBenefitsTbody', allow: isSuperAdmin || Boolean(perms.can_approve_gss_benefit) },
         { tbodyId: 'pendingRdBenefitsTbody', allow: isSuperAdmin || Boolean(perms.can_approve_gss_benefit) },
         { tbodyId: 'pendingSiApprovalsTbody', allow: isSuperAdmin || Boolean(perms.can_approve_gss_benefit) }
@@ -15660,7 +15880,6 @@
       tableParentRules.forEach(rule => {
         const tbody = document.getElementById(rule.tbodyId);
         if (!tbody) return;
-        // tbody-க்கு மேலே உள்ள அந்தப் பிரிவின் பெட்டியை (space-y-2) கண்டறிந்து மறைத்தல்
         const sectionBox = tbody.closest('div.space-y-2');
         if (sectionBox) {
           sectionBox.classList.toggle('hidden', !rule.allow);
@@ -15668,7 +15887,6 @@
         }
       });
 
-      // 3. HQ பாக்கெட் & வங்கி லாக்கர் பட்டன் (11 அல்லது 12 இருந்தால் மட்டும்)
       const btnPkt = document.getElementById('btnOpenHqPacketHub');
       if (btnPkt) {
         const allowPkt = isSuperAdmin || Boolean(perms.can_access_hq_packets || perms.can_approve_hq_packets);
@@ -15676,21 +15894,6 @@
         btnPkt.style.display = allowPkt ? '' : 'none';
       }
 
-      // 4. 360° Search (15) & Bank Passbook (16)
-      const btn360 = document.querySelector("button[onclick*='openMasterAudit360Modal']");
-      if (btn360) {
-        const allow360 = isSuperAdmin || Boolean(perms.can_view_360_search === true);
-        btn360.style.display = allow360 ? '' : 'none';
-      }
-
-      const btnBank = document.querySelector("button[onclick*='openCompanyBankPassbookModal']");
-      if (btnBank) {
-        const allowBank = isSuperAdmin || Boolean(perms.can_view_bank_passbook === true);
-        btnBank.style.display = allowBank ? '' : 'none';
-      }
-
-      // 5. கிளைப் பணியாளருக்கு (BRANCH_STAFF) மேல் மெனுவில் 'தலைமையக ஒப்புதல்கள்' டேபை மறைத்தல்
-      // (மற்ற உரிமைகள் எதுவும் இல்லாமல் 1. Counter மட்டும் இருந்தால் கவுண்ட்டர் மட்டுமே தெரியும்)
       const hasHqTabPerm = isSuperAdmin || Boolean(
         perms.can_approve_kyc ||
         perms.can_approve_updates ||
@@ -15703,28 +15906,54 @@
         perms.can_approve_gss_benefit ||
         perms.can_access_hq_packets ||
         perms.can_approve_hq_packets ||
-        perms.can_view_360_search ||
-        perms.can_view_bank_passbook ||
         (!isBranchOnly && perms.can_access_counter)
       );
       const hqNavBtn = document.getElementById('btn_hqApprovalTab');
       if (hqNavBtn) {
         hqNavBtn.style.display = hasHqTabPerm ? '' : 'none';
       }
-
-      // 6. வட்டி / கடன் நினைவூட்டல் சாளரம் (14 டிக் செய்தவர்களுக்கு மட்டும்)
-      const remDock = document.getElementById('floatingReminderDockWrap');
-      if (remDock) {
-        const allowRem = Boolean(perms.can_view_loan_reminders === true);
-        if (!allowRem) remDock.style.display = 'none';
-      }
     }
 
-    const origSwitch = window.switchTab;
-    if (typeof origSwitch === 'function') {
-      window.switchTab = function() {
-        const res = origSwitch.apply(this, arguments);
-        setTimeout(enforceExactPermissions, 30);
+    // 4. switchTab உடன் misTab-ஐ முழுமையாக இணைத்தல்
+    const origSwitchTab = window.switchTab;
+    window.switchTab = function(tabId) {
+      buildMisMenuAndPage();
+      ['counterTab', 'hqApprovalTab', 'adminPanelTab', 'internalAuditTab', 'misTab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+
+      if (typeof origSwitchTab === 'function' && tabId !== 'misTab') {
+        origSwitchTab.apply(this, arguments);
+      }
+
+      const target = document.getElementById(tabId);
+      if (target) target.classList.remove('hidden');
+
+      const navContainer = document.getElementById('navButtonsContainer');
+      if (navContainer) {
+        navContainer.querySelectorAll('button').forEach(btn => {
+          btn.className = (btn.id === `btn_${tabId}`)
+            ? 'px-3.5 py-1.5 text-xs font-black rounded-xl brand-gradient-gold-btn border border-yellow-400 shadow'
+            : 'px-3.5 py-1.5 text-xs font-bold rounded-xl bg-purple-900 bg-opacity-40 text-purple-100 hover:bg-opacity-60 border border-purple-400';
+        });
+      }
+
+      enforceAllUiPermissions();
+
+      if (tabId === 'misTab') {
+        const { isSuperAdmin, perms } = getLoggedUserPerms();
+        if (isSuperAdmin || perms.can_access_mis) {
+          window.openMisSubSection('REMINDER');
+        }
+      }
+    };
+
+    const origShowDash = window.showDashboard;
+    if (typeof origShowDash === 'function') {
+      window.showDashboard = function() {
+        const res = origShowDash.apply(this, arguments);
+        setTimeout(enforceAllUiPermissions, 80);
         return res;
       };
     }
@@ -15733,22 +15962,13 @@
     if (typeof origLoadHq === 'function') {
       window.loadAllHqApprovals = async function() {
         const res = await origLoadHq.apply(this, arguments);
-        setTimeout(enforceExactPermissions, 30);
+        setTimeout(enforceAllUiPermissions, 40);
         return res;
       };
     }
 
-    const origShowDash = window.showDashboard;
-    if (typeof origShowDash === 'function') {
-      window.showDashboard = function() {
-        const res = origShowDash.apply(this, arguments);
-        setTimeout(enforceExactPermissions, 80);
-        return res;
-      };
-    }
-
-    setTimeout(enforceExactPermissions, 300);
-    setTimeout(enforceExactPermissions, 1200);
+    setTimeout(enforceAllUiPermissions, 250);
+    setTimeout(enforceAllUiPermissions, 1000);
   })();
 </script>
 </body>
